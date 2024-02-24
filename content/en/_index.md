@@ -38,7 +38,7 @@ Leverage Kubernetes Admission Controllers to enforce the industry security best 
 {{% /blocks/feature %}}
 
 {{% blocks/feature icon="fa-house" title="Native Experience" %}}
-Provide multi-tenancy with a native Kubernetes experience without introducing additional management layers, plugins, or customized binaries.
+Provide multi-tenancy with a native Kubernetes experience without introducing additional management layers, plugins, or customized binaries. Tenancy can be partially present in the cluster.
 {{% /blocks/feature %}}
 
 {{% blocks/feature icon="fa-ghost" title="GitOps" %}}
@@ -52,12 +52,12 @@ Capsule is completely declarative and GitOps ready.
 
 ## Capsule is a CNCF Incubating Project { class="text-center mb-4" }
 
+---
+
 <a href="https://www.cncf.io" target="blank">
-	<img class="cncf-logo img-fluid" src="/images/logo/cncf.svg" alt="Cloud Native Computing Foundation logo">
+	<img class="cncf-logo img-fluid" src="/images/icons/cncf.png" alt="Cloud Native Computing Foundation logo">
 </a>
 
-<br/>
-<br/>
 <br/>
 <br/>
 

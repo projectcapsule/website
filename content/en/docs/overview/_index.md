@@ -1,6 +1,7 @@
 ---
 title: Overview
 weight: 1
+description: Understand the problem Capsule is attempting to solve and how it works
 ---
 
 Capsule implements a multi-tenant and policy-based environment in your Kubernetes cluster. It is designed as a micro-services-based ecosystem with the minimalist approach, leveraging only on upstream Kubernetes.
@@ -15,4 +16,6 @@ Capsule takes a different approach. In a single cluster, the Capsule Controller 
 
 On the other side, the Capsule Policy Engine keeps the different tenants isolated from each other. Network and Security Policies, Resource Quota, Limit Ranges, RBAC, and other policies defined at the tenant level are automatically inherited by all the namespaces in the tenant. Then users are free to operate their tenants in autonomy, without the intervention of the cluster administrator.
 
+<br>
 
+![capsule-operator](/images/content/capsule-operator.svg)
