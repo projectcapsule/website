@@ -1,7 +1,7 @@
 ---
 title: Contributions
-weight: 10
-description: How to contribute to the docs
+weight: 20
+description: Contributions to the project
 ---
 
 {{% pageinfo %}}
