@@ -27,3 +27,8 @@ You can read in detail how the integration works and how to configure it, in the
 
 How to integrate Rancher Projects with Capsule Tenants
 How to enable cluster-wide resources and Rancher shell access.
+
+## Tenants and Projects
+
+
+

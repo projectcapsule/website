@@ -2,11 +2,14 @@
 title: Goldydocs
 ---
 
-{{< blocks/cover title="Project Capsule" image_anchor="top" height="full" >}}
+{{< blocks/cover title="Capsule" image_anchor="top" height="full" >}}
+# A multi-tenancy and policy-based framework for Kubernetes { class="text-center" }
+<div class="mt-5 mx-auto">
 <a class="btn btn-lg btn-primary me-3 mb-4" href="/docs/">
   Learn More <i class="fas fa-arrow-alt-circle-right ms-2"></i>
 </a>
-<p class="lead mt-5">A multi-tenancy and policy-based framework for Kubernetes</p>
+
+</div>
 {{< blocks/link-down color="info" >}}
 {{< /blocks/cover >}}
 
@@ -31,7 +34,7 @@ Capsule is a framework is considered a framework which enables you to create you
 
 
 
-{{% blocks/section  type="row" %}}
+{{% blocks/section  color="dark" type="row" %}}
 
 {{% blocks/feature icon="fa-building-shield" title="Governance" %}}
 Leverage Kubernetes Admission Controllers to enforce the industry security best practices and meet policy requirements.

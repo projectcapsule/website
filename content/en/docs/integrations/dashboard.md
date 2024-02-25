@@ -1,9 +1,9 @@
 ---
-title: Kubernetes Dashboard
+title: Dashboard
 ---
 
 {{% pageinfo %}}
-This guide works with the kubernetes dashboard v2.0.0 ([Chart 6.0.8](https://artifacthub.io/packages/helm/k8s-dashboard/kubernetes-dashboard/6.0.8)) and later. It has not yet been tested successfully with with v3.x  version of the dashboard.
+This guide works with the kubernetes dashboard v2.0.0 ([Chart 6.0.8](https://artifacthub.io/packages/helm/k8s-dashboard/kubernetes-dashboard/6.0.8)). It has not yet been tested successfully with with v3.x  version of the dashboard.
 {{% /pageinfo %}}
 
 This guide describes how to integrate the [Kubernetes Dashboard](https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/) and [Capsule Proxy](/docs/capsule-proxy/) with OIDC authorization. 
