@@ -5,18 +5,22 @@ description: >
   Assign Namespace to tenants
 ---
 
-The configuration for the capsule controller is done via it's dedicated configration Custom Resource. You can explain the configuration options and how to use them:
-
-```
-
-
-```
-
-
-## Create Namespaces
-
 Alice, once logged with her credentials, can create a new namespace in her tenant, as simply issuing:
 
+```bash
+kubectl create ns solar-production
+```
+
+Alice started the name of the namespace prepended by the name of the tenant: this is not a strict requirement but it is highly suggested because it is likely that many different tenants would like to call their namespaces production, test, or demo, etc.
+
+The enforcement of this naming convention is optional and can be controlled by the cluster administrator with [forceTenantPrefix](/docs/tenants/configuration/#forcetenantprefix) option.
+
+Alice can deploy any resource in any of the namespaces
+
+```bash
+kubectl -n solar-development run nginx --image=docker.io/nginx 
+kubectl -n solar-development get pods
+```
 
 ## Multiple Tenants
 

@@ -11,10 +11,22 @@ Capsule introduces the principal, that tenants must have owners. The owner of a 
 
 ### Group Scope
 
-Capsule selects users, which are eligable to be considered for tenancy by their group.
+Capsule selects users, which are eligable to be considered for tenancy by their group. The define the group of users that can be considered for tenancy, you can use the `userGroups` option in the CapsuleConfiguration. 
 
+Another commonly used example if you want to promote serviceaccount to tenant-owners, their group must be present:
 
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: CapsuleConfiguration
+metadata:
+  name: default
+spec:
+  userGroups:
+  - solar-users
+  - system:serviceaccounts:tenant-system
+```
 
+All serviceAccounts in the `tenant-system` namespace will be considered for tenancy and can be promoted to tenant owners.
 
 ### Assignment
 
@@ -85,7 +97,7 @@ no
 ```
 
 
-### Group of subjects as tenant owner
+#### Group of subjects as tenant owner
 
 In the example above, Bill assigned the ownership of solar tenant to alice user. If another user, e.g. Bob needs to administer the solar tenant, Bill can assign the ownership of solar tenant to such user too:
 
@@ -122,13 +134,37 @@ kubectl auth can-i create namespaces
 yes
 ```
 
-#### Group of ServiceAccounts
+All the groups you want to promot to Tenant Owners must be part of the Group Scope. You have to add `solar-users` to the CapsuleConfiguration [Group Scope](#group-scope) to make it work.
+
+#### ServiceAccounts
 
 You can use the Group subject to grant serviceaccounts the ownership of a tenant. For example, you can create a group of serviceaccounts and assign it to the tenant:
 
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+  - name: system:serviceaccount:tenant-system:robot
+    kind: ServiceAccount
+```
+
+Bill can create a Service Account called robot, for example, in the `tenant-system` namespace and leave it to act as Tenant Owner of the oil tenant
+
 ```bash
+kubectl --as system:serviceaccount:tenant-system:robot --as-group capsule.clastix.io auth can-i create namespaces
+yes
+```
+since each service account in a namespace is a member of following group:
 
 ```
+system:serviceaccounts:{service-account-namespace}
+```
+
+You have to add `system:serviceaccounts:{service-account-namespace}` to the CapsuleConfiguration [Group Scope](#group-scope) to make it work.
+
 
 ### Owner Roles
 
@@ -140,12 +176,188 @@ By default, all Tenant Owners will be granted with two ClusterRole resources usi
 You can observe this behavior when you get the tenant solar:
 
 ```yaml
-
+$ kubectl get tnt solar -o yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  labels:
+    kubernetes.io/metadata.name: solar
+  name: solar
+spec:
+  ingressOptions:
+    hostnameCollisionScope: Disabled
+  limitRanges: {}
+  networkPolicies: {}
+  owners:
+  # -- HERE -- #
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: User
+    name: alice
+  resourceQuotas:
+    scope: Tenant
+status:
+  namespaces:
+  - solar-production
+  - solar-system
+  size: 2
+  state: Active
 ```
 
-In the example below, assuming the tenant owner creates a namespace oil-production in Tenant oil, you'll see the Role Bindings giving the tenant owner full permissions on the tenant namespaces:
+In the example below, assuming the tenant owner creates a namespace solar-production in Tenant solar, you'll see the Role Bindings giving the tenant owner full permissions on the tenant namespaces:
 
+```bash
+$ kubectl get rolebinding -n solar-production
+NAME                                        ROLE                                    AGE
+capsule-solar-0-admin                       ClusterRole/admin                       111m
+capsule-solar-1-capsule-namespace-deleter   ClusterRole/capsule-namespace-deleter   111m
+```
 
+When Alice creates the namespaces, the Capsule controller assigns to Alice the following permissions, so that Alice can act as the admin of all the tenant namespaces:
+
+```bash
+$ kubectl get rolebinding -n solar-production -o yaml
+apiVersion: v1
+items:
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    creationTimestamp: "2024-02-25T14:02:36Z"
+    labels:
+      capsule.clastix.io/role-binding: 8fb969aaa7a67b71
+      capsule.clastix.io/tenant: solar
+    name: capsule-solar-0-admin
+    namespace: solar-production
+    ownerReferences:
+    - apiVersion: capsule.clastix.io/v1beta2
+      blockOwnerDeletion: true
+      controller: true
+      kind: Tenant
+      name: solar
+      uid: 1e6f11b9-960b-4fdd-82ee-7cd91a2db052
+    resourceVersion: "2980"
+    uid: 939da5ae-7fec-4300-8db2-223d3049b43f
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: admin
+  subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: alice
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    creationTimestamp: "2024-02-25T14:02:36Z"
+    labels:
+      capsule.clastix.io/role-binding: b8822dde20953fb1
+      capsule.clastix.io/tenant: solar
+    name: capsule-solar-1-capsule-namespace-deleter
+    namespace: solar-production
+    ownerReferences:
+    - apiVersion: capsule.clastix.io/v1beta2
+      blockOwnerDeletion: true
+      controller: true
+      kind: Tenant
+      name: solar
+      uid: 1e6f11b9-960b-4fdd-82ee-7cd91a2db052
+    resourceVersion: "2982"
+    uid: bbb4cd79-ce0d-41b0-a52d-dbed71a9b48a
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: capsule-namespace-deleter
+  subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: alice
+kind: List
+metadata:
+  resourceVersion: ""
+``` 
+
+In some cases, the cluster admin needs to narrow the range of permissions assigned to tenant owners by assigning a Cluster Role with less permissions than above. Capsule supports the dynamic assignment of any ClusterRole resources for each Tenant Owner.
+
+For example, assign user Joe the tenant ownership with only [view](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#user-facing-roles) permissions on tenant namespaces:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+  - name: alice
+    kind: User
+  - name: joe
+    kind: User
+    clusterRoles:
+      - view
+```
+
+you'll see the new Role Bindings assigned to Joe:
+
+```bash
+$ kubectl get rolebinding -n solar-production
+NAME                                        ROLE                                    AGE
+capsule-solar-0-admin                       ClusterRole/admin                       114m
+capsule-solar-1-capsule-namespace-deleter   ClusterRole/capsule-namespace-deleter   114m
+capsule-solar-2-view                        ClusterRole/view                        1s
+```
+
+so that Joe can only view resources in the tenant namespaces:
+
+```bash
+kubectl --as joe --as-group capsule.clastix.io auth can-i delete pods -n solar-production
+no
+```
+
+> Please, note that, despite created with more restricted permissions, a tenant owner can still create namespaces in the tenant because he belongs to the capsule.clastix.io group. If you want a user not acting as tenant owner, but still operating in the tenant, you can assign [additional RoleBindings](#additional-rolebindings) without assigning him the tenant ownership.
+
+Custom ClusterRoles are also supported. Assuming the cluster admin creates:
+
+```yaml
+kubectl apply -f - << EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant-resources
+rules:
+- apiGroups: ["capsule.clastix.io"]
+  resources: ["tenantresources"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+EOF
+```
+
+These permissions can be granted to Joe
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+  - name: alice
+    kind: User
+  - name: joe
+    kind: User
+    clusterRoles:
+      - view
+      - tenant-resources
+```
+
+For the given configuration, the resulting RoleBinding resources are the following ones:
+
+```bash
+$ kubectl -n solar-production get rolebindings
+NAME                                              ROLE                                            AGE
+capsule-solar-0-admin                               ClusterRole/admin                               90s
+capsule-solar-1-capsule-namespace-deleter           ClusterRole/capsule-namespace-deleter           90s
+capsule-solar-2-view                                ClusterRole/view                                90s
+capsule-solar-3-tenant-resources                    ClusterRole/prometheus-servicemonitors-viewer   25s
+```
 
 #### Role Aggregation
 
@@ -206,11 +418,80 @@ EOF
 
 As you can see the subjects is a classic [rolebinding subject](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#referring-to-subjects). This way you grant permissions to the subject user **Joe**, who only can list and watch servicemonitors in the solar tenant namespaces, but has no other permissions. 
 
+### Custom Resources
 
+Capsule grants admin permissions to the tenant owners but is only limited to their namespaces. To achieve that, it assigns the ClusterRole [admin](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#user-facing-roles) to the tenant owner. This ClusterRole does not permit the installation of custom resources in the namespaces.
 
+In order to leave the tenant owner to create Custom Resources in their namespaces, the cluster admin defines a proper Cluster Role. For example:
 
+```yaml
+kubectl apply -f - << EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argoproj-provisioner
+rules:
+- apiGroups:
+  - argoproj.io
+  resources:
+  - applications
+  - appprojects
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+  - patch
+  - delete
+EOF
+```
 
+Bill can assign this role to any namespace in the Alice's tenant by setting it in the tenant manifest:
 
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+  - name: alice
+    kind: User
+  - name: joe
+    kind: User
+  additionalRoleBindings:
+    - clusterRoleName: 'argoproj-provisioner'
+      subjects:
+        - apiGroup: rbac.authorization.k8s.io
+          kind: User
+          name: alice
+        - apiGroup: rbac.authorization.k8s.io
+          kind: User
+          name: joe
+```
+
+With the given specification, Capsule will ensure that all Alice's namespaces will contain a RoleBinding for the specified Cluster Role. For example, in the `solar-production` namespace, Alice will see:
+
+```yaml
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: capsule-solar-argoproj-provisioner
+  namespace: solar-production
+subjects:
+  - kind: User
+    apiGroup: rbac.authorization.k8s.io
+    name: alice
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argoproj-provisioner
+```
+
+With the above example, Capsule is leaving the tenant owner to create namespaced custom resources.
+
+> Take Note: a tenant owner having the admin scope on its namespaces only, does not have the permission to create Custom Resources Definitions (CRDs) because this requires a cluster admin permission level. Only Bill, the cluster admin, can create CRDs. This is a known limitation of any multi-tenancy environment based on a single shared control plane.
 
 
 

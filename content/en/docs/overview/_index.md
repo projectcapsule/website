@@ -19,3 +19,10 @@ On the other side, the Capsule Policy Engine keeps the different tenants isolate
 <br>
 
 ![capsule-operator](/images/content/capsule-operator.svg)
+
+
+## What problems are out of scope
+
+Capsule does not aim to solve the following problems:
+
+* Handling of Custom Resource Definition management. Capsule does not aim to manage the control of Custom Resource Definition. Users have to implement their own solution.
