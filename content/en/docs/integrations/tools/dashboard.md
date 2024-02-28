@@ -1,5 +1,6 @@
 ---
-title: Dashboard
+title: Kubernetes Dashboard
+description: Capsule Integration with Kubernetes Dashboard
 ---
 
 {{% pageinfo %}}

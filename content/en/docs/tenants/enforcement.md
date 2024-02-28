@@ -88,6 +88,41 @@ spec:
     kind: User
 ```
 
+### Nodes
+
+> Due to [CVE-2021-25735](https://github.com/kubernetes/kubernetes/issues/100096) this feature is only supported for Kubernetes version older than: v1.18.18, v1.19.10, v1.20.6, v1.21.0
+
+
+When using capsule together with [capsule-proxy](/docs/integrations/capsule-proxy), Bill can allow Tenant Owners to modify Nodes.
+
+By default, it will allow tenant owners to add and modify any label or annotation on their nodes.
+
+But there are some scenarios, when tenant owners should not have an ability to add or modify specific labels or annotations (there are some types of labels or annotations, which must be protected from modifications - for example, which are set by cloud-providers or autoscalers).
+
+Bill, the cluster admin, can deny Tenant Owners to add or modify specific labels and annotations on Nodes:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: CapsuleConfiguration
+metadata:
+  name: default 
+spec:
+  nodeMetadata:
+    forbiddenAnnotations:
+      denied:
+        - foo.acme.net
+        - bar.acme.net
+      deniedRegex: .*.acme.net
+    forbiddenLabels:
+      denied:
+        - foo.acme.net
+        - bar.acme.net
+      deniedRegex: .*.acme.net
+  userGroups:
+    - projectcapsule.dev
+    - system:serviceaccounts:default
+```
+
 ### Services
 
 The cluster admin can "taint" the services created by the tenant owners with additional metadata as labels and annotations.
@@ -133,39 +168,42 @@ spec:
   type: ClusterIP
 ```
 
-### Nodes
+### Services
 
-> Due to [CVE-2021-25735](https://github.com/kubernetes/kubernetes/issues/100096) this feature is only supported for Kubernetes version older than: v1.18.18, v1.19.10, v1.20.6, v1.21.0
+The cluster admin can "taint" the pods created by the tenant owners with additional metadata as labels and annotations.
 
-
-When using capsule together with [capsule-proxy](/docs/capsule-proxy), Bill can allow Tenant Owners to modify Nodes.
-
-By default, it will allow tenant owners to add and modify any label or annotation on their nodes.
-
-But there are some scenarios, when tenant owners should not have an ability to add or modify specific labels or annotations (there are some types of labels or annotations, which must be protected from modifications - for example, which are set by cloud-providers or autoscalers).
-
-Bill, the cluster admin, can deny Tenant Owners to add or modify specific labels and annotations on Nodes:
+Assigns additional labels and annotations to all services created in the `solar` tenant:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
-kind: CapsuleConfiguration
+kind: Tenant
 metadata:
-  name: default 
+  name: solar
 spec:
-  nodeMetadata:
-    forbiddenAnnotations:
-      denied:
-        - foo.acme.net
-        - bar.acme.net
-      deniedRegex: .*.acme.net
-    forbiddenLabels:
-      denied:
-        - foo.acme.net
-        - bar.acme.net
-      deniedRegex: .*.acme.net
-  userGroups:
-    - projectcapsule.dev
-    - system:serviceaccounts:default
+  owners:
+  - name: alice
+    kind: User
+  podOptions:
+    additionalMetadata:
+      annotations:
+        storagelocationtype: s3
+      labels:
+        projectcapsule.dev/backup: "true"
+```
+
+When the tenant owner creates a service in a tenant namespace, it inherits the given label and/or annotation:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  namespace: solar-production
+  labels:
+    projectcapsule.dev/backup: "true"
+  annotations:
+    storagelocationtype: s3
+...
 ```
 
 ## Scheduling
@@ -552,6 +590,94 @@ spec:
 ```
 
 With the above configuration, any attempt of Alice to create a Service of type `LoadBalancer` is denied by the Validation Webhook enforcing it. Default value is `true`.
+
+
+### GatewayClasses
+
+> Note: This feature is offered only by API type `GatewayClass` in group `gateway.networking.k8s.io` version `v1`.
+
+
+[GatewayClass](https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1.GatewayClass) is cluster-scoped resource defined by the infrastructure provider. This resource represents a class of Gateways that can be instantiated. [Read More](https://gateway-api.sigs.k8s.io/api-types/gatewayclass/)
+
+Bill can assign a set of dedicated GatewayClasses to the `solar` tenant to force the applications in the `solar` tenant to be published only by the assigned Gateway Controller:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+  - name: alice
+    kind: User
+  gatewayOptions:
+    allowedClasses:
+      matchLabels:
+        env: "production"
+```
+
+With the said Tenant specification, Alice can create a [Gateway](https://gateway-api.sigs.k8s.io/api-types/gateway/) resource if `spec.gatewayClassName` equals to:
+
+* Any `GatewayClass` which has the label `env` with the value `production`
+
+If an `Gateway` is going to use a non-allowed `GatewayClass`, it will be rejected by the Validation Webhook enforcing it.
+
+Alice can create an `Gateway` using only an allowed `GatewayClass`:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: example-gateway
+  namespace: solar-production
+spec:
+  gatewayClassName: customer-class
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+```
+
+Any attempt of Alice to use a non-valid `GatewayClass`, or missing it, is denied by the Validation Webhook enforcing it.
+
+#### Assign GatewayClass as tenant default
+
+> Note: The Default GatewayClass must have a label which is allowed within the tenant. This behavior is only implemented this way for the GatewayClass default.
+
+This feature allows specifying a custom default value on a Tenant basis. Currently there is no global default feature for a GatewayClass. Each [Gateway](https://gateway-api.sigs.k8s.io/api-types/gateway/) must have a `spec.gatewayClassName` set.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+  - name: alice
+    kind: User
+  gatewayOptions:
+    allowedClasses:
+      default: "tenant-default"
+      matchLabels:
+        env: "production"
+```
+
+Here's how the Tenant default `GatewayClass` could look like:
+
+```bash
+kubectl apply -f - << EOF
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: tenant-default
+  labels:
+    env: "production"
+spec:
+  controllerName: example.com/gateway-controller
+EOF
+```
+
+If a `Gateway` has no value for `spec.gatewayClassName`, the `tenant-default` `GatewayClass` is automatically applied to the `Gateway` resource.
 
 
 ### Ingresses

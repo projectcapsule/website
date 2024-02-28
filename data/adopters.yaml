@@ -1,0 +1,31 @@
+adopters:
+  - name: Bedag Informatik AG
+    link: https://www.bedag.ch/
+    logo: https://www.bedag.ch/wGlobal/wGlobal/layout/images/logo.svg
+  - name: EPAM Delivery Platform
+    link: https://epam.github.io/edp-install/
+    logo: https://raw.githubusercontent.com/epam/edp-install/master/docs/assets/edp-logo-150x150-black.png
+  - name: Fastweb
+    link: https://www.fastweb.it/
+    logo: https://www.fastweb.it/grandi-aziende/gfx/common/logo-fastweb-header.svg
+  - name: Klarrio
+    link: https://klarrio.com/
+    logo: https://klarrio.com/wp-content/uploads/klarrio.png
+  - name: PITS Global Data Recovery Services
+    link: https://www.pitsdatarecovery.net
+    logo: https://www.pitsdatarecovery.net/wp-content/uploads/2020/09/pits-logo.svg
+  - name: Politecnico di Torino
+    link: https://www.polito.it/
+    logo: https://www.polito.it/themes/custom/polito/logo.svg
+  - name: Reevo
+    link: https://www.reevo.it/
+    logo: https://www.dropbox.com/s/x3q6r0oqstgvtdr/Logo_ReeVo_270x200px.svg
+  - name: University of Torino
+    link: https://www.unito.it
+    logo: https://www.unito.it/sites/all/themes/bsunito/img/logo_new_2022.svg
+  - name: Velocity
+    link: https://velocity.tech/
+    logo: https://raw.githubusercontent.com/yarelm/velocity-logo/main/velocity.png
+  - name: Wargaming.net
+    link: https://www.wargaming.net/
+    logo: https://static-cspbe-eu.wargaming.net/images/logo@2x.png
