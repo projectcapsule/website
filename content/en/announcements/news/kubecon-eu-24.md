@@ -3,6 +3,8 @@ title: KubeCon Europe 2024
 date: 2024-02-25
 description: >
   KubeCon + CloudNativeCon Europe 2024
+tags:
+  - event
 ---
 
 We are getting ready for this years [KubeCon + CloudNativeCon Europe 2024](https://events.linuxfoundation.org/kubecon-cloudnativecon-europe/). We are excited to meet you in person and talk about Capsule.

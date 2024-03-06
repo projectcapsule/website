@@ -16,3 +16,5 @@ The reason, as the error message reported, is that the RBAC list action is avail
 To overcome this problem, many Kubernetes distributions introduced mirrored custom resources supported by a custom set of ACL-filtered APIs. However, this leads to radically change the user's experience of Kubernetes by introducing hard customizations that make it painful to move from one distribution to another.
 
 With Capsule, we took a different approach. As one of the key goals, we want to keep the same user experience on all the distributions of Kubernetes. We want people to use the standard tools they already know and love and it should just work.
+
+

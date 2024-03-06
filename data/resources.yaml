@@ -1,0 +1,19 @@
+resources:
+  - title: "Confused by Kubernetes Multi-Tenancy? A Workshop with Dario Tranchitella"
+    date: "2023-12-13"
+    link: "https://www.youtube.com/watch?v=m5TAb6UWlwA"
+    author: ""
+    event: "CIVO Navigate Europe 23"
+    type:
+      - "talk"
+  - title: "Multi-Tenant Kubernetes Cluster With Capsule"
+    link: "https://www.youtube.com/watch?v=H8bzEJN7fj8"
+    date: "2023-12-13"
+    type:
+      - "tutorial"
+  - title: "Multi-Tenancy in Kubernetes: How We Avoided Clusters Sprawl"
+    date: "2023-12-13"
+    link: "https://www.youtube.com/watch?v=H8bzEJN7fj8"
+    event: 
+    type:
+      - "talk"

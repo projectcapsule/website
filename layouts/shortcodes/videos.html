@@ -1,0 +1,60 @@
+{{ define "main" }}
+<section class="row td-box td-box td-box--height-auto">
+    <div class="col">
+    <div class="row">
+    <div class="col-lg-6 mb-5 mb-lg-0 text-center">
+    <div class="mb-4 h1">
+      <i class="fas fa-lightbulb"></i>
+    </div>
+    <h4 class="h3">Self Service</h4>
+    <div class="mb-0">
+    <p>Leave developers the freedom to self-provision their cluster resources according to the assigned boundaries.</p>
+    </div>
+    </div>
+    <div class="col-lg-6 mb-5 mb-lg-0 text-center">
+    <div class="mb-4 h1">
+      <i class="fas fa-toolbox"></i>
+    </div>
+    <h4 class="h3">Framework</h4>
+    <div class="mb-0">
+    <p>Capsule is a framework is considered a framework which enables you to create your own multi-tenant platforms based on Kubernetes.</p>
+    </div>
+    </div>
+    </div>
+    </div>
+</section>
+
+
+
+<div class="container">
+  <div class="sidebar">
+    <!-- Tags for filtering -->
+    <div id="filter-tags">
+      <h3>Filter by Tags</h3>
+      {{ $allTags := slice }}
+      {{ range $.Site.Data.talks }}
+        {{ range .tags }}
+          {{ $allTags = $allTags | append . }}
+        {{ end }}
+      {{ end }}
+      {{ $uniqueTags := uniq $allTags }}
+      {{ range $uniqueTags }}
+        <button class="filter-btn" data-filter="{{ . }}">{{ . }}</button>
+      {{ end }}
+    </div>
+  </div>
+
+  <div class="talks">
+    <!-- Iterating through the talks data -->
+    {{ range $.Site.Data.resources.resources }}
+    <div class="talk-block" data-tags="{{ range .tags }}{{ . }} {{ end }}">
+      <h2><a href="{{ .link }}">{{ .title }}</a></h2>
+      {{ if .date }}<p>Date: {{ .date }}</p>{{ end }}
+      {{ if .author }}<p>Author: {{ .author }}</p>{{ end }}
+      {{ if .event }}<p>Event: {{ .event }}</p>{{ end }}
+      <p>Tags: {{ range .tags }}<span>{{ . }}</span> {{ end }}</p>
+    </div>
+    {{ end }}
+  </div>
+</div>
+{{ end }}

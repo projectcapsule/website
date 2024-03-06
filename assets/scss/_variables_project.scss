@@ -7,3 +7,19 @@ Add styles or override variables from the theme here.
 $primary: #280C53;
 $secondary: #802A78;
 $dark: #280C53;
+
+
+.card-primary {
+    background-color: $primary !important;
+    color: #fff !important;
+}
+
+.card-secondary {
+  background-color: $secondary !important;
+  color: #fff !important;
+}
+
+.card-dark {
+  background-color: $dark !important;
+  color: #fff !important;
+}

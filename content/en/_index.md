@@ -14,7 +14,7 @@ title: Goldydocs
 {{< /blocks/cover >}}
 
 
-{{% blocks/section color="primary" type="row" %}}
+{{% blocks/section color=white type="row" %}}
 
 {{% blocks/feature icon="fa-chart-bar" title="Resource Control" %}}
 Share a single cluster with multiple teams, groups of users, or departments by saving operational and management efforts. Take control of the resources consumed by users while preventing them to overtake.
@@ -34,7 +34,7 @@ Capsule is a framework is considered a framework which enables you to create you
 
 
 
-{{% blocks/section  color="dark" type="row" %}}
+{{% blocks/section type="row" %}}
 
 {{% blocks/feature icon="fa-building-shield" title="Governance" %}}
 Leverage Kubernetes Admission Controllers to enforce the industry security best practices and meet policy requirements.

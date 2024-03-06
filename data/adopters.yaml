@@ -2,6 +2,7 @@ adopters:
   - name: Bedag Informatik AG
     link: https://www.bedag.ch/
     logo: https://www.bedag.ch/wGlobal/wGlobal/layout/images/logo.svg
+    adoption: 2019
   - name: EPAM Delivery Platform
     link: https://epam.github.io/edp-install/
     logo: https://raw.githubusercontent.com/epam/edp-install/master/docs/assets/edp-logo-150x150-black.png
