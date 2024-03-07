@@ -13,7 +13,5 @@ resources:
       - "tutorial"
   - title: "Multi-Tenancy in Kubernetes: How We Avoided Clusters Sprawl"
     date: "2023-12-13"
-    link: "https://www.youtube.com/watch?v=H8bzEJN7fj8"
-    event: 
-    type:
-      - "talk"
+    youtube: H8bzEJN7fj8
+    type: "Tutorial"

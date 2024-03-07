@@ -1,0 +1,135 @@
+baseURL: /
+title: Capsule
+contentDir: content/en
+defaultContentLanguage: en
+defaultContentLanguageInSubdir: false
+enableMissingTranslationPlaceholders: true
+editCurrentVersion: false
+enableRobotsTXT: true
+enableGitInfo: true
+enableEmoji: true
+taxonomies:
+  tag: tags
+  category: categories
+params:
+  taxonomy:
+    taxonomyCloud:
+      - tags
+      - categories
+    taxonomyCloudTitle:
+      - Tag Cloud
+      - Categories
+    taxonomyPageHeader:
+      - tags
+      - categories
+    pygmentsCodeFences: true
+    pygmentsUseClasses: false
+    pygmentsUseClassic: false
+    pygmentsStyle: tango
+  privacy_policy: ''
+  github_repo: 'https://github.com/projectcapsule/website'
+  github_project_repo: 'https://github.com/projectcapsule/capsule'
+  github_branch: main
+  gcs_engine_id: ''
+  offlineSearch: false
+  algolia_docsearch: true
+  prism_syntax_highlighting: false
+  showLineNumbers: false
+  version_menu_pagelinks: true
+  copyright:
+    authors: Project Capsule Authors | All Rights Reserved
+    from_year: 2019
+  ui:
+    breadcrumb_disable: false
+    navbar_logo: true
+    navbar_translucent_over_cover_disable: false
+    sidebar_menu_compact: true
+    sidebar_search_disable: false
+    disableGtagForUniversalAnalytics: true
+    feedback:
+      enable: false
+      'yes': >-
+        Glad to hear it! Please <a
+        href="https://github.com/USERNAME/REPOSITORY/issues/new">tell us how we
+        can improve</a>.
+      'no': >-
+        Sorry to hear that. Please <a
+        href="https://github.com/USERNAME/REPOSITORY/issues/new">tell us how we
+        can improve</a>.
+    readingtime:
+      enable: false
+  links:
+    user:
+      - name: GitHub
+        url: 'https://github.com/projectcapsule'
+        icon: fab fa-github
+        desc: Github Organization
+      - name: Slack
+        url: 'https://kubernetes.slack.com/archives/C03GETTJQRL'
+        icon: fab fa-slack
+        desc: Chat with other project developers
+permalinks:
+  blog: '/:section/:year/:month/:day/:slug/'
+imaging:
+  resampleFilter: CatmullRom
+  quality: 75
+  anchor: smart
+languages:
+  en:
+    languageName: English
+    weight: 1
+    params:
+      title: Project Capsule
+      description: Project Capsule Documentation
+markup:
+  goldmark:
+    parser:
+      attribute:
+        block: true
+    renderer:
+      unsafe: true
+  highlight:
+    # See a complete list of available styles at https://xyproto.github.io/splash/docs/all.html
+    style: friendly
+  parser:
+    autoHeadingID: true
+    autoHeadingIDType: github
+outputs:
+  section:
+    - HTML
+    - print
+    - RSS
+module:
+  proxy: direct
+  hugoVersion:
+    extended: true
+  imports:
+    - path: github.com/google/docsy
+      disable: false
+      mounts:
+      - source: assets/scss
+        target: assets/scss/docsy
+      - source: content
+        target: content
+      - source: static
+        target: static
+      - source: layouts
+        target: layouts
+      - source: data
+        target: data
+      - source: assets
+        target: assets
+      - source: i18n
+        target: i18n
+      - source: archetypes
+        target: archetypes
+      - source: node_modules/bootstrap
+        target: assets/vendor/bootstrap
+      - source: node_modules/@fortawesome/fontawesome-free
+        target: assets/vendor/Font-Awesome
+      - source: node_modules/@fortawesome/fontawesome-free/webfonts
+        target: static/webfonts
+    - path: github.com/google/docsy/dependencies
+      disable: false
+    - path: github.com/mfg92/hugo-shortcode-gallery
+      disable: false

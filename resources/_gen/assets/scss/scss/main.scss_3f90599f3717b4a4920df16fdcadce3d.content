@@ -16,6 +16,23 @@ Add styles or override variables from the theme here.
   background-color: #280C53 !important;
   color: #fff !important; }
 
+/*
+
+Add styles or override variables from the theme here.
+
+*/
+.card-primary {
+  background-color: #280C53 !important;
+  color: #fff !important; }
+
+.card-secondary {
+  background-color: #802A78 !important;
+  color: #fff !important; }
+
+.card-dark {
+  background-color: #280C53 !important;
+  color: #fff !important; }
+
 /*!
    * Bootstrap  v5.2.3 (https://getbootstrap.com/)
    * Copyright 2011-2022 The Bootstrap Authors
