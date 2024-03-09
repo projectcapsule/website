@@ -49,6 +49,8 @@ jobs:
         uses: actions/configure-pages@v4
       - name: Install Node.js dependencies
         run: " npm install --save-dev autoprefixer postcss-cli && npm ci || true"
+      - name: Update Hugo Modules
+        run: hugo mod get -u ./...
       - name: Build with Hugo
         env:
           # For maximum backward compatibility with Hugo modules
