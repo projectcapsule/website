@@ -133,5 +133,3 @@ module:
         target: static/webfonts
     - path: github.com/google/docsy/dependencies
       disable: false
-    - path: github.com/mfg92/hugo-shortcode-gallery
-      disable: false
