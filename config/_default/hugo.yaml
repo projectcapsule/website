@@ -12,6 +12,9 @@ taxonomies:
   tag: tags
   category: categories
 params:
+  #search:
+  #  algolia: true
+
   taxonomy:
     taxonomyCloud:
       - tags
@@ -32,7 +35,6 @@ params:
   github_branch: main
   gcs_engine_id: ''
   offlineSearch: false
-  algolia_docsearch: true
   prism_syntax_highlighting: false
   showLineNumbers: false
   version_menu_pagelinks: true
