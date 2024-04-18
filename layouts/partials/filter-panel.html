@@ -1,14 +1,26 @@
+{{ $resources := $.Site.Data.resources.resources }}
 <div class="filter ml-5">
     <div>
         <h5>Type</h5>
+        {{ $types := slice }}
+        {{ range $resources }}
+            {{- if .type }}
+              {{ $types = $types | append .type }}
+              {{ $types = uniq $types }}
+            {{- end }}
+        {{ end }}
+        {{ $types = uniq $types }}
+        {{ range $_, $type := $types }}
+        {{ $types := . }}
         <div>
-            <input id="video" type="checkbox" name="resource_filter" value="video">
-            <label for="video">Video</label>
+            <input id="{{ $type }}" type="checkbox" name="resource_filter" value="{{ $type }}">
+            <label for="{{ $type }}">{{ $type }}</label>
         </div>
         <div>
-            <input id="article" type="checkbox" name="resource_filter" value="article">
-            <label for="article">Article</label>
+            <input id="{{ $type }}" type="checkbox" name="resource_filter" value="{{ $type }}">
+            <label for="{{ $type }}">{{ $type }}</label>
         </div>
+        {{ end }}
     </div>
     <div class="mt-5">
         <h5>Year</h5>

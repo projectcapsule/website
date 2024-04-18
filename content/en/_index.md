@@ -34,6 +34,8 @@ Capsule is a framework is considered a framework which enables you to create you
 
 
 
+
+
 {{% blocks/section type="row" %}}
 
 {{% blocks/feature icon="fa-building-shield" title="Governance" %}}

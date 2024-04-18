@@ -66,6 +66,10 @@ params:
         url: 'https://github.com/projectcapsule'
         icon: fab fa-github
         desc: Github Organization
+      - name: Linkedin
+        url: 'https://www.linkedin.com/company/103417269'
+        icon: fab fa-linkedin
+        desc: Community Organisation
       - name: Slack
         url: 'https://kubernetes.slack.com/archives/C03GETTJQRL'
         icon: fab fa-slack

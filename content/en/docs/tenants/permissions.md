@@ -380,56 +380,24 @@ EOF
 
 ### Proxy Owner Authorization
 
-When you are using the [Capsule Proxy](/docs/integrations/capsule-proxy), the tenant owner can list the cluster-scoped resources. You can control the permissions to cluster scoped resources by defining `ProxySettings` for a tenant owner.
+> This feature will be deprecated in a future release of Capsule. Instead use [ProxySettings](/docs/integrations/addons/capsule-proxy#proxysettings)
 
 
+When you are using the [Capsule Proxy](/docs/integrations/addons/capsule-proxy), the tenant owner can list the cluster-scoped resources. You can control the permissions to cluster scoped resources by defining `proxySettings` for a tenant owner.
 
-#### Primitives
-
-> Namespaces are treated specially. A users can list the namespaces they own, but they cannot list all the namespaces in the cluster. You can't define additional selectors.
-
-Primitives are strongly considered for tenants, therefor 
-
-
-The proxy setting kind is an enum accepting the supported resources:
-
-| **Enum** | **Description** | **Effective Operations** |
-| --- | --- | --- |
-| `Tenant` | Users are able to `LIST` this tenant | - `LIST` |
-| `StorageClasses` | Perform operations on the [allowed StorageClasses](/docs/tenants/enforcement/#storageclasses) for the tenant | - `LIST` |
-
-
-
-
-  * **Nodes**: Based on the [NodeSelector](/docs/tenants/enforcement/#nodeselector) and the Scheduling Expressions nodes can be listed
-  * **[StorageClasses](/docs/tenants/enforcement/#storageclasses)**: Perform actions on the allowed StorageClasses for the tenant
-  * **[IngressClasses](/docs/tenants/enforcement/#ingressclasses)**: Perform actions on the allowed IngressClasses for the tenant
-  * **[PriorityClasses](/docs/tenants/enforcement/#priorityclasses)**: Perform actions on the allowed PriorityClasses for the tenant
-  PriorityClasses
-  * **[RuntimeClasses](/docs/tenants/enforcement/#runtimeclasses)**: Perform actions on the allowed RuntimeClasses for the tenant
-  * **[PersistentVolumes](/docs/tenants/enforcement/#persistentvolumes)**: Perform actions on the PersistentVolumes owned by the tenant
-
-	GatewayClassesProxy    ProxyServiceKind = "GatewayClasses"
-	TenantProxy            ProxyServiceKind = "Tenant"
-
-
-Each Resource kind can be granted with several verbs, such as:
-
-  * `List`
-  * `Update`
-  * `Delete`
-
-
-
-#### Cluster Scopes
-
-This approach is for more generic cluster scoped resources. 
-
-
-TBD
-
-
-
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+  - name: joe
+    kind: User
+    clusterRoles:
+      - view
+      - tenant-resources
+```
 
 ## Additional Rolebindings
 
