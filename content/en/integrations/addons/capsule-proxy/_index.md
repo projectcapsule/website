@@ -1,7 +1,7 @@
 ---
 title: Capsule Proxy
 description: Improve the UX even more with the Capsule Proxy
-weight: 8
+weight: 1
 ---
 
 Capsule Proxy is an add-on for Capsule Operator addressing some RBAC issues when enabling multi-tenancy in Kubernetes since users cannot list the owned cluster-scoped resources. One solution to this problem would be to grant all users `LIST` permissions for the relevant cluster-scoped resources (eg. `Namespaces`). However, this would allow users to list all cluster-scoped resources, which is not desirable in a multi-tenant environment and may lead to security issues. Kubernetes RBAC cannot list only the owned cluster-scoped resources since there are no ACL-filtered APIs. For example:

@@ -8,13 +8,13 @@ editCurrentVersion: false
 enableRobotsTXT: true
 enableGitInfo: true
 enableEmoji: true
+services:
+  googleAnalytics:
+    ID: G-S2V6NGBYL6
 taxonomies:
   tag: tags
   category: categories
 params:
-  #search:
-  #  algolia: true
-
   taxonomy:
     taxonomyCloud:
       - tags

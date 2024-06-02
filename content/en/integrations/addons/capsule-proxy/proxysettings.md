@@ -10,6 +10,7 @@ weight: 4
 
 
 
+
 #### Primitives
 
 > Namespaces are treated specially. A users can list the namespaces they own, but they cannot list all the namespaces in the cluster. You can't define additional selectors.
@@ -47,7 +48,7 @@ Each Resource kind can be granted with several verbs, such as:
 
 
 
-#### Cluster Scopes
+#### Cluster Resources
 
 This approach is for more generic cluster scoped resources. 
 

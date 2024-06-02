@@ -34,9 +34,9 @@ Learn how to assign ownership to users, groups and serviceaccounts.
 
 #### Assigning Ownership to Users
 
-**Bill**, the cluster admin, receives a new request from Acme Corp's CTO asking for a new tenant to be onboarded and Alice user will be the tenant owner. Bill then assigns Alice's identity of alice in the Acme Corp. identity management system. Since Alice is a tenant owner, Bill needs to assign alice the Capsule group defined by --capsule-user-group option, which defaults to capsule.clastix.io.
+**Bill**, the cluster admin, receives a new request from Acme Corp's CTO asking for a new tenant to be onboarded and Alice user will be the tenant owner. Bill then assigns Alice's identity of alice in the Acme Corp. identity management system. Since Alice is a tenant owner, Bill needs to assign alice the Capsule group defined by --capsule-user-group option, which defaults to `projectcapsule.dev`.
 
-To keep things simple, we assume that Bill just creates a client certificate for authentication using X.509 Certificate Signing Request, so Alice's certificate has `"/CN=alice/O=capsule.clastix.io"`.
+To keep things simple, we assume that Bill just creates a client certificate for authentication using X.509 Certificate Signing Request, so Alice's certificate has `"/CN=alice/O=projectcapsule.dev"`.
 
 **Bill** creates a new tenant oil in the CaaS management portal according to the tenant's profile:
 
@@ -154,7 +154,7 @@ spec:
 Bill can create a Service Account called robot, for example, in the `tenant-system` namespace and leave it to act as Tenant Owner of the oil tenant
 
 ```bash
-kubectl --as system:serviceaccount:tenant-system:robot --as-group capsule.clastix.io auth can-i create namespaces
+kubectl --as system:serviceaccount:tenant-system:robot --as-group projectcapsule.dev auth can-i create namespaces
 yes
 ```
 since each service account in a namespace is a member of following group:
@@ -309,11 +309,11 @@ capsule-solar-2-view                        ClusterRole/view                    
 so that Joe can only view resources in the tenant namespaces:
 
 ```bash
-kubectl --as joe --as-group capsule.clastix.io auth can-i delete pods -n solar-production
+kubectl --as joe --as-group projectcapsule.dev auth can-i delete pods -n solar-production
 no
 ```
 
-> Please, note that, despite created with more restricted permissions, a tenant owner can still create namespaces in the tenant because he belongs to the capsule.clastix.io group. If you want a user not acting as tenant owner, but still operating in the tenant, you can assign [additional RoleBindings](#additional-rolebindings) without assigning him the tenant ownership.
+> Please, note that, despite created with more restricted permissions, a tenant owner can still create namespaces in the tenant because he belongs to the `projectcapsule.dev` group. If you want a user not acting as tenant owner, but still operating in the tenant, you can assign [additional RoleBindings](#additional-rolebindings) without assigning him the tenant ownership.
 
 Custom ClusterRoles are also supported. Assuming the cluster admin creates:
 

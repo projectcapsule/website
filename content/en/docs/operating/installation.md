@@ -1,6 +1,7 @@
 ---
-title: Upgrading
+title: Installation
 weight: 1
+description: "Installing Capsule"
 ---
 
 List of Tenant API changes:

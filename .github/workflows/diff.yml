@@ -1,0 +1,24 @@
+name: Diff checks
+permissions: {}
+
+on:
+  push:
+    branches: [ "*" ]
+  pull_request:
+    branches: [ "*" ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  diff:
+    name: diff
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+        with:
+          fetch-depth: 0
+      - run: make api-docs
+      - name: Checking if the CRDs documentation is not aligned
+        run: if [[ $(git diff | wc -l) -gt 0 ]]; then echo ">>> CRDs generated documentation have not been committed" && git --no-pager diff && exit 1; fi

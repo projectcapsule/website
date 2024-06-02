@@ -19,6 +19,7 @@
 # vendor/
 /public
 node_modules
+bin/
 
 # system files
 .DS_Store

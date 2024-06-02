@@ -1,5 +1,5 @@
 ---
-title: Getting Started 
+title: Operating
 weight: 2
 description: Get started with using tenancy on Kubernetes
 ---
