@@ -19,6 +19,7 @@ jobs:
       - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
         with:
           fetch-depth: 0
-      - run: make api-docs
+      - run: make apidocs-capsule
+      - run: make apidocs-capsule-proxy
       - name: Checking if the CRDs documentation is not aligned
         run: if [[ $(git diff | wc -l) -gt 0 ]]; then echo ">>> CRDs generated documentation have not been committed" && git --no-pager diff && exit 1; fi
