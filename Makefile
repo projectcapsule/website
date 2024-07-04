@@ -1,11 +1,11 @@
 # Temporary directory for cloning
 
 fetch-capsule: REF      ?= main
-fetch-capsule: REPO_URL ?= git@github.com:projectcapsule/capsule.git
+fetch-capsule: REPO_URL ?= https://github.com/projectcapsule/capsule.git
 fetch-capsule: fetch
 
 fetch-capsule-proxy: REF      ?= main
-fetch-capsule-proxy: REPO_URL ?= git@github.com:projectcapsule/capsule-proxy.git
+fetch-capsule-proxy: REPO_URL ?= https://github.com/projectcapsule/capsule-proxy.git
 fetch-capsule-proxy: fetch
 
 fetch:
