@@ -79,7 +79,6 @@ permalinks:
 imaging:
   resampleFilter: CatmullRom
   quality: 75
-  anchor: smart
 languages:
   en:
     languageName: English

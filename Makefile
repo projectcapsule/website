@@ -19,11 +19,11 @@ apidocs: apidocs-capsule apidocs-capsule-proxy
 
 apidocs-capsule: TARGET_DIR := $(shell mktemp -d)
 apidocs-capsule: apidocs-gen fetch-capsule
-	$(APIDOCS_GEN) crdoc --resources $(TARGET_DIR)/config/crd/bases --output content/en/docs/reference.md --template templates/capsule-crds.tmpl
+	$(APIDOCS_GEN) crdoc --resources $(TARGET_DIR)/charts/capsule/crds/*.yaml --output content/en/docs/reference.md --template templates/capsule-crds.tmpl
 
 apidocs-capsule-proxy: TARGET_DIR      := $(shell mktemp -d)
 apidocs-capsule-proxy: apidocs-gen fetch-capsule-proxy
-	$(APIDOCS_GEN) crdoc --resources $(TARGET_DIR)/charts/capsule-proxy/crd --output content/en/docs/addons/capsule-proxy/reference.md --template templates/capsule-proxy-crds.tmpl
+	$(APIDOCS_GEN) crdoc --resources $(TARGET_DIR)/charts/capsule-proxy/crds/*.yaml --output content/en/docs/integrations/addons/capsule-proxy/reference.md --template templates/capsule-proxy-crds.tmpl
 
 APIDOCS_GEN         := $(shell pwd)/bin/crdoc
 APIDOCS_GEN_VERSION := latest
