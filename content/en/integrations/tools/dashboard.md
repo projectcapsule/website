@@ -70,6 +70,31 @@ helm repo add oauth2-proxy https://oauth2-proxy.github.io/manifests
 helm install oauth2-proxy oauth2-proxy/oauth2-proxy -n ${KUBERNETES_DASHBOARD_NAMESPACE} -f values-oauth2-proxy.yaml
 ```
 
+## Configuring Keycloak
+
+The Kubernetes cluster must be configured with a valid OIDC provider: for our guide, we're giving for granted that Keycloak is used, if you need more info please follow the [OIDC Authentication](/docs/guides/oidc-auth) section.
+
+In a such scenario, you should have in the `kube-apiserver.yaml` manifest the following content:
+```yaml
+spec:
+  containers:
+  - command:
+    - kube-apiserver
+    ...
+    - --oidc-issuer-url=https://${OIDC_ISSUER}
+    - --oidc-ca-file=/etc/kubernetes/oidc/ca.crt
+    - --oidc-client-id=${OIDC_CLIENT_ID}
+    - --oidc-username-claim=preferred_username
+    - --oidc-groups-claim=groups
+    - --oidc-username-prefix=-
+```
+
+Where `${OIDC_CLIENT_ID}` refers to the client ID that all tokens must be issued.
+
+For this client we need:
+1. Check `Valid Redirect URIs`: in the `oauth2-proxy` configuration we set `redirect-url: "https://${DASHBOARD_URL}/oauth2/callback"`, it needs to add this path to the `Valid Redirect URIs`
+2. Create a mapper with Mapper Type 'Group Membership' and Token Claim Name 'groups'.
+3. Create a mapper with Mapper Type 'Audience' and Included Client Audience and Included Custom Audience set to your client name(OIDC_CLIENT_ID).
 
 ## Configuring Kubernetes Dashboard
 
