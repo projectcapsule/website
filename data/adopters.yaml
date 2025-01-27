@@ -8,9 +8,9 @@ adopters:
   - name: "Die Mobiliar"
     link: https://www.mobiliar.ch/
     logo: https://mobiliar.rokka.io/dynamic/crop-width-701-height-525-mode-ratio--resize-width-701--options-autoformat-true-optim.quality-4/dfeb319d1c438de49d67799cf87534f3f332f498/logo-der-mobiliar-.jpg
-  - name: EPAM Delivery Platform
-    link: https://epam.github.io/edp-install/
-    logo: https://raw.githubusercontent.com/epam/edp-install/master/docs/assets/edp-logo-150x150-black.png
+  - name: KubeRocketCI
+    link: https://docs.kuberocketci.io/
+    logo: https://raw.githubusercontent.com/epam/edp-install/master/docs/assets/krci-logo-267×150-white.png
   - name: Fastweb
     link: https://www.fastweb.it/
     logo: hhttps://www.fastweb.it/adsl-fibra-ottica/gfx/sprite.svg?rel=9c0c9d68#v8662a44f
