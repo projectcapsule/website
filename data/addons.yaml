@@ -1,0 +1,41 @@
+addons:
+  - name: "Capsule Proxy"
+    logo: "https://github.com/peak-scale/capsule-argo-addon/blob/main/docs/images/capsule-argo.png?raw=true"
+    tags:
+      - "core"
+      - "gitops"
+    links:
+      - link: "https://github.com/peak-scale/capsule-argo-addon"
+        icon: "fab fa-github"
+    description: "This addon is designed for kubernetes administrators, to automatically translate their existing Capsule Tenants into Argo Appprojects."
+    background: "#FF5722"
+    layoutColor: "#FFFFFF"
+    descriptionColor: "#FFEBEE"
+
+  - name: "ArgoCD Addon"
+    logo: "https://github.com/peak-scale/capsule-argo-addon/blob/main/docs/images/capsule-argo.png?raw=true"
+    tags:
+      - "community"
+      - "gitops"
+    links:
+      - link: "https://github.com/peak-scale/capsule-argo-addon"
+        icon: "fab fa-github"
+    description: "This addon is designed for kubernetes administrators, to automatically translate their existing Capsule Tenants into Argo Appprojects."
+    background: "#FF5722"
+    layoutColor: "#FFFFFF"
+    descriptionColor: "#FFEBEE"
+
+
+  - name: "Flux Addon"
+    logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Flux_color_logo.png/1599px-Flux_color_logo.png?20220629180236"
+    tags:
+      - "community"
+      - "gitops"
+    links:
+      - link: "https://github.com/projectcapsule/capsule-addon-fluxcd"
+        icon: "fab fa-github"
+    description: "In particular enables Tenants to manage their resources, including creating Namespaces, respecting the [Flux multi-tenancy lockdown](https://fluxcd.io/flux/installation/configuration/multitenancy/)."
+    background: "#FF5722"
+    layoutColor: "#FFFFFF"
+    descriptionColor: "#FFEBEE"
+

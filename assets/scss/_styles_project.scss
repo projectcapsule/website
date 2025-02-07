@@ -1,0 +1,64 @@
+@keyframes move {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+  
+  .scrollmenu {
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative; /* Ensures proper positioning */
+    height: 120px; /* Define an explicit height */
+  }
+  
+  .scrollmenu .slide-track {
+    display: flex;
+    animation: move 60s linear infinite; /* Slower duration for better scrolling */
+  }
+  
+  .scrollmenu:hover .slide-track {
+    animation-play-state: paused; /* Pause on hover */
+  }
+  
+  .scrollmenu img {
+    display: inline-block;
+    height: 100px; /* Ensure full height */
+    width: auto; /* Maintain aspect ratio */
+    padding: 0 15px; /* Add spacing between images */
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .scrollmenu img:hover {
+    transform: scale(1.1); /* Add slight zoom on hover */
+  }
+
+
+  .section-resources {
+    .section-label {
+      padding-top: 0rem;
+    }
+  
+    .row {
+      padding: 0;
+    }
+  
+    .td-arrow-down::before {
+      display: none;
+    }
+  
+    section.row.td-box {
+      padding-bottom: 2rem !important;
+    }
+  
+  
+    .subsection-resources {
+      section.row.td-box {
+        padding-top: 0.5rem;
+        padding-bottom: 0 !important;
+      }
+    }
+}  
+  

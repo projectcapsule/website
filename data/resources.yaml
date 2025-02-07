@@ -1,15 +1,53 @@
 resources:
+  - title: "Painless Multi-Tenant Kafka on Kubernetes with Istio at ASML - Thomas Reichel & Dominique Chanet"
+    youtube: "qMkV5qeOnfg"
+    date: "2024-10-07"
+    type: "video"
+  - title: "NVIDIA Case Study: The Many Facets of Building + Delivering AI in the Cloud"
+    youtube: "81A31kH6ZB4"
+    date: "2024-11-14"
+    type: "video"
   - title: "Confused by Kubernetes Multi-Tenancy? A Workshop with Dario Tranchitella"
     date: "2023-12-13"
     youtube: "m5TAb6UWlwA"
-    author: ""
-    event: "CIVO Navigate Europe 23"
-    type: "Talk"
+    type: "video"
+
+  - title: "How TomTom achieves Kubernetes multi-tenancy with Capsule"
+    date: "2023-10-13"
+    url: "https://engineering.tomtom.com/capsule-kubernetes-multitenancy/"
+    type: "article"
+    tags:
+      - customer-journey
+
   - title: "Multi-Tenant Kubernetes Cluster With Capsule"
     youtube: "H8bzEJN7fj8"
     date: "2023-12-13"
-    type: "Tutorial"
-  - title: "Multi-Tenancy in Kubernetes: How We Avoided Clusters Sprawl"
+    type: "video"
+    tags:
+      - "Talk"
+      - "Maintainer"
+      - customer-journey
+
+
+  - title: "Multi-Tenant Kubernetes Cluster With Capsule"
+    youtube: "1sVq8gzwyRU"
     date: "2023-12-13"
-    youtube: H8bzEJN7fj8
-    type: "Tutorial"
+    type: "video"
+    tags:
+      - "Talk"
+      - "Maintainer"
+
+  - title: "Multi-Tenancy in Kubernetes: How We Avoided Clusters Sprawl"
+    date: "2021-05-14"
+    youtube: WWKat7NP0NM
+    type: "video"
+    tags:
+      - "Talk"
+      - "Maintainer"
+  - title: "How to address Multi-Tenancy in Kubernetes: the Capsule way, with Dario Tranchitella"
+    date: "2021-03-25"
+    youtube: jWvoFZOCUNY
+    type: "video"
+    tags:
+      - "Talk"
+      - "Maintainer"

@@ -1,5 +1,6 @@
 ---
 title: Authentication
+description: Integrate Capsule with Authentication of your Kubernetes cluster
 weight: 5
 ---
 

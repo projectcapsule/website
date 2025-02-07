@@ -1,13 +1,10 @@
 {{ $youtube := .youtube }}
 {{ $youtube_url := print "https://www.youtube.com/watch?v=" $youtube }}
-{{ $thumbnail := printf "https://i3.ytimg.com/vi/%s/0.jpg" $youtube }}
-
-{{ if .thumbnail }}
-{{ $thumbnail = printf "https://i3.ytimg.com/vi/%s/0.jpg" (.thumbnail) }}
-{{ end }}
-
-{{ if .thumbnail_url }}
-{{ $thumbnail = .thumbnail_url }}
+{{ $thumbnail := "" }}
+{{ if .youtube }}
+{{ $thumbnail = printf "https://i3.ytimg.com/vi/%s/0.jpg" (.youtube) }}
+{{ else }}
+{{ $thumbnail = default "https://github.com/cncf/artwork/raw/refs/heads/main/projects/capsule/stacked/color/capsule-stacked-color.svg" .thumbnail }}
 {{ end }}
 
 {{ $url := .url | default $youtube_url }}
@@ -20,14 +17,13 @@
 
 <div class="col-lg-4 mb-3 mb-lg-0 text-center ">
   <a href="{{ $url }}"><img class="img-fluid img-thumbnail" alt="{{ $title | markdownify }}" src="{{ $thumbnail }}"></a>
+  
   <a href="{{ $url }}"><h4>{{ $title | markdownify }}</h4></a>
-  <span class="tag1 tag">
-    {{ .type }}
-</span>
-<label class="date">{{ $dateTime }}</label>
-
+  <ul class="taxonomy-terms">
+    <li><a class="taxonomy-term" href="{{ .Permalink }}" data-taxonomy-term="{{ urlize .LinkTitle }}"><span class="taxonomy-label">{{ .type }}</span></a></li>
+  </ul>
+  <label class="date">{{ $dateTime }}</label>
   {{ if .description }}<h5>{{ .description }}</h5>{{ end }}
-
 </div>
 
 <template id="search-result" hidden>

@@ -1,4 +1,5 @@
 baseURL: /
+theme: docsy
 title: Capsule
 contentDir: content/en
 defaultContentLanguage: en
@@ -10,7 +11,7 @@ enableGitInfo: true
 enableEmoji: true
 services:
   googleAnalytics:
-    ID: G-4YLJ6T1Z8F
+    ID: G-S2V6NGBYL6
 taxonomies:
   tag: tags
   category: categories
@@ -30,7 +31,7 @@ params:
     pygmentsUseClassic: false
     pygmentsStyle: tango
   privacy_policy: ''
-  github_repo: 'https://github.com/projectcapsule/website'
+  github_repo: 'https://github.com/projectcapsule/capsule'
   github_project_repo: 'https://github.com/projectcapsule/capsule'
   github_branch: main
   gcs_engine_id: ''
@@ -42,7 +43,7 @@ params:
     authors: Project Capsule Authors | All Rights Reserved
     from_year: 2019
   ui:
-    breadcrumb_disable: false
+    breadcrumb_disable: true
     navbar_logo: true
     navbar_translucent_over_cover_disable: false
     sidebar_menu_compact: true
@@ -105,34 +106,68 @@ outputs:
     - print
     - RSS
 module:
-  proxy: direct
   hugoVersion:
     extended: true
   imports:
     - path: github.com/google/docsy
       disable: false
-      mounts:
-      - source: assets/scss
-        target: assets/scss/docsy
-      - source: content
-        target: content
-      - source: static
-        target: static
-      - source: layouts
-        target: layouts
-      - source: data
-        target: data
-      - source: assets
-        target: assets
-      - source: i18n
-        target: i18n
-      - source: archetypes
-        target: archetypes
-      - source: node_modules/bootstrap
-        target: assets/vendor/bootstrap
-      - source: node_modules/@fortawesome/fontawesome-free
-        target: assets/vendor/Font-Awesome
-      - source: node_modules/@fortawesome/fontawesome-free/webfonts
-        target: static/webfonts
+     #mounts:
+     #- source: assets/scss
+     #  target: assets/scss/docsy
+     #- source: content
+     #  target
+     #- source: static
+     #  target: static
+     #- source: layouts
+     #  target: layouts
+     #- source: data
+     #  target: data
+     #- source: assets
+     #  target: assets
+     #- source: i18n
+     #  target: i18n
+     #- source: archetypes
+     #  target: archetypes
+     #- source: node_modules/bootstrap
+     #  target: assets/vendor/bootstrap
+     #- source: node_modules/@fortawesome/fontawesome-free
+     #  target: assets/vendor/Font-Awesome
+     #- source: node_modules/@fortawesome/fontawesome-free/webfonts
+     #  target: static/webfonts
     - path: github.com/google/docsy/dependencies
       disable: false
+    - path: github.com/mfg92/hugo-shortcode-gallery
+      disable: false
+  mounts:
+    - source: content/en
+      target: content
+menu:
+  main:
+    - name: Docs
+      url: /docs/
+      pre: <i class='fas fa-book'></i>
+      weight: 11
+    - name: Ecosystem
+      url: /ecosystem/
+      pre: <i class='fas fa-store'></i>
+      weight: 12
+
+    - name: Adopters
+      url: /adopters/
+      pre: <i class='fas fa-users'></i>
+      weight: 13
+
+    - name: Resources
+      url: /resources/
+      pre: <i class='fa-brands fa-readme'></i>
+      weight: 14
+
+    - name: Support
+      url: /support/
+      pre: <i class='fas fa-briefcase'></i>
+      weight: 15
+
+    - name: Project
+      url: /project/
+      pre: <i class='fas fa-flask'></i>
+      weight: 16

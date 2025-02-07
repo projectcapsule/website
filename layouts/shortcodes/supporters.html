@@ -1,0 +1,46 @@
+<a class="td-offset-anchor"></a>
+<div class="page td-content container">
+  <div class="row mt-5" style="display: flex; flex-wrap: wrap; align-items: stretch;">
+    {{ $support := .Site.Data.support.companies }}
+    {{ range $support }}
+    {{ $background := default "#8147D2" .background }}
+    <div class="col-12 py-2 col-md-6 d-flex">
+      <a href="{{ .link }}" style="text-decoration: none; flex-grow: 1;">
+        <div style="
+          background-color: {{$background}};
+          color: white;
+          padding: 20px;
+          border-radius: 6px;
+          text-align: center;
+          box-shadow: 2px 2px 16px rgba(49, 50, 58, 0.15);
+          height: 100%; /* Ensures all boxes are the same height */
+          display: flex;
+          flex-direction: column;
+          justify-content: center;">
+          <div style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100px;">
+            <img src="{{ .logo }}" alt="{{ .name }}" style="
+              max-height: 100%;
+              max-width: 100%;
+              margin: auto;
+              padding: 10px;">
+          </div>
+          <h4 style="
+            margin-top: 15px;
+            font-size: 20px;
+            font-weight: 700;
+            color: {{default "#white" .layoutColor }};">{{ .name }}</h4>
+          <p style="
+            margin-top: 10px;
+            font-size: 14px;
+            color: {{default "#white" (default .layoutColor .descriptionColor) }};
+            font-weight: 400;">{{ .description }}</p>
+        </div>
+      </a>
+    </div>
+    {{ end }}
+  </div>
+</div>

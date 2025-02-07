@@ -3,6 +3,9 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@3" />
 {{ end }}
 
+{{ $style := resources.Get "scss/main.scss" | toCSS | minify }}
+<link rel="stylesheet" href="{{ $style.RelPermalink }}" />
+
 {{ if eq hugo.Environment "branch" }}
 <meta name="robots" content="noindex, nofollow">
 {{ end }}

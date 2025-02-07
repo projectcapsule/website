@@ -1,8 +1,6 @@
 ---
-title: Resources
-menu: {main: {weight: 40}}
-type: resources
+type: single
 ---
 
-????
+{{< resources >}}
 

@@ -4,7 +4,16 @@ weight: 1
 description: Understand the problem Capsule is attempting to solve and how it works
 ---
 
-Capsule implements a multi-tenant and policy-based environment in your Kubernetes cluster. It is designed as a micro-services-based ecosystem with the minimalist approach, leveraging only on upstream Kubernetes.
+Capsule implements a multi-tenant and policy-based environment in your Kubernetes cluster. It is designed as a micro-services-based ecosystem with the minimalist approach, leveraging only on upstream Kubernetes
+
+With capsule you have an ecosystem which addresses the challenges when it comes to having multiple parties on a shared Kubernetes Cluster. Let's look at a typical scenario for the usage of Capsule
+
+<br>
+
+![capsule-workflow](/images/content/tenants.gif)
+
+As shown, we can create a new boundary between Kubernetes (Cluster) Administrators and Tenant Audiences. While the Kubernetes Adminsitrators define the boundaries on a Tenant, the Tenant Audience can act within the namespaces of a Tenant. For the Tenant audience we differenciate between **Tenant Owners** and **Tenant Users**. The main Perk Tenant Owners have is the creation of namespaces within the tenants they are owner off. WIth the enabling them to act within the tenant and therefor achieveing a shift left from being dependant on a Kubernetes Administrator to have Responsability shifted to the Tenant Owners.
+
 
 ## What's the problem with the current status?
 
