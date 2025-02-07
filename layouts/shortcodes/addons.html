@@ -1,0 +1,107 @@
+
+    <div class="row">
+      <div class="col">
+        <div class="form-group">
+          <h5><label class="d-block" for="search">Search</label></h5>
+          <input type="search" placeholder="Search query" class="form-control" id="search" oninput="filterEnvironments()">
+        </div>
+      </div>
+    </div>
+
+
+    <div class="row mt-5">
+        {{ $support := .Site.Data.addons.addons }}
+        {{ range $support }}
+        {{ $background := default "#8147D2" .background }}
+        <div class="col-12 py-2 col-md-6 env-item" 
+        data-name="{{ .name | lower }}" 
+        data-repo="{{ .repo | lower }}">
+            <div style="
+              height: 300px;
+              border-radius: 10px;
+              text-align: center;
+              box-shadow: 2px 2px 16px rgba(49, 50, 58, 0.15);
+              position: relative;
+              overflow: hidden;">
+              
+              <!-- Logo as Background -->
+              <div style="
+                background: url('{{ .logo }}') no-repeat center center;
+                background-size: cover;
+                opacity: 1;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 0;">
+              </div>
+    
+              <!-- Content -->
+              <div style="position: relative; z-index: 1; padding: 20px;">
+                <h4 style="
+                  margin-top: 15px;
+                  font-size: 20px;
+                  font-weight: 700;
+                  color: {{default "#FFFFFF" .layoutColor }};">{{ .name }}</h4>
+    
+                <!-- Links -->
+                {{ if .links }}
+                <div style="margin-top: 25px; display: flex; justify-content: center; gap: 10px;">
+                  {{ range .links }}
+                  <a href="{{ .link }}" target="_blank" rel="noopener noreferrer"  style="
+                    text-decoration: none;
+                    color: white;
+                    font-size: 50px;">
+                    <i class="{{ .icon }}"></i>
+                  </a>
+                  {{ end }}
+                </div>
+                {{ end }}
+
+                <!-- Tag Bubble Clouds -->
+                {{ if .tags }}
+                <div style="margin-top: 15px;">
+                  {{ range .tags }}
+                  <span style="
+                    background-color: rgba(255, 255, 255, 0.2);
+                    padding: 5px 10px;
+                    border-radius: 12px;
+                    color: white;
+                    font-size: 12px;
+                    margin-right: 5px;
+                    display: inline-block;">{{ . }}</span>
+                  {{ end }}
+                </div>
+                {{ end }}
+
+                <p style="
+                  margin-top: 10px;
+                  font-size: 14px;
+                  color: {{default "#FFFFFF" .descriptionColor }};
+                  font-weight: 400;">{{ .description }}</p>
+
+
+              </div>
+            </div>
+        </div>
+        {{ end }}
+      </div>
+
+  <script>
+    function filterEnvironments() {
+      const searchQuery = document.getElementById('search').value.trim().toLowerCase();
+      const envItems = document.querySelectorAll('.env-item');
+  
+      envItems.forEach(item => {
+        const name = item.getAttribute('data-name');
+        const repo = item.getAttribute('data-repo');
+  
+        if (name.includes(searchQuery) || repo.includes(searchQuery)) {
+          item.style.display = 'block';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+  </script>

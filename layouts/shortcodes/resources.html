@@ -1,0 +1,28 @@
+<!-- Resource pane -->
+<a class="td-offset-anchor"></a>
+<div class="page td-content container">
+    {{ $resources := $.Site.Data.resources.resources }}
+    {{ $years := slice }}
+    {{ range $resources }}
+        {{ $years = $years | append (time.Format "2006" .date) }}
+        {{ $years = uniq $years }}
+    {{ end }}
+    {{ range $years }}
+    {{ $year := . }}
+    <div class="mt-100">
+    <h2 id="{{ . }}">{{ . }}</h2>
+    <a id=td-block-0 class=td-offset-anchor></a>
+    <section class="row td-box td-box--white td-box--gradient td-box--height-auto">
+        <div class=col>
+            <div class=row>
+                {{ range $resources }}
+                {{ if eq (time.Format "2006" .date) $year }}
+                    {{ partial "resource.html" . }}
+                {{ end }}
+                {{ end }}
+            </div>
+        </div>
+    </section>
+    </div>
+    {{ end }}
+</div>

@@ -1,15 +1,9 @@
 ---
 title: Adopters
-menu: {main: {weight: 40}}
-type: docs
-disable_toc: true
+type: single
 ---
 
-These companies and projects are happy adopters of Capsule. If you are using Capsule and would like to be listed here, please add yourself here.
-
-For us as an open source project, it's important to have different companies and projects using Capsule. It builds confidence for potential users of the project.
-
-To join this list, [please follow these instructions](/project/contributions/adoption/#adding-yourself).
+All entries on this page were added by people who worked on these companies or by the maintainers. Adding your company to the list helps to build trust in the solution for other parties, which are evaluating the solution. To add yourself to the adopters, [visit the following link](/project/contributions/adoption/)
 
 ---
 

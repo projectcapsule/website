@@ -1,20 +1,26 @@
 ---
-title: Goldydocs
+title: Project Capsule
 ---
 
 {{< blocks/cover title="Capsule" image_anchor="top" height="full" >}}
 # A multi-tenancy and policy-based framework for Kubernetes { class="text-center" }
 <div class="mt-5 mx-auto">
-<a class="btn btn-lg btn-primary me-3 mb-4" href="/docs/">
+<a class="btn btn-lg btn-primary me-3 mb-4" href="/docs/overview">
   Learn More <i class="fas fa-arrow-alt-circle-right ms-2"></i>
 </a>
-
 </div>
 {{< blocks/link-down color="info" >}}
 {{< /blocks/cover >}}
 
 
-{{% blocks/section color=white type="row" %}}
+<a href="/adopters">
+{{< blocks/section color="white" type="row" >}}
+
+{{< adopters-slider >}}
+
+{{< /blocks/section >}}
+
+{{% blocks/section  type="row" %}}
 
 {{% blocks/feature icon="fa-chart-bar" title="Resource Control" %}}
 Share a single cluster with multiple teams, groups of users, or departments by saving operational and management efforts. Take control of the resources consumed by users while preventing them to overtake.

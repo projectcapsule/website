@@ -1,0 +1,26 @@
+<h2 style="text-align: center; margin-bottom: 75px;">Adopted by</h2>
+
+<div class="scrollmenu">
+  <div class="slide-track">
+    {{ range sort $.Site.Data.adopters.adopters "name" }}
+      {{ if .logo }}
+      <a href="{{ .link | safeURL }}">
+        <img src="{{ .logo | safeURL }}" alt="{{ .name }}" href="_blank"/>
+      </a>
+      {{ end }}
+    {{ end }}
+  </div>
+</div>
+
+<div class="d-flex flex-wrap justify-content-center align-items-center mb-5" style="text-decoration:none; margin-top: 75px; margin-bottom: 75px;">
+    <div class="p-2">
+      <a href="https://clastix.io" style="text-decoration: none;">
+        <h2 class="text-muted font-weight-light">Project initiative by</h2>
+      </a>
+    </div>
+    <div class="p-2">
+      <a href="https://clastix.io" style="text-decoration: none;">
+        <img src="https://www.suse.com/c/wp-content/uploads/2022/11/Clastix.jpg" alt="Clastix" style="height:6rem;"/>
+      </a>
+    </div>
+  </div>

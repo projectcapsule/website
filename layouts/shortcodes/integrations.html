@@ -1,0 +1,34 @@
+<div class="row">
+  {{ $currentPath := .Page.File.Path }}
+  {{ $currentDir := (path.Dir $currentPath) }}
+  {{ $sectionPath := path.Join $currentDir "integrations" }}
+  {{ $pages := where .Site.Pages "Section" $currentDir }}
+  {{ $sorted := sort $pages "Title" }}
+  {{ range $sorted }}
+    {{ if (default false .Params.integration) }}
+      {{ $display := default true .Params.display }}
+      {{ if $display }}
+  <div class="col-12 col-md-2 py-1">
+    <a href="{{ default .Permalink .Params.link }}" style="text-decoration: none; color: inherit;">
+      <div class="integration-card"
+           style="text-align: center;
+        border: 1px solid #eee;
+        border-radius: 6px;
+        padding: 20px;
+        size: 6px;
+        transition: box-shadow 0.3s ease;">
+        <div style="height: 125px;">
+        {{ if .Params.logo }}
+        <img src="{{ .Params.logo }}" alt="{{ .Title }}" style="
+          max-height: 100px;
+          margin-bottom: 15px;">
+        {{ end }}
+      </div>
+        <h6>{{ .Title }}</h6>
+      </div>
+    </a>
+  </div>
+    {{ end }}
+    {{ end }}
+  {{ end }}
+</div>

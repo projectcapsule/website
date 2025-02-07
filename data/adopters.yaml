@@ -8,12 +8,12 @@ adopters:
   - name: "Die Mobiliar"
     link: https://www.mobiliar.ch/
     logo: https://mobiliar.rokka.io/dynamic/crop-width-701-height-525-mode-ratio--resize-width-701--options-autoformat-true-optim.quality-4/dfeb319d1c438de49d67799cf87534f3f332f498/logo-der-mobiliar-.jpg
-  - name: EPAM Delivery Platform
-    link: https://epam.github.io/edp-install/
-    logo: https://raw.githubusercontent.com/epam/edp-install/master/docs/assets/edp-logo-150x150-black.png
+  - name: KubeRocketCI
+    link: https://docs.kuberocketci.io/
+    logo: https://raw.githubusercontent.com/epam/edp-install/master/docs/assets/krci-logo-267×150-white.png
   - name: Fastweb
     link: https://www.fastweb.it/
-    logo: hhttps://www.fastweb.it/adsl-fibra-ottica/gfx/sprite.svg?rel=9c0c9d68#v8662a44f
+    logo: https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Fastweb_logo.svg/180px-Fastweb_logo.svg.png
   - name: Klarrio
     link: https://klarrio.com/
     logo: https://klarrio.com/wp-content/uploads/klarrio.png
@@ -28,7 +28,7 @@ adopters:
     logo: https://www.reevo.it/hs-fs/hubfs/logo_reevo_azzurro.png?width=95&height=40&name=logo_reevo_azzurro.png
   - name: University of Torino
     link: https://www.unito.it
-    logo: https://www.unito.it/sites/all/themes/unitofed/img/logo_new_2022.svg
+    logo: https://www.unito.it/sites/all/themes/bsunito/img/logo_new_2022.svg
   - name: Velocity
     link: https://velocity.tech/
     logo: https://raw.githubusercontent.com/yarelm/velocity-logo/main/velocity.png
