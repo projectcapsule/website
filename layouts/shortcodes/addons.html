@@ -12,7 +12,7 @@
     <div class="row mt-5">
         {{ $support := .Site.Data.addons.addons }}
         {{ range $support }}
-        {{ $background := default "#8147D2" .background }}
+        {{ $background := default "#802A78" .background }}
         <div class="col-12 py-2 col-md-6 env-item" 
         data-name="{{ .name | lower }}" 
         data-repo="{{ .repo | lower }}">
@@ -27,6 +27,7 @@
               <!-- Logo as Background -->
               <div style="
                 background: url('{{ .logo }}') no-repeat center center;
+                background-color: {{ $background }};
                 background-size: cover;
                 opacity: 1;
                 position: absolute;

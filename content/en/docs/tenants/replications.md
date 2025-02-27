@@ -106,7 +106,8 @@ spec:
   resyncPeriod: 60s
   resources:
     - additionalMetadata:
-        "replicated-by": "capsule" 
+        labels:
+          "replicated-by": "capsule" 
       namespaceSelector:
         matchLabels:
           environment: production

@@ -6,17 +6,9 @@ description: "Monitoring Capsule Controller and Tenants"
 
 The Capsule dashboard allows you to track the health and performance of Capsule manager and tenants, with particular attention to resources saturation, server responses, and latencies. Prometheus and Grafana are requirements for monitoring Capsule.
 
-## Quickstart
-
-
 ##  Metrics
 
-### Controller
-
-
-
-### Proxy 
-
+### Quotas
 
 
 ### Custom

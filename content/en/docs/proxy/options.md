@@ -3,7 +3,7 @@ title: Controller Options
 description: >
   Configure the Capsule Proxy Controller
 date: 2024-02-20
-weight: 10
+weight: 3
 ---
 
 You can customize the Capsule Proxy with the following configuration
