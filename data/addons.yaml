@@ -39,3 +39,14 @@ addons:
     #layoutColor: "#FFFFFF"
     #descriptionColor: "#FFEBEE"
 
+  - name: "Cortex Proxy"
+    logo: "https://github.com/projectcapsule/cortex-proxy/raw/main/docs/images/logo.png"
+    tags:
+      - "core"
+      - "observability"
+    links:
+      - link: "https://github.com/projectcapsule/cortex-proxy"
+        icon: "fab fa-github"
+    description: "Route metrics to cortex organizations based on the relational of namespace metrics to capsule tenants."
+
+
