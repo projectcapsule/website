@@ -1338,6 +1338,22 @@ solar    Cordoned                   4                                  2d11h
 silver   Active                     2                                  3d13h
 ```
 
+### Force Tenant-Prefix
+
+Use this if you want to disable/enable the Tenant name prefix to specific Tenants, overriding global forceTenantPrefix in [CapsuleConfiguration](/docs/reference/#capsuleconfigurationspec). When set to 'true', it enforces Namespaces created for this Tenant to be named with the Tenant name prefix, separated by a dash (i.e. for Tenant 'foo', namespace names must be prefixed with 'foo-'), this is useful to avoid Namespace name collision. When set to 'false', it allows Namespaces created for this Tenant to be named anything. Overrides CapsuleConfiguration global forceTenantPrefix for the Tenant only. If unset, Tenant uses CapsuleConfiguration's forceTenantPrefix
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+  - name: alice
+    kind: User
+  forceTenantPrefix: true
+```
+
 ### Deletion Protection
 
 Sometimes it is important to protect business critical tenants from accidental deletion. This can be achieved by toggling preventDeletion specification key on the tenant:

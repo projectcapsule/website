@@ -5,8 +5,8 @@ addons:
       - "core"
       - "ux"
     links:
-      - link: "https://github.com/peak-scale/capsule-argo-addon"
-        icon: "fab fa-github"
+      - link: "/docs/proxy/"
+        icon: "fa fa-book"
     description: "Enhance the user experience by allowing users to query the Kubernetes API and only getting the results, they are supposed to get."
     #background: "#0000000"
     #layoutColor: "#0000000"
@@ -38,4 +38,15 @@ addons:
     #background: "#FF5722"
     #layoutColor: "#FFFFFF"
     #descriptionColor: "#FFEBEE"
+
+  - name: "Cortex Proxy"
+    logo: "https://github.com/projectcapsule/cortex-proxy/raw/main/docs/images/logo.png"
+    tags:
+      - "core"
+      - "observability"
+    links:
+      - link: "https://github.com/projectcapsule/cortex-proxy"
+        icon: "fab fa-github"
+    description: "Route metrics to cortex organizations based on the relational of namespace metrics to capsule tenants."
+
 

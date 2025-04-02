@@ -1,4 +1,14 @@
 resources:
+  - title: "The State of Multi-tenancy in Kubernetes by LoftLabs"
+    url: https://www.linkedin.com/events/7297698298100936704/comments/
+    date: "2025-02-27"
+    thumbnail: "/images/content/multi-tenant-spectrum.png"
+    type: "video"
+  - title: "Kubernetes Multi-tenancy Spectrum by aniele Polencic"
+    url: https://www.linkedin.com/posts/danielepolencic_multi-tenancy-spectrum-in-kubernetes-ugcPost-7299773103826423809-logM?utm_source=share&utm_medium=member_desktop&rcm=ACoAACmXYUUB8FmX69ABG0zyNMP4W0AhGgWpgNU
+    date: "2025-02-10"
+    thumbnail: "/images/content/multi-tenant-spectrum.png"
+    type: "article"
   - title: "Painless Multi-Tenant Kafka on Kubernetes with Istio at ASML - Thomas Reichel & Dominique Chanet"
     youtube: "qMkV5qeOnfg"
     date: "2024-10-07"
@@ -11,7 +21,6 @@ resources:
     date: "2023-12-13"
     youtube: "m5TAb6UWlwA"
     type: "video"
-
   - title: "How TomTom achieves Kubernetes multi-tenancy with Capsule"
     date: "2023-10-13"
     url: "https://engineering.tomtom.com/capsule-kubernetes-multitenancy/"
