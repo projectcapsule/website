@@ -37,16 +37,16 @@ spec:
           - key: projectcapsule.dev/low_security_profile
             operator: NotIn
             values: ["true"]
-       labels:
-         pod-security.kubernetes.io/enforce: baseline
+      labels:
+        pod-security.kubernetes.io/enforce: baseline
 
     - namespaceSelector:
         matchExpressions:
           - key: projectcapsule.dev/low_security_profile
             operator: In
             values: ["true"]
-        labels:
-          pod-security.kubernetes.io/enforce: privileged
+      labels:
+        pod-security.kubernetes.io/enforce: privileged
 ```
 
 
@@ -259,7 +259,7 @@ metadata:
 > [!WARNING]
 > This feature is deprecated and  will be removed in a future release of Capsule. Migrate to using [TenantReplications](#limitrange-distribution-with-tenantreplications)
 
-Bill, the cluster admin, can also set Limit R <anges for each namespace in Alice's tenant by defining limits for pods and containers in the tenant spec:
+Bill, the cluster admin, can also set Limit Ranges for each namespace in Alice's tenant by defining limits for pods and containers in the tenant spec:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
