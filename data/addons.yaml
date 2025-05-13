@@ -1,6 +1,6 @@
 addons:
-  - name: "Capsule Proxy"
-    logo: "https://raw.githubusercontent.com/cncf/artwork/dea12221052d349eaa73a9cc01cb22e137758f86/projects/capsule/horizontal/color/capsule-horizontal-color.svg"
+  - name: "Proxy"
+    logo: "https://raw.githubusercontent.com/cncf/artwork/refs/heads/main/projects/capsule/icon/color/capsule-icon-color.svg"
     tags:
       - "core"
       - "ux"
@@ -8,11 +8,12 @@ addons:
       - link: "/docs/proxy/"
         icon: "fa fa-book"
     description: "Enhance the user experience by allowing users to query the Kubernetes API and only getting the results, they are supposed to get."
-    #background: "#0000000"
+    size: 50%
+    background: "#00264d"
     #layoutColor: "#0000000"
     #descriptionColor: "#000000"
 
-  - name: "ArgoCD Addon"
+  - name: "ArgoCD"
     logo: "https://github.com/peak-scale/capsule-argo-addon/blob/main/docs/images/capsule-argo.png?raw=true"
     tags:
       - "vendor"
@@ -25,16 +26,33 @@ addons:
     layoutColor: "#FFFFFF"
     descriptionColor: "#FFEBEE"
 
+  - name: "Sops Operator"
+    background: "#000000"
+    logo: "https://raw.githubusercontent.com/cncf/artwork/refs/heads/main/projects/capsule/icon/color/capsule-icon-color.svg"
+    size: 50%
+    tags:
+      - "core"
+      - "secrets"
+      - "gitops"
+    links:
+      - link: "https://github.com/peak-scale/sops-operator"
+        icon: "fab fa-github"
+    description: "Handle SOPS Secrets in a multi-tenant and kubernetes-native way."
 
-  - name: "Flux Addon"
-    logo: "https://raw.githubusercontent.com/cncf/artwork/dea12221052d349eaa73a9cc01cb22e137758f86/projects/capsule/horizontal/color/capsule-horizontal-color.svg"
+  - name: "FluxCD"
+    background: "#00264d"
+    logo: "https://raw.githubusercontent.com/cncf/artwork/refs/heads/main/projects/capsule/icon/color/capsule-icon-color.svg"
+    size: 50%
     tags:
       - "core"
       - "gitops"
     links:
       - link: "https://github.com/projectcapsule/capsule-addon-fluxcd"
         icon: "fab fa-github"
-    description: "In particular enables Tenants to manage their resources, including creating Namespaces, respecting the [Flux multi-tenancy lockdown](https://fluxcd.io/flux/installation/configuration/multitenancy/)."
+      - link: "https://fluxcd.io/flux/installation/configuration/multitenancy/"
+        icon: "fa fa-book"
+
+    description: "In particular enables Tenants to manage their resources, including creating Namespaces."
     #background: "#FF5722"
     #layoutColor: "#FFFFFF"
     #descriptionColor: "#FFEBEE"
@@ -48,5 +66,3 @@ addons:
       - link: "https://github.com/projectcapsule/cortex-proxy"
         icon: "fab fa-github"
     description: "Route metrics to cortex organizations based on the relational of namespace metrics to capsule tenants."
-
-

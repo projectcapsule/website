@@ -10,6 +10,51 @@ description: >
 
 ### Namespaces
 
+#### AdditionalMetadataList
+
+The cluster admin can "taint" the namespaces created by tenant owners with additional metadata as labels and annotations. There is no specific semantic assigned to these labels and annotations: they will be assigned to the namespaces in the tenant as they are created. However you have the option to be more specific by selecting to which namespaces you want to assign what kind of metadata:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: oil
+spec:
+  owners:
+  - name: alice
+    kind: User
+  namespaceOptions:
+    additionalMetadataList:
+    # An item without any further selectors is applied to all namspaces
+    - annotations:
+        storagelocationtype: s3
+      labels:
+        projectcapsule.dev/backup: "true"
+
+    # Select a subset of namespaces to apply metadata on
+    - namespaceSelector:
+        matchExpressions:
+          - key: projectcapsule.dev/low_security_profile
+            operator: NotIn
+            values: ["true"]
+      labels:
+        pod-security.kubernetes.io/enforce: baseline
+
+    - namespaceSelector:
+        matchExpressions:
+          - key: projectcapsule.dev/low_security_profile
+            operator: In
+            values: ["true"]
+      labels:
+        pod-security.kubernetes.io/enforce: privileged
+```
+
+
+#### AdditionalMetadata
+
+> [!WARNING]
+> This feature is deprecated and  will be removed in a future release of Capsule. Migrate to using [AdditionalMetadataList](#additionalmetadatalist)
+
 The cluster admin can "taint" the namespaces created by tenant owners with additional metadata as labels and annotations. There is no specific semantic assigned to these labels and annotations: they will be assigned to the namespaces in the tenant as they are created. This can help the cluster admin to implement specific use cases as, for example, leave only a given tenant to be backed up by a backup service.
 
 Assigns additional labels and annotations to all namespaces created in the `solar` tenant:
@@ -90,8 +135,8 @@ spec:
 
 ### Nodes
 
+> [!WARNING]
 > Due to [CVE-2021-25735](https://github.com/kubernetes/kubernetes/issues/100096) this feature is only supported for Kubernetes version older than: v1.18.18, v1.19.10, v1.20.6, v1.21.0
-
 
 When using capsule together with [capsule-proxy](/docs/integrations/capsule-proxy), Bill can allow Tenant Owners to modify Nodes.
 
@@ -211,7 +256,8 @@ metadata:
 
 ### LimitRanges
 
-> This feature will be deprecated in a future release of Capsule. Instead use [TenantReplications](#limitrange-distribution-with-tenantreplications)
+> [!WARNING]
+> This feature is deprecated and  will be removed in a future release of Capsule. Migrate to using [TenantReplications](#limitrange-distribution-with-tenantreplications)
 
 Bill, the cluster admin, can also set Limit Ranges for each namespace in Alice's tenant by defining limits for pods and containers in the tenant spec:
 
@@ -925,7 +971,10 @@ If an Ingress has no value for `spec.ingressClassName` or `metadata.annotations.
 
 ### NetworkPolicies
 
-> This feature will be deprecated in a future release of Capsule. Instead use [TenantReplications](#networkpolicy-distribution-with-tenantreplications). This is also true if you would like other NetworkPolicy implementation like [Cilium](https://cilium.io/).
+
+> [!WARNING]
+> This feature is deprecated and  will be removed in a future release of Capsule. Migrate to using [TenantReplications](#networkpolicy-distribution-with-tenantreplications). This is also true if you would like other NetworkPolicy implementation like [Cilium](https://cilium.io/).
+
 
 Kubernetes network policies control network traffic between namespaces and between pods in the same namespace. Bill, the cluster admin, can enforce network traffic isolation between different tenants while leaving to Alice, the tenant owner, the freedom to set isolation between namespaces in the same tenant or even between pods in the same namespace.
 
