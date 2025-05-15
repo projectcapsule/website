@@ -120,7 +120,7 @@ spec:
 
 ### Tenant Scope
 
-> This feature will be deprecated in a future release of Capsule. The `GlobalResourceQuota` resource might be a replacement in the future.
+> This feature will be deprecated in a future release of Capsule. The [`ResourcePool` resource](https://github.com/projectcapsule/capsule/pull/1333) might be a replacement in the future.
 > This approach might lead to resource over consumption. Currently we don't have a way to consistently assure the resource quota at tenant level. See issues [issue/49](https://github.com/projectcapsule/capsule/issues/49)
 
 
