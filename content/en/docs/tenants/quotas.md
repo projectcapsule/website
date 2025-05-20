@@ -120,9 +120,6 @@ spec:
 
 ### Tenant Scope
 
-> This approach might lead to resource over consumption. Currently we don't have a way to consistently assure the resource quota at tenant level. See issues [issue/49](https://github.com/projectcapsule/capsule/issues/49)
-
-
 By setting enforcement at tenant level, i.e. `spec.resourceQuotas`.scope=Tenant, Capsule aggregates resources usage for all namespaces in the tenant and adjusts all the `ResourceQuota` usage as aggregate. In such case, Alice can check the used resources at the tenant level by inspecting the annotations in ResourceQuota object of any namespace in the tenant:
 
 ```bash
