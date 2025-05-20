@@ -136,9 +136,9 @@ spec:
 
 ### Nodes
 
-> [!WARNING]
-> [!WARNING]
-> Due to [CVE-2021-25735](https://github.com/kubernetes/kubernetes/issues/100096) this feature is only supported for Kubernetes version older than: v1.18.18, v1.19.10, v1.20.6, v1.21.0
+{{% alert title="Warning" color="warning" %}}
+Due to [CVE-2021-25735](https://github.com/kubernetes/kubernetes/issues/100096) this feature is only supported for Kubernetes version older than: v1.18.18, v1.19.10, v1.20.6, v1.21.0
+{{% /alert %}}
 
 When using capsule together with [capsule-proxy](/docs/integrations/capsule-proxy), Bill can allow Tenant Owners to modify Nodes.
 
