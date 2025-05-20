@@ -11,9 +11,11 @@ There are different elements, where quotas can be defined.
 
 ## Resource Quota
 
-With help of Capsule, Bill, the cluster admin, can set and enforce resources quota and limits for Alice's tenant.
+{{% alert title="Deprecated" color="info" %}}
+This feature will be deprecated in a future release of Capsule. Instead use [Resource Pools](../resourcepools/) to handle any cases around distributed ResourceQuotas
+{{% /alert %}}
 
-Set resources quota for each namespace in the Alice's tenant by defining them in the tenant spec:
+With help of Capsule, Bill, the cluster admin, can set and enforce resources quota and limits for Alice's tenant.Set resources quota for each namespace in the Alice's tenant by defining them in the tenant spec:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -86,7 +88,7 @@ status:
     pods: "4"
 ```
 
-When defining ResourceQuotas you might want to consider distributing [LimitRanges](https://kubernetes.io/docs/concepts/policy/limit-range/) via [Tenant Replications](/docs/tenants/replications):
+When defining ResourceQuotas you might want to consider distributing [LimitRanges](https://kubernetes.io/docs/concepts/policy/limit-range/) via [Tenant Replications](/docs/replications):
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -119,8 +121,6 @@ spec:
 ```
 
 ### Tenant Scope
-
-> This feature will be deprecated in a future release of Capsule. Instead use [GlobalResourceQuotas](#globalresourcequotas)
 
 > This approach might lead to resource over consumption. Currently we don't have a way to consistently assure the resource quota at tenant level. See issues [issue/49](https://github.com/projectcapsule/capsule/issues/49)
 

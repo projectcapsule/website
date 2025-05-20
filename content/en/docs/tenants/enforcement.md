@@ -52,8 +52,9 @@ spec:
 
 #### AdditionalMetadata
 
-> [!WARNING]
-> This feature is deprecated and  will be removed in a future release of Capsule. Migrate to using [AdditionalMetadataList](#additionalmetadatalist)
+{{% alert title="Deprecated" color="info" %}}
+This feature is deprecated and  will be removed in a future release of Capsule. Migrate to using [AdditionalMetadataList](#additionalmetadatalist)
+{{% /alert %}}
 
 The cluster admin can "taint" the namespaces created by tenant owners with additional metadata as labels and annotations. There is no specific semantic assigned to these labels and annotations: they will be assigned to the namespaces in the tenant as they are created. This can help the cluster admin to implement specific use cases as, for example, leave only a given tenant to be backed up by a backup service.
 
@@ -253,11 +254,11 @@ metadata:
 
 ## Scheduling
 
-
 ### LimitRanges
 
-> [!WARNING]
-> This feature is deprecated and  will be removed in a future release of Capsule. Migrate to using [TenantReplications](#limitrange-distribution-with-tenantreplications)
+{{% alert title="Deprecated" color="info" %}}
+This feature is deprecated and  will be removed in a future release of Capsule. Migrate to using [TenantReplications](#limitrange-distribution-with-tenantreplications)
+{{% /alert %}}
 
 Bill, the cluster admin, can also set Limit Ranges for each namespace in Alice's tenant by defining limits for pods and containers in the tenant spec:
 
@@ -371,7 +372,7 @@ no
 
 #### LimitRange Distribution with TenantReplications
 
-In the future Cluster-Administrators must distribute LimitRanges via [TenantReplications](/docs/tenants/replications). This is a more flexible and powerful way to distribute LimitRanges, as it allows to distribute any kind of resource, not only LimitRanges. Here's an example of how to distribute a LimitRange to all the namespaces of a tenant:
+In the future Cluster-Administrators must distribute LimitRanges via [TenantReplications](/docs/replications). This is a more flexible and powerful way to distribute LimitRanges, as it allows to distribute any kind of resource, not only LimitRanges. Here's an example of how to distribute a LimitRange to all the namespaces of a tenant:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -971,9 +972,9 @@ If an Ingress has no value for `spec.ingressClassName` or `metadata.annotations.
 
 ### NetworkPolicies
 
-
-> [!WARNING]
-> This feature is deprecated and  will be removed in a future release of Capsule. Migrate to using [TenantReplications](#networkpolicy-distribution-with-tenantreplications). This is also true if you would like other NetworkPolicy implementation like [Cilium](https://cilium.io/).
+{{% alert title="Deprecated" color="info" %}}
+This feature is deprecated and  will be removed in a future release of Capsule. Migrate to using [TenantReplications](#networkpolicy-distribution-with-tenantreplications). This is also true if you would like other NetworkPolicy implementation like [Cilium](https://cilium.io/).
+{{% /alert %}}
 
 
 Kubernetes network policies control network traffic between namespaces and between pods in the same namespace. Bill, the cluster admin, can enforce network traffic isolation between different tenants while leaving to Alice, the tenant owner, the freedom to set isolation between namespaces in the same tenant or even between pods in the same namespace.
@@ -1077,7 +1078,7 @@ Any attempt of Alice to delete the tenant network policy defined in the tenant m
 
 #### NetworkPolicy Distribution with TenantReplications
 
-In the future Cluster-Administrators must distribute NetworkPolicies via [TenantReplications](/docs/tenants/replications). This is a more flexible and powerful way to distribute NetworkPolicies, as it allows to distribute any kind of resource. Here's an example of how to distribute a `CiliumNetworkPolicy` to all the namespaces of a tenant:
+In the future Cluster-Administrators must distribute NetworkPolicies via [TenantReplications](/docs/replications). This is a more flexible and powerful way to distribute NetworkPolicies, as it allows to distribute any kind of resource. Here's an example of how to distribute a `CiliumNetworkPolicy` to all the namespaces of a tenant:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
