@@ -137,6 +137,7 @@ spec:
 ### Nodes
 
 > [!WARNING]
+> [!WARNING]
 > Due to [CVE-2021-25735](https://github.com/kubernetes/kubernetes/issues/100096) this feature is only supported for Kubernetes version older than: v1.18.18, v1.19.10, v1.20.6, v1.21.0
 
 When using capsule together with [capsule-proxy](/docs/integrations/capsule-proxy), Bill can allow Tenant Owners to modify Nodes.
@@ -256,9 +257,7 @@ metadata:
 
 ### LimitRanges
 
-{{% alert title="Deprecated" color="info" %}}
-This feature is deprecated and  will be removed in a future release of Capsule. Migrate to using [TenantReplications](#limitrange-distribution-with-tenantreplications)
-{{% /alert %}}
+> This feature will be deprecated in a future release of Capsule. Instead use [TenantReplications](#limitrange-distribution-with-tenantreplications)
 
 Bill, the cluster admin, can also set Limit Ranges for each namespace in Alice's tenant by defining limits for pods and containers in the tenant spec:
 
@@ -973,9 +972,8 @@ If an Ingress has no value for `spec.ingressClassName` or `metadata.annotations.
 ### NetworkPolicies
 
 {{% alert title="Deprecated" color="info" %}}
-This feature is deprecated and  will be removed in a future release of Capsule. Migrate to using [TenantReplications](#networkpolicy-distribution-with-tenantreplications). This is also true if you would like other NetworkPolicy implementation like [Cilium](https://cilium.io/).
+> This feature will be deprecated in a future release of Capsule. Instead use [TenantReplications](#networkpolicy-distribution-with-tenantreplications). This is also true if you would like other NetworkPolicy implementation like [Cilium](https://cilium.io/).
 {{% /alert %}}
-
 
 Kubernetes network policies control network traffic between namespaces and between pods in the same namespace. Bill, the cluster admin, can enforce network traffic isolation between different tenants while leaving to Alice, the tenant owner, the freedom to set isolation between namespaces in the same tenant or even between pods in the same namespace.
 

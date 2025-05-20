@@ -7,12 +7,10 @@ description: >
 
 With help of Capsule, Bill, the cluster admin, can set and enforce resources quota and limits for Alice's tenant.
 
-There are different elements, where quotas can be defined.
-
 ## Resource Quota
 
 {{% alert title="Deprecated" color="info" %}}
-This feature will be deprecated in a future release of Capsule. Instead use [Resource Pools](../resourcepools/) to handle any cases around distributed ResourceQuotas
+This feature will be deprecated in a future release of Capsule. Instead use [Resource Pools](/docs/resourcepools/) to handle any cases around distributed ResourceQuotas
 {{% /alert %}}
 
 With help of Capsule, Bill, the cluster admin, can set and enforce resources quota and limits for Alice's tenant.Set resources quota for each namespace in the Alice's tenant by defining them in the tenant spec:
@@ -235,8 +233,6 @@ admission webhook "namespace.capsule.clastix.io" denied the request.
 ```
 
 The enforcement on the maximum number of namespaces per Tenant is the responsibility of the Capsule controller via its Dynamic Admission Webhook capability.
-
-
 
 ## Custom Resources
 
