@@ -13,17 +13,19 @@ description: >
 ### Benefits
 
 - Shifting left now comes to Resource-Management. From the perspective of Cluster-Administrators you just define the Quantity and the Audience for Resources. The rest is up to users managing these namespaces (audience).
-- Better automation options and integrations. One important aspect for us is, how we still can be beneficial with concepts like vclusters or CPs as pods. We think with this solution we have found a way to make capsule still beneficial and even open new use-cases for larger Kubernetes platforms.
-- Enables more use-cases and provides more flexibility than standard ResourceQuotas or our previous ResourceQuota-Implementation. Autobalancing is no longer given by default, however can be implemented according to your platform's needs [see future ideas](#future-ideas).
+- Better automation options and integrations. One important aspect for us is, how we still can be beneficial with concepts like `VClusters (VCluster/K3K)` or `CPs as pods (Kamaji)`. We think with this solution we have found a way to make capsule still beneficial and even open new use-cases for larger Kubernetes platforms.
+- Enables more use-cases and provides more flexibility than standard `ResourceQuotas` or our previous ResourceQuota-Implementation. Autobalancing is no longer given by default, however can be implemented according to your platform's needs [see future ideas](#future-ideas).
 
 
 ## ResourcePool
 
-Resourcepools allow you to define a set of resources as known from ResoureQuotas. The Resourcepools are defined at cluster-scope an should be administrated by cluster-administrators. However they create an interface, where cluster-administrators can define from which namespaces resources from a Resourcepool can be claimed. The claiming is done via a namespaced CRD called ResourcePoolClaim. 
+`ResourcePools` allow you to define a set of resources, similar to how `ResourceQuotas` work. `ResourcePools` are defined at the cluster scope and should be managed by cluster administrators. However, they provide an interface where cluster administrators can specify from which namespaces resources in a ResourcePool can be claimed. Claiming is done via a namespaced CRD called `ResourcePoolClaim`.
 
-Then it's up the the group of users within these namespaces, to manage the resources they consume per namespace. Each Resourcepool provisions a ResourceQuota into all the selected namespaces. Then essentially the ResourcePoolClaims, when they can be assigned to the ResourcePool stack resources on top of that ResourceQuota based on the namspace, where the ResourcePoolClaim was made from.
+It is then up to the group of users within those namespaces to manage the resources they consume per namespace. Each ResourcePool provisions a ResourceQuota into all the selected namespaces. Essentially, when `ResourcePoolClaims` are assigned to a ResourcePool, they stack additional resources on top of that `ResourceQuota`, based on the namespace from which the `ResourcePoolClaim` was created.
 
-You can create any amount of ResourcePools for any kind of namespace, they don't have to be part of a `Tenant`. Note that the usual ResourceQuota mechanism apply when you eg. use the same resources on multiple ResourcePools for the same namespaces (eg. the lowest defined quota for a resource is always considered).
+You can create any number of `ResourcePools` for any kind of namespace — they do not need to be part of a Tenant. Note that the usual ResourceQuota mechanisms apply when, for example, the same resources are defined in multiple `ResourcePools` for the same namespaces (e.g., the lowest defined quota for a resource is always considered).
+
+
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -362,7 +364,7 @@ The requested resources are not available on the `ResourcePool`. Until other res
 
 ```shell
 NAMESPACE    NAME         POOL      STATUS   REASON          MESSAGE                                                          AGE
-solar-test   get-me-cpu   sampler   Bound    PoolExhausted   requested: requests.memory=2Gi, available: requests.memory=1Gi   9m19s
+solar-test   get-mem      sampler   Bound    QueueExhausted   requested: requests.memory=2Gi, queued: requests.memory=1Gi   9m19s
 ```
 
 In this case you have the following options:
@@ -398,20 +400,22 @@ If [orderedQueue](#orderedqueue) is enabled, only the first item that exhausted 
 
 ##### QueueExhausted
 
-A `ResourcePoolClaim` with [higher priority](#priority) is trying to allocate these resources, but is exhausting the `ResourcePool`. The `ResourcePool` has :
+A `ResourcePoolClaim` with [higher priority](#priority) is trying to allocate these resources, but is exhausting the `ResourcePool`. The `ResourcePool` has [orderedQueue](#orderedqueue) enabled, meaning that the `ResourcePoolClaim` with the [highest priority](#priority) must first schedule it's resources, before any other `ResourcePoolClaim` can claim further resources. This queue is resource based (eg. `requests.memory`), `ResourcePoolClaim` with [lower priority](#priority) may still be `Bound`, if they are not trying to allocate resources which are being exhausted by another `ResourcePoolClaim` with [highest priority](#priority).
 
 ```shell
 NAMESPACE    NAME         POOL      STATUS   REASON          MESSAGE                                                          AGE
-solar-test   get-me-cpu   sampler   Bound    PoolExhausted   requested: requests.memory=2Gi, available: requests.memory=1Gi   9m19s
+solar-test   get-mem      sampler   Bound    QueueExhausted   requested: requests.memory=2Gi, queued: requests.memory=1Gi   9m19s
 ```
+
+The above means, that as `ResourcePoolClaim` with [higher priority](#priority) is trying to allocate `requests.memory=1Gi` but that already leads to an `PoolExhausted` for that `ResourcePoolClaim`.
 
 ### Priority
 
 The Priority of how the claims are processed, is deterministic defined based on the following order of attributes from each claim:
 
-  * `CreationTimestamp` - Oldest first
-  * `Name` - **Tiebreaker**
-  * `Namespace` - **Tiebreaker**
+* `CreationTimestamp` - Oldest first
+* `Name` - **Tiebreaker**
+* `Namespace` - **Tiebreaker**
 
 
 **Tiebreaker**: If two claims have the same `CreationTimestamp`, they are then sorted alphabetically by their `Name`. If two claims have the same `CreationTimestamp` and `Name`, they are then sorted alphabetically by their `Namespace`. This means that if two claims are created at the same time, and have the same name, the claim with the lexicographically smaller `Name` will be processed first. If two claims have the same `CreationTimestamp`, `Name`, and `Namespace`, then the namespace is tiebreaking. This may be relevant in GitOps setups.
