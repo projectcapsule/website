@@ -80,9 +80,9 @@ GlobalProxySettingsSpec defines the desired state of GlobalProxySettings.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **apiGroups** | []string | APIGroups is the name of the APIGroup that contains the resources. If multiple API groups are specified, any action requested against any resource listed will be allowed. '*' represents all resources. Empty string represents v1 api resources. | true |
-| **operations** | []enum | Operations which can be executed on the selected resources.<br/>*Enum*: List, Update, Delete<br/>*Default*: [List]<br/> | true |
 | **resources** | []string | Resources is a list of resources this rule applies to. '*' represents all resources. | true |
 | **[selector](#globalproxysettingsspecrulesindexclusterresourcesindexselector)** | object | Select all cluster scoped resources with the given label selector.<br>Defining a selector which does not match any resources is considered not selectable (eg. using operation NotExists). | true |
+| **operations** | []enum | Operations which can be executed on the selected resources.<br>Deprecated: For all registered Routes only LIST ang GET requests will intercepted<br>Other permissions must be implemented via kubernetes native RBAC | false |
 
 
 ### GlobalProxySettings.spec.rules[index].clusterResources[index].selector
@@ -163,9 +163,9 @@ Resource is Namespace-scoped and applies the settings to the belonged Tenant.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **apiGroups** | []string | APIGroups is the name of the APIGroup that contains the resources. If multiple API groups are specified, any action requested against any resource listed will be allowed. '*' represents all resources. Empty string represents v1 api resources. | true |
-| **operations** | []enum | Operations which can be executed on the selected resources.<br/>*Enum*: List, Update, Delete<br/>*Default*: [List]<br/> | true |
 | **resources** | []string | Resources is a list of resources this rule applies to. '*' represents all resources. | true |
 | **[selector](#proxysettingspecsubjectsindexclusterresourcesindexselector)** | object | Select all cluster scoped resources with the given label selector.<br>Defining a selector which does not match any resources is considered not selectable (eg. using operation NotExists). | true |
+| **operations** | []enum | Operations which can be executed on the selected resources.<br>Deprecated: For all registered Routes only LIST ang GET requests will intercepted<br>Other permissions must be implemented via kubernetes native RBAC | false |
 
 
 ### ProxySetting.spec.subjects[index].clusterResources[index].selector
@@ -204,5 +204,5 @@ relates the key and values.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **kind** | enum | <br/>*Enum*: Nodes, StorageClasses, IngressClasses, PriorityClasses, RuntimeClasses, PersistentVolumes<br/> | true |
-| **operations** | []enum | <br/>*Enum*: List, Update, Delete<br/> | true |
+| **operations** | []enum |  | true |
 

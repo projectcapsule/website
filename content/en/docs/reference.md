@@ -17,6 +17,10 @@ Resource Types:
 
 - [GlobalTenantResource](#globaltenantresource)
 
+- [ResourcePoolClaim](#resourcepoolclaim)
+
+- [ResourcePool](#resourcepool)
+
 - [TenantResource](#tenantresource)
 
 - [Tenant](#tenant)
@@ -284,6 +288,232 @@ GlobalTenantResourceStatus defines the observed state of GlobalTenantResource.
 | **namespace** | string | Namespace of the referent.<br>More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/ | true |
 | **apiVersion** | string | API version of the referent. | false |
 
+## ResourcePoolClaim
+
+
+
+
+
+
+ResourcePoolClaim is the Schema for the resourcepoolclaims API.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | capsule.clastix.io/v1beta2 | true |
+| **kind** | string | ResourcePoolClaim | true |
+| **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
+| **[spec](#resourcepoolclaimspec)** | object |  | false |
+| **[status](#resourcepoolclaimstatus)** | object | ResourceQuotaClaimStatus defines the observed state of ResourceQuotaClaim. | false |
+
+
+### ResourcePoolClaim.spec
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **claim** | map[string]int or string | Amount which should be claimed for the resourcequota | true |
+| **pool** | string | If there's the possability to claim from multiple global Quotas<br>You must be specific about which one you want to claim resources from<br>Once bound to a ResourcePool, this field is immutable | true |
+
+
+### ResourcePoolClaim.status
+
+
+
+ResourceQuotaClaimStatus defines the observed state of ResourceQuotaClaim.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[condition](#resourcepoolclaimstatuscondition)** | object | Condtion for this resource claim | false |
+| **[pool](#resourcepoolclaimstatuspool)** | object | Reference to the GlobalQuota being claimed from | false |
+
+
+### ResourcePoolClaim.status.condition
+
+
+
+Condtion for this resource claim
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
+
+
+### ResourcePoolClaim.status.pool
+
+
+
+Reference to the GlobalQuota being claimed from
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name | false |
+| **namespace** | string | Namespace | false |
+| **uid** | string | UID of the tracked Tenant to pin point tracking | false |
+
+## ResourcePool
+
+
+
+
+
+
+Resourcepools allows you to define a set of resources as known from ResoureQuotas. The Resourcepools are defined at cluster-scope an should
+be administrated by cluster-administrators. However they create an interface, where cluster-administrators can define
+from which namespaces resources from a Resourcepool can be claimed. The claiming is done via a namespaced CRD called ResourcePoolClaim. Then
+it's up the group of users within these namespaces, to manage the resources they consume per namespace. Each Resourcepool provisions a ResourceQuotainto all the selected namespaces. Then essentially the ResourcePoolClaims, when they can be assigned to the ResourcePool stack resources on top of that
+ResourceQuota based on the namspace, where the ResourcePoolClaim was made from.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | capsule.clastix.io/v1beta2 | true |
+| **kind** | string | ResourcePool | true |
+| **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
+| **[spec](#resourcepoolspec)** | object | ResourcePoolSpec. | false |
+| **[status](#resourcepoolstatus)** | object | GlobalResourceQuotaStatus defines the observed state of GlobalResourceQuota. | false |
+
+
+### ResourcePool.spec
+
+
+
+ResourcePoolSpec.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[quota](#resourcepoolspecquota)** | object | Define the resourcequota served by this resourcepool. | true |
+| **[config](#resourcepoolspecconfig)** | object | Additional Configuration<br/>*Default*: map[]<br/> | false |
+| **defaults** | map[string]int or string | The Defaults given for each namespace, the default is not counted towards the total allocation<br>When you use claims it's recommended to provision Defaults as the prevent the scheduling of any resources | false |
+| **[selectors](#resourcepoolspecselectorsindex)** | []object | Selector to match the namespaces that should be managed by the GlobalResourceQuota | false |
+
+
+### ResourcePool.spec.quota
+
+
+
+Define the resourcequota served by this resourcepool.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **hard** | map[string]int or string | hard is the set of desired hard limits for each named resource.<br>More info: https://kubernetes.io/docs/concepts/policy/resource-quotas/ | false |
+| **[scopeSelector](#resourcepoolspecquotascopeselector)** | object | scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota<br>but expressed using ScopeSelectorOperator in combination with possible values.<br>For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched. | false |
+| **scopes** | []string | A collection of filters that must match each object tracked by a quota.<br>If not specified, the quota matches all objects. | false |
+
+
+### ResourcePool.spec.quota.scopeSelector
+
+
+
+scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota
+but expressed using ScopeSelectorOperator in combination with possible values.
+For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#resourcepoolspecquotascopeselectormatchexpressionsindex)** | []object | A list of scope selector requirements by scope of the resources. | false |
+
+
+### ResourcePool.spec.quota.scopeSelector.matchExpressions[index]
+
+
+
+A scoped-resource selector requirement is a selector that contains values, a scope name, and an operator
+that relates the scope name and values.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **operator** | string | Represents a scope's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. | true |
+| **scopeName** | string | The name of the scope that the selector applies to. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### ResourcePool.spec.config
+
+
+
+Additional Configuration
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **defaultsZero** | boolean | With this option all resources which can be allocated are set to 0 for the resourcequota defaults.<br/>*Default*: false<br/> | false |
+| **deleteBoundResources** | boolean | When a resourcepool is deleted, the resourceclaims bound to it are disassociated from the resourcepool but not deleted.<br>By Enabling this option, the resourceclaims will be deleted when the resourcepool is deleted, if they are in bound state.<br/>*Default*: false<br/> | false |
+| **orderedQueue** | boolean | Claims are queued whenever they are allocated to a pool. A pool tries to allocate claims in order based on their<br>creation date. But no matter their creation time, if a claim is requesting too much resources it's put into the queue<br>but if a lower priority claim still has enough space in the available resources, it will be able to claim them. Eventough<br>it's priority was lower<br>Enabling this option respects to Order. Meaning the Creationtimestamp matters and if a resource is put into the queue, no<br>other claim can claim the same resources with lower priority.<br/>*Default*: false<br/> | false |
+
+
+### ResourcePool.spec.selectors[index]
+
+
+
+Selector for resources and their labels or selecting origin namespaces
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#resourcepoolspecselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### ResourcePool.spec.selectors[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### ResourcePool.status
+
+
+
+GlobalResourceQuotaStatus defines the observed state of GlobalResourceQuota.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[allocation](#resourcepoolstatusallocation)** | object | Tracks the Usage from Claimed against what has been granted from the pool | false |
+| **claimCount** | integer | Amount of claims<br/>*Default*: 0<br/> | false |
+| **[claims](#resourcepoolstatusclaimskeyindex)** | map[string][]object | Tracks the quotas for the Resource. | false |
+| **namespaceCount** | integer | How many namespaces are considered<br/>*Default*: 0<br/> | false |
+| **namespaces** | []string | Namespaces which are considered for claims | false |
+
+
+### ResourcePool.status.allocation
+
+
+
+Tracks the Usage from Claimed against what has been granted from the pool
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **available** | map[string]int or string | Used to track the usage of the resource in the pool (diff hard - claimed). May be used for further automation | false |
+| **hard** | map[string]int or string | Hard is the set of enforced hard limits for each named resource.<br>More info: https://kubernetes.io/docs/concepts/policy/resource-quotas/ | false |
+| **used** | map[string]int or string | Used is the current observed total usage of the resource in the namespace. | false |
+
+
+### ResourcePool.status.claims[key][index]
+
+
+
+ResourceQuotaClaimStatus defines the observed state of ResourceQuotaClaim.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **claims** | map[string]int or string | Claimed resources | false |
+| **name** | string | Name | false |
+| **namespace** | string | Namespace | false |
+| **uid** | string | UID of the tracked Tenant to pin point tracking | false |
+
 ## TenantResource
 
 
@@ -466,7 +696,8 @@ TenantSpec defines the desired state of Tenant.
 | **[containerRegistries](#tenantspeccontainerregistries-1)** | object | Specifies the trusted Image Registries assigned to the Tenant. Capsule assures that all Pods resources created in the Tenant can use only one of the allowed trusted registries. Optional. | false |
 | **cordoned** | boolean | Toggling the Tenant resources cordoning, when enable resources cannot be deleted.<br/>*Default*: false<br/> | false |
 | **forceTenantPrefix** | boolean | Use this if you want to disable/enable the Tenant name prefix to specific Tenants, overriding global forceTenantPrefix in CapsuleConfiguration.<br>When set to 'true', it enforces Namespaces created for this Tenant to be named with the Tenant name prefix,<br>separated by a dash (i.e. for Tenant 'foo', namespace names must be prefixed with 'foo-'),<br>this is useful to avoid Namespace name collision.<br>When set to 'false', it allows Namespaces created for this Tenant to be named anything.<br>Overrides CapsuleConfiguration global forceTenantPrefix for the Tenant only.<br>If unset, Tenant uses CapsuleConfiguration's forceTenantPrefix<br>Optional | false |
-| **imagePullPolicies** | []enum | Specify the allowed values for the imagePullPolicies option in Pod resources. Capsule assures that all Pod resources created in the Tenant can use only one of the allowed policy. Optional.<br/>*Enum*: Always, Never, IfNotPresent<br/> | false |
+| **[gatewayOptions](#tenantspecgatewayoptions)** | object | Specifies options for the GatewayClass resources. | false |
+| **imagePullPolicies** | []enum | Specify the allowed values for the imagePullPolicies option in Pod resources. Capsule assures that all Pod resources created in the Tenant can use only one of the allowed policy. Optional. | false |
 | **[ingressOptions](#tenantspecingressoptions-1)** | object | Specifies options for the Ingress resources, such as allowed hostnames and IngressClass. Optional. | false |
 | **[limitRanges](#tenantspeclimitranges-1)** | object | Specifies the resource min/max usage restrictions to the Tenant. The assigned values are inherited by any namespace created in the Tenant. Optional. | false |
 | **[namespaceOptions](#tenantspecnamespaceoptions-1)** | object | Specifies options for the Namespaces, such as additional metadata or maximum number of namespaces allowed for that Tenant. Once the namespace quota assigned to the Tenant has been reached, the Tenant owner cannot create further namespaces. Optional. | false |
@@ -504,7 +735,7 @@ TenantSpec defines the desired state of Tenant.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **kind** | enum | <br/>*Enum*: Nodes, StorageClasses, IngressClasses, PriorityClasses, RuntimeClasses, PersistentVolumes<br/> | true |
-| **operations** | []enum | <br/>*Enum*: List, Update, Delete<br/> | true |
+| **operations** | []enum |  | true |
 
 
 ### Tenant.spec.additionalRoleBindings[index]
@@ -544,6 +775,44 @@ Specifies the trusted Image Registries assigned to the Tenant. Capsule assures t
 | :---- | :---- | :----------- | :-------- |
 | **allowed** | []string |  | false |
 | **allowedRegex** | string |  | false |
+
+
+### Tenant.spec.gatewayOptions
+
+
+
+Specifies options for the GatewayClass resources.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[allowedClasses](#tenantspecgatewayoptionsallowedclasses)** | object |  | false |
+
+
+### Tenant.spec.gatewayOptions.allowedClasses
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **default** | string |  | false |
+| **[matchExpressions](#tenantspecgatewayoptionsallowedclassesmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.gatewayOptions.allowedClasses.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### Tenant.spec.ingressOptions
@@ -651,6 +920,7 @@ Specifies options for the Namespaces, such as additional metadata or maximum num
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **[additionalMetadata](#tenantspecnamespaceoptionsadditionalmetadata-1)** | object | Specifies additional labels and annotations the Capsule operator places on any Namespace resource in the Tenant. Optional. | false |
+| **[additionalMetadataList](#tenantspecnamespaceoptionsadditionalmetadatalistindex)** | []object | Specifies additional labels and annotations the Capsule operator places on any Namespace resource in the Tenant via a list. Optional. | false |
 | **[forbiddenAnnotations](#tenantspecnamespaceoptionsforbiddenannotations)** | object | Define the annotations that a Tenant Owner cannot set for their Namespace resources. | false |
 | **[forbiddenLabels](#tenantspecnamespaceoptionsforbiddenlabels)** | object | Define the labels that a Tenant Owner cannot set for their Namespace resources. | false |
 | **quota** | integer | Specifies the maximum number of namespaces allowed for that Tenant. Once the namespace quota assigned to the Tenant has been reached, the Tenant owner cannot create further namespaces. Optional.<br/>*Format*: int32<br/>*Minimum*: 1<br/> | false |
@@ -666,6 +936,47 @@ Specifies additional labels and annotations the Capsule operator places on any N
 | :---- | :---- | :----------- | :-------- |
 | **annotations** | map[string]string |  | false |
 | **labels** | map[string]string |  | false |
+
+
+### Tenant.spec.namespaceOptions.additionalMetadataList[index]
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **annotations** | map[string]string |  | false |
+| **labels** | map[string]string |  | false |
+| **[namespaceSelector](#tenantspecnamespaceoptionsadditionalmetadatalistindexnamespaceselector)** | object | A label selector is a label query over a set of resources. The result of matchLabels and<br>matchExpressions are ANDed. An empty label selector matches all objects. A null<br>label selector matches no objects. | false |
+
+
+### Tenant.spec.namespaceOptions.additionalMetadataList[index].namespaceSelector
+
+
+
+A label selector is a label query over a set of resources. The result of matchLabels and
+matchExpressions are ANDed. An empty label selector matches all objects. A null
+label selector matches no objects.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecnamespaceoptionsadditionalmetadatalistindexnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.namespaceOptions.additionalMetadataList[index].namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### Tenant.spec.namespaceOptions.forbiddenAnnotations
@@ -1274,7 +1585,7 @@ TenantSpec defines the desired state of Tenant.
 | **[owners](#tenantspecownersindex)** | []object | Specifies the owners of the Tenant. Mandatory. | true |
 | **[additionalRoleBindings](#tenantspecadditionalrolebindingsindex)** | []object | Specifies additional RoleBindings assigned to the Tenant. Capsule will ensure that all namespaces in the Tenant always contain the RoleBinding for the given ClusterRole. Optional. | false |
 | **[containerRegistries](#tenantspeccontainerregistries)** | object | Specifies the trusted Image Registries assigned to the Tenant. Capsule assures that all Pods resources created in the Tenant can use only one of the allowed trusted registries. Optional. | false |
-| **imagePullPolicies** | []enum | Specify the allowed values for the imagePullPolicies option in Pod resources. Capsule assures that all Pod resources created in the Tenant can use only one of the allowed policy. Optional.<br/>*Enum*: Always, Never, IfNotPresent<br/> | false |
+| **imagePullPolicies** | []enum | Specify the allowed values for the imagePullPolicies option in Pod resources. Capsule assures that all Pod resources created in the Tenant can use only one of the allowed policy. Optional. | false |
 | **[ingressOptions](#tenantspecingressoptions)** | object | Specifies options for the Ingress resources, such as allowed hostnames and IngressClass. Optional. | false |
 | **[limitRanges](#tenantspeclimitranges)** | object | Specifies the resource min/max usage restrictions to the Tenant. The assigned values are inherited by any namespace created in the Tenant. Optional. | false |
 | **[namespaceOptions](#tenantspecnamespaceoptions)** | object | Specifies options for the Namespaces, such as additional metadata or maximum number of namespaces allowed for that Tenant. Once the namespace quota assigned to the Tenant has been reached, the Tenant owner cannot create further namespaces. Optional. | false |
@@ -1308,7 +1619,7 @@ TenantSpec defines the desired state of Tenant.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **kind** | enum | <br/>*Enum*: Nodes, StorageClasses, IngressClasses, PriorityClasses<br/> | true |
-| **operations** | []enum | <br/>*Enum*: List, Update, Delete<br/> | true |
+| **operations** | []enum |  | true |
 
 
 ### Tenant.spec.additionalRoleBindings[index]
