@@ -96,7 +96,6 @@ kubectl auth can-i get tenants
 no
 ```
 
-
 #### Group of subjects as tenant owner
 
 In the example above, Bill assigned the ownership of solar tenant to alice user. If another user, e.g. Bob needs to administer the solar tenant, Bill can assign the ownership of solar tenant to such user too:

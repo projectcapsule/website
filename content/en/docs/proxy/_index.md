@@ -1,6 +1,6 @@
 ---
 title: Proxy
-weight: 6
+weight: 10
 description: >
   Improve the User-Experience with teh capsule-proxy
 ---

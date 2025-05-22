@@ -1,6 +1,6 @@
 ---
 title: Replications
-weight: 10
+weight: 6
 description: >
   Replicate resources across tenants or namespaces
 ---
@@ -115,9 +115,9 @@ spec:
         - apiVersion: postgresql.cnpg.io/v1
           kind: Cluster
           metadata:
-            name: postgresql
+            name: "postgres-{{namespace}}"
           spec:
-            description: PostgreSQL cluster for the Solar project
+            description: PostgreSQL cluster for the {{tenant.name}} Project
             instances: 3
             postgresql:
               pg_hba:
