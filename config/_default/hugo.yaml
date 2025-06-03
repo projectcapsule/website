@@ -16,6 +16,8 @@ taxonomies:
   tag: tags
   category: categories
 params:
+  drawio:
+    enable: true
   taxonomy:
     taxonomyCloud:
       - tags

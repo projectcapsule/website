@@ -28,7 +28,7 @@ If your cluster architecture prevents any of these capabilities, or if certain a
 
 Strong tenant isolation, ensuring that any noisy neighbor effects remain confined within individual tenants (tenant responsibility). This approach may involve higher administrative overhead and costs compared to shared compute. It also provides enhanced security by dedicating nodes to a single customer/application. It is recommended, at a minimum, to separate the cluster’s operator workload from customer workloads.
 
-![Dedicated Nodepool](/images/content/node-schedule-dedicated.gif)
+![Dedicated Nodepool](/images/content/scheduling-dedicated.drawio.png)
 
 ### Shared
 
@@ -41,7 +41,7 @@ With this approach you share the nodes amongst all Tenants, therefor giving you 
 - ❌ Not ideal for applications that are not cloud-native ready, as they may adversely affect the operation of other applications or the maintenance of node pools.
 - ❌ Not ideal if strong isolation is required
   
-![Shared Nodepool](/images/content/node-schedule-shared.gif)
+![Shared Nodepool](/images/content/scheduling-shared.drawio.png)
 
 There's some further aspects you must think about with shared approaches:
 
