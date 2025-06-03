@@ -65,7 +65,7 @@ Capsule is completely declarative and GitOps ready.
 
 {{% blocks/lead color="dark" %}}
 
-## Capsule is a CNCF Incubating Project { class="text-center mb-4" }
+## Capsule is a CNCF Sandbox Project { class="text-center mb-4" }
 
 ---
 

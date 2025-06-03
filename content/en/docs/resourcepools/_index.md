@@ -8,14 +8,13 @@ description: >
 
 ## Concept
 
-![resourcepools](/images/content/resourcepools.gif)
+![resourcepools](/images/content/resource-pools.drawio.png)
 
 ### Benefits
 
 - Shifting left now comes to Resource-Management. From the perspective of Cluster-Administrators you just define the Quantity and the Audience for Resources. The rest is up to users managing these namespaces (audience).
 - Better automation options and integrations. One important aspect for us is, how we still can be beneficial with concepts like `VClusters (VCluster/K3K)` or `CPs as pods (Kamaji)`. We think with this solution we have found a way to make capsule still beneficial and even open new use-cases for larger Kubernetes platforms.
 - Enables more use-cases and provides more flexibility than standard `ResourceQuotas` or our previous ResourceQuota-Implementation. Autobalancing is no longer given by default, however can be implemented according to your platform's needs [see future ideas](#future-ideas).
-
 
 ## ResourcePool
 
@@ -235,25 +234,25 @@ capsule-pool-example     10h   count/persistentvolumeclaims: 0/3, requests.cpu: 
 
 ### Options
 
-Options which can be defined on `ResourcePool` basis and influence the way the `ResourcePool` is generally acting.
+Options that can be defined on a per-`ResourcePool` basis and influence the general behavior of the `ResourcePool`.
 
 #### OrderedQueue
 
-`ResourecePoolClaims` are queued whenever they are allocated to a pool. A pool tries to allocate claims in order based on their [creation date](#priority). But no matter their creation time, if a claim is requesting too much resources it's put into the queue
-but if a lower priority claim still has enough space in the available resources, it will be able to claim them. Eventough it's priority was lower. Enabling this option respects the order and does not allow `ResourecePoolClaims` to be skipped, if they exhaust the ResourcePool/Namespace. Meaning the Creationtimestamp matters and if a resource is put into the queue, no
-other claim can claim the same resources with lower priority.
+When `ResourecePoolClaims` are allocated to a pool, they are placed in a queue. The pool attempts to allocate claims in the order of their [creation timestamps](#priority). However, even if a claim was created earlier, if it requests more resources than are currently available, it will remain in the queue. Meanwhile, a lower-priority claim that fits within the available resources may still be allocated—despite its lower priority.
+
+Enabling this option enforces strict ordering: claims cannot be skipped, even if they block other claims from being fulfilled due to resource exhaustion. The `CreationTimestamp` is strictly respected, meaning that once a claim is queued, no subsequent claim can bypass it—even if it requires fewer resources.
 
 **Default**: `false`
 
 #### DefaultsZero
 
-Setting the [default resources](#defaults) for the `ResourceQuota` provisioned for the `ResourcePool`. With this option all resources from the [Quota](#quota) are set to zero. Often this is what you are looking for, users should not be able to use any resources without creating claims. In such scenarios it makes sense to initialize all available resources from the `ResourcePool` as `0`.
+Sets the [default values](#defaults) for the `ResourceQuota` created for the `ResourcePool`. When enabled, all resources in the quota are initialized to zero. This is useful in scenarios where users should not be able to consume any resources without explicitly creating claims. In such cases, it makes sense to initialize all available resources in the `ResourcePool` to `0`.
 
 **Default**: `false`
 
 #### DeleteBoundResources
 
-When a resourcepool is deleted, the resourceclaims bound to it are disassociated from the resourcepool but not deleted.By Enabling this option, the resourceclaims will be deleted when the resourcepool is deleted, if they are in bound state.
+By default, when a `ResourcePool` is deleted, any `ResourcePoolClaims` bound to it are only disassociated—not deleted. Enabling this option ensures that all `ResourcePoolClaims` in a bound state are deleted when the corresponding `ResourcePool` is deleted.
 
 **Default**: `false`
 
@@ -422,60 +421,9 @@ The Priority of how the claims are processed, is deterministic defined based on 
 
 ## Operating
 
-
 ### Monitoring
 
-TBD (Dashboards) - Call for all Grafana Gods.
-
-#### Metrics
-
-The following Metrics are exposed and can be used for monitoring:
-
-```
-# HELP capsule_pool_available Current resource availability for a given resource in a resource pool
-# TYPE capsule_pool_available gauge
-capsule_pool_available{pool="sampler",resource="limits.cpu"} 2
-capsule_pool_available{pool="sampler",resource="limits.memory"} 2.147483648e+09
-capsule_pool_available{pool="sampler",resource="requests.cpu"} 2
-capsule_pool_available{pool="sampler",resource="requests.memory"} 1.610612736e+09
-capsule_pool_available{pool="sampler",resource="requests.storage"} 5.36870912e+09
-
-# HELP capsule_pool_limit Current resource limit for a given resource in a resource pool
-# TYPE capsule_pool_limit gauge
-capsule_pool_limit{pool="sampler",resource="limits.cpu"} 2
-capsule_pool_limit{pool="sampler",resource="limits.memory"} 2.147483648e+09
-capsule_pool_limit{pool="sampler",resource="requests.cpu"} 2
-capsule_pool_limit{pool="sampler",resource="requests.memory"} 2.147483648e+09
-capsule_pool_limit{pool="sampler",resource="requests.storage"} 5.36870912e+09
-
-# HELP capsule_pool_resource Type of resource being used in a resource pool
-# TYPE capsule_pool_resource gauge
-capsule_pool_resource{pool="sampler",resource="limits.cpu"} 1
-capsule_pool_resource{pool="sampler",resource="limits.memory"} 1
-capsule_pool_resource{pool="sampler",resource="requests.cpu"} 1
-capsule_pool_resource{pool="sampler",resource="requests.memory"} 1
-capsule_pool_resource{pool="sampler",resource="requests.storage"} 1
-
-# HELP capsule_pool_usage Current resource usage for a given resource in a resource pool
-# TYPE capsule_pool_usage gauge
-capsule_pool_usage{pool="sampler",resource="limits.cpu"} 0
-capsule_pool_usage{pool="sampler",resource="limits.memory"} 0
-capsule_pool_usage{pool="sampler",resource="requests.cpu"} 0
-capsule_pool_usage{pool="sampler",resource="requests.memory"} 5.36870912e+08
-capsule_pool_usage{pool="sampler",resource="requests.storage"} 0
-
-# HELP capsule_pool_namespace_usage Current resources claimed on namespace basis for a given resource in a resource pool for a specific namespace
-# TYPE capsule_pool_namespace_usage gauge
-capsule_pool_namespace_usage{pool="sampler",resource="requests.memory",target_namespace="solar-test"} 5.36870912e+08
-
-
-# HELP capsule_claim_condition The current condition status of a claim.
-# TYPE capsule_claim_condition gauge
-capsule_claim_condition{condition="Assigned",name="large",pool="sampler",reason="PoolExhausted",status="False",target_namespace="solar-prod"} 0
-capsule_claim_condition{condition="Assigned",name="skip-the-line",pool="sampler",reason="Succeeded",status="True",target_namespace="solar-test"} 0
-capsule_claim_condition{condition="Bound",name="large",pool="sampler",reason="PoolExhausted",status="False",target_namespace="solar-prod"} 1
-capsule_claim_condition{condition="Bound",name="skip-the-line",pool="sampler",reason="Succeeded",status="True",target_namespace="solar-test"} 1
-```
+[Read more](../operating/monitoring/#resourcepools)
 
 ### Migration
 

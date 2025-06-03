@@ -10,7 +10,7 @@ With capsule you have an ecosystem which addresses the challenges when it comes 
 
 <br>
 
-![capsule-workflow](/images/content/tenants.gif)
+![capsule-workflow](/images/content/capsule-architecture.drawio.png)
 
 As shown, we can create a new boundary between Kubernetes (Cluster) Administrators and Tenant Audiences. While the Kubernetes Adminsitrators define the boundaries on a Tenant, the Tenant Audience can act within the namespaces of a Tenant. For the Tenant audience we differenciate between **Tenant Owners** and **Tenant Users**. The main Perk Tenant Owners have is the creation of namespaces within the tenants they are owner off. WIth the enabling them to act within the tenant and therefor achieveing a shift left from being dependant on a Kubernetes Administrator to have Responsability shifted to the Tenant Owners.
 
