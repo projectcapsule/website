@@ -36,7 +36,7 @@ Leave developers the freedom to self-provision their cluster resources according
 
 
 {{% blocks/feature icon="fa-toolbox" title="Framework" %}}
-Capsule is a framework is considered a framework which enables you to create your own multi-tenant platforms based on Kubernetes.
+Capsule is a framework which enables you to create your own multi-tenant platforms based on Kubernetes.
 {{% /blocks/feature %}}
 
 
