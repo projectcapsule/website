@@ -13,6 +13,24 @@ addons:
     #layoutColor: "#0000000"
     #descriptionColor: "#000000"
 
+  - name: "Rancher"
+    logo: "https://www.rancher.com/assets/img/logos/rancher-logo-cow-blue.svg"
+    tags:
+      - "community"
+      - "ux"
+    links:
+      - link: "/ecosystem/integrations/rancher/"
+        icon: "fa fa-book"
+      - link: "https://github.com/clastix/capsule-addon-rancher"
+        icon: "fab fa-github"
+
+    description: "Integrate Capsule with Rancher to manage Capsule Tenants and their resources with Rancher Projects."
+    size: 50%
+    background: "#00264d"
+    #layoutColor: "#0000000"
+    #descriptionColor: "#000000"
+
+
   - name: "ArgoCD"
     logo: "https://github.com/peak-scale/capsule-argo-addon/blob/main/docs/images/capsule-argo.png?raw=true"
     tags:
