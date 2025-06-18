@@ -292,7 +292,7 @@ spec:
 
 ## ResourcePoolClaims
 
-`ResourcePoolClaims` declared claims of resources from a single `ResourcePool`. When a `ResourcePoolClaim` is successfully bound to a `ResourcePool`, it's requested resources are stacked to the `ResourceQuota` from the `ResourcePool` in the correspinding namespaces, where the `ResourcePoolClaim` was declared. So the declaration of a `ResourcePoolClaim` is very simple:
+`ResourcePoolClaims` declared claims of resources from a single `ResourcePool`. When a `ResourcePoolClaim` is successfully bound to a `ResourcePool`, it's requested resources are stacked to the `ResourceQuota` from the `ResourcePool` in the corresponding namespaces, where the `ResourcePoolClaim` was declared. So the declaration of a `ResourcePoolClaim` is very simple:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -308,7 +308,7 @@ spec:
 
 ```
 
-`ResourcePoolClaims` are decoupled from the lifecycle of `ResourcePools`. If a `ResourcePool` is deleted where a `ResourcePoolClaim` was bound to, the `ResourcePoolClaim` becomes unassigned, but is not deleted. 
+`ResourcePoolClaims` are decoupled from the lifecycle of `ResourcePools`. If a `ResourcePool` is deleted where a `ResourcePoolClaim` was bound to, the `ResourcePoolClaim` becomes unassigned, but is not deleted.
 
 ### Allocation
 
@@ -554,7 +554,7 @@ spec:
     limits.memory: 384Mi
 ```
 
-The same can be done for the `capsule-migration-1` `ResourceQuota`. 
+The same can be done for the `capsule-migration-1` `ResourceQuota`.
 
 ```yaml
 ---
@@ -666,7 +666,7 @@ So, there needs to be change. But times have also changed and we have listened t
 
 **Our initial Idea for a redesign was simple**: What if we just intercepted operations on the `resourcequota/status` subresource and calculate the offsets (or essentially what still can fit) on a Admission-Webhook. If another operation would have taken place the client operation would have thrown a conflict and rejected the admission, until it retries. Makes sense, right?
 
-Here we have the problem, that even if we would block resourcequota status updates and wait until the actual quantity was added to the total, the resources have already been scheduled. The reason for that, is that the status for resourcequotas is **eventually** consistent, but what really matters at that moment is the hard spec (see this response from a maintainer [kubernetes/kubernetes#123434 (comment)](https://github.com/kubernetes/kubernetes/issues/123434#issuecomment-1964920277)). So essentially no matter the status, you can always provision as much resources, as the `.spec.hard` of a `ResourceQuota` indicates. This makes perfect sense, if your `ResourceQuota` is acting in a single namespace. However in our scenario, we have the same `ResourceQuota` in n-namespaces. So the overprovisioning problem still persists. 
+Here we have the problem, that even if we would block resourcequota status updates and wait until the actual quantity was added to the total, the resources have already been scheduled. The reason for that, is that the status for resourcequotas is **eventually** consistent, but what really matters at that moment is the hard spec (see this response from a maintainer [kubernetes/kubernetes#123434 (comment)](https://github.com/kubernetes/kubernetes/issues/123434#issuecomment-1964920277)). So essentially no matter the status, you can always provision as much resources, as the `.spec.hard` of a `ResourceQuota` indicates. This makes perfect sense, if your `ResourceQuota` is acting in a single namespace. However in our scenario, we have the same `ResourceQuota` in n-namespaces. So the overprovisioning problem still persists.
 
 
 **Thinking of other ways**: So the next idea was essentially increasing the `ResourceQuota.spec.hard` based on the workloads which are added to a namespaces (essentially a reversed approach). The workflow for this would look like something like this:
@@ -684,7 +684,7 @@ But there's some problems with this approach as well:
   * if you eg. schedule a pod and the quota is `count/0` there's no admission call on the resourcequota, which would be the easiest. So we would need to find a way to know, there's something new requesting resources. For example [Rancher](https://ranchermanager.docs.rancher.com/how-to-guides/new-user-guides/manage-clusters/projects-and-namespaces#4-optional-add-resource-quotas) works around this problem with namespaced `DefaultLimits`. But this is not the agile approach we would like to offer.
   * The only indication that I know of is that we get an Event, which we can intercept with admission (`ResourceQuota Denied`), regarding quotaoverprovision.
 
-If you eg update the resource quota that a pod now has space, it takes some time until that's registered and actually scheduled (just tested it for pods). I guess the timing depends on the kube-controller-manager flag `--concurrent-resource-quota-syncs`  and/or `--resource-quota-sync-period 
+If you eg update the resource quota that a pod now has space, it takes some time until that's registered and actually scheduled (just tested it for pods). I guess the timing depends on the kube-controller-manager flag `--concurrent-resource-quota-syncs`  and/or `--resource-quota-sync-period
 
 So it's really really difficult to increase quotas by the resources which are actually requested, especially the adding new resources process is where the performance would take a heavy hit.
 
