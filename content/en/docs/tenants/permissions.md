@@ -11,7 +11,7 @@ Capsule introduces the principal, that tenants must have owners. The owner of a 
 
 ### Group Scope
 
-Capsule selects users, which are eligable to be considered for tenancy by their group. The define the group of users that can be considered for tenancy, you can use the `userGroups` option in the CapsuleConfiguration. 
+Capsule selects users, which are eligable to be considered for tenancy by their group. To define the group of users that can be considered for tenancy, you can use the `userGroups` option in the CapsuleConfiguration.
 
 Another commonly used example if you want to promote serviceaccount to tenant-owners, their group must be present:
 
@@ -38,7 +38,7 @@ Learn how to assign ownership to users, groups and serviceaccounts.
 
 To keep things simple, we assume that Bill just creates a client certificate for authentication using X.509 Certificate Signing Request, so Alice's certificate has `"/CN=alice/O=projectcapsule.dev"`.
 
-**Bill** creates a new tenant oil in the CaaS management portal according to the tenant's profile:
+**Bill** creates a new tenant solar in the CaaS management portal according to the tenant's profile:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -113,7 +113,7 @@ spec:
     kind: User
 ```
 
-However, it's more likely that Bill assigns the ownership of the solar tenant to a group of users instead of a single one, especially if you use [OIDC AUthentication](/docs/guides/authentication#oidc). Bill creates a new group account solar-users in the Acme Corp. identity management system and then he assigns Alice and Bob identities to the solar-users group.
+However, it's more likely that Bill assigns the ownership of the solar tenant to a group of users instead of a single one, especially if you use [OIDC Authentication](/docs/guides/authentication#oidc). Bill creates a new group account solar-users in the Acme Corp. identity management system and then he assigns Alice and Bob identities to the solar-users group.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -126,7 +126,7 @@ spec:
     kind: Group
 ```
 
-With the configuration above, any user belonging to the `solar-users` group will be the owner of the oil tenant with the same permissions of Alice. For example, Bob can log in with his credentials and issue
+With the configuration above, any user belonging to the `solar-users` group will be the owner of the solar tenant with the same permissions of Alice. For example, Bob can log in with his credentials and issue
 
 ```bash
 kubectl auth can-i create namespaces
@@ -137,7 +137,7 @@ All the groups you want to promot to Tenant Owners must be part of the Group Sco
 
 #### ServiceAccounts
 
-You can use the Group subject to grant serviceaccounts the ownership of a tenant. For example, you can create a group of serviceaccounts and assign it to the tenant:
+You can use the Group subject to grant ServiceAccounts the ownership of a tenant. For example, you can create a group of ServiceAccounts and assign it to the tenant:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -150,7 +150,7 @@ spec:
     kind: ServiceAccount
 ```
 
-Bill can create a Service Account called robot, for example, in the `tenant-system` namespace and leave it to act as Tenant Owner of the oil tenant
+Bill can create a ServiceAccount called robot, for example, in the `tenant-system` namespace and leave it to act as Tenant Owner of the solar tenant
 
 ```bash
 kubectl --as system:serviceaccount:tenant-system:robot --as-group projectcapsule.dev auth can-i create namespaces
@@ -274,7 +274,7 @@ items:
 kind: List
 metadata:
   resourceVersion: ""
-``` 
+```
 
 In some cases, the cluster admin needs to narrow the range of permissions assigned to tenant owners by assigning a Cluster Role with less permissions than above. Capsule supports the dynamic assignment of any ClusterRole resources for each Tenant Owner.
 
@@ -438,7 +438,7 @@ spec:
 EOF
 ```
 
-As you can see the subjects is a classic [rolebinding subject](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#referring-to-subjects). This way you grant permissions to the subject user **Joe**, who only can list and watch servicemonitors in the solar tenant namespaces, but has no other permissions. 
+As you can see the subjects is a classic [rolebinding subject](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#referring-to-subjects). This way you grant permissions to the subject user **Joe**, who only can list and watch servicemonitors in the solar tenant namespaces, but has no other permissions.
 
 ### Custom Resources
 
