@@ -13,7 +13,7 @@ With help of Capsule, Bill, the cluster admin, can set and enforce resources quo
 This feature will be deprecated in a future release of Capsule. Instead use [Resource Pools](/docs/resourcepools/) to handle any cases around distributed ResourceQuotas
 {{% /alert %}}
 
-With help of Capsule, Bill, the cluster admin, can set and enforce resources quota and limits for Alice's tenant.Set resources quota for each namespace in the Alice's tenant by defining them in the tenant spec:
+With help of Capsule, Bill, the cluster admin, can set and enforce resources quota and limits for Alice's tenant. Set resources quota for each namespace in the Alice's tenant by defining them in the tenant spec:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -120,7 +120,7 @@ spec:
 
 ### Tenant Scope
 
-By setting enforcement at tenant level, i.e. `spec.resourceQuotas`.scope=Tenant, Capsule aggregates resources usage for all namespaces in the tenant and adjusts all the `ResourceQuota` usage as aggregate. In such case, Alice can check the used resources at the tenant level by inspecting the annotations in ResourceQuota object of any namespace in the tenant:
+By setting enforcement at tenant level, i.e. `spec.resourceQuotas.scope=Tenant`, Capsule aggregates resources usage for all namespaces in the tenant and adjusts all the `ResourceQuota` usage as aggregate. In such case, Alice can check the used resources at the tenant level by inspecting the annotations in ResourceQuota object of any namespace in the tenant:
 
 ```bash
 kubectl -n solar-production get resourcequotas capsule-solar-1 -o yaml
@@ -263,7 +263,7 @@ spec:
 
 The Additional Role Binding referring to the Cluster Role mysql-namespace-admin is required to let Alice [manage their Custom Resource instances](/docs/tenants/permissions/#custom-resources).
 
-The pattern for the quota.resources.capsule.clastix.io annotation is the following: 
+The pattern for the quota.resources.capsule.clastix.io annotation is the following:
 
 * `quota.resources.capsule.clastix.io/${PLURAL_NAME}.${API_GROUP}_${API_VERSION}`
 

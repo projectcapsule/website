@@ -18,7 +18,7 @@ The cluster admin can "taint" the namespaces created by tenant owners with addit
 apiVersion: capsule.clastix.io/v1beta2
 kind: Tenant
 metadata:
-  name: oil
+  name: solar
 spec:
   owners:
   - name: alice
@@ -64,7 +64,7 @@ Assigns additional labels and annotations to all namespaces created in the `sola
 apiVersion: capsule.clastix.io/v1beta2
 kind: Tenant
 metadata:
-  name: oil
+  name: solar
 spec:
   owners:
   - name: alice
@@ -123,7 +123,7 @@ spec:
       denied:
           - foo.acme.net
           - bar.acme.net
-      deniedRegex: .*.acme.net 
+      deniedRegex: .*.acme.net
     forbiddenLabels:
       denied:
           - foo.acme.net
@@ -152,7 +152,7 @@ Bill, the cluster admin, can deny Tenant Owners to add or modify specific labels
 apiVersion: capsule.clastix.io/v1beta2
 kind: CapsuleConfiguration
 metadata:
-  name: default 
+  name: default
 spec:
   nodeMetadata:
     forbiddenAnnotations:
@@ -208,8 +208,8 @@ metadata:
 spec:
   ports:
   - protocol: TCP
-    port: 80 
-    targetPort: 8080 
+    port: 80
+    targetPort: 8080
   selector:
     run: nginx
   type: ClusterIP
@@ -416,7 +416,7 @@ To prevent misuses of Pod Priority Class, Bill, the cluster admin, can enforce t
 apiVersion: capsule.clastix.io/v1beta2
 kind: Tenant
 metadata:
-  name: oil
+  name: solar
 spec:
   owners:
   - name: alice
@@ -424,7 +424,7 @@ spec:
   priorityClasses:
     matchLabels:
       env: "production"
-``` 
+```
 
 With the said Tenant specification, Alice can create a Pod resource if `spec.priorityClassName` equals to:
 
@@ -502,7 +502,7 @@ If a Pod is going to use a non-allowed Runtime Class, it will be rejected by the
 
 ### NodeSelector
 
-Bill, the cluster admin, can dedicate a pool of worker nodes to the oil tenant, to isolate the tenant applications from other noisy neighbors.
+Bill, the cluster admin, can dedicate a pool of worker nodes to the solar tenant, to isolate the tenant applications from other noisy neighbors.
 
 These nodes are labeled by Bill as `pool=renewable`
 
@@ -557,7 +557,7 @@ spec:
 ```
 
 Any attempt of Alice to change the selector on the pods will result in an error from the PodNodeSelector Admission Controller plugin.
-    
+
 ```bash
 kubectl auth can-i edit ns -n solar-production
 no
@@ -911,7 +911,7 @@ metadata:
 spec:
   ingressClassName: legacy
   rules:
-  - host: oil.acmecorp.com
+  - host: solar.acmecorp.com
     http:
       paths:
       - backend:
@@ -980,7 +980,7 @@ Kubernetes network policies control network traffic between namespaces and betwe
 To meet this requirement, Bill needs to define network policies that deny pods belonging to Alice's namespaces to access pods in namespaces belonging to other tenants, e.g. Bob's tenant `water`, or in system namespaces, e.g. `kube-system`.
 
 > Keep in mind, that because of how the NetworkPolicies API works, the users can still add a policy which contradicts what the Tenant has set, resulting in users being able to circumvent the initial limitation set by the tenant admin. Two options can be put in place to mitigate this potential privilege escalation: 1. providing a restricted role rather than the default admin one 2. using Calico's GlobalNetworkPolicy, or Cilium's CiliumClusterwideNetworkPolicy which are defined at the cluster-level, thus creating an order of packet filtering.
-    
+
 Also, Bill can make sure pods belonging to a tenant namespace cannot access other network infrastructures like cluster nodes, load balancers, and virtual machines running other services.
 
 Bill can set network policies in the tenant manifest, according to the requirements:
@@ -1004,12 +1004,12 @@ spec:
         - ipBlock:
             cidr: 0.0.0.0/0
             except:
-              - 192.168.0.0/16 
+              - 192.168.0.0/16
       ingress:
       - from:
         - namespaceSelector:
             matchLabels:
-              capsule.clastix.io/tenant: oil
+              capsule.clastix.io/tenant: water
         - podSelector: {}
         - ipBlock:
             cidr: 192.168.0.0/16
@@ -1202,7 +1202,7 @@ With the said Tenant specification, Alice can create a Persistent Volume Claims 
 
 Capsule assures that all Persistent Volume Claims created by Alice will use only one of the valid storage classes. Assume the StorageClass `ceph-rbd` has the label `env: production`:
 
-```bash 
+```bash
 kubectl apply -f - << EOF
 kind: PersistentVolumeClaim
 apiVersion: v1
@@ -1233,7 +1233,7 @@ It's possible to assign each tenant a StorageClass which will be used, if no val
 apiVersion: capsule.clastix.io/v1beta2
 kind: Tenant
 metadata:
-  name: oil
+  name: solar
 spec:
   owners:
   - name: alice
