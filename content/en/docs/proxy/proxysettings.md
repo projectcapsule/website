@@ -77,7 +77,7 @@ A powerful tool to enhance the user-experience for all your users.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta1
-kind: GlobalProxySettings
+kind: ProxySettings
 metadata:
   name: solar-proxy
   namespace: solar-prod
