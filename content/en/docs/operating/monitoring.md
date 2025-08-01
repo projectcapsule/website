@@ -179,6 +179,20 @@ Instrumentation for [Quotas](../tenants/quotas/).
 The following Metrics are exposed and can be used for monitoring:
 
 ```shell
+# HELP capsule_tenant_namespace_count Total number of namespaces currently owned by the tenant
+# TYPE capsule_tenant_namespace_count gauge
+capsule_tenant_namespace_count{tenant="solar"} 6
+
+# HELP capsule_tenant_namespace_relationship Mapping metric showing namespace to tenant relationships
+# TYPE capsule_tenant_namespace_relationship gauge
+capsule_tenant_namespace_relationship{namespace="earth",tenant="solar"} 1
+capsule_tenant_namespace_relationship{namespace="wind",tenant="solar"} 1
+capsule_tenant_namespace_relationship{namespace="fire",tenant="solar"} 1
+
+# HELP capsule_tenant_status Tenant cordon state indicating if tenant operations are restricted (1) or allowed (0) for resource creation and modification
+# TYPE capsule_tenant_status gauge
+capsule_tenant_status{tenant="limiting-resources"} 0
+
 # HELP capsule_tenant_resource_limit Current resource limit for a given resource in a tenant
 # TYPE capsule_tenant_resource_limit gauge
 capsule_tenant_resource_limit{resource="limits.cpu",resourcequotaindex="0",tenant="solar"} 2
