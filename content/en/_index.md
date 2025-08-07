@@ -13,12 +13,13 @@ title: Project Capsule
   Demo <i class="fas fa-arrow-alt-circle-right ms-2"></i>
 </a>
 </div>
+
 {{< blocks/link-down color="info" >}}
 {{< /blocks/cover >}}
 
-
-<a href="/adopters">
 {{< blocks/section color="white" type="row" >}}
+
+## Developed in 🇮🇹 / 🇨🇭 / 🇧🇬 { class="text-center mb-4" }
 
 {{< adopters-slider >}}
 

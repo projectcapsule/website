@@ -1,6 +1,6 @@
 ---
-title: Pod Security
-weight: 10
+title: Pod Security Standards
+weight: 3
 description: Control the security of the pods running in the tenant namespaces
 ---
 
@@ -62,9 +62,10 @@ metadata:
 ```
 
 ### Capsule
+
 According to the regular Kubernetes segregation model, the cluster admin has to operate either at cluster level or at namespace level. Since Capsule introduces a further segregation level (the _Tenant_ abstraction), the cluster admin can implement Pod Security Standards at tenant level by simply forcing specific labels on all the namespaces created in the tenant.
 
-As cluster admin, create a tenant with additional labels:
+You can distribute these profiles via namespace. Here's how this could look like:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -73,14 +74,26 @@ metadata:
   name: solar
 spec:
   namespaceOptions:
-    additionalMetadata:
+    additionalMetadataList:
+    - namespaceSelector:
+        matchExpressions:
+          - key: projectcapsule.dev/low_security_profile
+            operator: NotIn
+            values: ["system"]
       labels:
-        pod-security.kubernetes.io/enforce: baseline
-        pod-security.kubernetes.io/audit: restricted
+        pod-security.kubernetes.io/enforce: restricted
         pod-security.kubernetes.io/warn: restricted
-  owners:
-  - kind: User
-    name: alice
+        pod-security.kubernetes.io/audit: restricted
+    - namespaceSelector:
+        matchExpressions:
+          - key: company.com/env
+            operator: In
+            values: ["system"]
+      labels:
+        pod-security.kubernetes.io/enforce: privileged
+        pod-security.kubernetes.io/warn: privileged
+        pod-security.kubernetes.io/audit: privileged
+
 ```
 
 All namespaces created by the tenant owner, will inherit the Pod Security labels: 
@@ -152,7 +165,78 @@ kubectl --kubeconfig alice-solar.kubeconfig label ns solar-production \
 Error from server (Label pod-security.kubernetes.io/audit is forbidden for namespaces in the current Tenant ...
 ```
 
+## User Namespaces
+
+{{% alert title="Info" color="info" %}}
+The FeatureGate `UserNamespacesSupport` is active by default since [Kubernetes 1.33](https://kubernetes.io/blog/2025/04/25/userns-enabled-by-default/). However every pod must still [opt-in](#admission)
+
+When you are also enabling the FeatureGate `UserNamespacesPodSecurityStandards` you may relax the Pod Security Standards for your workloads. [Read More](https://kubernetes.io/docs/concepts/workloads/pods/user-namespaces/#integration-with-pod-security-admission-checks)
+{{% /alert %}}
+
+A process running as root in a container can run as a different (non-root) user in the host; in other words, the process has full privileges for operations inside the user namespace, but is unprivileged for operations outside the namespace. [Read More](https://kubernetes.io/docs/concepts/workloads/pods/user-namespaces/)
+
+### Kubelet
+
+On your Kubelet you must use the [FeatureGates](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/):
+
+* `UserNamespacesSupport`
+* `UserNamespacesPodSecurityStandards` (Optional)
+
+### Sysctls
+
+```yaml
+user.max_user_namespaces: "11255"
+```
+
+### Admission (Kyverno)
+
+To make sure all the workloads are forced to use dedicated User Namespaces, we recommend to mutate pods at admission. See the following examples.
+
+#### Kyverno
+
+```yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: add-hostusers-spec
+  annotations:
+    policies.kyverno.io/title: Add HostUsers
+    policies.kyverno.io/category: Security
+    policies.kyverno.io/subject: Pod,User Namespace
+    kyverno.io/kubernetes-version: "1.31"
+    policies.kyverno.io/description: >-
+      Do not use the host's user namespace. A new userns is created for the pod. 
+      Setting false is useful for mitigating container breakout vulnerabilities even allowing users to run their containers as root
+      without actually having root privileges on the host. This field is
+      alpha-level and is only honored by servers that enable the
+      UserNamespacesSupport feature.
+spec:
+  rules:
+  - name: add-host-users
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+          namespaceSelector:
+            matchExpressions:
+            - key: capsule.clastix.io/tenant
+              operator: Exists
+    preconditions:
+      all:
+      - key: "{{request.operation || 'BACKGROUND'}}"
+        operator: AnyIn
+        value:
+          - CREATE
+          - UPDATE
+    mutate:
+      patchStrategicMerge:
+        spec:
+          hostUsers: false
+```
+
 ## Pod Security Policies
+
 As stated in the documentation, *"PodSecurityPolicies enable fine-grained authorization of pod creation and updates. A Pod Security Policy is a cluster-level resource that controls security sensitive aspects of the pod specification. The `PodSecurityPolicy` objects define a set of conditions that a pod must run with in order to be accepted into the system, as well as defaults for the related fields."*
 
 Using the [Pod Security Policies](https://kubernetes.io/docs/concepts/security/pod-security-policy), the cluster admin can impose limits on pod creation, for example the types of volume that can be consumed, the linux user that the process runs as in order to avoid running things as root, and more. From multi-tenancy point of view, the cluster admin has to control how users run pods in their tenants with a different level of permission on tenant basis.
