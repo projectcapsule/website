@@ -21,8 +21,6 @@ title: Project Capsule
 
 {{< blocks/section color="white" type="row" >}}
 
-## Developed in 🇮🇹 / 🇨🇭 / 🇧🇬 { class="text-center mb-4" }
-
 {{< adopters-slider >}}
 
 {{< /blocks/section >}}

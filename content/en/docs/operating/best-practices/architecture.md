@@ -46,10 +46,6 @@ With this approach you essentially just provide your Customers with the Tenant o
 ![Resourcepool Dashboard](/images/content/architecture/layout-taas.drawio.png)
 
 
-| Platform Administrators | Platform Users (Tenant Users) |
-| :---------------------- | :----------------------------------------- |
-|||
-
 
 ## Scheduling
 
