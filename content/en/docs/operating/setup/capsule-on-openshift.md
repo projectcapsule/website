@@ -9,7 +9,7 @@ description: >
 
 Capsule is a Kubernetes multi-tenancy operator that enables secure namespace-as-a-service in Kubernetes clusters. When combined with OpenShift's robust security model, it provides an excellent platform for multi-tenant environments.
 
-This guide demonstrates how to deploy Capsule and Capsule Proxy on OpenShift using the `nonroot-v2` and `restricted-v2` SecurityContextConstraint [SecurityContextConstraint (SCC)](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/authentication_and_authorization/managing-pod-security-policies), ensuring tenant owners operate within OpenShift's security boundaries.
+This guide demonstrates how to deploy Capsule and Capsule Proxy on OpenShift using the `nonroot-v2` and `restricted-v2` [SecurityContextConstraint (SCC)](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/authentication_and_authorization/managing-pod-security-policies), ensuring tenant owners operate within OpenShift's security boundaries.
 
 ## Why Capsule on OpenShift
 While OpenShift can be already configured to be quite multi-tenant (together with for example Kyverno), Capsule takes it a step further and easier to manage.
