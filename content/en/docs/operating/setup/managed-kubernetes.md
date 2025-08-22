@@ -1,6 +1,6 @@
 ---
 title: Managed Kubernetes
-weight: 10
+weight: 30
 description: Capsule on managed Kubernetes offerings
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Controller Options
-weight: 20
+weight: 100
 description: >
   Understand the Capsule configuration options and how to use them.
 ---
