@@ -159,17 +159,22 @@ menu:
       pre: <i class='fas fa-users'></i>
       weight: 13
 
+    - name: Live-Demo
+      url: https://killercoda.com/peak-scale-test/course/playgrounds/capsule
+      pre: <i class='fas fa-terminal'></i>
+      weight: 14
+
     - name: Resources
       url: /resources/
       pre: <i class='fa-brands fa-readme'></i>
-      weight: 14
+      weight: 15
 
     - name: Support
       url: /support/
       pre: <i class='fas fa-briefcase'></i>
-      weight: 15
+      weight: 16
 
     - name: Project
       url: /project/
       pre: <i class='fas fa-flask'></i>
-      weight: 16
+      weight: 17

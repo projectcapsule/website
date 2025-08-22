@@ -1,8 +1,80 @@
 ---
-title: Pod Security Standards
+title: Workloads
 weight: 3
-description: Control the security of the pods running in the tenant namespaces
+description: Control the security of the workloads running in the tenant namespaces
 ---
+
+## User Namespaces
+
+{{% alert title="Info" color="info" %}}
+The FeatureGate `UserNamespacesSupport` is active by default since [Kubernetes 1.33](https://kubernetes.io/blog/2025/04/25/userns-enabled-by-default/). However every pod must still [opt-in](#admission)
+
+When you are also enabling the FeatureGate `UserNamespacesPodSecurityStandards` you may relax the Pod Security Standards for your workloads. [Read More](https://kubernetes.io/docs/concepts/workloads/pods/user-namespaces/#integration-with-pod-security-admission-checks)
+{{% /alert %}}
+
+A process running as root in a container can run as a different (non-root) user in the host; in other words, the process has full privileges for operations inside the user namespace, but is unprivileged for operations outside the namespace. [Read More](https://kubernetes.io/docs/concepts/workloads/pods/user-namespaces/)
+
+### Kubelet
+
+On your Kubelet you must use the [FeatureGates](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/):
+
+* `UserNamespacesSupport`
+* `UserNamespacesPodSecurityStandards` (Optional)
+
+### Sysctls
+
+```yaml
+user.max_user_namespaces: "11255"
+```
+
+### Admission (Kyverno)
+
+To make sure all the workloads are forced to use dedicated User Namespaces, we recommend to mutate pods at admission. See the following examples.
+
+#### Kyverno
+
+```yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: add-hostusers-spec
+  annotations:
+    policies.kyverno.io/title: Add HostUsers
+    policies.kyverno.io/category: Security
+    policies.kyverno.io/subject: Pod,User Namespace
+    kyverno.io/kubernetes-version: "1.31"
+    policies.kyverno.io/description: >-
+      Do not use the host's user namespace. A new userns is created for the pod. 
+      Setting false is useful for mitigating container breakout vulnerabilities even allowing users to run their containers as root
+      without actually having root privileges on the host. This field is
+      alpha-level and is only honored by servers that enable the
+      UserNamespacesSupport feature.
+spec:
+  rules:
+  - name: add-host-users
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+          namespaceSelector:
+            matchExpressions:
+            - key: capsule.clastix.io/tenant
+              operator: Exists
+    preconditions:
+      all:
+      - key: "{{request.operation || 'BACKGROUND'}}"
+        operator: AnyIn
+        value:
+          - CREATE
+          - UPDATE
+    mutate:
+      patchStrategicMerge:
+        spec:
+          hostUsers: false
+```
+
+## Pod Security Standards
 
 In Kubernetes, by default, workloads run with administrative access, which might be acceptable if there is only a single application running in the cluster or a single user accessing it. This is seldom required and you’ll consequently suffer a noisy neighbour effect along with large security blast radiuses.
 
@@ -11,7 +83,6 @@ Many of these concerns were addressed initially by [PodSecurityPolicies](https:/
 The Pod Security Policies are deprecated in Kubernetes 1.21 and removed entirely in 1.25. As replacement, the [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/) and [Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/) has been introduced. Capsule support the new standard for tenants under its control as well as the oldest approach.
 
 
-## Pod Security Standards
 One of the issues with Pod Security Policies is that it is difficult to apply restrictive permissions on a granular level, increasing security risk. Also the Pod Security Policies get applied when the request is submitted and there is no way of applying them to pods that are already running. For these, and other reasons, the Kubernetes community decided to deprecate the Pod Security Policies.
 
 As the Pod Security Policies get deprecated and removed, the [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/) is used in place. It defines three different policies to broadly cover the security spectrum. These policies are cumulative and range from highly-permissive to highly-restrictive:
@@ -163,76 +234,6 @@ kubectl --kubeconfig alice-solar.kubeconfig label ns solar-production \
     --overwrite
 
 Error from server (Label pod-security.kubernetes.io/audit is forbidden for namespaces in the current Tenant ...
-```
-
-## User Namespaces
-
-{{% alert title="Info" color="info" %}}
-The FeatureGate `UserNamespacesSupport` is active by default since [Kubernetes 1.33](https://kubernetes.io/blog/2025/04/25/userns-enabled-by-default/). However every pod must still [opt-in](#admission)
-
-When you are also enabling the FeatureGate `UserNamespacesPodSecurityStandards` you may relax the Pod Security Standards for your workloads. [Read More](https://kubernetes.io/docs/concepts/workloads/pods/user-namespaces/#integration-with-pod-security-admission-checks)
-{{% /alert %}}
-
-A process running as root in a container can run as a different (non-root) user in the host; in other words, the process has full privileges for operations inside the user namespace, but is unprivileged for operations outside the namespace. [Read More](https://kubernetes.io/docs/concepts/workloads/pods/user-namespaces/)
-
-### Kubelet
-
-On your Kubelet you must use the [FeatureGates](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/):
-
-* `UserNamespacesSupport`
-* `UserNamespacesPodSecurityStandards` (Optional)
-
-### Sysctls
-
-```yaml
-user.max_user_namespaces: "11255"
-```
-
-### Admission (Kyverno)
-
-To make sure all the workloads are forced to use dedicated User Namespaces, we recommend to mutate pods at admission. See the following examples.
-
-#### Kyverno
-
-```yaml
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
-metadata:
-  name: add-hostusers-spec
-  annotations:
-    policies.kyverno.io/title: Add HostUsers
-    policies.kyverno.io/category: Security
-    policies.kyverno.io/subject: Pod,User Namespace
-    kyverno.io/kubernetes-version: "1.31"
-    policies.kyverno.io/description: >-
-      Do not use the host's user namespace. A new userns is created for the pod. 
-      Setting false is useful for mitigating container breakout vulnerabilities even allowing users to run their containers as root
-      without actually having root privileges on the host. This field is
-      alpha-level and is only honored by servers that enable the
-      UserNamespacesSupport feature.
-spec:
-  rules:
-  - name: add-host-users
-    match:
-      any:
-      - resources:
-          kinds:
-          - Pod
-          namespaceSelector:
-            matchExpressions:
-            - key: capsule.clastix.io/tenant
-              operator: Exists
-    preconditions:
-      all:
-      - key: "{{request.operation || 'BACKGROUND'}}"
-        operator: AnyIn
-        value:
-          - CREATE
-          - UPDATE
-    mutate:
-      patchStrategicMerge:
-        spec:
-          hostUsers: false
 ```
 
 ## Pod Security Policies

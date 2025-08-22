@@ -3,7 +3,8 @@ title: Tekton
 describtion: Capsule interation with Tekton
 logo: https://avatars.githubusercontent.com/u/47602533?s=200&v=4
 type: single
-display: true
+display: false
+integration: true
 ---
 
 With Capsule extension for [Lens](https://github.com/lensapp/lens), a cluster administrator can easily manage from a single pane of glass all resources of a Kubernetes cluster, including all the Tenants created through the Capsule Operator.

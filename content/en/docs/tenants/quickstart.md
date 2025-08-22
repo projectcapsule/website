@@ -1,8 +1,8 @@
 ---
 title: Quickstart
-weight: 1
 type: docs
-weight: 2
+weight: 1
+description: "Create your first Capsule Tenant"
 ---
 
 In Capsule, a Tenant is an abstraction to group multiple namespaces in a single entity within a set of boundaries defined by the Cluster Administrator. The tenant is then assigned to a user or group of users who is called [Tenant Owner](/docs/overview/architecture#ownership). Capsule defines a Tenant as Custom Resource with cluster scope. Create the tenant as cluster admin:

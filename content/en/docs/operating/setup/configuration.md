@@ -35,10 +35,15 @@ Disallow creation of namespaces, whose name matches this regexp
 ### userGroups
 Names of the groups for Capsule users. Users must have this group to be considered for the Capsule tenancy. If a user does not have any group mentioned here, they are not recognized as a Capsule user.
 
+### userNames
+Names of the users for Capsule users. Users must have this name to be considered for the Capsule tenancy. If userGroups are set, the properties are ORed, meaning that a user can be recognized as a Capsule user if they have one of the groups or one of the names.
+
+### ignoreUserWithGroups
+Define groups which when found in the request of a user will be ignored by the Capsule. This might be useful if you have one group where all the users are in, but you want to separate administrators from normal users with additional groups.
 
 ## Controller Options
 
-Depending on the version of the Capsule Controller, the configuration options may vary. You can view the options for the latest version of the Capsule Controller [here]() or by executing the controller locally:
+Depending on the version of the Capsule Controller, the configuration options may vary. You can view the options for the latest version of the Capsule Controller or by executing the controller locally:
 
 ```bash
 $ docker run ghcr.io/projectcapsule/capsule:v0.6.0-rc0 -h

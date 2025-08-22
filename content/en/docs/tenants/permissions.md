@@ -1,6 +1,6 @@
 ---
 title: Permissions
-weight: 1
+weight: 3
 description: >
   Grant permissions for tenants
 ---
