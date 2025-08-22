@@ -4,7 +4,7 @@ description: Integrate Capsule with Authentication of your Kubernetes cluster
 weight: 5
 ---
 
-Capsule does not care about the authentication strategy used in the cluster and all the Kubernetes methods of authentication are supported. The only requirement to use Capsule is to assign tenant users to the group defined by userGroups option in the CapsuleConfiguration, which defaults to capsule.clastix.io.
+Capsule does not care about the authentication strategy used in the cluster and all the Kubernetes methods of authentication are supported. The only requirement to use Capsule is to assign tenant users to the group defined by userGroups option in the CapsuleConfiguration, which defaults to `projectcapsule.dev`.
 
 ## OIDC
 
@@ -15,16 +15,17 @@ In the following guide, we'll use [Keycloak](https://www.keycloak.org/) an Open 
 Configure Keycloak as OIDC server:
 
   * Add a realm called caas, or use any existing realm instead
-  * Add a group capsule.clastix.io
-  * Add a user alice assigned to group capsule.clastix.io
-  * Add an OIDC client called kubernetes
+  * Add a group `projectcapsule.dev`
+  * Add a user alice assigned to group `projectcapsule.dev`
+  * Add an OIDC client called `kubernetes` (Public)
+  * Add an OIDC client called `kubernetes-auth` (Confidential (Client Secret))
 
 For the kubernetes client, create protocol mappers called groups and audience
 If everything is done correctly, now you should be able to authenticate in Keycloak and see user groups in JWT tokens. Use the following snippet to authenticate in Keycloak as alice user:
 
 ```bash
 $ KEYCLOAK=sso.clastix.io
-$ REALM=caas
+$ REALM=kubernetes-auth
 $ OIDC_ISSUER=${KEYCLOAK}/realms/${REALM}
 
 $ curl -k -s https://${OIDC_ISSUER}/protocol/openid-connect/token \
@@ -54,7 +55,7 @@ To introspect the `ID_TOKEN` token run:
 ```bash
 $ curl -k -s https://${OIDC_ISSUER}/protocol/openid-connect/introspect \
      -d token=${ID_TOKEN} \
-     --user ${OIDC_CLIENT_ID}:${OIDC_CLIENT_SECRET} | jq
+     --user kubernetes-auth:${OIDC_CLIENT_SECRET} | jq
 ```
 
 The result will be like the following:
@@ -82,6 +83,45 @@ The result will be like the following:
 
 Configuring Kubernetes for OIDC Authentication requires adding several parameters to the API Server. Please, refer to the [documentation](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#openid-connect-tokens) for details and examples. Most likely, your kube-apiserver.yaml manifest will looks like the following:
 
+#### Authentication Configuration (Recommended)
+
+The configuration file approach allows you to configure multiple JWT authenticators, each with a unique issuer.url and issuer.discoveryURL. The configuration file even allows you to specify CEL expressions to map claims to user attributes, and to validate claims and user information. 
+
+```yaml
+apiVersion: apiserver.config.k8s.io/v1beta1
+kind: AuthenticationConfiguration
+jwt:
+- issuer:
+    url: https://${OIDC_ISSUER}
+    audiences:
+    - kubernetes
+    - kubernetes-auth
+    audienceMatchPolicy: MatchAny
+  claimMappings:
+    username:
+      claim: 'email'
+      prefix: ""
+    groups:
+      claim: 'groups'
+      prefix: ""
+  certificateAuthority: <PEM encoded CA certificates>
+```
+
+This file must be present and consistent across all kube-apiserver instances in the cluster. Add the following flag to the kube-apiserver manifest:
+
+```yaml
+spec:
+  containers:
+  - command:
+    - kube-apiserver
+    ...
+    - --authentication-configuration-file=/etc/kubernetes/authentication/authentication.yaml
+```
+
+[Read More](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#using-authentication-configuration)
+
+#### OIDC Flags (Legacy)
+
 ```yaml
 spec:
   containers:
@@ -90,7 +130,7 @@ spec:
     ...
     - --oidc-issuer-url=https://${OIDC_ISSUER}
     - --oidc-ca-file=/etc/kubernetes/oidc/ca.crt
-    - --oidc-client-id=${OIDC_CLIENT_ID}
+    - --oidc-client-id=kubernetes
     - --oidc-username-claim=preferred_username
     - --oidc-groups-claim=groups
     - --oidc-username-prefix=-
@@ -112,7 +152,7 @@ nodes:
            extraArgs:
              oidc-issuer-url: https://${OIDC_ISSUER}
              oidc-username-claim: preferred_username
-             oidc-client-id: ${OIDC_CLIENT_ID}
+             oidc-client-id: kubernetes
              oidc-username-prefix: "keycloak:"
              oidc-groups-claim: groups
              oidc-groups-prefix: "keycloak:"
@@ -133,7 +173,7 @@ One way to use OIDC authentication is the use of a kubectl plugin. The [Kubelogi
 ```shell
 kubectl oidc-login setup \
 	--oidc-issuer-url=https://${OIDC_ISSUER} \
-	--oidc-client-id=${OIDC_CLIENT_ID} \
+	--oidc-client-id=kubernetes-auth \
 	--oidc-client-secret=${OIDC_CLIENT_SECRET}
 ```
 
@@ -146,7 +186,7 @@ $ kubectl config set-credentials oidc \
     --auth-provider=oidc \
     --auth-provider-arg=idp-issuer-url=https://${OIDC_ISSUER} \
     --auth-provider-arg=idp-certificate-authority=/path/to/ca.crt \
-    --auth-provider-arg=client-id=${OIDC_CLIENT_ID} \
+    --auth-provider-arg=client-id=kubernetes-auth \
     --auth-provider-arg=client-secret=${OIDC_CLIENT_SECRET} \
     --auth-provider-arg=refresh-token=${REFRESH_TOKEN} \
     --auth-provider-arg=id-token=${ID_TOKEN} \

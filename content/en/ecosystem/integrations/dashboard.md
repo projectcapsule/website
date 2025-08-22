@@ -1,13 +1,16 @@
 ---
-title: Kubernetes Dashboard
+title: Dashboard
 description: Capsule Integration with Kubernetes Dashboard
 logo: https://avatars.githubusercontent.com/u/13629408?s=200&v=4
 type: single
 display: true
+integration: true
 ---
 
 {{% pageinfo %}}
 This guide works with the kubernetes dashboard v2.0.0 ([Chart 6.0.8](https://artifacthub.io/packages/helm/k8s-dashboard/kubernetes-dashboard/6.0.8)). It has not yet been tested successfully with with v3.x  version of the dashboard.
+
+We recommend to use [Headlamp](/ecosystem/integrations/headlamp/) as a more modern alternative to the Kubernetes Dashboard.
 {{% /pageinfo %}}
 
 This guide describes how to integrate the [Kubernetes Dashboard](https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/) and [Capsule Proxy](/docs/capsule-proxy/) with OIDC authorization. 

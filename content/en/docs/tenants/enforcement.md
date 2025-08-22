@@ -215,7 +215,7 @@ spec:
   type: ClusterIP
 ```
 
-### Services
+### Pods
 
 The cluster admin can "taint" the pods created by the tenant owners with additional metadata as labels and annotations.
 
