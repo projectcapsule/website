@@ -37,7 +37,7 @@ params:
   github_project_repo: 'https://github.com/projectcapsule/capsule'
   github_branch: main
   gcs_engine_id: ''
-  offlineSearch: false
+  offlineSearch: true
   prism_syntax_highlighting: false
   showLineNumbers: false
   version_menu_pagelinks: true
