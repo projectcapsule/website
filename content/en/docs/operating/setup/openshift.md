@@ -1,6 +1,6 @@
 ---
-title: Capsule on OpenShift
-weight: 30
+title: OpenShift
+weight: 15
 description: >
   How to install Capsule and the Capsule Proxy on OpenShift
 ---
