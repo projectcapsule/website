@@ -28,7 +28,6 @@ OpenCost can use this annotation to aggregate costs, enabling accurate cost allo
         additionalMetadataList:
         - annotations:
             opencost.projectcapsule.dev/tenant: "{{ tenant.name }}"
-      applyOpenCostMetadata: false
       owners:
       - name: alice
         kind: User
