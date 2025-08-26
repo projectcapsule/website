@@ -1,12 +1,14 @@
 # Hugo build configuration for Netlify
 # (https://gohugo.io/hosting-and-deployment/hosting-on-netlify/#configure-hugo-version-in-netlify)
 
+
 [build]
-command = "npm run build:preview"
 publish = "public"
+command = "npm install --save-dev autoprefixer && npm install --save-dev postcss-cli && npm install -D postcss && hugo --gc --minify --baseURL https://kyverno.io/"
 
-[build.environment]
-GO_VERSION = "1.21.4"
-
-[context.production]
-command = "npm run build:production"
+[context.production.environment]
+HUGO_VERSION = "0.145.0"
+HUGO_ENV = "production"
+HUGO_ENABLEGITINFO = "true"
+GO_VERSION = "1.24.1"
+NODE_VERSION = "23.6.0"

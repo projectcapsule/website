@@ -3,7 +3,7 @@ title: Branding
 description: "Branding and logos for the project"
 menu: {main: {weight: 80}}
 type: docs
-weight: 15
+weight: 4
 menu:
   main:
     weight: 10

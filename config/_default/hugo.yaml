@@ -33,7 +33,7 @@ params:
     pygmentsUseClassic: false
     pygmentsStyle: tango
   privacy_policy: ''
-  github_repo: 'https://github.com/projectcapsule/capsule'
+  github_repo: 'https://github.com/projectcapsule/website'
   github_project_repo: 'https://github.com/projectcapsule/capsule'
   github_branch: main
   gcs_engine_id: ''
@@ -55,11 +55,11 @@ params:
       enable: false
       'yes': >-
         Glad to hear it! Please <a
-        href="https://github.com/USERNAME/REPOSITORY/issues/new">tell us how we
+        href="https://github.com/projectcapsule/website/issues/new">tell us how we
         can improve</a>.
       'no': >-
         Sorry to hear that. Please <a
-        href="https://github.com/USERNAME/REPOSITORY/issues/new">tell us how we
+        href="https://github.com/projectcapsule/website/issues/new">tell us how we
         can improve</a>.
     readingtime:
       enable: false
@@ -158,16 +158,6 @@ menu:
       url: /adopters/
       pre: <i class='fas fa-users'></i>
       weight: 13
-
-    - name: Live-Demo
-      url: https://killercoda.com/peak-scale-test/course/playgrounds/capsule
-      pre: <i class='fas fa-terminal'></i>
-      weight: 14
-
-    - name: Resources
-      url: /resources/
-      pre: <i class='fa-brands fa-readme'></i>
-      weight: 15
 
     - name: Support
       url: /support/

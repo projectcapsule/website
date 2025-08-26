@@ -2,7 +2,7 @@
 title: Governance
 menu: {main: {weight: 80}}
 type: docs
-weight: 1
+weight: 3
 menu:
   main:
     weight: 10
