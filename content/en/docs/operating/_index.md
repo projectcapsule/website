@@ -1,6 +1,6 @@
 ---
 title: Operating
-weight: 2
+weight: 3
 description: Get started with using tenancy on Kubernetes
 isFolder: true
 type: docs

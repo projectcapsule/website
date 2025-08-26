@@ -1,6 +1,6 @@
 ---
 title: Overview
-weight: 1
+weight: 2
 description: Understand the problem Capsule is attempting to solve and how it works
 ---
 

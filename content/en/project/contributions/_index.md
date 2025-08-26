@@ -2,7 +2,7 @@
 title: Contributions
 menu: {main: {weight: 80}}
 type: docs
-weight: 1
+weight: 3
 menu:
   main:
     weight: 1

@@ -3,7 +3,7 @@ title: Commitment
 description: "Commitment for the project"
 menu: {main: {weight: 80}}
 type: docs
-weight: 1
+weight: 10
 menu:
   main:
     weight: 10
