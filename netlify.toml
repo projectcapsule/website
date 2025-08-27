@@ -4,7 +4,7 @@
 
 [build]
 publish = "public"
-command = "npm install --save-dev autoprefixer && npm install --save-dev postcss-cli && npm install -D postcss && hugo --gc --minify --baseURL https://kyverno.io/"
+command = "npm install --save-dev autoprefixer && npm install --save-dev postcss-cli && npm install -D postcss && hugo --gc --minify --baseURL "$DEPLOY_PRIME_URL"
 
 [context.production.environment]
 HUGO_VERSION = "0.145.0"
