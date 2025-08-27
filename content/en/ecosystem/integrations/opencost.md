@@ -1,11 +1,16 @@
 ---
-title: OpenCost Integration
-weight: 5
+title: OpenCost
 description: "OpenCost Integration for Tenants"
+logo: https://landscape.cncf.io/logos/ba27e92ddd22f942dde50f20b6d6d3f2ac7a0b78baf2471bdd89eb5d105c708f.svg
+type: single
+display: true
+integration: true
 ---
+{{% pageinfo %}}
 This guide explains how to integrate OpenCost with Capsule to provide cost visibility and chargeback/showback per tenant.
 You can group workloads into tenants by annotating namespaces (for example, `opencost.projectcapsule.dev/tenant: {{ tenant.name }}`).
 OpenCost can use this annotation to aggregate costs, enabling accurate cost allocation across clusters, nodes, namespaces, controller kinds, controllers, services, pods, and containers for each tenant.
+{{% /pageinfo %}}
 
 # Prerequisites
 - [Capsule](/docs/operating/setup/installation/) v0.10.8 or later
