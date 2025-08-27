@@ -11,7 +11,26 @@ description: >
 ### Namespaces
 
 #### AdditionalMetadataList
-
+{{% alert title="Information" color="info" %}}
+Starting from v0.10.8, it is possible to use templated values for labels and annotations.
+Currently, `{{ tenant.name }}` and `{{ namespace }}` placeholders are available.
+{{% /alert %}}
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - name: alice
+      kind: User
+  namespaceOptions:
+    additionalMetadataList:
+      - annotations:
+          templated-annotation: {{ tenant.name }}
+        labels:
+          templated-label: {{ namespace }}
+```
 The cluster admin can "taint" the namespaces created by tenant owners with additional metadata as labels and annotations. There is no specific semantic assigned to these labels and annotations: they will be assigned to the namespaces in the tenant as they are created. However you have the option to be more specific by selecting to which namespaces you want to assign what kind of metadata:
 
 ```yaml

@@ -24,6 +24,7 @@ We have added new documentation for a better experience. See the following Topic
 
 Newly added documentation to integrate Capsule with other applications:
 
+* [OpenCost](/ecosystem/integrations/opencost/)
 * [Headlamp](/ecosystem/integrations/headlamp/)
 * [Gangplank](/ecosystem/integrations/gangplank/)
 * [Openshift](/docs/operating/setup/openshift/)
