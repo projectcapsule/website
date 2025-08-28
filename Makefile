@@ -30,7 +30,9 @@ APIDOCS_GEN         := $(shell pwd)/bin/crdoc
 APIDOCS_GEN_VERSION := latest
 apidocs-gen: ## Download crdoc locally if necessary.
 	$(call go-install-tool,$(APIDOCS_GEN),fybrik.io/crdoc@$(APIDOCS_GEN_VERSION))
-
+SPELL_CHECKER = npx spellchecker-cli
+docs-lint:
+	cd content && $(SPELL_CHECKER) -f "*.md" "*/*.md" "!general/crds-apis.md" -d dictionary.txt
 # go-install-tool will 'go install' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 define go-install-tool
