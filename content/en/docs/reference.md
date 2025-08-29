@@ -55,10 +55,12 @@ CapsuleConfigurationSpec defines the Capsule configuration.
 | :---- | :---- | :----------- | :-------- |
 | **enableTLSReconciler** | boolean | Toggles the TLS reconciler, the controller that is able to generate CA and certificates for the webhooks<br>when not using an already provided CA and certificate, or when these are managed externally with Vault, or cert-manager.<br/>*Default*: true<br/> | true |
 | **forceTenantPrefix** | boolean | Enforces the Tenant owner, during Namespace creation, to name it using the selected Tenant name as prefix,<br>separated by a dash. This is useful to avoid Namespace name collision in a public CaaS environment.<br/>*Default*: false<br/> | false |
+| **ignoreUserWithGroups** | []string | Define groups which when found in the request of a user will be ignored by the Capsule<br>this might be useful if you have one group where all the users are in, but you want to separate administrators from normal users with additional groups. | false |
 | **[nodeMetadata](#capsuleconfigurationspecnodemetadata)** | object | Allows to set the forbidden metadata for the worker nodes that could be patched by a Tenant.<br>This applies only if the Tenant has an active NodeSelector, and the Owner have right to patch their nodes. | false |
 | **[overrides](#capsuleconfigurationspecoverrides)** | object | Allows to set different name rather than the canonical one for the Capsule configuration objects,<br>such as webhook secret or configurations.<br/>*Default*: map[TLSSecretName:capsule-tls mutatingWebhookConfigurationName:capsule-mutating-webhook-configuration validatingWebhookConfigurationName:capsule-validating-webhook-configuration]<br/> | false |
 | **protectedNamespaceRegex** | string | Disallow creation of namespaces, whose name matches this regexp | false |
-| **userGroups** | []string | Names of the groups for Capsule users.<br/>*Default*: [capsule.clastix.io]<br/> | false |
+| **userGroups** | []string | Names of the groups considered as Capsule users.<br/>*Default*: [capsule.clastix.io]<br/> | false |
+| **userNames** | []string | Names of the users considered as Capsule users. | false |
 
 
 ### CapsuleConfiguration.spec.nodeMetadata
@@ -484,6 +486,7 @@ GlobalResourceQuotaStatus defines the observed state of GlobalResourceQuota.
 | **[allocation](#resourcepoolstatusallocation)** | object | Tracks the Usage from Claimed against what has been granted from the pool | false |
 | **claimCount** | integer | Amount of claims<br/>*Default*: 0<br/> | false |
 | **[claims](#resourcepoolstatusclaimskeyindex)** | map[string][]object | Tracks the quotas for the Resource. | false |
+| **[exhaustions](#resourcepoolstatusexhaustionskey)** | map[string]object | Exhaustions from claims associated with the pool | false |
 | **namespaceCount** | integer | How many namespaces are considered<br/>*Default*: 0<br/> | false |
 | **namespaces** | []string | Namespaces which are considered for claims | false |
 
@@ -513,6 +516,18 @@ ResourceQuotaClaimStatus defines the observed state of ResourceQuotaClaim.
 | **name** | string | Name | false |
 | **namespace** | string | Namespace | false |
 | **uid** | string | UID of the tracked Tenant to pin point tracking | false |
+
+
+### ResourcePool.status.exhaustions[key]
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **available** | int or string | Available Resources to be claimed | false |
+| **requesting** | int or string | Requesting Resources | false |
 
 ## TenantResource
 
@@ -697,7 +712,7 @@ TenantSpec defines the desired state of Tenant.
 | **cordoned** | boolean | Toggling the Tenant resources cordoning, when enable resources cannot be deleted.<br/>*Default*: false<br/> | false |
 | **forceTenantPrefix** | boolean | Use this if you want to disable/enable the Tenant name prefix to specific Tenants, overriding global forceTenantPrefix in CapsuleConfiguration.<br>When set to 'true', it enforces Namespaces created for this Tenant to be named with the Tenant name prefix,<br>separated by a dash (i.e. for Tenant 'foo', namespace names must be prefixed with 'foo-'),<br>this is useful to avoid Namespace name collision.<br>When set to 'false', it allows Namespaces created for this Tenant to be named anything.<br>Overrides CapsuleConfiguration global forceTenantPrefix for the Tenant only.<br>If unset, Tenant uses CapsuleConfiguration's forceTenantPrefix<br>Optional | false |
 | **[gatewayOptions](#tenantspecgatewayoptions)** | object | Specifies options for the GatewayClass resources. | false |
-| **imagePullPolicies** | []enum | Specify the allowed values for the imagePullPolicies option in Pod resources. Capsule assures that all Pod resources created in the Tenant can use only one of the allowed policy. Optional. | false |
+| **imagePullPolicies** | []enum | Specify the allowed values for the imagePullPolicies option in Pod resources. Capsule assures that all Pod resources created in the Tenant can use only one of the allowed policy. Optional.<br/>*Enum*: Always, Never, IfNotPresent<br/> | false |
 | **[ingressOptions](#tenantspecingressoptions-1)** | object | Specifies options for the Ingress resources, such as allowed hostnames and IngressClass. Optional. | false |
 | **[limitRanges](#tenantspeclimitranges-1)** | object | Specifies the resource min/max usage restrictions to the Tenant. The assigned values are inherited by any namespace created in the Tenant. Optional. | false |
 | **[namespaceOptions](#tenantspecnamespaceoptions-1)** | object | Specifies options for the Namespaces, such as additional metadata or maximum number of namespaces allowed for that Tenant. Once the namespace quota assigned to the Tenant has been reached, the Tenant owner cannot create further namespaces. Optional. | false |
@@ -735,7 +750,7 @@ TenantSpec defines the desired state of Tenant.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **kind** | enum | <br/>*Enum*: Nodes, StorageClasses, IngressClasses, PriorityClasses, RuntimeClasses, PersistentVolumes<br/> | true |
-| **operations** | []enum |  | true |
+| **operations** | []enum | <br/>*Enum*: List, Update, Delete<br/> | true |
 
 
 ### Tenant.spec.additionalRoleBindings[index]
@@ -1585,7 +1600,7 @@ TenantSpec defines the desired state of Tenant.
 | **[owners](#tenantspecownersindex)** | []object | Specifies the owners of the Tenant. Mandatory. | true |
 | **[additionalRoleBindings](#tenantspecadditionalrolebindingsindex)** | []object | Specifies additional RoleBindings assigned to the Tenant. Capsule will ensure that all namespaces in the Tenant always contain the RoleBinding for the given ClusterRole. Optional. | false |
 | **[containerRegistries](#tenantspeccontainerregistries)** | object | Specifies the trusted Image Registries assigned to the Tenant. Capsule assures that all Pods resources created in the Tenant can use only one of the allowed trusted registries. Optional. | false |
-| **imagePullPolicies** | []enum | Specify the allowed values for the imagePullPolicies option in Pod resources. Capsule assures that all Pod resources created in the Tenant can use only one of the allowed policy. Optional. | false |
+| **imagePullPolicies** | []enum | Specify the allowed values for the imagePullPolicies option in Pod resources. Capsule assures that all Pod resources created in the Tenant can use only one of the allowed policy. Optional.<br/>*Enum*: Always, Never, IfNotPresent<br/> | false |
 | **[ingressOptions](#tenantspecingressoptions)** | object | Specifies options for the Ingress resources, such as allowed hostnames and IngressClass. Optional. | false |
 | **[limitRanges](#tenantspeclimitranges)** | object | Specifies the resource min/max usage restrictions to the Tenant. The assigned values are inherited by any namespace created in the Tenant. Optional. | false |
 | **[namespaceOptions](#tenantspecnamespaceoptions)** | object | Specifies options for the Namespaces, such as additional metadata or maximum number of namespaces allowed for that Tenant. Once the namespace quota assigned to the Tenant has been reached, the Tenant owner cannot create further namespaces. Optional. | false |
@@ -1619,7 +1634,7 @@ TenantSpec defines the desired state of Tenant.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **kind** | enum | <br/>*Enum*: Nodes, StorageClasses, IngressClasses, PriorityClasses<br/> | true |
-| **operations** | []enum |  | true |
+| **operations** | []enum | <br/>*Enum*: List, Update, Delete<br/> | true |
 
 
 ### Tenant.spec.additionalRoleBindings[index]
