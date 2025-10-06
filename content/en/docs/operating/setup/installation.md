@@ -58,6 +58,12 @@ Perform the following steps to install the capsule Operator:
 
 Here are some key considerations to keep in mind when installing Capsule. Also check out the **[Best Practices](/docs/operating/best-practices)** for more information.
 
+### Admission Policies 
+
+While Capsule provides a robust framework for managing multi-tenancy in Kubernetes, it does not include built-in admission policies for enforcing specific security or operational standards for all possible aspects of a Kubernetes cluster. Therefore, it is recommended to use additional tools like [Kyverno](https://kyverno.io/) to enforce admission policies that align with your organization's requirements.
+
+[We provide policy recommendations for Kyverno here](/ecosystem/integrations/kyverno/#recommended-policies).
+
 ### Certificate Management
 
 We recommend using [cert-manager](https://cert-manager.io/) to manage the TLS certificates for Capsule. This will ensure that your Capsule installation is secure and that the certificates are automatically renewed. Capsule requires a valid TLS certificate for it's Admission Webserver. By default Capsule reconciles it's own TLS certificate. To use cert-manager, you can set the following values:
