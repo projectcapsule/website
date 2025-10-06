@@ -11,6 +11,4 @@ archived_version: true
 url_latest_version: https://projectcapsule.dev
 versions:
 - version: v0.10.0
-  url: https://projectcapsule.dev
-#- version: v0.10.0
-#  url: https://release-0-10-0.projectcapsule.dev
+  url: https://release-0-10-0.projectcapsule.dev
