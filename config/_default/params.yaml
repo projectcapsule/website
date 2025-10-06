@@ -5,9 +5,10 @@ version_menu: "Releases"
 # The version number for the version of the docs represented in this doc set.
 # Used in the "version-banner" partial to display a version number for the
 # current doc set.
-version: "latest"
+version: latest
 url_latest_version: https://projectcapsule.dev
+archived_version: false
 versions:
 - version: v0.10.0
   url: https://release-0-10-0.projectcapsule.dev
-  archived_version: true
+
