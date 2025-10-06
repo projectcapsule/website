@@ -164,6 +164,28 @@ system:serviceaccounts:{service-account-namespace}
 
 You have to add `system:serviceaccounts:{service-account-namespace}` to the CapsuleConfiguration [Group Scope](#group-scope) to make it work.
 
+### ServiceAccount Promotion
+
+Within a tenant, a ServiceAccount can be promoted to a Tenant Owner. For example, Alice can create a ServiceAccount called robot in the solar tenant and promote it to be a Tenant Owner (This requires Alice to be an owner of the tenant as well):
+
+```yaml
+kubectl label sa gitops-reconcile -n green-test owner.projectcapsule.dev/promote=true --as alice --as-group projectcapsule.dev
+```
+
+Now the ServiceAccount robot can create namespaces in the solar tenant:
+
+```bash
+kubectl create ns green-valkey--as system:serviceaccount:green-test:gitops-reconcile
+```
+
+To revoke the promotion, Alice can just remove the label:
+
+```yaml
+kubectl label sa gitops-reconcile -n green-test owner.projectcapsule.dev/promote-  --as alice --as-group projectcapsule.dev
+```
+
+This feature must be enabled in the [CapsuleConfiguration](/docs/operating/setup/configuration/#allowserviceaccountpromotion).
+
 
 ### Owner Roles
 
