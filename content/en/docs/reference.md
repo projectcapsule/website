@@ -54,6 +54,7 @@ CapsuleConfigurationSpec defines the Capsule configuration.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **enableTLSReconciler** | boolean | Toggles the TLS reconciler, the controller that is able to generate CA and certificates for the webhooks<br>when not using an already provided CA and certificate, or when these are managed externally with Vault, or cert-manager.<br/>*Default*: true<br/> | true |
+| **allowServiceAccountPromotion** | boolean | ServiceAccounts within tenant namespaces can be promoted to owners of the given tenant<br>this can be achieved by labeling the serviceaccount and then they are considered owners. This can only be done by other owners of the tenant.<br>However ServiceAccounts which have been promoted to owner can not promote further serviceAccounts.<br/>*Default*: false<br/> | false |
 | **forceTenantPrefix** | boolean | Enforces the Tenant owner, during Namespace creation, to name it using the selected Tenant name as prefix,<br>separated by a dash. This is useful to avoid Namespace name collision in a public CaaS environment.<br/>*Default*: false<br/> | false |
 | **ignoreUserWithGroups** | []string | Define groups which when found in the request of a user will be ignored by the Capsule<br>this might be useful if you have one group where all the users are in, but you want to separate administrators from normal users with additional groups. | false |
 | **[nodeMetadata](#capsuleconfigurationspecnodemetadata)** | object | Allows to set the forbidden metadata for the worker nodes that could be patched by a Tenant.<br>This applies only if the Tenant has an active NodeSelector, and the Owner have right to patch their nodes. | false |
@@ -706,7 +707,6 @@ TenantSpec defines the desired state of Tenant.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[owners](#tenantspecownersindex-1)** | []object | Specifies the owners of the Tenant. Mandatory. | true |
 | **[additionalRoleBindings](#tenantspecadditionalrolebindingsindex-1)** | []object | Specifies additional RoleBindings assigned to the Tenant. Capsule will ensure that all namespaces in the Tenant always contain the RoleBinding for the given ClusterRole. Optional. | false |
 | **[containerRegistries](#tenantspeccontainerregistries-1)** | object | Specifies the trusted Image Registries assigned to the Tenant. Capsule assures that all Pods resources created in the Tenant can use only one of the allowed trusted registries. Optional. | false |
 | **cordoned** | boolean | Toggling the Tenant resources cordoning, when enable resources cannot be deleted.<br/>*Default*: false<br/> | false |
@@ -714,10 +714,11 @@ TenantSpec defines the desired state of Tenant.
 | **[gatewayOptions](#tenantspecgatewayoptions)** | object | Specifies options for the GatewayClass resources. | false |
 | **imagePullPolicies** | []enum | Specify the allowed values for the imagePullPolicies option in Pod resources. Capsule assures that all Pod resources created in the Tenant can use only one of the allowed policy. Optional.<br/>*Enum*: Always, Never, IfNotPresent<br/> | false |
 | **[ingressOptions](#tenantspecingressoptions-1)** | object | Specifies options for the Ingress resources, such as allowed hostnames and IngressClass. Optional. | false |
-| **[limitRanges](#tenantspeclimitranges-1)** | object | Specifies the resource min/max usage restrictions to the Tenant. The assigned values are inherited by any namespace created in the Tenant. Optional. | false |
+| **[limitRanges](#tenantspeclimitranges-1)** | object | Specifies the resource min/max usage restrictions to the Tenant. The assigned values are inherited by any namespace created in the Tenant. Optional.<br>Deprecated: Use Tenant Replications instead (https://projectcapsule.dev/docs/replications/) | false |
 | **[namespaceOptions](#tenantspecnamespaceoptions-1)** | object | Specifies options for the Namespaces, such as additional metadata or maximum number of namespaces allowed for that Tenant. Once the namespace quota assigned to the Tenant has been reached, the Tenant owner cannot create further namespaces. Optional. | false |
-| **[networkPolicies](#tenantspecnetworkpolicies-1)** | object | Specifies the NetworkPolicies assigned to the Tenant. The assigned NetworkPolicies are inherited by any namespace created in the Tenant. Optional. | false |
+| **[networkPolicies](#tenantspecnetworkpolicies-1)** | object | Specifies the NetworkPolicies assigned to the Tenant. The assigned NetworkPolicies are inherited by any namespace created in the Tenant. Optional.<br>Deprecated: Use Tenant Replications instead (https://projectcapsule.dev/docs/replications/) | false |
 | **nodeSelector** | map[string]string | Specifies the label to control the placement of pods on a given pool of worker nodes. All namespaces created within the Tenant will have the node selector annotation. This annotation tells the Kubernetes scheduler to place pods on the nodes having the selector label. Optional. | false |
+| **[owners](#tenantspecownersindex-1)** | []object | Specifies the owners of the Tenant.<br>Optional | false |
 | **[podOptions](#tenantspecpodoptions)** | object | Specifies options for the Pods deployed in the Tenant namespaces, such as additional metadata. | false |
 | **preventDeletion** | boolean | Prevent accidental deletion of the Tenant.<br>When enabled, the deletion request will be declined.<br/>*Default*: false<br/> | false |
 | **[priorityClasses](#tenantspecpriorityclasses-1)** | object | Specifies the allowed priorityClasses assigned to the Tenant.<br>Capsule assures that all Pods resources created in the Tenant can use only one of the allowed PriorityClasses.<br>A default value can be specified, and all the Pod resources created will inherit the declared class.<br>Optional. | false |
@@ -725,32 +726,6 @@ TenantSpec defines the desired state of Tenant.
 | **[runtimeClasses](#tenantspecruntimeclasses)** | object | Specifies the allowed RuntimeClasses assigned to the Tenant.<br>Capsule assures that all Pods resources created in the Tenant can use only one of the allowed RuntimeClasses.<br>Optional. | false |
 | **[serviceOptions](#tenantspecserviceoptions-1)** | object | Specifies options for the Service, such as additional metadata or block of certain type of Services. Optional. | false |
 | **[storageClasses](#tenantspecstorageclasses-1)** | object | Specifies the allowed StorageClasses assigned to the Tenant.<br>Capsule assures that all PersistentVolumeClaim resources created in the Tenant can use only one of the allowed StorageClasses.<br>A default value can be specified, and all the PersistentVolumeClaim resources created will inherit the declared class.<br>Optional. | false |
-
-
-### Tenant.spec.owners[index]
-
-
-
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **kind** | enum | Kind of tenant owner. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
-| **name** | string | Name of tenant owner. | true |
-| **clusterRoles** | []string | Defines additional cluster-roles for the specific Owner.<br/>*Default*: [admin capsule-namespace-deleter]<br/> | false |
-| **[proxySettings](#tenantspecownersindexproxysettingsindex-1)** | []object | Proxy settings for tenant owner. | false |
-
-
-### Tenant.spec.owners[index].proxySettings[index]
-
-
-
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **kind** | enum | <br/>*Enum*: Nodes, StorageClasses, IngressClasses, PriorityClasses, RuntimeClasses, PersistentVolumes<br/> | true |
-| **operations** | []enum | <br/>*Enum*: List, Update, Delete<br/> | true |
 
 
 ### Tenant.spec.additionalRoleBindings[index]
@@ -893,6 +868,7 @@ Specifies the allowed hostnames in Ingresses for the given Tenant. Capsule assur
 
 
 Specifies the resource min/max usage restrictions to the Tenant. The assigned values are inherited by any namespace created in the Tenant. Optional.
+Deprecated: Use Tenant Replications instead (https://projectcapsule.dev/docs/replications/)
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
@@ -934,10 +910,11 @@ Specifies options for the Namespaces, such as additional metadata or maximum num
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[additionalMetadata](#tenantspecnamespaceoptionsadditionalmetadata-1)** | object | Specifies additional labels and annotations the Capsule operator places on any Namespace resource in the Tenant. Optional. | false |
+| **[additionalMetadata](#tenantspecnamespaceoptionsadditionalmetadata-1)** | object | Specifies additional labels and annotations the Capsule operator places on any Namespace resource in the Tenant. Optional.<br>Deprecated: Use additionalMetadataList instead | false |
 | **[additionalMetadataList](#tenantspecnamespaceoptionsadditionalmetadatalistindex)** | []object | Specifies additional labels and annotations the Capsule operator places on any Namespace resource in the Tenant via a list. Optional. | false |
 | **[forbiddenAnnotations](#tenantspecnamespaceoptionsforbiddenannotations)** | object | Define the annotations that a Tenant Owner cannot set for their Namespace resources. | false |
 | **[forbiddenLabels](#tenantspecnamespaceoptionsforbiddenlabels)** | object | Define the labels that a Tenant Owner cannot set for their Namespace resources. | false |
+| **managedMetadataOnly** | boolean | If enabled only metadata from additionalMetadata is reconciled to the namespaces.<br/>*Default*: false<br/> | false |
 | **quota** | integer | Specifies the maximum number of namespaces allowed for that Tenant. Once the namespace quota assigned to the Tenant has been reached, the Tenant owner cannot create further namespaces. Optional.<br/>*Format*: int32<br/>*Minimum*: 1<br/> | false |
 
 
@@ -946,6 +923,7 @@ Specifies options for the Namespaces, such as additional metadata or maximum num
 
 
 Specifies additional labels and annotations the Capsule operator places on any Namespace resource in the Tenant. Optional.
+Deprecated: Use additionalMetadataList instead
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
@@ -1023,6 +1001,7 @@ Define the labels that a Tenant Owner cannot set for their Namespace resources.
 
 
 Specifies the NetworkPolicies assigned to the Tenant. The assigned NetworkPolicies are inherited by any namespace created in the Tenant. Optional.
+Deprecated: Use Tenant Replications instead (https://projectcapsule.dev/docs/replications/)
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
@@ -1037,41 +1016,10 @@ NetworkPolicySpec provides the specification of a NetworkPolicy
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[podSelector](#tenantspecnetworkpoliciesitemsindexpodselector-1)** | object | podSelector selects the pods to which this NetworkPolicy object applies.<br>The array of ingress rules is applied to any pods selected by this field.<br>Multiple network policies can select the same set of pods. In this case,<br>the ingress rules for each are combined additively.<br>This field is NOT optional and follows standard label selector semantics.<br>An empty podSelector matches all pods in this namespace. | true |
 | **[egress](#tenantspecnetworkpoliciesitemsindexegressindex-1)** | []object | egress is a list of egress rules to be applied to the selected pods. Outgoing traffic<br>is allowed if there are no NetworkPolicies selecting the pod (and cluster policy<br>otherwise allows the traffic), OR if the traffic matches at least one egress rule<br>across all of the NetworkPolicy objects whose podSelector matches the pod. If<br>this field is empty then this NetworkPolicy limits all outgoing traffic (and serves<br>solely to ensure that the pods it selects are isolated by default).<br>This field is beta-level in 1.8 | false |
 | **[ingress](#tenantspecnetworkpoliciesitemsindexingressindex-1)** | []object | ingress is a list of ingress rules to be applied to the selected pods.<br>Traffic is allowed to a pod if there are no NetworkPolicies selecting the pod<br>(and cluster policy otherwise allows the traffic), OR if the traffic source is<br>the pod's local node, OR if the traffic matches at least one ingress rule<br>across all of the NetworkPolicy objects whose podSelector matches the pod. If<br>this field is empty then this NetworkPolicy does not allow any traffic (and serves<br>solely to ensure that the pods it selects are isolated by default) | false |
+| **[podSelector](#tenantspecnetworkpoliciesitemsindexpodselector-1)** | object | podSelector selects the pods to which this NetworkPolicy object applies.<br>The array of rules is applied to any pods selected by this field. An empty<br>selector matches all pods in the policy's namespace.<br>Multiple network policies can select the same set of pods. In this case,<br>the ingress rules for each are combined additively.<br>This field is optional. If it is not specified, it defaults to an empty selector. | false |
 | **policyTypes** | []string | policyTypes is a list of rule types that the NetworkPolicy relates to.<br>Valid options are ["Ingress"], ["Egress"], or ["Ingress", "Egress"].<br>If this field is not specified, it will default based on the existence of ingress or egress rules;<br>policies that contain an egress section are assumed to affect egress, and all policies<br>(whether or not they contain an ingress section) are assumed to affect ingress.<br>If you want to write an egress-only policy, you must explicitly specify policyTypes [ "Egress" ].<br>Likewise, if you want to write a policy that specifies that no egress is allowed,<br>you must specify a policyTypes value that include "Egress" (since such a policy would not include<br>an egress section and would otherwise default to just [ "Ingress" ]).<br>This field is beta-level in 1.8 | false |
-
-
-### Tenant.spec.networkPolicies.items[index].podSelector
-
-
-
-podSelector selects the pods to which this NetworkPolicy object applies.
-The array of ingress rules is applied to any pods selected by this field.
-Multiple network policies can select the same set of pods. In this case,
-the ingress rules for each are combined additively.
-This field is NOT optional and follows standard label selector semantics.
-An empty podSelector matches all pods in this namespace.
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[matchExpressions](#tenantspecnetworkpoliciesitemsindexpodselectormatchexpressionsindex-1)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
-| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
-
-
-### Tenant.spec.networkPolicies.items[index].podSelector.matchExpressions[index]
-
-
-
-A label selector requirement is a selector that contains values, a key, and an operator that
-relates the key and values.
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **key** | string | key is the label key that the selector applies to. | true |
-| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
-| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### Tenant.spec.networkPolicies.items[index].egress[index]
@@ -1303,6 +1251,63 @@ NetworkPolicyPort describes a port to allow traffic on
 | **endPort** | integer | endPort indicates that the range of ports from port to endPort if set, inclusive,<br>should be allowed by the policy. This field cannot be defined if the port field<br>is not defined or if the port field is defined as a named (string) port.<br>The endPort must be equal or greater than port.<br/>*Format*: int32<br/> | false |
 | **port** | int or string | port represents the port on the given protocol. This can either be a numerical or named<br>port on a pod. If this field is not provided, this matches all port names and<br>numbers.<br>If present, only traffic on the specified protocol AND port will be matched. | false |
 | **protocol** | string | protocol represents the protocol (TCP, UDP, or SCTP) which traffic must match.<br>If not specified, this field defaults to TCP. | false |
+
+
+### Tenant.spec.networkPolicies.items[index].podSelector
+
+
+
+podSelector selects the pods to which this NetworkPolicy object applies.
+The array of rules is applied to any pods selected by this field. An empty
+selector matches all pods in the policy's namespace.
+Multiple network policies can select the same set of pods. In this case,
+the ingress rules for each are combined additively.
+This field is optional. If it is not specified, it defaults to an empty selector.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecnetworkpoliciesitemsindexpodselectormatchexpressionsindex-1)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.networkPolicies.items[index].podSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### Tenant.spec.owners[index]
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | Kind of tenant owner. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
+| **name** | string | Name of tenant owner. | true |
+| **clusterRoles** | []string | Defines additional cluster-roles for the specific Owner.<br/>*Default*: [admin capsule-namespace-deleter]<br/> | false |
+| **[proxySettings](#tenantspecownersindexproxysettingsindex-1)** | []object | Proxy settings for tenant owner. | false |
+
+
+### Tenant.spec.owners[index].proxySettings[index]
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | <br/>*Enum*: Nodes, StorageClasses, IngressClasses, PriorityClasses, RuntimeClasses, PersistentVolumes<br/> | true |
+| **operations** | []enum | <br/>*Enum*: List, Update, Delete<br/> | true |
 
 
 ### Tenant.spec.podOptions
@@ -1558,9 +1563,69 @@ Returns the observed state of the Tenant.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[conditions](#tenantstatusconditionsindex)** | []object | Tenant Condition | true |
 | **size** | integer | How many namespaces are assigned to the Tenant. | true |
 | **state** | enum | The operational state of the Tenant. Possible values are "Active", "Cordoned".<br/>*Enum*: Cordoned, Active<br/>*Default*: Active<br/> | true |
-| **namespaces** | []string | List of namespaces assigned to the Tenant. | false |
+| **namespaces** | []string | List of namespaces assigned to the Tenant. (Deprecated) | false |
+| **[spaces](#tenantstatusspacesindex)** | []object | Tracks state for the namespaces associated with this tenant | false |
+
+
+### Tenant.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
+
+
+### Tenant.status.spaces[index]
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[conditions](#tenantstatusspacesindexconditionsindex)** | []object | Conditions | true |
+| **name** | string | Namespace Name | true |
+| **[metadata](#tenantstatusspacesindexmetadata)** | object | Managed Metadata | false |
+| **uid** | string | Namespace UID | false |
+
+
+### Tenant.status.spaces[index].conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
+
+
+### Tenant.status.spaces[index].metadata
+
+
+
+Managed Metadata
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **annotations** | map[string]string | Managed Annotations | false |
+| **labels** | map[string]string | Managed Labels | false |
 
 # capsule.clastix.io/v1beta1
 
@@ -1794,41 +1859,10 @@ NetworkPolicySpec provides the specification of a NetworkPolicy
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[podSelector](#tenantspecnetworkpoliciesitemsindexpodselector)** | object | podSelector selects the pods to which this NetworkPolicy object applies.<br>The array of ingress rules is applied to any pods selected by this field.<br>Multiple network policies can select the same set of pods. In this case,<br>the ingress rules for each are combined additively.<br>This field is NOT optional and follows standard label selector semantics.<br>An empty podSelector matches all pods in this namespace. | true |
 | **[egress](#tenantspecnetworkpoliciesitemsindexegressindex)** | []object | egress is a list of egress rules to be applied to the selected pods. Outgoing traffic<br>is allowed if there are no NetworkPolicies selecting the pod (and cluster policy<br>otherwise allows the traffic), OR if the traffic matches at least one egress rule<br>across all of the NetworkPolicy objects whose podSelector matches the pod. If<br>this field is empty then this NetworkPolicy limits all outgoing traffic (and serves<br>solely to ensure that the pods it selects are isolated by default).<br>This field is beta-level in 1.8 | false |
 | **[ingress](#tenantspecnetworkpoliciesitemsindexingressindex)** | []object | ingress is a list of ingress rules to be applied to the selected pods.<br>Traffic is allowed to a pod if there are no NetworkPolicies selecting the pod<br>(and cluster policy otherwise allows the traffic), OR if the traffic source is<br>the pod's local node, OR if the traffic matches at least one ingress rule<br>across all of the NetworkPolicy objects whose podSelector matches the pod. If<br>this field is empty then this NetworkPolicy does not allow any traffic (and serves<br>solely to ensure that the pods it selects are isolated by default) | false |
+| **[podSelector](#tenantspecnetworkpoliciesitemsindexpodselector)** | object | podSelector selects the pods to which this NetworkPolicy object applies.<br>The array of rules is applied to any pods selected by this field. An empty<br>selector matches all pods in the policy's namespace.<br>Multiple network policies can select the same set of pods. In this case,<br>the ingress rules for each are combined additively.<br>This field is optional. If it is not specified, it defaults to an empty selector. | false |
 | **policyTypes** | []string | policyTypes is a list of rule types that the NetworkPolicy relates to.<br>Valid options are ["Ingress"], ["Egress"], or ["Ingress", "Egress"].<br>If this field is not specified, it will default based on the existence of ingress or egress rules;<br>policies that contain an egress section are assumed to affect egress, and all policies<br>(whether or not they contain an ingress section) are assumed to affect ingress.<br>If you want to write an egress-only policy, you must explicitly specify policyTypes [ "Egress" ].<br>Likewise, if you want to write a policy that specifies that no egress is allowed,<br>you must specify a policyTypes value that include "Egress" (since such a policy would not include<br>an egress section and would otherwise default to just [ "Ingress" ]).<br>This field is beta-level in 1.8 | false |
-
-
-### Tenant.spec.networkPolicies.items[index].podSelector
-
-
-
-podSelector selects the pods to which this NetworkPolicy object applies.
-The array of ingress rules is applied to any pods selected by this field.
-Multiple network policies can select the same set of pods. In this case,
-the ingress rules for each are combined additively.
-This field is NOT optional and follows standard label selector semantics.
-An empty podSelector matches all pods in this namespace.
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[matchExpressions](#tenantspecnetworkpoliciesitemsindexpodselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
-| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
-
-
-### Tenant.spec.networkPolicies.items[index].podSelector.matchExpressions[index]
-
-
-
-A label selector requirement is a selector that contains values, a key, and an operator that
-relates the key and values.
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **key** | string | key is the label key that the selector applies to. | true |
-| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
-| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### Tenant.spec.networkPolicies.items[index].egress[index]
@@ -2060,6 +2094,37 @@ NetworkPolicyPort describes a port to allow traffic on
 | **endPort** | integer | endPort indicates that the range of ports from port to endPort if set, inclusive,<br>should be allowed by the policy. This field cannot be defined if the port field<br>is not defined or if the port field is defined as a named (string) port.<br>The endPort must be equal or greater than port.<br/>*Format*: int32<br/> | false |
 | **port** | int or string | port represents the port on the given protocol. This can either be a numerical or named<br>port on a pod. If this field is not provided, this matches all port names and<br>numbers.<br>If present, only traffic on the specified protocol AND port will be matched. | false |
 | **protocol** | string | protocol represents the protocol (TCP, UDP, or SCTP) which traffic must match.<br>If not specified, this field defaults to TCP. | false |
+
+
+### Tenant.spec.networkPolicies.items[index].podSelector
+
+
+
+podSelector selects the pods to which this NetworkPolicy object applies.
+The array of rules is applied to any pods selected by this field. An empty
+selector matches all pods in the policy's namespace.
+Multiple network policies can select the same set of pods. In this case,
+the ingress rules for each are combined additively.
+This field is optional. If it is not specified, it defaults to an empty selector.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecnetworkpoliciesitemsindexpodselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.networkPolicies.items[index].podSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### Tenant.spec.priorityClasses
