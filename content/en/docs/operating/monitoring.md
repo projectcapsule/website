@@ -169,29 +169,48 @@ capsule_pool_usage_percentage{pool="solar-compute",resource="requests.memory"} 4
 capsule_pool_usage_percentage{pool="solar-size",resource="pods"} 42.857142857142854
 ```
 
+## Tenants
 
-## Quotas
-
-Instrumentation for [Quotas](../tenants/quotas/).
+Instrumentation for [Tenants](../tenants/).
 
 ### Metrics
 
 The following Metrics are exposed and can be used for monitoring:
 
 ```shell
+# HELP capsule_tenant_condition Provides per tenant condition status for each condition
+# TYPE capsule_tenant_condition gauge
+capsule_tenant_condition{condition="Cordoned",tenant="solar"} 0
+capsule_tenant_condition{condition="Ready",tenant="solar"} 1
+
+
+# HELP capsule_tenant_namespace_condition Provides per namespace within a tenant condition status for each condition
+# TYPE capsule_tenant_namespace_condition gauge
+capsule_tenant_namespace_condition{condition="Cordoned",target_namespace="earth",tenant="solar"} 0
+capsule_tenant_namespace_condition{condition="Cordoned",target_namespace="fire",tenant="solar"} 0
+capsule_tenant_namespace_condition{condition="Cordoned",target_namespace="foild",tenant="solar"} 0
+capsule_tenant_namespace_condition{condition="Cordoned",target_namespace="green",tenant="solar"} 0
+capsule_tenant_namespace_condition{condition="Cordoned",target_namespace="solar",tenant="solar"} 0
+capsule_tenant_namespace_condition{condition="Cordoned",target_namespace="wind",tenant="solar"} 0
+capsule_tenant_namespace_condition{condition="Ready",target_namespace="earth",tenant="solar"} 1
+capsule_tenant_namespace_condition{condition="Ready",target_namespace="fire",tenant="solar"} 1
+capsule_tenant_namespace_condition{condition="Ready",target_namespace="foild",tenant="solar"} 1
+capsule_tenant_namespace_condition{condition="Ready",target_namespace="green",tenant="solar"} 1
+capsule_tenant_namespace_condition{condition="Ready",target_namespace="solar",tenant="solar"} 1
+capsule_tenant_namespace_condition{condition="Ready",target_namespace="wind",tenant="solar"} 1
+
 # HELP capsule_tenant_namespace_count Total number of namespaces currently owned by the tenant
 # TYPE capsule_tenant_namespace_count gauge
 capsule_tenant_namespace_count{tenant="solar"} 6
 
 # HELP capsule_tenant_namespace_relationship Mapping metric showing namespace to tenant relationships
 # TYPE capsule_tenant_namespace_relationship gauge
-capsule_tenant_namespace_relationship{namespace="earth",tenant="solar"} 1
-capsule_tenant_namespace_relationship{namespace="wind",tenant="solar"} 1
-capsule_tenant_namespace_relationship{namespace="fire",tenant="solar"} 1
-
-# HELP capsule_tenant_status Tenant cordon state indicating if tenant operations are restricted (1) or allowed (0) for resource creation and modification
-# TYPE capsule_tenant_status gauge
-capsule_tenant_status{tenant="limiting-resources"} 0
+capsule_tenant_namespace_relationship{target_namespace="earth",tenant="solar"} 1
+capsule_tenant_namespace_relationship{target_namespace="fire",tenant="solar"} 1
+capsule_tenant_namespace_relationship{target_namespace="soil",tenant="solar"} 1
+capsule_tenant_namespace_relationship{target_namespace="green",tenant="solar"} 1
+capsule_tenant_namespace_relationship{target_namespace="solar",tenant="solar"} 1
+capsule_tenant_namespace_relationship{target_namespace="wind",tenant="solar"} 1
 
 # HELP capsule_tenant_resource_limit Current resource limit for a given resource in a tenant
 # TYPE capsule_tenant_resource_limit gauge
