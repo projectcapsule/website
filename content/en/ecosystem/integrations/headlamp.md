@@ -79,19 +79,19 @@ volumes:
   - name: token-ca
     projected:
       sources:
-      - serviceAccountToken:
-          path: token
-      - secret:
-          name: capsule-proxy
-          items:
-          - key: ca.crt
-            path: ca.crt
-      - downwardAPI:
-        items:
-          - fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.namespace
-            path: namespace
+        - serviceAccountToken:
+            path: token
+        - secret:
+            items:
+              - key: ca
+                path: ca.crt
+            name: capsule-proxy
+        - downwardAPI:
+            items:
+              - fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+                path: namespace
 initContainers:
 - name: add-ca
   image: alpine:3
