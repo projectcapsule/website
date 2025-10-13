@@ -23,6 +23,9 @@ adopters:
   - name: KubeRocketCI
     link: https://docs.kuberocketci.io/
     logo: https://raw.githubusercontent.com/epam/edp-install/master/docs/assets/krci-logo-267×150-white.png
+  - name: ODC-Noord
+    link: https://odc-noord.nl/
+    logo: https://github.com/projectcapsule/capsule/raw/main/assets/customer_logo/odc-noord-logo.png
   - name: PITS Global Data Recovery Services
     link: https://www.pitsdatarecovery.net
     logo: https://www.pitsdatarecovery.com/wp-content/uploads/2020/09/pits-logo.svg
