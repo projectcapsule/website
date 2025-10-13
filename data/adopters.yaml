@@ -11,15 +11,18 @@ adopters:
   - name: "Die Mobiliar"
     link: https://www.mobiliar.ch/
     logo: https://mobiliar.rokka.io/dynamic/crop-width-701-height-525-mode-ratio--resize-width-701--options-autoformat-true-optim.quality-4/dfeb319d1c438de49d67799cf87534f3f332f498/logo-der-mobiliar-.jpg
-  - name: KubeRocketCI
-    link: https://docs.kuberocketci.io/
-    logo: https://raw.githubusercontent.com/epam/edp-install/master/docs/assets/krci-logo-267×150-white.png
+  - name: Enreach
+    link: https://www.enreach.com/
+    logo: https://campaigns.enreach.com/hubfs/Global/logos/Enreach-logo-vertical-indigo.svg
   - name: Fastweb
     link: https://www.fastweb.it/
     logo: https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Fastweb_logo.svg/180px-Fastweb_logo.svg.png
   - name: Klarrio
     link: https://klarrio.com/
     logo: https://klarrio.com/wp-content/uploads/klarrio.png
+  - name: KubeRocketCI
+    link: https://docs.kuberocketci.io/
+    logo: https://raw.githubusercontent.com/epam/edp-install/master/docs/assets/krci-logo-267×150-white.png
   - name: PITS Global Data Recovery Services
     link: https://www.pitsdatarecovery.net
     logo: https://www.pitsdatarecovery.com/wp-content/uploads/2020/09/pits-logo.svg
@@ -38,6 +41,3 @@ adopters:
   - name: Wargaming.net
     link: https://www.wargaming.net/
     logo: https://download.logo.wine/logo/Wargaming_(company)/Wargaming_(company)-Logo.wine.png
-  - name: Enreach
-    link: https://www.enreach.com/
-    logo: https://campaigns.enreach.com/hubfs/Global/logos/Enreach-logo-vertical-indigo.svg
