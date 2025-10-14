@@ -70,7 +70,7 @@ apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: tenant-workload-restrictions
-spec: 
+spec:
   validationFailureAction: Enforce
   rules:
   - name: block-daemonset-create
@@ -98,7 +98,7 @@ spec:
             value: "true"
 ```
 
-#### Disallow Scheduling on Controle Planes
+#### Disallow Scheduling on Control Planes
 
 If a Pods are not scoped to specific nodes, they could be scheduled on control plane nodes. You should disallow this by enforcing that Pods do not use tolerations for control plane nodes:
 
@@ -107,7 +107,7 @@ apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: tenant-workload-restrictions
-spec: 
+spec:
   validationFailureAction: Enforce
   rules:
   - name: restrict-controlplane-scheduling-master
@@ -429,7 +429,7 @@ spec:
             urlPath: "/api/v1/namespaces/{{request.object.spec.targetNamespace}}"
             jmesPath: "metadata.labels.\"capsule.clastix.io/tenant\""
 
-        # Get tenant based on resource namespace    
+        # Get tenant based on resource namespace
         - name: source_tenant
           apiCall:
             urlPath: "/api/v1/namespaces/{{request.object.metadata.namespace}}"
@@ -505,7 +505,7 @@ spec:
         - name: public_namespaces
           apiCall:
             urlPath: "/api/v1/namespaces"
-            jmesPath: "items[?metadata.labels.\"{{global.data.public_identifier_label}}\" == '{{global.data.public_identifier_value}}'].metadata.name | []" 
+            jmesPath: "items[?metadata.labels.\"{{global.data.public_identifier_label}}\" == '{{global.data.public_identifier_value}}'].metadata.name | []"
 
         # Get Tenant information from source namespace
         # Defaults to a character, which can't be a label value
@@ -526,8 +526,8 @@ spec:
           - key: "{{request.object.spec.targetNamespace}}"
             operator: NotIn
             values: [ "{{request.object.metadata.namespace}}" ]
-        any: 
-          # Source is not Self-Reference  
+        any:
+          # Source is not Self-Reference
           - key: "{{request.object.spec.targetNamespace}}"
             operator: NotEquals
             value: "{{request.object.metadata.namespace}}"
@@ -622,7 +622,7 @@ spec:
           path: "/spec/nodeSelector"
           value:
             nodepool: "workers"
-  
+
 
 
 ```
