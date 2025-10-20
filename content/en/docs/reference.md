@@ -738,6 +738,8 @@ TenantSpec defines the desired state of Tenant.
 | :---- | :---- | :----------- | :-------- |
 | **clusterRoleName** | string |  | true |
 | **[subjects](#tenantspecadditionalrolebindingsindexsubjectsindex-1)** | []object | kubebuilder:validation:Minimum=1 | true |
+| **annotations** | map[string]string | Additional Annotations for the synchronized rolebindings | false |
+| **labels** | map[string]string | Additional Labels for the synchronized rolebindings | false |
 
 
 ### Tenant.spec.additionalRoleBindings[index].subjects[index]
@@ -1294,7 +1296,9 @@ relates the key and values.
 | :---- | :---- | :----------- | :-------- |
 | **kind** | enum | Kind of tenant owner. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
 | **name** | string | Name of tenant owner. | true |
+| **annotations** | map[string]string | Additional Annotations for the synchronized rolebindings | false |
 | **clusterRoles** | []string | Defines additional cluster-roles for the specific Owner.<br/>*Default*: [admin capsule-namespace-deleter]<br/> | false |
+| **labels** | map[string]string | Additional Labels for the synchronized rolebindings | false |
 | **[proxySettings](#tenantspecownersindexproxysettingsindex-1)** | []object | Proxy settings for tenant owner. | false |
 
 
@@ -1712,6 +1716,8 @@ TenantSpec defines the desired state of Tenant.
 | :---- | :---- | :----------- | :-------- |
 | **clusterRoleName** | string |  | true |
 | **[subjects](#tenantspecadditionalrolebindingsindexsubjectsindex)** | []object | kubebuilder:validation:Minimum=1 | true |
+| **annotations** | map[string]string | Additional Annotations for the synchronized rolebindings | false |
+| **labels** | map[string]string | Additional Labels for the synchronized rolebindings | false |
 
 
 ### Tenant.spec.additionalRoleBindings[index].subjects[index]

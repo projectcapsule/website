@@ -142,7 +142,14 @@ There are no specific requirements for using Capsule with GitOps tools like Argo
 
 ### ArgoCD
 
-Manifests to get you started with ArgoCD.
+Manifests to get you started with ArgoCD. For ArgoCD you might need to skip the validation of the `CapsuleConfiguration` resources, otherwise there might be errors on the first install:
+
+```yaml
+manager:
+  options:
+    annotations:
+      argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+```
 
 ```yaml
 ---
@@ -160,6 +167,7 @@ spec:
     targetRevision: 0.10.6
     chart: capsule
     helm:
+      skipCrds: true
       valuesObject:
         crds:
           install: true
@@ -168,8 +176,10 @@ spec:
         tls:
           enableController: false
           create: false
-        manager: 
-          options:  
+        manager:
+          options:
+            annotations:
+              argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
             capsuleConfiguration: default
             ignoreUserGroups:
               - oidc:administators
@@ -182,6 +192,8 @@ spec:
               failurePolicy: Ignore
         serviceMonitor:
           enabled: true
+          annotations:
+            argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
         proxy:
           enabled: true
           webhooks:
@@ -194,6 +206,10 @@ spec:
             extraArgs:
             - "--feature-gates=ProxyClusterScoped=true"
             - "--feature-gates=ProxyAllNamespaced=true"
+          serviceMonitor:
+            enabled: true
+            annotations:
+              argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 
   destination:
     server: https://kubernetes.default.svc
@@ -230,7 +246,6 @@ stringData:
   type: helm
   enableOCI: "true"
 ```
-
 
 ### FluxCD
 
