@@ -58,7 +58,7 @@ Perform the following steps to install the capsule Operator:
 
 Here are some key considerations to keep in mind when installing Capsule. Also check out the **[Best Practices](/docs/operating/best-practices)** for more information.
 
-### Admission Policies 
+### Admission Policies
 
 While Capsule provides a robust framework for managing multi-tenancy in Kubernetes, it does not include built-in admission policies for enforcing specific security or operational standards for all possible aspects of a Kubernetes cluster. Therefore, it is recommended to use additional tools like [Kyverno](https://kyverno.io/) to enforce admission policies that align with your organization's requirements.
 
@@ -102,7 +102,7 @@ Or you could at least consider to set the failure policy to `Ignore`:
 ```yaml
 webhooks:
   hooks:
-    nodes: 
+    nodes:
       failurePolicy: Ignore
 ```
 
@@ -111,7 +111,7 @@ If you still want to use the feature, you could execlude the kube-system namespa
 ```yaml
 webhooks:
   hooks:
-    nodes: 
+    nodes:
       matchConditions:
       - name: 'exclude-kubelet-requests'
         expression: '!("system:nodes" in request.userInfo.groups)'
@@ -126,7 +126,7 @@ Namespaces are the most important resource in Capsule. The Namespace Webhook is 
 ```yaml
 webhooks:
   hooks:
-    namespaces: 
+    namespaces:
       matchConditions:
       - name: 'exclude-kube-system'
         expression: '!("system:serviceaccounts:kube-system" in request.userInfo.groups)'
@@ -164,7 +164,7 @@ spec:
   project: system
   source:
     repoURL: ghcr.io/projectcapsule/charts
-    targetRevision: 0.10.6
+    targetRevision: 0.11.0
     chart: capsule
     helm:
       skipCrds: true
@@ -188,7 +188,7 @@ spec:
               - system:serviceaccounts:capsule-argo-addon
         webhooks:
           hooks:
-            nodes: 
+            nodes:
               failurePolicy: Ignore
         serviceMonitor:
           enabled: true
@@ -221,15 +221,15 @@ spec:
       selfHeal: true
     syncOptions:
     - ServerSideApply=true
-    - CreateNamespace=true 
-    - PrunePropagationPolicy=foreground 
+    - CreateNamespace=true
+    - PrunePropagationPolicy=foreground
     - PruneLast=true
-    - RespectIgnoreDifferences=true 
+    - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
-        duration: 5s 
-        factor: 2 
+        duration: 5s
+        factor: 2
         maxDuration: 3m
 ---
 apiVersion: v1
@@ -283,8 +283,8 @@ spec:
     tls:
       enableController: false
       create: false
-    manager: 
-      options:  
+    manager:
+      options:
         capsuleConfiguration: default
         ignoreUserGroups:
           - oidc:administators
@@ -293,7 +293,7 @@ spec:
           - system:serviceaccounts:capsule-argo-addon
     webhooks:
       hooks:
-        nodes: 
+        nodes:
           failurePolicy: Ignore
     serviceMonitor:
       enabled: true
