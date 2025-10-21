@@ -216,6 +216,10 @@ spec:
     - capsule-namespace-deleter
     kind: User
     name: alice
+    labels:
+      projectcapsule.dev/sample: "true"
+    annotations:
+      projectcapsule.dev/sample: "true"
   resourceQuotas:
     scope: Tenant
 status:
@@ -248,6 +252,9 @@ items:
     labels:
       capsule.clastix.io/role-binding: 8fb969aaa7a67b71
       capsule.clastix.io/tenant: solar
+      projectcapsule.dev/sample: "true"
+    annotations:
+      projectcapsule.dev/sample: "true"
     name: capsule-solar-0-admin
     namespace: solar-production
     ownerReferences:
@@ -274,6 +281,9 @@ items:
     labels:
       capsule.clastix.io/role-binding: b8822dde20953fb1
       capsule.clastix.io/tenant: solar
+      projectcapsule.dev/sample: "true"
+    annotations:
+      projectcapsule.dev/sample: "true"
     name: capsule-solar-1-capsule-namespace-deleter
     namespace: solar-production
     ownerReferences:
@@ -457,6 +467,10 @@ spec:
     - apiGroup: rbac.authorization.k8s.io
       kind: User
       name: joe
+    labels:
+      projectcapsule.dev/sample: "true"
+    annotations:
+      projectcapsule.dev/sample: "true"
 EOF
 ```
 
@@ -536,8 +550,3 @@ roleRef:
 With the above example, Capsule is leaving the tenant owner to create namespaced custom resources.
 
 > Take Note: a tenant owner having the admin scope on its namespaces only, does not have the permission to create Custom Resources Definitions (CRDs) because this requires a cluster admin permission level. Only Bill, the cluster admin, can create CRDs. This is a known limitation of any multi-tenancy environment based on a single shared control plane.
-
-
-
-
-
