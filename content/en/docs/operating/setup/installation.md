@@ -88,16 +88,16 @@ Generally we recommend to use [matchconditions](https://kubernetes.io/docs/refer
 
 #### Nodes
 
-There is a webhook which catches interactions with the Node resource. This Webhook is mainly interesting, when you make use of [Node Metadata](/docs/tenants/enforcement/#nodes). In any other case it will just case you problems. By default the webhook is enabled, but you can disable it by setting the following value:
+There is a webhook which catches interactions with the Node resource. This Webhook is mainly interesting, when you make use of [Node Metadata](/docs/tenants/enforcement/#nodes). In any other case it will just case you problems. By default the webhook is **disabled**, but you can enabled it by setting the following value:
 
 ```yaml
 webhooks:
   hooks:
     nodes:
-      enabled: false
+      enabled: true
 ```
 
-Or you could at least consider to set the failure policy to `Ignore`:
+Or you could at least consider to set the failure policy to `Ignore`, if you don't want to disrupt critical nodes:
 
 ```yaml
 webhooks:
@@ -131,10 +131,6 @@ webhooks:
       - name: 'exclude-kube-system'
         expression: '!("system:serviceaccounts:kube-system" in request.userInfo.groups)'
 ```
-
-## Compatibility
-
-The Kubernetes compatibility is announced for each [Release](https://github.com/projectcapsule/capsule/releases). Generally we are up to date with the latest upstream Kubernetes Version. Note that the Capsule project offers support only for the latest minor version of Kubernetes. Backwards compatibility with older versions of Kubernetes and OpenShift is offered by [vendors](/support/).
 
 ## GitOps
 
@@ -186,14 +182,13 @@ spec:
             capsuleUserGroups:
               - oidc:kubernetes-users
               - system:serviceaccounts:capsule-argo-addon
-        webhooks:
-          hooks:
-            nodes:
-              failurePolicy: Ignore
-        serviceMonitor:
-          enabled: true
-          annotations:
-            argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+        monitoring:
+          dashboards:
+            enabled: true
+          serviceMonitor:
+            enabled: true
+            annotations:
+              argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
         proxy:
           enabled: true
           webhooks:
@@ -263,7 +258,7 @@ spec:
   chart:
     spec:
       chart: capsule
-      version: "0.10.6"
+      version: "0.11.0"
       sourceRef:
         kind: HelmRepository
         name: capsule
@@ -291,12 +286,11 @@ spec:
         capsuleUserGroups:
           - oidc:kubernetes-users
           - system:serviceaccounts:capsule-argo-addon
-    webhooks:
-      hooks:
-        nodes:
-          failurePolicy: Ignore
-    serviceMonitor:
-      enabled: true
+    monitoring:
+      dashboards:
+        enabled: true
+      serviceMonitor:
+        enabled: true
     proxy:
       enabled: true
       webhooks:
@@ -387,3 +381,7 @@ To inspect the SBOM of the docker image, run the following command. Replace `<re
 To inspect the SBOM of the helm image, run the following command. Replace `<release_tag>` with an [available release tag](https://github.com/projectcapsule/capsule/pkgs/container/charts%2Fcapsule):
 
     COSIGN_REPOSITORY=ghcr.io/projectcapsule/charts/capsule cosign download sbom ghcr.io/projectcapsule/charts/capsule:<release_tag>
+
+## Compatibility
+
+The Kubernetes compatibility is announced for each [Release](https://github.com/projectcapsule/capsule/releases). Generally we are up to date with the latest upstream Kubernetes Version. Note that the Capsule project offers support only for the latest minor version of Kubernetes. Backwards compatibility with older versions of Kubernetes and OpenShift is offered by [vendors](/support/).
