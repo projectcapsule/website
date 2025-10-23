@@ -19,7 +19,7 @@ We have added new documentation for a better experience. See the following Topic
 
 * **[Best Practices](/docs/operating/best-practices/)**
 * **[Installation](/docs/operating/setup/installation/)**
-* **[Kyverno Policy Recommendations](/ecosystem/integrations/kyverno/#recommended-policies)**
+* **[Admission Policy Recommendations](/docs/operating/setup/admission-policies/)**
 
 ## Ecosystem
 
