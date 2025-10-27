@@ -138,12 +138,17 @@ There are no specific requirements for using Capsule with GitOps tools like Argo
 
 Manifests to get you started with ArgoCD. For ArgoCD you might need to skip the validation of the `CapsuleConfiguration` resources, otherwise there might be errors on the first install:
 
+{{% alert title="Information" color="warning" %}}
+The `Validate=false` option is required for the CapsuleConfiguration resource, because ArgoCD tries to validate the resource before the Capsule CRDs are installed via our CRD Lifecycle hook. [Upstream Issue](https://github.com/argoproj/argo-cd/issues/16144). This has mainly been observed in ArgoCD Applications using Service-Side Diff/Apply.
+{{% /alert %}}
+
 ```yaml
 manager:
   options:
     annotations:
-      argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+      argocd.argoproj.io/sync-options: "Validate=false,SkipDryRunOnMissingResource=true"
 ```
+
 
 ```yaml
 ---
@@ -161,7 +166,6 @@ spec:
     targetRevision: 0.11.0
     chart: capsule
     helm:
-      skipCrds: true
       valuesObject:
         crds:
           install: true
@@ -173,7 +177,7 @@ spec:
         manager:
           options:
             annotations:
-              argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+              argocd.argoproj.io/sync-options: "Validate=false,SkipDryRunOnMissingResource=true"
             capsuleConfiguration: default
             ignoreUserGroups:
               - oidc:administators
