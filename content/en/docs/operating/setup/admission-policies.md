@@ -140,7 +140,7 @@ spec:
   - name: alice
     kind: User
   nodeSelector:
-    customer: public-services{{< /tab >}}
+    node-role.kubernetes.io/worker: ''{{< /tab >}}
   {{< tab header="VAP" >}}
 ---
 apiVersion: admissionregistration.k8s.io/v1
