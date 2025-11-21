@@ -160,7 +160,7 @@ spec:
     - expression: >
         // deny if any toleration targets control-plane taints
         !has(object.spec.tolerations) ||
-        !exists(object.spec.tolerations, t,
+        !object.spec.tolerations.exists(t,
           t.key in ['node-role.kubernetes.io/master','node-role.kubernetes.io/control-plane']
         )
       message: "Pods may not use tolerations which schedule on control-plane nodes."
@@ -290,10 +290,13 @@ spec:
         scope: "Namespaced"
   validations:
     # Deny any request that targets the pods/ephemeralcontainers subresource
-    - expression: request.subResource != "ephemeralcontainers"
+    - expression: >
+        !has(request.subResource) ||
+        request.subResource != "ephemeralcontainers"
       message: "Ephemeral (debug) containers are not permitted (subresource)."
     # For direct Pod create/update, allow only if the field is absent or empty
     - expression: >
+        (has(request.subResource) && request.subResource == "ephemeralcontainers") ||
         !has(object.spec.ephemeralContainers) ||
         size(object.spec.ephemeralContainers) == 0
       message: "Ephemeral (debug) containers are not permitted in Pod specs."
