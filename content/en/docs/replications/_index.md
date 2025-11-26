@@ -61,6 +61,11 @@ The GlobalTenantResource is a cluster-scoped resource, thus it has been designed
 
 > Capsule will select all the Tenant resources according to the key tenantSelector. Each object defined in the namespacedItems and matching the provided selector will be replicated into each Namespace bounded to the selected Tenants. Capsule will check every 60 seconds if the resources are replicated and in sync, as defined in the key resyncPeriod.
 
+## Scope
+
+You can change to scope
+
+
 ## TenantResource
 
 Although Capsule is supporting a few amounts of personas, it can be used to allow building an Internal Developer Platform used barely by [Tenant owners](/docs/tenants/permissions#ownership), or users created by these thanks to Service Account.
@@ -139,3 +144,49 @@ solar-2     postgresql   80s   3           3       Cluster in healthy state   po
 The TenantResource object has been created in the namespace `solar-system` that doesn't satisfy the Namespace selector. Furthermore, Capsule will automatically inject the required labels to avoid a `TenantResource` could start polluting other Namespaces.
 
 Eventually, using the key namespacedItem, it is possible to reference existing objects to get propagated across the other Tenant namespaces: in this case, a Tenant Owner can just refer to objects in their Namespaces, preventing a possible escalation referring to non owned objects.
+
+### Impersonation
+
+It's strongly recommended to enable the impersonation feature when using the Replication features of Capsule. This will ensure that Replications within the Tenant's namespaces are created using the Tenant Owner's identity, thus ensuring a proper audit trail and avoiding possible privilege escalation.
+
+The following permission are required for each resource, which should be managed by the TenantResource replication feature:
+
+  * `get`
+  * `create`
+  * `patch`
+  * `delete`
+
+Missing one of these permissions will cause the replication to fail.
+
+
+
+
+
+You might want to consider using [Additional Role Bindings](/docs/tenants/permissions/#additional-rolebindings) to grant ServiceAccounts the necessary/allowed RBAC for . For example:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+  - name: alice
+    kind: User
+  additionalRoleBindings:
+  - clusterRoleName: 'capsule-tenant-replications'
+    subjects:
+    - apiGroup: rbac.authorization.k8s.io
+      kind: ServiceAccount
+      name: default
+```
+
+
+## Resource
+
+One resource is a block which can be defined in both [GlobalTenantResource](#globaltenantresource) and [TenantResource](#tenantresource) objects. Essentially each resource block allows different strategies to define which resources must be replicated.
+
+### Managed
+
+You can define resources to be managed by Capsule. This essentially means that a webhook will block any Capsule users interactions with said resources. This is useful to avoid that Tenant Owners could modify or delete resources that are critical for the platform operation.
+

@@ -7,6 +7,29 @@ weight: 1
 
 ## Features
 
+* All namespaced items, which belong to a Capsule Tenant, are now labeled with the Tenant name (eg. `capsule.clastix.io/tenant: solar`). This allows easier filtering and querying of resources belonging to a specific Tenant or Namespace. **Note**: This happens at admission, not in the background. If you want your existing resources to be labeled, you need to reapply them or patch them manually to get the labels added.
+
+* Delegate Administrators for capsule tenants. Administrators have full control (ownership) over all tenants and their namespaces. [Read More](/docs/tenants/permissions/#administrators)
+
+* All available Classes for a tenant (StorageClasses, GatewayClasses, RuntimeClasses, PriorityClasses) are now reported in the Tenant Status. These values can be used by Admission to integrate other resources validation or by external systems for reporting purposes.
+
+```yaml
+status:
+  classes:
+    priority:
+    - system-cluster-critical
+    - system-node-critical
+    runtime:
+    - customer-containerd
+    - customer-runu
+    - customer-virt
+    - default-runtime
+    - disallowed
+    - legacy
+    storage:
+    - standard
+```
+
 * Owners can promote ServiceAccounts from their Tenant namespaces to Owners of the Tenant [Read More](/docs/tenants/permissions/#serviceaccount-promotion)
 
 * Reworked Metrics based on improved Tenant state management via Conditions. [Read More](/docs/operating/monitoring/#metrics-1)
@@ -17,9 +40,8 @@ weight: 1
 
 We have added new documentation for a better experience. See the following Topics:
 
-* **[Best Practices](/docs/operating/best-practices/)**
-* **[Installation](/docs/operating/setup/installation/)**
-* **[Admission Policy Recommendations](/docs/operating/setup/admission-policies/)**
+* **[Extended Admission Policy Recommendations](/docs/operating/admission-policies/)**
+* **[Personas](/docs/operating/admission-policies/)**
 
 ## Ecosystem
 

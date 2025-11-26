@@ -124,3 +124,21 @@ If not specified, Capsule will deny with the following message: Unable to assign
 $ kubectl create ns solar-production
 Error from server (Forbidden): admission webhook "owner.namespace.capsule.clastix.io" denied the request: Please use capsule.clastix.io/tenant label when creating a namespace
 ```
+
+## Cordon
+
+It is possible to cordon a namespace from a tenant, preventing anything from being changed within this namespace. This is useful for production namespaces where you want to avoid any accidental changes or if you have some sort of change freeze period.
+
+This action can be performed by the Tenant Owner by adding the label `projectcapsule.dev/cordoned=true` to the namespace:
+
+```shell
+kubectl patch namespace solar-production --patch '{"metadata": {"labels": {"projectcapsule.dev/cordoned": "true"}}}' --as alice --as-group projectcapsule.dev
+```
+
+To uncordon the namespace, simply remove the label or set it to false:
+
+```shell
+kubectl patch namespace solar-production --patch '{"metadata": {"labels": {"projectcapsule.dev/cordoned": "false"}}}' --as alice --as-group projectcapsule.dev
+```
+
+**Note**: If the entire [tenant is cordoned](/docs/tenants/administration/#cordoning) all namespaces within the tenant will be cordoned as well. Meaning a single namespace can not be uncordoned if the tenant is cordoned.

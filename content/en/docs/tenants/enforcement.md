@@ -519,6 +519,42 @@ With the said Tenant specification, Alice can create a Pod resource if `spec.run
 
 If a Pod is going to use a non-allowed Runtime Class, it will be rejected by the Validation Webhook enforcing it.
 
+
+#### Assign Runtime Class as tenant default
+
+This feature allows specifying a custom default value on a Tenant basis- It's possible to assign each tenant a Runtime which will be used, if no Runtime is set on pod basis:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+  - name: alice
+    kind: User
+  runtimeClasses:
+    default: "tenant-default"
+    matchLabels:
+      env: "production"
+```
+
+Let's create a RuntimeClass which is used as the default:
+
+```bash
+kubectl apply -f - << EOF
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: tenant-default 
+  labels:
+    env: "production"
+handler: myconfiguration 
+EOF
+```
+
+If a Pod has no value for `spec.runtimeclass`, the default value for RuntimeClass (`tenant-default`) will be used.
+
 ### NodeSelector
 
 Bill, the cluster admin, can dedicate a pool of worker nodes to the solar tenant, to isolate the tenant applications from other noisy neighbors.
@@ -582,13 +618,49 @@ kubectl auth can-i edit ns -n solar-production
 no
 ```
 
-#### Node Selector Expressions
-
-Feature TBD
-
 ## Connectivity
 
 ### Services
+
+
+#### ExternalIPs
+
+Specifies the external IPs that can be used in Services with type ClusterIP. An empty list means no IPs are allowed, which is recommended in multi-tenant environments (can be misused for traffic hijacking):
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+  - name: alice
+    kind: User
+  serviceOptions:
+    externalIPs:
+      allowed: []
+```
+
+#### Deny labels and annotations
+
+By default, capsule allows tenant owners to add and modify any label or annotation on their services.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  serviceOptions:
+    forbiddenAnnotations:
+      denied:
+          - loadbalancer.class.acme.net
+      deniedRegex: .*.acme.net
+    forbiddenLabels:
+      denied:
+          - loadbalancer.class.acme.net
+      deniedRegex: .*.acme.net
+```
 
 #### Deny Service Types
 
@@ -656,11 +728,9 @@ spec:
 
 With the above configuration, any attempt of Alice to create a Service of type `LoadBalancer` is denied by the Validation Webhook enforcing it. Default value is `true`.
 
-
 ### GatewayClasses
 
 > Note: This feature is offered only by API type `GatewayClass` in group `gateway.networking.k8s.io` version `v1`.
-
 
 [GatewayClass](https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1.GatewayClass) is cluster-scoped resource defined by the infrastructure provider. This resource represents a class of Gateways that can be instantiated. [Read More](https://gateway-api.sigs.k8s.io/api-types/gatewayclass/)
 
@@ -1343,96 +1413,3 @@ A Pod running `internal.registry.foo.tld/capsule:latest` as registry will be all
 > A catch-all regex entry as `.*` allows every kind of registry, which would be the same result of unsetting `.spec.containerRegistries` at all.
 
 Any attempt of Alice to use a not allowed `.spec.containerRegistries` value is denied by the Validation Webhook enforcing it.
-
-
-## Administration
-
-
-### Cordoning
-
-Bill needs to cordon a Tenant and its Namespaces for several reasons:
-
-  * Avoid accidental resource modification(s) including deletion during a Production Freeze Window
-  * During the Kubernetes upgrade, to prevent any workload updates
-  * During incidents or outages
-  * During planned maintenance of a dedicated nodes pool in a BYOD scenario
-
-With this said, the Tenant Owner and the related Service Account living into managed Namespaces, cannot proceed to any update, create or delete action.
-
-This is possible by just toggling the specific Tenant specification:
-
-```yaml
-apiVersion: capsule.clastix.io/v1beta2
-kind: Tenant
-metadata:
-  name: solar
-spec:
-  cordoned: true
-  owners:
-  - kind: User
-    name: alice
-```
-
-Any operation performed by Alice, the Tenant Owner, will be rejected by the Admission controller.
-
-Uncordoning can be done by removing the said specification key:
-
-```bash
-$ cat <<EOF | kubectl apply -f -
-apiVersion: capsule.clastix.io/v1beta2
-kind: Tenant
-metadata:
-  name: solar
-spec:
-  cordoned: false
-  owners:
-  - kind: User
-    name: alice
-EOF
-
-$ kubectl --as alice --as-group projectcapsule.dev -n solar-dev create deployment nginx --image nginx
-deployment.apps/nginx created
-```
-
-Status of cordoning is also reported in the state of the tenant:
-
-```bash
-kubectl get tenants
-NAME     STATE    NAMESPACE QUOTA   NAMESPACE COUNT   NODE SELECTOR    AGE
-bronze   Active                     2                                  3d13h
-gold     Active                     2                                  3d13h
-solar    Cordoned                   4                                  2d11h
-silver   Active                     2                                  3d13h
-```
-
-### Force Tenant-Prefix
-
-Use this if you want to disable/enable the Tenant name prefix to specific Tenants, overriding global forceTenantPrefix in [CapsuleConfiguration](/docs/reference/#capsuleconfigurationspec). When set to 'true', it enforces Namespaces created for this Tenant to be named with the Tenant name prefix, separated by a dash (i.e. for Tenant 'foo', namespace names must be prefixed with 'foo-'), this is useful to avoid Namespace name collision. When set to 'false', it allows Namespaces created for this Tenant to be named anything. Overrides CapsuleConfiguration global forceTenantPrefix for the Tenant only. If unset, Tenant uses CapsuleConfiguration's forceTenantPrefix
-
-```yaml
-apiVersion: capsule.clastix.io/v1beta2
-kind: Tenant
-metadata:
-  name: solar
-spec:
-  owners:
-  - name: alice
-    kind: User
-  forceTenantPrefix: true
-```
-
-### Deletion Protection
-
-Sometimes it is important to protect business critical tenants from accidental deletion. This can be achieved by toggling preventDeletion specification key on the tenant:
-
-```yaml
-apiVersion: capsule.clastix.io/v1beta2
-kind: Tenant
-metadata:
-  name: solar
-spec:
-  owners:
-  - name: alice
-    kind: User
-  preventDeletion: true
-```

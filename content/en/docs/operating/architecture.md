@@ -1,18 +1,44 @@
 ---
 title: Architecture
-weight: 1
+weight: 2
 description: Architecture references and considerations
 ---
 
 
-## Ownership
+## Personas
 
 In Capsule, we introduce a new persona called the `Tenant Owner`. The goal is to enable Cluster Administrators to delegate tenant management responsibilities to Tenant Owners. Here’s how it works:
 
-* `Tenant Owners`: They manage the namespaces within their tenants and perform administrative tasks confined to their tenant boundaries. This delegation allows teams to operate more autonomously while still adhering to organizational policies.
-* `Cluster Administrators`: They provision tenants, essentially determining the size and resource allocation of each tenant within the entire cluster. Think of it as defining how big each piece of cake (Tenant) should be within the whole cake (Cluster).
+### Cluster Administrators
+
+
+### Capsule Administrators
+
+They are promoted to [Tenant-Owners](#tenant-owners) for all available tenants. Effectively granting them the ability to manage all namespaces within the cluster, across all tenants. 
+
+**Note**: Granting Capsule Administrator rights should be done with caution, as it provides extensive control over the cluster's multi-tenant environment. **When granting Capsule Administrator rights, the entity gets the privileges to create any namespace (also not part of capsule tenants) and the privileges to delete any tenant namespaces.**
+
+Capsule Administrators can:
+  - Create and manage [namespaces via labels in any tenant](docs/tenants/namespaces/#label).
+  - Create namespaces outside of tenants.
+  - Delete namespaces in any tenant.
+
+Administrators come in handy in bootstrap scenarios or GitOps scenarios where certain users/serviceaccounts need to be able to manage namespaces for all tenants.
+
+[Configure Capsule Administrators](/docs/operating/setup/configuration/#administrators)
+
+### Tenant Owners
+
+They manage the namespaces within their tenants and perform administrative tasks confined to their tenant boundaries. This delegation allows teams to operate more autonomously while still adhering to organizational policies. Tenant Owners can be used to shift reposnsability of one tenant towards this user group. promoting them to the SPOC of all namespaces within the tenant.
+
+Tenant Owners can:
+
+  - Create and manage namespaces within their tenant.
+  - Delete namespaces within their tenant.
 
 Capsule provides robust tools to strictly enforce tenant boundaries, ensuring that each tenant operates within its defined limits. This separation of duties promotes both security and efficient resource management.
+
+[Configure Tenant Owners](/docs/tenants/permissions/#ownership)
 
 ### Key Decisions
 

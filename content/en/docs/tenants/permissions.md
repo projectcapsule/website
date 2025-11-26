@@ -7,7 +7,7 @@ description: >
 
 ## Ownership
 
-Capsule introduces the principal, that tenants must have owners. The owner of a tenant is a user or a group of users that have the right to create, delete, and manage the [tenant's namespaces](/docs/tenants/namespaces) and other tenant resources. However an owner does not have the permissions to manage the tenants they are owner of. This is still done by cluster-administrators.
+Capsule introduces the principal, that tenants must have owners ([Tenant Owners](/docs/operating/architecture/#tenant-owners)). The owner of a tenant is a user or a group of users that have the right to create, delete, and manage the [tenant's namespaces](/docs/tenants/namespaces) and other tenant resources. However an owner does not have the permissions to manage the tenants they are owner of. This is still done by cluster-administrators.
 
 ### Group Scope
 
@@ -550,3 +550,9 @@ roleRef:
 With the above example, Capsule is leaving the tenant owner to create namespaced custom resources.
 
 > Take Note: a tenant owner having the admin scope on its namespaces only, does not have the permission to create Custom Resources Definitions (CRDs) because this requires a cluster admin permission level. Only Bill, the cluster admin, can create CRDs. This is a known limitation of any multi-tenancy environment based on a single shared control plane.
+
+
+## Administrators
+
+Administrators are users that have full control over all tenants and their namespaces. They are typically cluster administrators or operators who need to manage the entire cluster and all its tenants. However as administrator you are automatically Owner of all tenants. This means that administrators can create, delete, and manage namespaces and other resources within any tenant, given you are using [label assignments for tenants](/docs/tenants/namespaces/#label).
+
