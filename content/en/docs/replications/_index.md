@@ -76,12 +76,12 @@ The Namespaced-scope API TenantResource allows to replicate resources across the
 
 The Tenant owners must have proper RBAC configured in order to create, get, update, and delete their TenantResource CRD instances. This can be achieved using the Tenant key additionalRoleBindings or a custom Tenant owner role, compared to the default one (admin). You can for example create this clusterrole, which will aggregate to the admin role, to allow the Tenant Owner to create TenantResource objects. This allows all users with the rolebinding to `admin` to create TenantResource objects.
 
-```yaml 
+```yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: allow-tenant-resources
-  labels: 
+  labels:
     rbac.authorization.k8s.io/aggregate-to-admin: "true"
 rules:
 - apiGroups: ["capsule.clastix.io"]
@@ -112,7 +112,7 @@ spec:
   resources:
     - additionalMetadata:
         labels:
-          "replicated-by": "capsule" 
+          "replicated-by": "capsule"
       namespaceSelector:
         matchLabels:
           environment: production
@@ -136,9 +136,9 @@ The expected result will be the object Cluster for the API version postgresql.cn
 
 ```bash
 $ kubectl get clusters.postgresql.cnpg.io -A
-NAMESPACE   NAME         AGE   INSTANCES   READY   STATUS                     PRIMARY
-solar-1     postgresql   80s   3           3       Cluster in healthy state   postgresql-1
-solar-2     postgresql   80s   3           3       Cluster in healthy state   postgresql-1
+NAMESPACE   NAME              AGE   INSTANCES   READY   STATUS                     PRIMARY
+solar-1     postgres-solar-1  80s   3           3       Cluster in healthy state   postgresql-1
+solar-2     postgres-solar-2  80s   3           3       Cluster in healthy state   postgresql-1
 ```
 
 The TenantResource object has been created in the namespace `solar-system` that doesn't satisfy the Namespace selector. Furthermore, Capsule will automatically inject the required labels to avoid a `TenantResource` could start polluting other Namespaces.

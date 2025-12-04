@@ -11,16 +11,89 @@ Alice, once logged with her credentials, can create a new namespace in her tenan
 kubectl create ns solar-production
 ```
 
-Alice started the name of the namespace prepended by the name of the tenant: this is not a strict requirement but it is highly suggested because it is likely that many different tenants would like to call their namespaces production, test, or demo, etc.
+Alice started the name of the namespace prepended by the name of the tenant: this is not a strict requirement but it is highly suggested because it is likely that many different tenants would like to call their namespaces `production`, `test`, or `demo`, etc. The enforcement of this naming convention is optional and can be controlled by the cluster administrator with [forceTenantPrefix](/docs/tenants/configuration/#forcetenantprefix) option.
 
-The enforcement of this naming convention is optional and can be controlled by the cluster administrator with [forceTenantPrefix](/docs/tenants/configuration/#forcetenantprefix) option.
-
-Alice can deploy any resource in any of the namespaces
+Alice can deploy any resource in any of the namespaces. That is because she is the [owner](/docs/tenants/permissions/#ownership) of the tenant `solar` and therefore she has full control over all namespaces assigned to that tenant.
 
 ```bash
 kubectl -n solar-development run nginx --image=docker.io/nginx 
 kubectl -n solar-development get pods
 ```
+
+Every Namespace assigned to a tenant has an [owner reference](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/) pointing to the Tenant object itself. In Addition each Namespace has a label `capsule.clastix.io/tenant=<tenant_name>` identifying the tenant it belongs to ([Read More](#label)).
+
+The namespaces are tracked as part of the tenant status:
+
+```bash
+$ kubectl get tnt solar -o yaml
+...
+status:
+  ...
+  
+  # Simplie list of namespaces
+  namespaces:
+  - solar-dev
+  - solar-prod
+  - solar-test
+
+  # Size (Amount of namespaces)
+  size: 3
+
+  # Detailed information about each namespace
+  spaces:
+  - conditions:
+    - lastTransitionTime: "2025-12-04T10:23:17Z"
+      message: reconciled
+      reason: Succeeded
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2025-12-04T10:23:17Z"
+      message: not cordoned
+      reason: Active
+      status: "False"
+      type: Cordoned
+    metadata: {}
+    name: solar-prod
+    uid: ad8ea663-9457-4b00-ac67-0778c4160171
+  - conditions:
+    - lastTransitionTime: "2025-12-04T10:23:25Z"
+      message: reconciled
+      reason: Succeeded
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2025-12-04T10:23:25Z"
+      message: not cordoned
+      reason: Active
+      status: "False"
+      type: Cordoned
+    metadata: {}
+    name: solar-test
+    uid: 706e3d30-af2b-4acc-9929-acae7b887ab9
+  - conditions:
+    - lastTransitionTime: "2025-12-04T10:23:33Z"
+      message: reconciled
+      reason: Succeeded
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2025-12-04T10:23:33Z"
+      message: not cordoned
+      reason: Active
+      status: "False"
+      type: Cordoned
+    metadata: {}
+    name: solar-dev
+    uid: e4af5283-aad8-43ef-b8b8-abe7092e25d0
+```
+
+**By default the following rules apply for namespaces**:
+
+  * A Namespace can not be moved from a tenant to another one (or anywhere else).
+  * Namespaces are deleted when the tenant is deleted.
+
+If you feel like these rules are too restrictive, you must implement your own custom logic to handle these cases, for example, with Finalizers for namespaces.
+
+**If namespaces are not correctly assigned to tenants, make sure to evaluate your [Capsule Users Configuration](/docs/operating/architecture/#capsule-users).**
+
 
 ## Multiple Tenants
 

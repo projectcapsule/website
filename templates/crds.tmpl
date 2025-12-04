@@ -32,6 +32,7 @@ Resource Types:
 
 {{.Description}}
 
+
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 {{- if .IsTopLevel }}
@@ -40,7 +41,20 @@ Resource Types:
 | **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
 {{- end -}}
 {{- range .Fields }}
-| **{{if .TypeKey}}[{{.Name}}](#{{.TypeKey}}){{else}}{{.Name}}{{end}}** | {{.Type}} | {{.Description | replace "\n" "<br>"}} {{- if or .Schema.Format .Schema.Enum .Schema.Default .Schema.Minimum .Schema.Maximum }}<br/>{{- end}} {{- if .Schema.Format }}*Format*: {{.Schema.Format}}<br/>{{- end}} {{- if .Schema.Enum }}*Enum*: {{.Schema.Enum | toStrings | join ", "}}<br/>{{- end}} {{- if .Schema.Default }}*Default*: {{.Schema.Default}}<br/>{{- end}} {{- if .Schema.Minimum }}*Minimum*: {{.Schema.Minimum}}<br/>{{- end}} {{- if .Schema.Maximum }}*Maximum*: {{.Schema.Maximum}}<br/>{{- end}} | {{.Required}} |
+{{- $lowerDesc := lower .Description }}
+| **{{if .TypeKey}}[{{.Name}}](#{{.TypeKey}}){{else}}{{.Name}}{{end}}** | {{.Type}} | 
+{{- if contains "deprecated" $lowerDesc -}}
+<span style="color:red;font-weight:bold">{{ .Description | replace "\n" "<br>" }}</span>
+{{- else -}}
+{{ .Description | replace "\n" "<br>" }}
+{{- end -}}
+{{- if or .Schema.Format .Schema.Enum .Schema.Default .Schema.Minimum .Schema.Maximum }}<br/>{{- end}} 
+{{- if .Schema.Format }}*Format*: {{.Schema.Format}}<br/>{{- end}} 
+{{- if .Schema.Enum }}*Enum*: {{.Schema.Enum | toStrings | join ", "}}<br/>{{- end}} 
+{{- if .Schema.Default }}*Default*: {{.Schema.Default}}<br/>{{- end}} 
+{{- if .Schema.Minimum }}*Minimum*: {{.Schema.Minimum}}<br/>{{- end}} 
+{{- if .Schema.Maximum }}*Maximum*: {{.Schema.Maximum}}<br/>{{- end}} 
+| {{.Required}} |
 {{- end -}}
 
 {{- end}}{{/* range .Types */}}

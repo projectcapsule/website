@@ -9,30 +9,179 @@ description: >
 
 Capsule introduces the principal, that tenants must have owners ([Tenant Owners](/docs/operating/architecture/#tenant-owners)). The owner of a tenant is a user or a group of users that have the right to create, delete, and manage the [tenant's namespaces](/docs/tenants/namespaces) and other tenant resources. However an owner does not have the permissions to manage the tenants they are owner of. This is still done by cluster-administrators.
 
-### Group Scope
-
-Capsule selects users, which are eligable to be considered for tenancy by their group. To define the group of users that can be considered for tenancy, you can use the `userGroups` option in the CapsuleConfiguration.
-
-Another commonly used example if you want to promote serviceaccount to tenant-owners, their group must be present:
+At any time you are able to verify which users or groups are owners of a tenant by checking the `owners` field of the Tenant status subresource:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
-kind: CapsuleConfiguration
+kind: Tenant
 metadata:
-  name: default
-spec:
-  userGroups:
-  - solar-users
-  - system:serviceaccounts:tenant-system
+  name: solar
+...
+status:
+  owners:
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: Group
+    name: oidc:org:devops:a
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    - mega-admin
+    - controller
+    kind: ServiceAccount
+    name: system:serviceaccount:capsule:controller
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: User
+    name: alice
 ```
 
-All serviceAccounts in the `tenant-system` namespace will be considered for tenancy and can be promoted to tenant owners.
+To explain these entries, let's inspect one of them:
 
-### Assignment
+* `kind`: It can be [User](#users), [Group](#groups) or [ServiceAccount](#serviceaccounts)
+* `name`: Is the reference name of the user, group or serviceaccount we want to bind
+* `clusterRoles`: ClusterRoles which are bound for each namespace of teh tenant to the owner. By default, Capsule assigns `admin` and `capsule-namespace-deleter` roles to each owner, but you can customize them as explained in [Owner Roles](#owner-roles) section.
 
-Learn how to assign ownership to users, groups and serviceaccounts.
+With this information available you
 
-#### Assigning Ownership to Users
+
+### Tenant Owners
+
+Tenant Owners can be declared as dedicated cluster scoped Resources called `TenantOwner`. This allows the cluster admin to manage the ownership of tenants in a more flexible way, for example by adding labels and annotations to the `TenantOwner` resources.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: TenantOwner
+metadata:
+  labels:
+    team: devops
+  name: devops
+spec:
+  kind: Group
+  name: "oidc:org:devops:a"
+```
+
+This `TenantOwner` can now be matched by any tenant. Essentially we define on a per tenant basis which `TenantOwners` should be owners of the tenant (Each item under `spec.permissions.matchOwners` is understood as `OR` selection.):
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  labels:
+    kubernetes.io/metadata.name: solar
+  name: solar
+spec:
+  permissions:
+    matchOwners:
+    - matchLabels:
+        team: devops
+    - matchLabels:
+        customer: x
+```
+
+Since the ownership is now loosely coupled, all `TenantOwners` matching the given labels will be owners of the tenant. We can verify this via the `.status.owners` field of the Tenant resource:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+...
+status:
+  owners:
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: Group
+    name: oidc:org:devops:a
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: User
+    name: alice
+```
+
+This can also be combined with direct owner declarations. In the example, both `alice` user and all `TenantOwners` with label `team: devops` and `TenantOwners` with label `customer: x` will be owners of the `solar` tenant.
+
+```yaml
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  labels:
+    kubernetes.io/metadata.name: oil
+  name: solar
+spec:
+  owners:
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: User
+    name: alice
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: ServiceAccount
+    name: system:serviceaccount:capsule:controller
+  permissions:
+    matchOwners:
+    - matchLabels:
+        team: devops
+    - matchLabels:
+        customer: x
+```
+
+If we create a `TenantOwner` where the `.spec.name` and `.spec.kind` matches one of the `owners` declared in the tenant, the entries wille be merged. That's mainly relevant for the [clusterRoles](#owner-roles):
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: TenantOwner
+metadata:
+  labels:
+    customer: x
+  name: controller
+spec:
+  kind: ServiceAccount
+  name: "system:serviceaccount:capsule:controller"
+  clusterRoles:
+    - "mega-admin"
+    - "controller"
+```
+
+Again we can verify the resulting owners via the `.status.owners` field of the Tenant resource:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+...
+status:
+  owners:
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: Group
+    name: oidc:org:devops:a
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    - mega-admin
+    - controller
+    kind: ServiceAccount
+    name: system:serviceaccount:capsule:controller
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: User
+    name: alice
+```
+
+We. can see that the `system:serviceaccount:capsule:controller` ServiceAccount now has additional `mega-admin` and `controller` roles assigned.
+
+### Users
 
 **Bill**, the cluster admin, receives a new request from Acme Corp's CTO asking for a new tenant to be onboarded and Alice user will be the tenant owner. Bill then assigns Alice's identity of alice in the Acme Corp. identity management system. Since Alice is a tenant owner, Bill needs to assign alice the Capsule group defined by --capsule-user-group option, which defaults to `projectcapsule.dev`.
 
@@ -96,7 +245,7 @@ kubectl auth can-i get tenants
 no
 ```
 
-#### Group of subjects as tenant owner
+### Groups
 
 In the example above, Bill assigned the ownership of solar tenant to alice user. If another user, e.g. Bob needs to administer the solar tenant, Bill can assign the ownership of solar tenant to such user too:
 
@@ -135,7 +284,7 @@ yes
 
 All the groups you want to promot to Tenant Owners must be part of the Group Scope. You have to add `solar-users` to the CapsuleConfiguration [Group Scope](#group-scope) to make it work.
 
-#### ServiceAccounts
+### ServiceAccounts
 
 You can use the Group subject to grant ServiceAccounts the ownership of a tenant. For example, you can create a group of ServiceAccounts and assign it to the tenant:
 
@@ -152,17 +301,18 @@ spec:
 
 Bill can create a ServiceAccount called robot, for example, in the `tenant-system` namespace and leave it to act as Tenant Owner of the solar tenant
 
-```bash
+```shell
 kubectl --as system:serviceaccount:tenant-system:robot --as-group projectcapsule.dev auth can-i create namespaces
 yes
 ```
+
 since each service account in a namespace is a member of following group:
 
-```
+```shell
 system:serviceaccounts:{service-account-namespace}
 ```
 
-You have to add `system:serviceaccounts:{service-account-namespace}` to the CapsuleConfiguration [Group Scope](#group-scope) to make it work.
+You have to add `system:serviceaccounts:{service-account-namespace}` to the CapsuleConfiguration [Group Scope](/docs/operating/setup/configuration/#usergroups) or `system:serviceaccounts:{service-account-namespace}:{service-account-name}` to the CapsuleConfiguration [User Scope](/docs/operating/setup/configuration/#usergroups) to make it work.
 
 ### ServiceAccount Promotion
 
@@ -185,7 +335,6 @@ kubectl label sa gitops-reconcile -n green-test owner.projectcapsule.dev/promote
 ```
 
 This feature must be enabled in the [CapsuleConfiguration](/docs/operating/setup/configuration/#allowserviceaccountpromotion).
-
 
 ### Owner Roles
 

@@ -4,43 +4,7 @@ weight: 2
 description: Architecture references and considerations
 ---
 
-
-## Personas
-
-In Capsule, we introduce a new persona called the `Tenant Owner`. The goal is to enable Cluster Administrators to delegate tenant management responsibilities to Tenant Owners. Here’s how it works:
-
-### Cluster Administrators
-
-
-### Capsule Administrators
-
-They are promoted to [Tenant-Owners](#tenant-owners) for all available tenants. Effectively granting them the ability to manage all namespaces within the cluster, across all tenants. 
-
-**Note**: Granting Capsule Administrator rights should be done with caution, as it provides extensive control over the cluster's multi-tenant environment. **When granting Capsule Administrator rights, the entity gets the privileges to create any namespace (also not part of capsule tenants) and the privileges to delete any tenant namespaces.**
-
-Capsule Administrators can:
-  - Create and manage [namespaces via labels in any tenant](docs/tenants/namespaces/#label).
-  - Create namespaces outside of tenants.
-  - Delete namespaces in any tenant.
-
-Administrators come in handy in bootstrap scenarios or GitOps scenarios where certain users/serviceaccounts need to be able to manage namespaces for all tenants.
-
-[Configure Capsule Administrators](/docs/operating/setup/configuration/#administrators)
-
-### Tenant Owners
-
-They manage the namespaces within their tenants and perform administrative tasks confined to their tenant boundaries. This delegation allows teams to operate more autonomously while still adhering to organizational policies. Tenant Owners can be used to shift reposnsability of one tenant towards this user group. promoting them to the SPOC of all namespaces within the tenant.
-
-Tenant Owners can:
-
-  - Create and manage namespaces within their tenant.
-  - Delete namespaces within their tenant.
-
-Capsule provides robust tools to strictly enforce tenant boundaries, ensuring that each tenant operates within its defined limits. This separation of duties promotes both security and efficient resource management.
-
-[Configure Tenant Owners](/docs/tenants/permissions/#ownership)
-
-### Key Decisions
+## Key Decisions
 
 Introducing a new separation of duties can lead to a significant paradigm shift. This has technical implications and may also impact your organizational structure. Therefore, when designing a multi-tenant platform pattern, carefully consider the following aspects. As **Cluster Administrator**, ask yourself:
 
@@ -60,6 +24,54 @@ The answer to this question may be influenced by the following aspects:
 * **Are your customers technically capable of working directly with the Kubernetes API?**? 
   * _If not, you may need to build a more user-friendly platform with better UX — for example, a multi-tenant ArgoCD setup, or UI layers like Headlamp._
 
+## Personas
+
+In Capsule, we introduce a new persona called the `Tenant Owner`. The goal is to enable Cluster Administrators to delegate tenant management responsibilities to Tenant Owners. Here’s how it works:
+
+### Capsule Administrators
+
+They are promoted to [Tenant-Owners](#tenant-owners) for all available tenants. Effectively granting them the ability to manage all namespaces within the cluster, across all tenants.
+
+**Note**: Granting Capsule Administrator rights should be done with caution, as it provides extensive control over the cluster's multi-tenant environment. **When granting Capsule Administrator rights, the entity gets the privileges to create any namespace (also not part of capsule tenants) and the privileges to delete any tenant namespaces.**
+
+Capsule Administrators can:
+  - Create and manage [namespaces via labels in any tenant](docs/tenants/namespaces/#label).
+  - Create namespaces outside of tenants.
+  - Delete namespaces in any tenant.
+
+Administrators come in handy in bootstrap scenarios or GitOps scenarios where certain users/serviceaccounts need to be able to manage namespaces for all tenants.
+
+[Configure Capsule Administrators](/docs/operating/setup/configuration/#administrators)
+
+### Capsule Users
+
+Any entity which needs to interact with tenants and their namespaces must be defined as a **Capsule User**. This is where the flexibility of Capsule comes into play. You can define users or groups as Capsule Users, allowing them to create and manage namespaces within any tenant they have access to. If they are not defined as Capsule Users, any interactions will be ignored by Capsule. Often a best practice is to define a single group which identifies all your tenant users. This way you can have one generic group for all your users and then use additional groups to separate responsibilities (e.g. administrators vs normal users).
+
+**Only one entry is needed to identify a Capsule User. This is only important for Namespace Admission.**.
+
+![Capsule Users Admission](/images/content/capsule-users-admission.drawio.png)
+
+[Configure Capsule Users](/docs/operating/setup/configuration/#users)
+
+### Tenant Owners
+
+**Every Tenant Owner must be a [Capsule User](#capsule-users)**
+
+
+They manage the namespaces within their tenants and perform administrative tasks confined to their tenant boundaries. This delegation allows teams to operate more autonomously while still adhering to organizational policies. Tenant Owners can be used to shift reposnsability of one tenant towards this user group. promoting them to the SPOC of all namespaces within the tenant.
+
+Tenant Owners can:
+
+  - Create and manage namespaces within their tenant.
+  - Delete namespaces within their tenant.
+
+Capsule provides robust tools to strictly enforce tenant boundaries, ensuring that each tenant operates within its defined limits. This separation of duties promotes both security and efficient resource management.
+
+
+
+
+
+[Configure Tenant Owners](/docs/tenants/permissions/#ownership)
 
 ## Layouts
 
@@ -70,8 +82,6 @@ Let's dicuss different Tenant Layouts which could be used . These are just appro
 With this approach you essentially just provide your Customers with the Tenant on your cluster. The rest is their responsability. This concludes to a shared responsibility model. This can be achieved when also the Tenant Owners are responsible for everything they are provisiong within their Tenant's namespaces.
 
 ![Resourcepool Dashboard](/images/content/architecture/layout-taas.drawio.png)
-
-
 
 ## Scheduling
 

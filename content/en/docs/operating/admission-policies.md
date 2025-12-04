@@ -6,7 +6,14 @@ description: Recommended Admission Policies to enforce best practices in multi-t
 
 As Capsule we try to provide a secure multi-tenant environment out of the box, there are however some additional Admission Policies you should consider to enforce best practices in your cluster. Since Capsule only covers the core multi-tenancy features, such as Namespaces, Resource Quotas, Network Policies, and Container Registries, Classes, you should consider using an additional Admission Controller to enforce best practices on workloads and other resources.
 
-## Custom Class Validation
+## Custom
+
+Create custom Policies and reuse data provided via Tenant Status to enforce your own rules.
+
+### Owner Validation
+
+
+### Class Validation
 
 Let's say we have the following namespaced [`ObjectBucketClaim`](https://rook.io/docs/rook/v1.12/Storage-Configuration/Object-Storage-RGW/object-storage/#create-a-bucket) resource:
 
@@ -34,42 +41,6 @@ However since we are allowing Tenant Users to create these [`ObjectBucketClaims`
 
 {{% tabpane lang="yaml" %}}
   {{% tab header="**Engines**:" disabled=true /%}}
-  {{< tab header="VAP" >}}
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingAdmissionPolicy
-metadata:
-  name: disallow-controlplane-scheduling
-spec:
-  failurePolicy: Fail
-  matchConstraints:
-    resourceRules:
-      - apiGroups: [""]
-        apiVersions: ["v1"]
-        resources: ["pods"]
-        operations: ["CREATE","UPDATE"]
-        scope: "Namespaced"
-  validations:
-    - expression: >
-        // deny if any toleration targets control-plane taints
-        !has(object.spec.tolerations) ||
-        !exists(object.spec.tolerations, t,
-          t.key in ['node-role.kubernetes.io/master','node-role.kubernetes.io/control-plane']
-        )
-      message: "Pods may not use tolerations which schedule on control-plane nodes."
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingAdmissionPolicyBinding
-metadata:
-  name: disallow-controlplane-scheduling
-spec:
-  policyName: disallow-controlplane-scheduling
-  validationActions: ["Deny"]
-  matchResources:
-    namespaceSelector:
-      matchExpressions:
-        - key: capsule.clastix.io/tenant
-          operator: Exists{{< /tab >}}
   {{< tab header="Kyverno" >}}
 ---
 apiVersion: kyverno.io/v1
@@ -106,10 +77,11 @@ spec:
             value:  "{{ storageClass }}"{{< /tab >}}
 {{% /tabpane %}}
 
+## Workloads
 
+Policies to harden workloads running in a multi-tenant environment.
 
-
-## Disallow Scheduling on Control Planes
+### Disallow Scheduling on Control Planes
 
 If a Pods are not scoped to specific nodes, they could be scheduled on control plane nodes. You should disallow this by enforcing that Pods do not use tolerations for control plane nodes.
 
@@ -205,12 +177,11 @@ spec:
             - key: "!node-role.kubernetes.io/control-plane"{{< /tab >}}
 {{% /tabpane %}}
 
-
-## Pod Disruption Budgets 
+### Pod Disruption Budgets
 
 [Pod Disruption Budgets]([/docs/concepts/workloads/pods/disruptions/](https://kubernetes.io/docs/tasks/run-application/configure-pdb/)) (PDBs) are a way to limit the number of concurrent disruptions to your Pods. In multi-tenant environments, it is recommended to enforce the usage of PDBs to ensure that tenants do not accidentally or maliciously block cluster operations.
 
-### MaxUnavailable
+#### MaxUnavailable
 
  A PodDisruptionBudget which sets its maxUnavailable value to zero prevents all voluntary evictions including Node drains which may impact maintenance tasks. This policy enforces that if a PodDisruptionBudget specifies the maxUnavailable field it must be greater than zero.
 
@@ -287,7 +258,7 @@ spec:
   validationActions: ["Deny"]{{< /tab >}}
 {{% /tabpane %}}
 
-### MinAvailable
+#### MinAvailable
 
 When a Pod controller which can run multiple replicas is subject to an active PodDisruptionBudget, if the replicas field has a value equal to the minAvailable value of the PodDisruptionBudget it may prevent voluntary disruptions including Node drains which may impact routine maintenance tasks and disrupt operations. This policy checks incoming Deployments and StatefulSets which have a matching PodDisruptionBudget to ensure these two values do not match.
 
@@ -354,7 +325,7 @@ spec:
                 value: "{{`{{ minavailable }}`}}"{{< /tab >}}
 {{% /tabpane %}}
 
-### Deployment Replicas higher than PDB 
+#### Deployment Replicas higher than PDB 
 
 PodDisruptionBudget resources are useful to ensuring minimum availability is maintained at all times.Introducing a PDB where there are already matching Pod controllers may pose a problem if the author is unaware of the existing replica count. This policy ensures that the minAvailable value is not greater or equal to the replica count of any matching existing Deployment. If other Pod controllers should also be included in this check, additional rules may be added to the policy which match those controllers.
 
@@ -426,7 +397,7 @@ spec:
                 value: "{{`{{ element.spec.replicas }}`}}"{{< /tab >}}
 {{% /tabpane %}}
 
-### CNPG Cluster
+#### CNPG Cluster
 
 When a Pod controller which can run multiple replicas is subject to an active PodDisruptionBudget, if the replicas field has a value equal to the minAvailable value of the PodDisruptionBudget it may prevent voluntary disruptions including Node drains which may impact routine maintenance tasks and disrupt operations. This policy checks incoming CNPG Clusters and their `.spec.enablePDB` setting.
 
@@ -458,28 +429,28 @@ spec:
         any:
           - resources:
               kinds:
-                - Cluster
+                - postgresql.cnpg.io/v1/Cluster
               namespaceSelector:
                 matchExpressions:
                 - key: capsule.clastix.io/tenant
                   operator: Exists
       preconditions:
-        all:
-        - key: "{{`{{request.operation || 'BACKGROUND'}}`}}"
+        any:
+        - key: "{{request.operation || 'BACKGROUND'}}"
           operator: AnyIn
           value:
           - CREATE
           - UPDATE
-        - key: "{{`{{ request.object.spec.enablePDB }}`}}"
-          operator: Equals
-          value: true
       validate:
         message: >-
           Set `.spec.enablePDB` to `false` for CNPG Clusters when the number of instances is lower than 2.
         deny:
           conditions:
-            any:
-              - key: "{{`{{ request.object.spec.instances }}`}}"
+            all:
+              - key: "{{request.object.spec.enablePDB }}"
+                operator: Equals
+                value: true
+              - key: "{{request.object.spec.instances }}"
                 operator: LessThan
                 value: 2{{< /tab >}}
   {{< tab header="VAP" >}}
@@ -519,7 +490,7 @@ spec:
   validationActions: ["Deny"]{{< /tab >}}
 {{% /tabpane %}}
 
-## Mutate User Namespace
+### Mutate User Namespace
 
 You should enforce the usage of [User Namespaces](/docs/operating/best-practices/workloads/#user-namespaces). Most Helm-Charts currently don't support this out of the box. With Kyverno you can enforce this on Pod level.
 
@@ -565,7 +536,7 @@ spec:
 
 Note that users still can override this setting by adding the label `company.com/allow-host-users=true` to their namespace. You can change the label to your needs. This is because NFS does not support user namespaces and you might want to allow this for specific tenants.
 
-## Disallow Daemonsets
+### Disallow Daemonsets
 
 Tenant's should not be allowed to create Daemonsets, unless they have dedicated nodes.
 
@@ -636,7 +607,7 @@ spec:
             value: "true"{{< /tab >}}
 {{% /tabpane %}}
 
-## Enforce EmptDir Requests/Limits
+### Enforce EmptDir Requests/Limits
 
 By Defaults `emptyDir` Volumes do not have any limits. This could lead to a situation, where a tenant fills up the node disk. To avoid this, you can enforce limits on `emptyDir` volumes. You may also consider restricting the usage of `emptyDir` with the `medium: Memory` option, as this could lead to memory exhaustion on the node.
 
@@ -677,7 +648,7 @@ spec:
               value: 250Mi{{< /tab >}}
 {{% /tabpane %}}
 
-## Block Ephemeral Containers
+### Block Ephemeral Containers
 
 Ephemeral containers, enabled by default in Kubernetes 1.23, allow users to use the `kubectl debug` functionality and attach a temporary container to an existing Pod. This may potentially be used to gain access to unauthorized information executing inside one or more containers in that Pod. This policy blocks the use of ephemeral containers.
 
@@ -768,7 +739,17 @@ spec:
           X(ephemeralContainers): "null"{{< /tab >}}
 {{% /tabpane %}}
 
-## Image Registry
+### QOS Classes
+
+You may consider the upstream policies, depending on your needs:
+
+* [QoS Burstable](https://kyverno.io/policies/other/require-qos-burstable/require-qos-burstable/)
+* [QoS Guaranteed](https://kyverno.io/policies/other/require-qos-guaranteed/require-qos-guaranteed/)
+
+
+## Images
+
+### Allowed Registries
 
 {{% tabpane lang="yaml" %}}
   {{% tab header="**Engines**:" disabled=true /%}}
@@ -843,7 +824,7 @@ spec:
             - "mcr.microsoft.com"{{< /tab >}}
 {{% /tabpane %}}
 
-## Image PullPolicy
+### Allowed PullPolicy
 
 [Read More](/docs/operating/best-practices/images/).
 
@@ -905,10 +886,3 @@ spec:
           - (name): "?*"
             imagePullPolicy: Always{{< /tab >}}
 {{% /tabpane %}}
-
-## QOS Classes
-
-You may consider the upstream policies, depending on your needs:
-
-* [QoS Burstable](https://kyverno.io/policies/other/require-qos-burstable/require-qos-burstable/)
-* [QoS Guaranteed](https://kyverno.io/policies/other/require-qos-guaranteed/require-qos-guaranteed/)

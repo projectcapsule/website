@@ -15,6 +15,47 @@ The configuration for Capsule is done via it's dedicated configration Custom Res
 kubectl explain capsuleConfiguration.spec
 ```
 
+### `administrators`
+
+These entities are automatically owners for all existing tenants. Meaning they can add namespaces to any tenant. However they must be specific by using the capsule label for interacting with namespaces. Because if that label is not defined, it's assumed that namespace interaction was not targeted towards a tenant and will therefor be ignored by capsule. May also be handy in GitOps scenarios where certain service accounts need to be able to manage namespaces for all tenants.
+
+[Read More](/docs/operating/architecture/#capsule-administrators)
+
+```yaml
+manager:
+  options:
+    administrators:
+      - kind: User
+        name: admin-user
+```
+
+### `users`
+
+These entities are automatically owners for all existing tenants. Meaning they can add namespaces to any tenant. However they must be specific by using the capsule label for interacting with namespaces. Because if that label is not defined, it's assumed that namespace interaction was not targeted towards a tenant and will therefor be ignored by capsule. May also be handy in GitOps scenarios where certain service accounts need to be able to manage namespaces for all tenants.
+
+[Read More](/docs/operating/architecture/#capsule-users)
+
+```yaml
+manager:
+  options:
+    users:
+      - kind: User
+        name: owner-user
+      - kind: Group
+        name: projectcapsule.dev
+```
+
+### `ignoreUserWithGroups`
+Define groups which when found in the request of a user will be ignored by the Capsule. This might be useful if you have one group where all the users are in, but you want to separate administrators from normal users with additional groups.
+
+```yaml
+manager:
+  options:
+    ignoreUserWithGroups:
+      - company:org:administrators
+```
+
+
 ### `enableTLSReconciler`
 Toggles the TLS reconciler, the controller that is able to generate CA and certificates for the webhooks when not using an already provided CA and certificate, or when these are managed externally with Vault, or cert-manager.
 
@@ -53,6 +94,7 @@ manager:
 
 
 ### `overrides`
+
 Allows to set different name rather than the canonical one for the Capsule configuration objects, such as webhook secret or configurations.
 
 ### `protectedNamespaceRegex`
@@ -62,37 +104,6 @@ Disallow creation of namespaces, whose name matches this regexp
 manager:
   options:
     protectedNamespaceRegex: "^(kube|default|capsule|admin|system|com|org|local|localhost|io)$"
-```
-
-### `userGroups`
-Names of the groups for Capsule users. Users must have this group to be considered for the Capsule tenancy. If a user does not have any group mentioned here, they are not recognized as a Capsule user.
-
-```yaml
-manager:
-  options:
-    capsuleUserGroups:
-      - system:serviceaccounts:tenants-gitops
-      - company:org:users
-```
-
-### `userNames`
-Names of the users for Capsule users. Users must have this name to be considered for the Capsule tenancy. If userGroups are set, the properties are ORed, meaning that a user can be recognized as a Capsule user if they have one of the groups or one of the names.
-
-```yaml
-manager:
-  options:
-    userNames:
-      - system:serviceaccount:crossplane-system:crossplane-k8s-provider
-```
-
-### `ignoreUserWithGroups`
-Define groups which when found in the request of a user will be ignored by the Capsule. This might be useful if you have one group where all the users are in, but you want to separate administrators from normal users with additional groups.
-
-```yaml
-manager:
-  options:
-    ignoreUserWithGroups:
-      - company:org:administrators
 ```
 
 ### `allowServiceAccountPromotion`
@@ -105,6 +116,37 @@ ServiceAccounts within tenant namespaces can be promoted to owners of the given 
 manager:
   options:
     allowServiceAccountPromotion: true
+```
+
+### `userGroups`
+
+{{% alert title="Information" color="info" %}}
+**Deprecated**: This option is deprecated and will be removed in future releases. [Please use the `users` option to specify both user and group owners for Capsule tenancy](#users).
+{{% /alert %}}
+
+Names of the groups for Capsule users. Users must have this group to be considered for the Capsule tenancy. If a user does not have any group mentioned here, they are not recognized as a Capsule user.
+
+```yaml
+manager:
+  options:
+    capsuleUserGroups:
+      - system:serviceaccounts:tenants-gitops
+      - company:org:users
+```
+
+### `userNames`
+
+{{% alert title="Information" color="info" %}}
+**Deprecated**: This option is deprecated and will be removed in future releases. [Please use the `users` option to specify both user and group owners for Capsule tenancy](#users).
+{{% /alert %}}
+
+Names of the users for Capsule users. Users must have this name to be considered for the Capsule tenancy. If userGroups are set, the properties are ORed, meaning that a user can be recognized as a Capsule user if they have one of the groups or one of the names.
+
+```yaml
+manager:
+  options:
+    userNames:
+      - system:serviceaccount:crossplane-system:crossplane-k8s-provider
 ```
 
 ### `serviceAccountClient`
@@ -149,20 +191,6 @@ options:
 
 
 
-### `administrators`
-
-These entities are automatically owners for all existing tenants. Meaning they can add namespaces to any tenant. However they must be specific by using the capsule label for interacting with namespaces. Because if that label is not defined, it's assumed that namespace interaction was not targeted towards a tenant and will therefor be ignored by capsule. May also be handy in GitOps scenarios where certain service accounts need to be able to manage namespaces for all tenants.
-
-[Read More](/docs/operating/architecture/#capsule-administrators)
-
-```yaml
-manager:
-  options:
-    administrators:
-      - kind: User
-        name: admin-user
-```
-
 ## Controller Options
 
 Depending on the version of the Capsule Controller, the configuration options may vary. You can view the options for the latest version of the Capsule Controller or by executing the controller locally:
@@ -173,9 +201,11 @@ $ go run ./cmd/. --zap-log-level 7 -h
 Usage of /var/folders/ts/43yg7sk56ls3r3xjf66npgpm0000gn/T/go-build2624543463/b001/exe/cmd:
       --configuration-name string         The CapsuleConfiguration resource name to use (default "default")
       --enable-leader-election            Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.
+      --enable-pprof                      Enables Pprof endpoint for profiling (not recommend in production)
       --metrics-addr string               The address the metric endpoint binds to. (default ":8080")
       --version                           Print the Capsule version and exit
       --webhook-port int                  The port the webhook server binds to. (default 9443)
+      --workers int                       MaxConcurrentReconciles is the maximum number of concurrent Reconciles which can be run. (default 1)
       --zap-devel                         Development Mode defaults(encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn). Production Mode defaults(encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error)
       --zap-encoder encoder               Zap log encoding (one of 'json' or 'console')
       --zap-log-level level               Zap Level to configure the verbosity of logging. Can be one of 'debug', 'info', 'error', 'panic'or any integer value > 0 which corresponds to custom debug levels of increasing verbosity
