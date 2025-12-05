@@ -179,7 +179,7 @@ spec:
 
 ### Pod Disruption Budgets
 
-[Pod Disruption Budgets]([/docs/concepts/workloads/pods/disruptions/](https://kubernetes.io/docs/tasks/run-application/configure-pdb/)) (PDBs) are a way to limit the number of concurrent disruptions to your Pods. In multi-tenant environments, it is recommended to enforce the usage of PDBs to ensure that tenants do not accidentally or maliciously block cluster operations.
+[Pod Disruption Budgets](https://kubernetes.io/docs/tasks/run-application/configure-pdb/) (PDBs) are a way to limit the number of concurrent disruptions to your Pods. In multi-tenant environments, it is recommended to enforce the usage of PDBs to ensure that tenants do not accidentally or maliciously block cluster operations.
 
 #### MaxUnavailable
 

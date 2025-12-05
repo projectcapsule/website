@@ -12,7 +12,7 @@ description: >
 
 > This feature will be deprecated in a future release of Capsule. Instead use [TenantReplications](#limitrange-distribution-with-tenantreplications)
 
-Bill, the cluster admin, can also set Limit Ranges for each namespace in Alice's tenant by defining limits for pods and containers in the tenant spec:
+Bill, the cluster admin, can also set Limit Ranges for each `Namespace` in Alice's `Tenant` by defining limits for pods and containers in the `Tenant` spec:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -53,7 +53,7 @@ spec:
               storage: "10Gi"
 ```
 
-Limits will be inherited by all the namespaces created by Alice. In our case, when Alice creates the namespace `solar-production`, Capsule creates the following:
+Limits will be inherited by all the `Namespaces` created by Alice. In our case, when Alice creates the `Namespace` `solar-production`, Capsule creates the following:
 
 ```yaml
 apiVersion: v1
@@ -124,7 +124,7 @@ no
 
 #### LimitRange Distribution with TenantReplications
 
-In the future Cluster-Administrators must distribute LimitRanges via [TenantReplications](/docs/replications). This is a more flexible and powerful way to distribute LimitRanges, as it allows to distribute any kind of resource, not only LimitRanges. Here's an example of how to distribute a LimitRange to all the namespaces of a tenant:
+In the future Cluster-Administrators must distribute `LimitRanges` via [TenantReplications](/docs/replications). This is a more flexible and powerful way to distribute `LimitRanges`, as it allows to distribute any kind of resource, not only `LimitRanges`. Here's an example of how to distribute a LimitRange to all the `Namespaces` of a tenant:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -163,7 +163,7 @@ Pods can have priority. Priority indicates the importance of a Pod relative to o
 
 In a multi-tenant cluster, not all users can be trusted, as a tenant owner could create Pods at the highest possible priorities, causing other Pods to be evicted/not get scheduled.
 
-To prevent misuses of Pod Priority Class, Bill, the cluster admin, can enforce the allowed Pod Priority Class at tenant level:
+To prevent misuses of Pod `PriorityClass`, Bill, the cluster admin, can enforce the allowed Pod `PriorityClass` at tenant level:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -181,17 +181,17 @@ spec:
 
 With the said Tenant specification, Alice can create a Pod resource if `spec.priorityClassName` equals to:
 
-* Any PriorityClass which has the label `env` with the value `production`
+* Any `PriorityClass` which has the label `env` with the value `production`
 
-If a Pod is going to use a non-allowed Priority Class, it will be rejected by the Validation Webhook enforcing it.
+If a Pod is going to use a non-allowed `PriorityClass`, it will be rejected by the Validation Webhook enforcing it.
 
-#### Assign Pod Priority Class as tenant default
+#### Assign Pod PriorityClass as tenant default
 
-> Note: This feature supports type PriorityClass only on API version scheduling.k8s.io/v1
+> Note: This feature supports type `PriorityClass` only on API version scheduling.k8s.io/v1
 
-This feature allows specifying a custom default value on a Tenant basis, bypassing the global cluster default (globalDefault=true) that acts only at the cluster level.
+This feature allows specifying a custom default value on a `Tenant` basis, bypassing the global cluster default (globalDefault=true) that acts only at the cluster level.
 
-It's possible to assign each tenant a PriorityClass which will be used, if no PriorityClass is set on pod basis:
+It's possible to assign each  `Tenant` a `PriorityClass` which will be used, if no `PriorityClass` is set on pod basis:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -208,7 +208,7 @@ spec:
       env: "production"
 ```
 
-Let's create a PriorityClass which is used as the default:
+Let's create a `PriorityClass` which is used as the default:
 
 ```bash
 kubectl apply -f - << EOF
@@ -225,13 +225,13 @@ description: "This is the default PriorityClass for the solar-tenant"
 EOF
 ```
 
-Note the `globalDefault: false` which is important to avoid the PriorityClass to be used as the default for all the tenants. If a Pod has no value for `spec.priorityClassName`, the default value for PriorityClass (`tenant-default`) will be used.
+Note the `globalDefault: false` which is important to avoid the `PriorityClass` to be used as the default for all the `Tenants`. If a Pod has no value for `spec.priorityClassName`, the default value for `PriorityClass` (`tenant-default`) will be used.
 
 ### RuntimeClasses
 
-Pods can be assigned different runtime classes. With the assigned runtime you can control Container Runtime Interface (CRI) is used for each pod. See [Kubernetes documentation](https://kubernetes.io/docs/concepts/containers/runtime-class/) for more information.
+Pods can be assigned different `RuntimeClasses`. With the assigned runtime you can control Container Runtime Interface (CRI) is used for each pod. See [Kubernetes documentation](https://kubernetes.io/docs/concepts/containers/runtime-class/) for more information.
 
-To prevent misuses of Pod Runtime Classes, Bill, the cluster admin, can enforce the allowed Pod Runtime Class at tenant level:
+To prevent misuses of Pod `RuntimeClasses`, Bill, the cluster admin, can enforce the allowed Pod`RuntimeClasses` at `Tenant` level:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -247,16 +247,15 @@ spec:
       env: "production"
 ```
 
-With the said Tenant specification, Alice can create a Pod resource if `spec.runtimeClassName` equals to:
+With the said `Tenant` specification, Alice can create a `Pod` resource if `spec.runtimeClassName` equals to:
 
-  * any RuntimeClass which has the label`env` with the value `production`
+  * Any `RuntimeClass` which has the label `env` with the value `production`
 
-If a Pod is going to use a non-allowed Runtime Class, it will be rejected by the Validation Webhook enforcing it.
-
+If a `Pod` is going to use a non-allowed `RuntimeClass`, it will be rejected by the Validation Webhook enforcing it.
 
 #### Assign Runtime Class as tenant default
 
-This feature allows specifying a custom default value on a Tenant basis- It's possible to assign each tenant a Runtime which will be used, if no Runtime is set on pod basis:
+This feature allows specifying a custom default value on a `Tenant` basis- It's possible to assign each tenant a Runtime which will be used, if no Runtime is set on pod basis:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -273,7 +272,7 @@ spec:
       env: "production"
 ```
 
-Let's create a RuntimeClass which is used as the default:
+Let's create a `RuntimeClass` which is used as the default:
 
 ```bash
 kubectl apply -f - << EOF
@@ -287,11 +286,11 @@ handler: myconfiguration
 EOF
 ```
 
-If a Pod has no value for `spec.runtimeclass`, the default value for RuntimeClass (`tenant-default`) will be used.
+If a `Pod` has no value for `spec.runtimeclass`, the default value for `RuntimeClass` (`tenant-default`) will be used.
 
 ### NodeSelector
 
-Bill, the cluster admin, can dedicate a pool of worker nodes to the solar tenant, to isolate the tenant applications from other noisy neighbors.
+Bill, the cluster admin, can dedicate a pool of worker nodes to the solar `Tenant`, to isolate the tenant applications from other noisy neighbors.
 
 These nodes are labeled by Bill as `pool=renewable`
 
@@ -309,7 +308,7 @@ worker08.acme.com         Ready    worker            8d    v1.25.2   pool=renewa
 
 > This approach requires `PodNodeSelector` Admission Controller plugin to be active. If the plugin is not active, the pods will be scheduled to any node. If your distribution does not support this feature, you can use [Expression Node Selectors](/docs/tenants/enforcement#node-selector-expressions).
 
-The label `pool=renewable` is defined as `.spec.nodeSelector` in the tenant manifest:
+The label `pool=renewable` is defined as `.spec.nodeSelector` in the `Tenant` manifest:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -325,7 +324,7 @@ spec:
     kubernetes.io/os: linux
 ```
 
-The Capsule controller makes sure that any namespace created in the tenant has the annotation: `scheduler.alpha.kubernetes.io/node-selector: pool=renewable`. This annotation tells the scheduler of Kubernetes to assign the node selector `pool=renewable` to all the pods deployed in the tenant. The effect is that all the pods deployed by Alice are placed only on the designated pool of nodes.
+The Capsule controller makes sure that any `Namespace` created in the `Tenant` has the annotation: `scheduler.alpha.kubernetes.io/node-selector: pool=renewable`. This annotation tells the scheduler of Kubernetes to assign the node selector `pool=renewable` to all the `Pods` deployed in the `Tenant`. The effect is that all the `Pods` deployed by Alice are placed only on the designated pool of nodes.
 
 Multiple node selector labels can be defined as in the following snippet:
 
@@ -345,7 +344,7 @@ spec:
     hardware: gpu
 ```
 
-Any attempt of Alice to change the selector on the pods will result in an error from the PodNodeSelector Admission Controller plugin.
+Any attempt of Alice to change the selector on the `Pods` will result in an error from the PodNodeSelector Admission Controller plugin.
 
 ```bash
 kubectl auth can-i edit ns -n solar-production
@@ -356,10 +355,9 @@ no
 
 ### Services
 
-
 #### ExternalIPs
 
-Specifies the external IPs that can be used in Services with type ClusterIP. An empty list means no IPs are allowed, which is recommended in multi-tenant environments (can be misused for traffic hijacking):
+Specifies the external IPs that can be used in `Services` with type ClusterIP. An empty list means no IPs are allowed, which is recommended in multi-tenant environments (can be misused for traffic hijacking):
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -377,7 +375,7 @@ spec:
 
 #### Deny labels and annotations
 
-By default, capsule allows tenant owners to add and modify any label or annotation on their services.
+By default, capsule allows `Tenant` owners to add and modify any label or annotation on their `Services`.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -398,13 +396,13 @@ spec:
 
 #### Deny Service Types
 
-Bill, the cluster admin, can prevent the creation of services with specific service types.
+Bill, the cluster admin, can prevent the creation of `Services` with specific `Service` types.
 
 ##### NodePort
 
-When dealing with a shared multi-tenant scenario, multiple [NodePort](https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport) services can start becoming cumbersome to manage. The reason behind this could be related to the overlapping needs by the Tenant owners, since a NodePort is going to be open on all nodes and, when using `hostNetwork=true`, accessible to any Pod although any specific `NetworkPolicy`.
+When dealing with a shared multi-tenant scenario, multiple [NodePort](https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport) services can start becoming cumbersome to manage. The reason behind this could be related to the overlapping needs by the Tenant owners, since a NodePort is going to be open on all nodes and, when using `hostNetwork=true`, accessible to any `Pod` although any specific `NetworkPolicy`.
 
-Bill, the cluster admin, can block the creation of services with NodePort service type for a given tenant
+Bill, the cluster admin, can block the creation of `Services` with NodePort service type for a given `Tenant`
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -424,7 +422,7 @@ With the above configuration, any attempt of Alice to create a Service of type `
 
 #### ExternalName
 
-Service with the type of [ExternalName](https://kubernetes.io/docs/concepts/services-networking/service/#externalname) has been found subject to many security issues. To prevent tenant owners to create services with the type of ExternalName, the cluster admin can prevent a tenant to create them:
+Service with the type of [ExternalName](https://kubernetes.io/docs/concepts/services-networking/service/#externalname) has been found subject to many security issues. To prevent `TenantOwners` to create services with the type of ExternalName, the cluster admin can prevent a tenant to create them:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -440,11 +438,11 @@ spec:
       externalName: false
 ```
 
-With the above configuration, any attempt of Alice to create a Service of type `externalName` is denied by the Validation Webhook enforcing it. Default value is `true`.
+With the above configuration, any attempt of Alice to create a `Service` of type `externalName` is denied by the Validation Webhook enforcing it. Default value is `true`.
 
 #### LoadBalancer
 
-Same as previously, the Service of type of [LoadBalancer](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer) could be blocked for various reasons. To prevent tenant owners to create these kinds of services, the cluster admin can prevent a tenant to create them:
+Same as previously, the Service of type of [LoadBalancer](https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer) could be blocked for various reasons. To prevent `TenantOwners` to create these kinds of `Services`, the cluster admin can `Tenant` a tenant to create them:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -460,15 +458,15 @@ spec:
       loadBalancer: false
 ```
 
-With the above configuration, any attempt of Alice to create a Service of type `LoadBalancer` is denied by the Validation Webhook enforcing it. Default value is `true`.
+With the above configuration, any attempt of Alice to create a `Service` of type `LoadBalancer` is denied by the Validation Webhook enforcing it. Default value is `true`.
 
 ### GatewayClasses
 
 > Note: This feature is offered only by API type `GatewayClass` in group `gateway.networking.k8s.io` version `v1`.
 
-[GatewayClass](https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1.GatewayClass) is cluster-scoped resource defined by the infrastructure provider. This resource represents a class of Gateways that can be instantiated. [Read More](https://gateway-api.sigs.k8s.io/api-types/gatewayclass/)
+[GatewayClass](https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1.GatewayClass) is cluster-scoped resource defined by the infrastructure provider. This resource represents a class of `Gateways` that can be instantiated. [Read More](https://gateway-api.sigs.k8s.io/api-types/gatewayclass/)
 
-Bill can assign a set of dedicated GatewayClasses to the `solar` tenant to force the applications in the `solar` tenant to be published only by the assigned Gateway Controller:
+Bill can assign a set of dedicated `GatewayClasses` to the `solar` `Tenant` to force the applications in the `solar` `Tenant` to be published only by the assigned Gateway Controller:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -511,9 +509,9 @@ Any attempt of Alice to use a non-valid `GatewayClass`, or missing it, is denied
 
 #### Assign GatewayClass as tenant default
 
-> Note: The Default GatewayClass must have a label which is allowed within the tenant. This behavior is only implemented this way for the GatewayClass default.
+> Note: The Default `GatewayClass` must have a label which is allowed within the tenant. This behavior is only implemented this way for the `GatewayClass` default.
 
-This feature allows specifying a custom default value on a Tenant basis. Currently there is no global default feature for a GatewayClass. Each [Gateway](https://gateway-api.sigs.k8s.io/api-types/gateway/) must have a `spec.gatewayClassName` set.
+This feature allows specifying a custom default value on a `Tenant` basis. Currently there is no global default feature for a `GatewayClass`. Each [Gateway](https://gateway-api.sigs.k8s.io/api-types/gateway/) must have a `spec.gatewayClassName` set.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -531,7 +529,7 @@ spec:
         env: "production"
 ```
 
-Here's how the Tenant default `GatewayClass` could look like:
+Here's how the `Tenant` default `GatewayClass` could look like:
 
 ```bash
 kubectl apply -f - << EOF
@@ -553,7 +551,7 @@ If a `Gateway` has no value for `spec.gatewayClassName`, the `tenant-default` `G
 
 #### Assign Ingress Hostnames
 
-Bill can control ingress hostnames in the `solar` tenant to force the applications to be published only using the given hostname or set of hostnames:
+Bill can control ingress hostnames in the `solar` `Tenant` to force the applications to be published only using the given hostname or set of hostnames:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -570,7 +568,8 @@ spec:
         - solar.acmecorp.com
       allowedRegex: ^.*acmecorp.com$
 ```
-The Capsule controller assures that all Ingresses created in the tenant can use only one of the valid hostnames. Alice can create an Ingress using any allowed hostname:
+
+The Capsule controller assures that all Ingresses created in the `Tenant` can use only one of the valid hostnames. Alice can create an `Ingress` using any allowed hostname:
 
 ```bash
 kubectl apply -f - << EOF
@@ -621,9 +620,9 @@ spec:
     hostnameCollisionScope: Tenant
 ```
 
-When a tenant owner creates an Ingress resource, Capsule will check the collision of hostname in the current ingress with all the hostnames already used, depending on the defined scope.
+When a `TenantOwner` creates an Ingress resource, Capsule will check the collision of hostname in the current ingress with all the hostnames already used, depending on the defined scope.
 
-For example, Alice, one of the tenant owners, creates an Ingress:
+For example, Alice, one of the `TenantOwners`, creates an Ingress:
 
 ```bash
 kubectl apply -f - << EOF
@@ -647,7 +646,7 @@ spec:
 EOF
 ```
 
-Another user, Joe creates an Ingress having the same hostname:
+Another user, Joe creates an `Ingress` having the same hostname:
 
 ```bash
 kubectl apply -f - << EOF
@@ -671,13 +670,13 @@ spec:
 EOF
 ```
 
-When a collision is detected at scope defined by `spec.ingressOptions.hostnameCollisionScope`, the creation of the Ingress resource will be rejected by the Validation Webhook enforcing it. When `spec.ingressOptions.hostnameCollisionScope=Disabled` (default), no collision detection is made at all.
+When a collision is detected at scope defined by `spec.ingressOptions.hostnameCollisionScope`, the creation of the `Ingress` resource will be rejected by the Validation Webhook enforcing it. When `spec.ingressOptions.hostnameCollisionScope=Disabled` (default), no collision detection is made at all.
 
 #### Deny Wildcard Hostname in Ingresses
 
 Bill, the cluster admin, can deny the use of wildcard hostname in Ingresses. Let's assume that Acme Corp. uses the domain acme.com.
 
-As a tenant owner of `solar`, Alice creates an Ingress with the host like - `host: "*.acme.com"`. That can lead problems for the `water` tenant because Alice can deliberately create ingress with `host: water.acme.com`.
+As a `TenantOwner` of `solar`, Alice creates an Ingress with the host like - `host: "*.acme.com"`. That can lead problems for the `water` tenant because Alice can deliberately create ingress with `host: water.acme.com`.
 
 To avoid this kind of problems, Bill can deny the use of wildcard hostnames in the following way:
 
@@ -698,9 +697,9 @@ Doing this, Alice will not be able to use `*.water.acme.com`, being the tenant o
 
 ### IngressClasses
 
-An Ingress Controller is used in Kubernetes to publish services and applications outside of the cluster. An Ingress Controller can be provisioned to accept only Ingresses with a given Ingress Class.
+An Ingress Controller is used in Kubernetes to publish services and applications outside of the cluster. An Ingress Controller can be provisioned to accept only `Ingresses` with a given `IngressClass`.
 
-Bill can assign a set of dedicated Ingress Classes to the `solar` tenant to force the applications in the `solar` tenant to be published only by the assigned Ingress Controller:
+Bill can assign a set of dedicated `IngressClass` to the `solar` `Tenant` to force the applications in the `solar` tenant to be published only by the assigned Ingress Controller:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -717,13 +716,13 @@ spec:
         env: "production"
 ```
 
-With the said Tenant specification, Alice can create a Ingress resource if `spec.ingressClassName` or `metadata.annotations."kubernetes.io/ingress.class"` equals to:
+With the said `Tenant` specification, Alice can create a `Ingress` resource if `spec.ingressClassName` or `metadata.annotations."kubernetes.io/ingress.class"` equals to:
 
-* Any IngressClass which has the label `env` with the value `production`
+* Any `IngressClass` which has the label `env` with the value `production`
 
-If an Ingress is going to use a non-allowed IngressClass, it will be rejected by the Validation Webhook enforcing it.
+If an `Ingress` is going to use a non-allowed `IngressClass`, it will be rejected by the Validation Webhook enforcing it.
 
-Alice can create an Ingress using only an allowed Ingress Class:
+Alice can create an `Ingress` using only an allowed `IngressClass`:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -750,11 +749,11 @@ Any attempt of Alice to use a non-valid Ingress Class, or missing it, is denied 
 
 #### Assign Ingress Class as tenant default
 
-> Note: This feature is offered only by API type IngressClass in group networking.k8s.io version v1. However, resource Ingress is supported in `networking.k8s.io/v1` and `networking.k8s.io/v1beta1`
+> Note: This feature is offered only by API type `IngressClass` in group networking.k8s.io version v1. However, resource `Ingress` is supported in `networking.k8s.io/v1` and `networking.k8s.io/v1beta1`
 
-This feature allows specifying a custom default value on a Tenant basis, bypassing the global cluster default (with the annotation metadata.`annotations.ingressclass.kubernetes.io/is-default-class=true`) that acts only at the cluster level. More information: [Default IngressClass](https://kubernetes.io/docs/concepts/services-networking/ingress/#default-ingress-class)
+This feature allows specifying a custom default value on a  `Tenant` basis, bypassing the global cluster default (with the annotation metadata.`annotations.ingressclass.kubernetes.io/is-default-class=true`) that acts only at the cluster level. More information: [Default IngressClass](https://kubernetes.io/docs/concepts/services-networking/ingress/#default-ingress-class)
 
-It's possible to assign each tenant an Ingress Class which will be used, if a class is not set on ingress basis:
+It's possible to assign each `Tenant` an `IngressClass` which will be used, if a class is not set on `Ingress` basis:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -772,7 +771,7 @@ spec:
         env: "production"
 ```
 
-Here's how the Tenant default IngressClass could look like:
+Here's how the Tenant default `IngressClass` could look like:
 
 ```bash
 kubectl apply -f - << EOF
@@ -790,7 +789,7 @@ spec:
 EOF
 ```
 
-If an Ingress has no value for `spec.ingressClassName` or `metadata.annotations."kubernetes.io/ingress.class"`, the `tenant-default` IngressClass is automatically applied to the Ingress resource.
+If an `Ingress` has no value for `spec.ingressClassName` or `metadata.annotations."kubernetes.io/ingress.class"`, the `tenant-default` `IngressClass` is automatically applied to the Ingress resource.
 
 ### NetworkPolicies
 
@@ -798,15 +797,15 @@ If an Ingress has no value for `spec.ingressClassName` or `metadata.annotations.
 > This feature will be deprecated in a future release of Capsule. Instead use [TenantReplications](#networkpolicy-distribution-with-tenantreplications). This is also true if you would like other NetworkPolicy implementation like [Cilium](https://cilium.io/).
 {{% /alert %}}
 
-Kubernetes network policies control network traffic between namespaces and between pods in the same namespace. Bill, the cluster admin, can enforce network traffic isolation between different tenants while leaving to Alice, the tenant owner, the freedom to set isolation between namespaces in the same tenant or even between pods in the same namespace.
+Kubernetes network policies control network traffic between `Namespaces` and between pods in the same `Namespace`. Bill, the cluster admin, can enforce network traffic isolation between different `Tenants` while leaving to Alice, the `TenantOwner`, the freedom to set isolation between `Namespaces` in the same `Tenant` or even between pods in the same `Namespace`.
 
-To meet this requirement, Bill needs to define network policies that deny pods belonging to Alice's namespaces to access pods in namespaces belonging to other tenants, e.g. Bob's tenant `water`, or in system namespaces, e.g. `kube-system`.
+To meet this requirement, Bill needs to define network policies that deny pods belonging to Alice's `Namespaces` to access pods in `Namespaces` belonging to other `Tenants`, e.g. Bob's `Tenant` `water`, or in system `Namespaces`, e.g. `kube-system`.
 
-> Keep in mind, that because of how the NetworkPolicies API works, the users can still add a policy which contradicts what the Tenant has set, resulting in users being able to circumvent the initial limitation set by the tenant admin. Two options can be put in place to mitigate this potential privilege escalation: 1. providing a restricted role rather than the default admin one 2. using Calico's GlobalNetworkPolicy, or Cilium's CiliumClusterwideNetworkPolicy which are defined at the cluster-level, thus creating an order of packet filtering.
+> Keep in mind, that because of how the `NetworkPolicies` API works, the users can still add a policy which contradicts what the `Tenant` has set, resulting in users being able to circumvent the initial limitation set by the `Tenant` admin. Two options can be put in place to mitigate this potential privilege escalation: 1. providing a restricted role rather than the default admin one 2. using Calico's `GlobalNetworkPolicy`, or Cilium's `CiliumClusterwideNetworkPolicy` which are defined at the cluster-level, thus creating an order of packet filtering.
 
-Also, Bill can make sure pods belonging to a tenant namespace cannot access other network infrastructures like cluster nodes, load balancers, and virtual machines running other services.
+Also, Bill can make sure pods belonging to a `Tenant` `Namespace` cannot access other network infrastructures like cluster nodes, load balancers, and virtual machines running other services.
 
-Bill can set network policies in the tenant manifest, according to the requirements:
+Bill can set network policies in the `Tenant` manifest, according to the requirements:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -839,7 +838,7 @@ spec:
       podSelector: {}
 ```
 
-The Capsule controller, watching for namespace creation, creates the Network Policies for each namespace in the tenant.
+The Capsule controller, watching for `Namespace` creation, creates the Network Policies for each `Namespace` in the `Tenant`.
 
 Alice has access to network policies:
 
@@ -849,7 +848,7 @@ NAME              POD-SELECTOR   AGE
 capsule-solar-0   <none>         42h
 ```
 
-Alice can create, patch, and delete additional network policies within her namespaces:
+Alice can create, patch, and delete additional network policies within her `Namespaces`:
 
 ```bash
 kubectl -n solar-production auth can-i get networkpolicies
@@ -889,17 +888,17 @@ capsule-solar-0               <none>         42h
 production-network-policy     <none>         3m
 ```
 
-And delete the namespace network policies:
+And delete the `Namespace` network policies:
 
 ```bash
 kubectl -n solar-production delete networkpolicy production-network-policy
 ```
 
-Any attempt of Alice to delete the tenant network policy defined in the tenant manifest is denied by the Validation Webhook enforcing it. Any deletion by a cluster-administrator will cause the network policy to be recreated by the Capsule controller.
+Any attempt of Alice to delete the `Tenant` network policy defined in the tenant manifest is denied by the Validation Webhook enforcing it. Any deletion by a cluster-administrator will cause the network policy to be recreated by the Capsule controller.
 
 #### NetworkPolicy Distribution with TenantReplications
 
-In the future Cluster-Administrators must distribute NetworkPolicies via [TenantReplications](/docs/replications). This is a more flexible and powerful way to distribute NetworkPolicies, as it allows to distribute any kind of resource. Here's an example of how to distribute a `CiliumNetworkPolicy` to all the namespaces of a tenant:
+In the future Cluster-Administrators must distribute NetworkPolicies via [TenantReplications](/docs/replications). This is a more flexible and powerful way to distribute NetworkPolicies, as it allows to distribute any kind of resource. Here's an example of how to distribute a `CiliumNetworkPolicy` to all the `Namespaces` of a `Tenant`:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -932,13 +931,13 @@ spec:
 
 ### PersistentVolumes
 
-Any Tenant owner is able to create a `PersistentVolumeClaim` that, backed by a given StorageClass, will provide volumes for their applications.
+Any `Tenant` owner is able to create a `PersistentVolumeClaim` that, backed by a given `StorageClass`, will provide volumes for their applications.
 
 In most cases, once a `PersistentVolumeClaim` is deleted, the bounded `PersistentVolume` will be recycled due.
 
 However, in some scenarios, the `StorageClass` or the provisioned `PersistentVolume` itself could change the retention policy of the volume, keeping it available for recycling and being consumable for another Pod.
 
-In such a scenario, Capsule enforces the Volume mount only to the Namespaces belonging to the Tenant on which it's been consumed, by adding a label to the Volume as follows.
+In such a scenario, Capsule enforces the Volume mount only to the `Namespaces` belonging to the `Tenant` on which it's been consumed, by adding a label to the Volume as follows.
 
 ```yaml
 apiVersion: v1
@@ -968,9 +967,9 @@ spec:
     uid: 1b3aa814-3b0c-4912-9bd9-112820da38fe
 ```
 
-Once the `PeristentVolume` become available again, it can be referenced by any `PersistentVolumeClaim` in the `solar` Tenant Namespace resources.
+Once the `PeristentVolume` become available again, it can be referenced by any `PersistentVolumeClaim` in the `solar` `Tenant` `Namespace` resources.
 
-If another Tenant, like `green`, tries to use it, it will get an error:
+If another `Tenant`, like `green`, tries to use it, it will get an error:
 
 ```bash
 $ kubectl describe pv pvc-9788f5e4-1114-419b-a830-74e7f9a33f5d
@@ -1003,7 +1002,7 @@ Error from server: error when creating "/tmp/pvc.yaml": admission webhook "pvc.c
 
 ### StorageClasses
 
-Persistent storage infrastructure is provided to tenants. Different types of storage requirements, with different levels of QoS, eg. SSD versus HDD, are available for different tenants according to the tenant's profile. To meet these different requirements, Bill, the cluster admin can provision different Storage Classes and assign them to the tenant:
+Persistent storage infrastructure is provided to `Tenants`. Different types of storage requirements, with different levels of QoS, eg. SSD versus HDD, are available for different tenants according to the `Tenant`'s profile. To meet these different requirements, Bill, the cluster admin can provision different `StorageClasses` and assign them to the tenant:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -1019,11 +1018,11 @@ spec:
       env: "production"
 ```
 
-With the said Tenant specification, Alice can create a Persistent Volume Claims if spec.storageClassName equals to:
+With the said `Tenant` specification, Alice can create a Persistent Volume Claims if `spec.storageClassName` equals to:
 
-* Any `StorageClass` which has the label env with the value production
+* Any `StorageClass` which has the label `env` with the value `production`
 
-Capsule assures that all Persistent Volume Claims created by Alice will use only one of the valid storage classes. Assume the StorageClass `ceph-rbd` has the label `env: production`:
+Capsule assures that all `PersistentVolumeClaims` created by Alice will use only one of the valid storage classes. Assume the `StorageClass` `ceph-rbd` has the label `env: production`:
 
 ```bash
 kubectl apply -f - << EOF
@@ -1042,15 +1041,15 @@ spec:
 EOF
 ```
 
-If a Persistent Volume Claim is going to use a non-allowed Storage Class, it will be rejected by the Validation Webhook enforcing it.
+If a `PersistentVolumeClaim` is going to use a non-allowed `Storage Class`, it will be rejected by the Validation Webhook enforcing it.
 
 #### Assign Storage Class as tenant default
 
-> Note: This feature supports type StorageClass only on API version `storage.k8s.io/v1`
+> Note: This feature supports type `StorageClass` only on API version `storage.k8s.io/v1`
 
-This feature allows specifying a custom default value on a Tenant basis, bypassing the global cluster default (`.metadata.annotations.storageclass.kubernetes.io/is-default-class=true`) that acts only at the cluster level. See [the Default Storage Class](https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/) section on Kubernetes documentation.
+This feature allows specifying a custom default value on a `Tenant` basis, bypassing the global cluster default (`.metadata.annotations.storageclass.kubernetes.io/is-default-class=true`) that acts only at the cluster level. See [the Default Storage Class](https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/) section on Kubernetes documentation.
 
-It's possible to assign each tenant a StorageClass which will be used, if no value is set on Persistent Volume Claim basis:
+It's possible to assign each tenant a `StorageClass` which will be used, if no value is set on `PersistentVolumeClaim` basis:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -1067,7 +1066,7 @@ spec:
       env: "production"
 ```
 
-Here's how the new Storage Class could look like:
+Here's how the new `StorageClass` could look like:
 
 ```bash
 kubectl apply -f - << EOF
@@ -1084,9 +1083,7 @@ volumeBindingMode: WaitForFirstConsumer
 EOF
 ```
 
-If a Persistent Volume Claim has no value for `spec.storageClassName` the `tenant-default` value will be used on new Persistent Volume Claim resources.
-
-
+If a `PersistentVolumeClaim` has no value for `spec.storageClassName` the `tenant-default` value will be used on new `PersistentVolumeClaim` resources.
 
 ## Images
 
@@ -1095,11 +1092,11 @@ If a Persistent Volume Claim has no value for `spec.storageClassName` the `tenan
 
 Bill is a cluster admin providing a Container as a Service platform using shared nodes.
 
-Alice, a Tenant Owner, can start container images using private images: according to the Kubernetes architecture, the kubelet will download the layers on its cache.
+Alice, a `TenantOwner`, can start container images using private images: according to the Kubernetes architecture, the kubelet will download the layers on its cache.
 
-Bob, an attacker, could try to schedule a Pod on the same node where Alice is running her Pods backed by private images: they could start new Pods using `ImagePullPolicy=IfNotPresent` and be able to start them, even without required authentication since the image is cached on the node.
+Bob, an attacker, could try to schedule a `Pod` on the same node where Alice is running her `Pods` backed by private images: they could start new `Pods` using `ImagePullPolicy=IfNotPresent` and be able to start them, even without required authentication since the image is cached on the node.
 
-To avoid this kind of attack, Bill, the cluster admin, can force Alice, the tenant owner, to start her Pods using only the allowed values for ImagePullPolicy, enforcing the kubelet to check the authorization first.
+To avoid this kind of attack, Bill, the cluster admin, can force Alice, the `TenantOwner`, to start her `Pods` using only the allowed values for `ImagePullPolicy`, enforcing the Kubelet to check the authorization first.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -1120,7 +1117,7 @@ Any attempt of Alice to use a disallowed `imagePullPolicies` value is denied by 
 
 ### Images Registries
 
-Bill, the cluster admin, can set a strict policy on the applications running into Alice's tenant: he'd like to allow running just images hosted on a list of specific container registries.
+Bill, the cluster admin, can set a strict policy on the applications running into Alice's `Tenant`: he'd like to allow running just images hosted on a list of specific container registries.
 
 The `spec.containerRegistries` addresses this task and can provide a combination with hard enforcement using a list of allowed values.
 
@@ -1140,9 +1137,9 @@ spec:
     allowedRegex: 'internal.registry.\\w.tld'
 ```
 
-> In case of Pod running non-FQCI (non fully qualified container image) containers, the container registry enforcement will disallow the execution. If you would like to run a b`busybox:latest` container that is commonly hosted on Docker Hub, the Tenant Owner has to specify its name explicitly, like `docker.io/library/busybox:latest`.
+> In case of `Pod` running non-FQCI (non fully qualified container image) containers, the container registry enforcement will disallow the execution. If you would like to run a b`busybox:latest` container that is commonly hosted on Docker Hub, the `TenantOwner` has to specify its name explicitly, like `docker.io/library/busybox:latest`.
 
-A Pod running `internal.registry.foo.tld/capsule:latest` as registry will be allowed, as well `internal.registry.bar.tld` since these are matching the regular expression.
+A `Pod` running `internal.registry.foo.tld/capsule:latest` as registry will be allowed, as well `internal.registry.bar.tld` since these are matching the regular expression.
 
 > A catch-all regex entry as `.*` allows every kind of registry, which would be the same result of unsetting `.spec.containerRegistries` at all.
 

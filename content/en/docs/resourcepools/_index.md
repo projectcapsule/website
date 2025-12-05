@@ -423,7 +423,7 @@ The Priority of how the claims are processed, is deterministic defined based on 
 
 ### Monitoring
 
-[Read more](../operating/monitoring/#resourcepools)
+[Read more](/docs/operating/monitoring/#resourcepools)
 
 ### Migration
 

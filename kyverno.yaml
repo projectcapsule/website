@@ -1,7 +1,0 @@
-admissionController:
-  rbac:
-    clusterRole:
-      extraResources:
-       - apiGroups: ["capsule.clastix.io"]
-         resources: ["*"]
-         verbs: ["get", "list"]

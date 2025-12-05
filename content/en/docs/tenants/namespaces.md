@@ -5,31 +5,31 @@ description: >
   Assign Namespace to tenants
 ---
 
-Alice, once logged with her credentials, can create a new namespace in her tenant, as simply issuing:
+Alice, once logged with her credentials, can create a new `Namespace` in her `Tenant`, as simply issuing:
 
 ```bash
 kubectl create ns solar-production
 ```
 
-Alice started the name of the namespace prepended by the name of the tenant: this is not a strict requirement but it is highly suggested because it is likely that many different tenants would like to call their namespaces `production`, `test`, or `demo`, etc. The enforcement of this naming convention is optional and can be controlled by the cluster administrator with [forceTenantPrefix](/docs/tenants/configuration/#forcetenantprefix) option.
+Alice started the name of the `Namespace` prepended by the name of the `Tenant`: this is not a strict requirement but it is highly suggested because it is likely that many different `Tenants` would like to call their `Namespaces` `production`, `test`, or `demo`, etc. The enforcement of this naming convention is optional and can be controlled by the cluster administrator with [forceTenantPrefix](/docs/tenants/configuration/#forcetenantprefix) option.
 
-Alice can deploy any resource in any of the namespaces. That is because she is the [owner](/docs/tenants/permissions/#ownership) of the tenant `solar` and therefore she has full control over all namespaces assigned to that tenant.
+Alice can deploy any resource in any of the `Namespaces`. That is because she is the [owner](/docs/tenants/permissions/#ownership) of the tenant `solar` and therefore she has full control over all `Namespaces` assigned to that `Tenant`.
 
 ```bash
 kubectl -n solar-development run nginx --image=docker.io/nginx 
 kubectl -n solar-development get pods
 ```
 
-Every Namespace assigned to a tenant has an [owner reference](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/) pointing to the Tenant object itself. In Addition each Namespace has a label `capsule.clastix.io/tenant=<tenant_name>` identifying the tenant it belongs to ([Read More](#label)).
+Every `Namespaces` assigned to a `Tenant` has an [owner reference](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/) pointing to the `Tenant` object itself. In Addition each `Namespaces` has a label `capsule.clastix.io/tenant=<tenant_name>` identifying the `Tenant` it belongs to ([Read More](#label)).
 
-The namespaces are tracked as part of the tenant status:
+The `Namespaces` are tracked as part of the `Tenant` status:
 
 ```bash
 $ kubectl get tnt solar -o yaml
 ...
 status:
   ...
-  
+
   # Simplie list of namespaces
   namespaces:
   - solar-dev
@@ -87,21 +87,21 @@ status:
 
 **By default the following rules apply for namespaces**:
 
-  * A Namespace can not be moved from a tenant to another one (or anywhere else).
-  * Namespaces are deleted when the tenant is deleted.
+  * A `Namespace` can not be moved from a `Tenant` to another one (or anywhere else).
+  * `Namespaces` are deleted when the `Tenant` is deleted.
 
-If you feel like these rules are too restrictive, you must implement your own custom logic to handle these cases, for example, with Finalizers for namespaces.
+If you feel like these rules are too restrictive, you must implement your own custom logic to handle these cases, for example, with Finalizers for `Namespaces`.
 
 **If namespaces are not correctly assigned to tenants, make sure to evaluate your [Capsule Users Configuration](/docs/operating/architecture/#capsule-users).**
 
 
 ## Multiple Tenants
 
-A single team is likely responsible for multiple lines of business. For example, in our sample organization Acme Corp., Alice is responsible for both the Solar and Green lines of business. It's more likely that Alice requires two different tenants, for example, solar and green to keep things isolated.
+A single team is likely responsible for multiple lines of business. For example, in our sample organization Acme Corp., Alice is responsible for both the Solar and Green lines of business. It's more likely that Alice requires two different `Tenants`, for example, solar and green to keep things isolated.
 
-By design, the Capsule operator does not permit a hierarchy of tenants, since all tenants are at the same levels. However, we can assign the ownership of multiple tenants to the same user or group of users.
+By design, the Capsule operator does not permit a hierarchy of `Tenants`, since all `Tenants` are at the same levels. However, we can assign the ownership of multiple `Tenants` to the same user or group of users.
 
-Bill, the cluster admin, creates multiple tenants having alice as owner:
+Bill, the cluster admin, creates multiple `Tenants` having alice as owner:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -127,7 +127,7 @@ spec:
     kind: User
 ```
 
-Alternatively, the ownership can be assigned to a group called solar-and-green for both tenants:
+Alternatively, the ownership can be assigned to a group called solar-and-green for both `Tenants`:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -144,25 +144,22 @@ spec:
 
 The two tenants remain isolated from each other in terms of resources assignments, e.g. `ResourceQuotas`, `Nodes`, `StorageClasses` and `IngressClasses`, and in terms of governance, e.g. `NetworkPolicies`, `PodSecurityPolicies`, `Trusted Registries`, etc.
 
-When Alice logs in, she has access to all namespaces belonging to both the solar and green tenants.
-
-
-
+When Alice logs in, she has access to all namespaces belonging to both the solar and green `Tenants`.
 
 ### Tenant Prefix
 
-> We recommend to use the [forceTenantPrefix](/docs/tenants/configuration/#forcetenantprefix) for production environments.
+> We recommend to use the [forceTenantPrefix](/docs/tenants/administration/#force-tenant-prefix) for production environments.
 
-If the [forceTenantPrefix](/docs/tenants/configuration/#forcetenantprefix) option is enabled, which is **not** the case by default, the namespaces are automatically assigned to the right tenant by Capsule because the operator does a lookup on the tenant names. 
+If the [forceTenantPrefix](/docs/operating/setup/configuration/#forcetenantprefix) option is enabled, which is **not** the case by default, the `Namespaces` are automatically assigned to the right tenant by Capsule because the operator does a lookup on the tenant names. 
 
-For example, Alice creates a namespace called `solar-production` and `green-production`:
+For example, Alice creates a `Namespace` called `solar-production` and `green-production`:
 
 ```bash
 kubectl create ns solar-production
 kubectl create ns green-production
 ```
 
-And they are assigned to the tenant based on their prefix:
+And they are assigned to the `Tenant` based on their prefix:
 
 ```bash
 $ kubectl get tnt
@@ -171,7 +168,7 @@ green   Active                     1                                 3m26s
 solar   Active                     1                                 3m26s
 ```
 
-However alice can create any namespace, which does not have a prefix of any of the tenants she owns, for example `production`:
+However alice can create any `Namespace`, which does not have a prefix of any of the `Tenants` she owns, for example `production`:
 
 ```bash
 $ kubectl create ns production
@@ -180,7 +177,7 @@ Error from server (Forbidden): admission webhook "owner.namespace.capsule.clasti
 
 ### Label
 
-The default behavior, if the [forceTenantPrefix](/docs/tenants/configuration/#forcetenantprefix) option is not enabled, Alice needs to specify the tenant name as a label capsule.`clastix.io/tenant=<desired_tenant>` in the namespace manifest:
+The default behavior, if the [forceTenantPrefix](/docs/tenants/configuration/#forcetenantprefix) option is not enabled, Alice needs to specify the `Tenant` name as a label capsule.`clastix.io/tenant=<desired_tenant>` in the `Namespace` manifest:
 
 ```yaml
 kind: Namespace
@@ -191,7 +188,7 @@ metadata:
     capsule.clastix.io/tenant: solar
 ```
 
-If not specified, Capsule will deny with the following message: Unable to assign namespace to tenant: 
+If not specified, Capsule will deny with the following message: Unable to assign `Namespace` to `Tenant`: 
 
 ```bash
 $ kubectl create ns solar-production
@@ -200,18 +197,18 @@ Error from server (Forbidden): admission webhook "owner.namespace.capsule.clasti
 
 ## Cordon
 
-It is possible to cordon a namespace from a tenant, preventing anything from being changed within this namespace. This is useful for production namespaces where you want to avoid any accidental changes or if you have some sort of change freeze period.
+It is possible to cordon a `Namespace` from a `Tenant`, preventing anything from being changed within this `Namespace`. This is useful for production `Namespaces` where you want to avoid any accidental changes or if you have some sort of change freeze period.
 
-This action can be performed by the Tenant Owner by adding the label `projectcapsule.dev/cordoned=true` to the namespace:
+This action can be performed by the `TenantOwner` by adding the label `projectcapsule.dev/cordoned=true` to the `Namespace`:
 
 ```shell
 kubectl patch namespace solar-production --patch '{"metadata": {"labels": {"projectcapsule.dev/cordoned": "true"}}}' --as alice --as-group projectcapsule.dev
 ```
 
-To uncordon the namespace, simply remove the label or set it to false:
+To uncordon the `Namespace`, simply remove the label or set it to false:
 
 ```shell
 kubectl patch namespace solar-production --patch '{"metadata": {"labels": {"projectcapsule.dev/cordoned": "false"}}}' --as alice --as-group projectcapsule.dev
 ```
 
-**Note**: If the entire [tenant is cordoned](/docs/tenants/administration/#cordoning) all namespaces within the tenant will be cordoned as well. Meaning a single namespace can not be uncordoned if the tenant is cordoned.
+**Note**: If the entire [`Tenant` is cordoned](/docs/tenants/administration/#cordoning) all `Namespaces` within the `Tenant` will be cordoned as well. Meaning a single `Namespace` can not be uncordoned if the `Tenant` is cordoned.

@@ -4,6 +4,9 @@ weight: 5
 description: >
   Inherit additional metadata on Tenant resources.
 ---
+## Managed
+
+By default all namespaced resources within a `Namespace` which are part of a `Tenant` labeled at admission with the `capsule.clastix.io/tenant: <tenant-name>` label.
 
 ## Namespaces
 
