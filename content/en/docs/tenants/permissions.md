@@ -560,10 +560,10 @@ EOF
 
 ### Proxy Owner Authorization
 
-> This feature will be deprecated in a future release of Capsule. Instead use [ProxySettings](docs/proxy/proxysettings/)
+> This feature will be deprecated in a future release of Capsule. Instead use [ProxySettings](/docs/proxy/proxysettings/#proxysettings)
 
 
-When you are using the [Capsule Proxy](/docs/proxy/proxysettings/#proxysettings), the tenant owner can list the cluster-scoped resources. You can control the permissions to cluster scoped resources by defining `proxySettings` for a tenant owner.
+When you are using the [Capsule Proxy](/docs/proxy), the tenant owner can list the cluster-scoped resources. You can control the permissions to cluster scoped resources by defining `proxySettings` for a tenant owner.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2

@@ -47,7 +47,7 @@ It then explains how for the tenant user, the access to Kubernetes resources is 
 
 #### Configure an identity provider for Kubernetes
 
-You can follow [this general guide](/docs/operating/authentication/#oidc) to configure an OIDC authentication for Kubernetes.
+You can follow [this general guide](/docs/operating/authentication/) to configure an OIDC authentication for Kubernetes.
 
 For a Keycloak specific setup yon can check [this resources list](./oidc-keycloak.md).
 
@@ -277,7 +277,7 @@ The expected CA is the one for which the certificate is inside the `kube-root-ca
 
 ### Capsule Proxy
 
-[Capsule Proxy](docs/proxy/) needs to provide a x509 certificate for which the root CA is trusted by the Cluster Agent.
+[Capsule Proxy](/docs/proxy/) needs to provide a x509 certificate for which the root CA is trusted by the Cluster Agent.
 The goal can be achieved by, either using the Kubernetes CA to sign its certificate, or by using a dedicated root CA.
 
 #### With the Kubernetes root CA
