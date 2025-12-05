@@ -570,8 +570,6 @@ For other protections against threats in this multi-tenancy scenario please see 
 ## References
 - https://fluxcd.io/docs/installation/#multi-tenancy-lockdown
 - https://fluxcd.io/blog/2022/05/may-2022-security-announcement/
-- https://github.com/clastix/capsule-proxy/issues/218
+- https://github.com/projectcapsule/capsule-proxy/issues/218
 - https://github.com/projectcapsule/capsule/issues/528 
-- https://github.com/clastix/flux2-capsule-multi-tenancy
-- https://github.com/fluxcd/flux2-multi-tenancy
 - https://fluxcd.io/docs/guides/repository-structure/
