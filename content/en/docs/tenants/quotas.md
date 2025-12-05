@@ -5,7 +5,7 @@ description: >
   Strategies on granting quotas on tenant-basis
 ---
 
-With help of Capsule, Bill, the cluster admin, can set and enforce resources quota and limits for Alice's tenant.
+With help of Capsule, Bill, the cluster admin, can set and enforce resources quota and limits for Alice's `Tenant`.
 
 ## Resource Quota
 
@@ -13,7 +13,7 @@ With help of Capsule, Bill, the cluster admin, can set and enforce resources quo
 This feature will be deprecated in a future release of Capsule. Instead use [Resource Pools](/docs/resourcepools/) to handle any cases around distributed ResourceQuotas
 {{% /alert %}}
 
-With help of Capsule, Bill, the cluster admin, can set and enforce resources quota and limits for Alice's tenant. Set resources quota for each namespace in the Alice's tenant by defining them in the tenant spec:
+With help of Capsule, Bill, the cluster admin, can set and enforce resources quota and limits for Alice's `Tenant`. Set resources quota for each `Namespace` in the Alice's `Tenant` by defining them in the `Tenant` spec:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -38,7 +38,7 @@ spec:
         pods: "10"
 ```
 
-The resource quotas above will be inherited by all the namespaces created by Alice. In our case, when Alice creates the namespace `solar-production`, Capsule creates the following resource quotas:
+The resource quotas above will be inherited by all the `Namespaces` created by Alice. In our case, when Alice creates the `Namespace` `solar-production`, Capsule creates the following resource quotas:
 
 ```yaml
 kind: ResourceQuota
@@ -73,7 +73,7 @@ Alice can create any resource according to the assigned quotas:
 kubectl -n solar-production create deployment nginx --image nginx:latest --replicas 4
 ```
 
-At namespace `solar-production` level, Alice can see the used resources by inspecting the status in ResourceQuota:
+At `Namespaces` `solar-production` level, Alice can see the used resources by inspecting the status in `ResourceQuota`:
 
 ```bash
 kubectl -n solar-production get resourcequota capsule-solar-1 -o yaml
@@ -86,7 +86,7 @@ status:
     pods: "4"
 ```
 
-When defining ResourceQuotas you might want to consider distributing [LimitRanges](https://kubernetes.io/docs/concepts/policy/limit-range/) via [Tenant Replications](/docs/replications):
+When defining `ResourceQuotas` you might want to consider distributing [LimitRanges](https://kubernetes.io/docs/concepts/policy/limit-range/) via [Tenant Replications](/docs/replications):
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -120,7 +120,7 @@ spec:
 
 ### Tenant Scope
 
-By setting enforcement at tenant level, i.e. `spec.resourceQuotas.scope=Tenant`, Capsule aggregates resources usage for all namespaces in the tenant and adjusts all the `ResourceQuota` usage as aggregate. In such case, Alice can check the used resources at the tenant level by inspecting the annotations in ResourceQuota object of any namespace in the tenant:
+By setting enforcement at `Tenant` level, i.e. `spec.resourceQuotas.scope=Tenant`, Capsule aggregates resources usage for all `Namespaces` in the `Tenant` and adjusts all the `ResourceQuota` usage as aggregate. In such case, Alice can check the used resources at the `Tenant` level by inspecting the annotations in ResourceQuota object of any `Namespace` in the `Tenant`:
 
 ```bash
 kubectl -n solar-production get resourcequotas capsule-solar-1 -o yaml
@@ -146,13 +146,13 @@ metadata:
 ...
 ```
 
-When the aggregate usage for all namespaces crosses the hard quota, then the native ResourceQuota Admission Controller in Kubernetes denies Alice's request to create resources exceeding the quota:
+When the aggregate usage for all `Namespaces` crosses the hard quota, then the native ResourceQuota Admission Controller in Kubernetes denies Alice's request to create resources exceeding the quota:
 
 ```bash
 kubectl -n solar-development create deployment nginx --image nginx:latest --replicas 10
 ```
 
-Alice cannot schedule more pods than the admitted at tenant aggregate level.
+Alice cannot schedule more pods than the admitted at `Tenant` aggregate level.
 
 ```bash
 kubectl -n solar-development get pods
@@ -179,12 +179,12 @@ nginx-55649fd747-tkv7m   1/1     Running   0          22m
 
 ### Namespace Scope
 
-By setting enforcement at the namespace level, i.e. `spec.resourceQuotas.scope=Namespace`, Capsule does not aggregate the resources usage and all enforcement is done at the namespace level.
+By setting enforcement at the `Namespace` level, i.e. `spec.resourceQuotas.scope=Namespace`, Capsule does not aggregate the resources usage and all enforcement is done at the `Namespace` level.
 
 
 ## Namespace Quotas
 
-The cluster admin, can control how many namespaces Alice, creates by setting a quota in the tenant manifest `spec.namespaceOptions.quota`:
+The cluster admin, can control how many `Namespaces` Alice, creates by setting a quota in the `Tenant` manifest `spec.namespaceOptions.quota`:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -199,14 +199,14 @@ spec:
     quota: 3
 ```
 
-Alice can create additional namespaces according to the quota:
+Alice can create additional `Namespaces` according to the quota:
 
 ```bash
 kubectl create ns solar-development
 kubectl create ns solar-test
 ```
 
-While Alice creates namespaces, the Capsule controller updates the status of the tenant so Bill, the cluster admin, can check the status:
+While Alice creates `Namespaces`, the Capsule controller updates the status of the  `Tenant` so Bill, the cluster admin, can check the status:
 
 ```bash
 $ kubectl describe tenant solar
@@ -221,7 +221,7 @@ status:
 ...
 ```
 
-Once the namespace quota assigned to the tenant has been reached, Alice cannot create further namespaces:
+Once the  `Namespace` quota assigned to the tenant has been reached, Alice cannot create further `Namespaces`:
 
 ```bash
 $ kubectl create ns solar-training
@@ -229,17 +229,17 @@ Error from server (Cannot exceed Namespace quota: please, reach out to the syste
 admission webhook "namespace.capsule.clastix.io" denied the request.
 ```
 
-The enforcement on the maximum number of namespaces per Tenant is the responsibility of the Capsule controller via its Dynamic Admission Webhook capability.
+The enforcement on the maximum number of `Namespaces` per `Tenant` is the responsibility of the Capsule controller via its Dynamic Admission Webhook capability.
 
 ## Custom Resources
 
 > This feature is still in an alpha stage and requires a high amount of computing resources due to the dynamic client requests.
 
-Kubernetes offers by default `ResourceQuota` resources, aimed to limit the number of basic primitives in a Namespace.
+Kubernetes offers by default `ResourceQuota` resources, aimed to limit the number of basic primitives in a `Namespace`.
 
-Capsule already provides the sharing of these constraints across the Tenant Namespaces, however, limiting the amount of namespaced Custom Resources instances is not upstream-supported.
+Capsule already provides the sharing of these constraints across the `Tenant` `Namespaces`, however, limiting the amount of namespaced Custom Resources instances is not upstream-supported.
 
-Starting from Capsule v0.1.1, this can be done using a special annotation in the Tenant manifest.
+Starting from Capsule v0.1.1, this can be done using a special annotation in the `Tenant` manifest.
 
 Imagine the case where a Custom Resource named `mysqls` in the API group `databases.acme.corp/v1` usage must be limited in the Tenant `solar`: this can be done as follows.
 
@@ -269,7 +269,7 @@ The pattern for the quota.resources.capsule.clastix.io annotation is the followi
 
 You can figure out the required fields using `kubectl api-resources`.
 
-When alice will create a MySQL instance in one of their Tenant Namespace, the Cluster Administrator can easily retrieve the overall usage.
+When alice will create a MySQL instance in one of their `Tenant` `Namespace`, the Cluster Administrator can easily retrieve the overall usage.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -285,10 +285,7 @@ spec:
     kind: User
 ```
 
-
-
-
 ## Node Pools
 
-Bill, the cluster admin, can dedicate a pool of worker nodes to the oil tenant, to isolate the tenant applications from other noisy neighbors. To achieve this approach use [NodeSelectors](/docs/tenants/enforcement#node-selectors).
+Bill, the cluster admin, can dedicate a pool of worker nodes to the oil `Tenant`, to isolate the `Tenant` applications from other noisy neighbors. To achieve this approach use [NodeSelectors](/docs/tenants/enforcement#node-selectors).
 ```yaml

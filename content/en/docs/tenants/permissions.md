@@ -7,38 +7,187 @@ description: >
 
 ## Ownership
 
-Capsule introduces the principal, that tenants must have owners. The owner of a tenant is a user or a group of users that have the right to create, delete, and manage the [tenant's namespaces](/docs/tenants/namespaces) and other tenant resources. However an owner does not have the permissions to manage the tenants they are owner of. This is still done by cluster-administrators.
+Capsule introduces the principal, that tenants must have owners ([Tenant Owners](/docs/operating/architecture/#tenant-owners)). The owner of a tenant is a user or a group of users that have the right to create, delete, and manage the [tenant's namespaces](/docs/tenants/namespaces) and other tenant resources. However an owner does not have the permissions to manage the tenants they are owner of. This is still done by cluster-administrators.
 
-### Group Scope
-
-Capsule selects users, which are eligable to be considered for tenancy by their group. To define the group of users that can be considered for tenancy, you can use the `userGroups` option in the CapsuleConfiguration.
-
-Another commonly used example if you want to promote serviceaccount to tenant-owners, their group must be present:
+At any time you are able to verify which users or groups are owners of a tenant by checking the `owners` field of the Tenant status subresource:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
-kind: CapsuleConfiguration
+kind: Tenant
 metadata:
-  name: default
-spec:
-  userGroups:
-  - solar-users
-  - system:serviceaccounts:tenant-system
+  name: solar
+...
+status:
+  owners:
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: Group
+    name: oidc:org:devops:a
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    - mega-admin
+    - controller
+    kind: ServiceAccount
+    name: system:serviceaccount:capsule:controller
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: User
+    name: alice
 ```
 
-All serviceAccounts in the `tenant-system` namespace will be considered for tenancy and can be promoted to tenant owners.
+To explain these entries, let's inspect one of them:
 
-### Assignment
+* `kind`: It can be [User](#users), [Group](#groups) or [ServiceAccount](#serviceaccounts)
+* `name`: Is the reference name of the user, group or serviceaccount we want to bind
+* `clusterRoles`: ClusterRoles which are bound for each namespace of teh tenant to the owner. By default, Capsule assigns `admin` and `capsule-namespace-deleter` roles to each owner, but you can customize them as explained in [Owner Roles](#owner-roles) section.
 
-Learn how to assign ownership to users, groups and serviceaccounts.
+With this information available you
 
-#### Assigning Ownership to Users
 
-**Bill**, the cluster admin, receives a new request from Acme Corp's CTO asking for a new tenant to be onboarded and Alice user will be the tenant owner. Bill then assigns Alice's identity of alice in the Acme Corp. identity management system. Since Alice is a tenant owner, Bill needs to assign alice the Capsule group defined by --capsule-user-group option, which defaults to `projectcapsule.dev`.
+### Tenant Owners
+
+Tenant Owners can be declared as dedicated cluster scoped Resources called `TenantOwner`. This allows the cluster admin to manage the ownership of tenants in a more flexible way, for example by adding labels and annotations to the `TenantOwner` resources.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: TenantOwner
+metadata:
+  labels:
+    team: devops
+  name: devops
+spec:
+  kind: Group
+  name: "oidc:org:devops:a"
+```
+
+This `TenantOwner` can now be matched by any tenant. Essentially we define on a per tenant basis which `TenantOwners` should be owners of the tenant (Each item under `spec.permissions.matchOwners` is understood as `OR` selection.):
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  labels:
+    kubernetes.io/metadata.name: solar
+  name: solar
+spec:
+  permissions:
+    matchOwners:
+    - matchLabels:
+        team: devops
+    - matchLabels:
+        customer: x
+```
+
+Since the ownership is now loosely coupled, all `TenantOwners` matching the given labels will be owners of the tenant. We can verify this via the `.status.owners` field of the Tenant resource:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+...
+status:
+  owners:
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: Group
+    name: oidc:org:devops:a
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: User
+    name: alice
+```
+
+This can also be combined with direct owner declarations. In the example, both `alice` user and all `TenantOwners` with label `team: devops` and `TenantOwners` with label `customer: x` will be owners of the `solar` tenant.
+
+```yaml
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  labels:
+    kubernetes.io/metadata.name: oil
+  name: solar
+spec:
+  owners:
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: User
+    name: alice
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: ServiceAccount
+    name: system:serviceaccount:capsule:controller
+  permissions:
+    matchOwners:
+    - matchLabels:
+        team: devops
+    - matchLabels:
+        customer: x
+```
+
+If we create a `TenantOwner` where the `.spec.name` and `.spec.kind` matches one of the `owners` declared in the tenant, the entries wille be merged. That's mainly relevant for the [clusterRoles](#owner-roles):
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: TenantOwner
+metadata:
+  labels:
+    customer: x
+  name: controller
+spec:
+  kind: ServiceAccount
+  name: "system:serviceaccount:capsule:controller"
+  clusterRoles:
+    - "mega-admin"
+    - "controller"
+```
+
+Again we can verify the resulting owners via the `.status.owners` field of the Tenant resource:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+...
+status:
+  owners:
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: Group
+    name: oidc:org:devops:a
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    - mega-admin
+    - controller
+    kind: ServiceAccount
+    name: system:serviceaccount:capsule:controller
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: User
+    name: alice
+```
+
+We. can see that the `system:serviceaccount:capsule:controller` ServiceAccount now has additional `mega-admin` and `controller` roles assigned.
+
+### Users
+
+**Bill**, the cluster admin, receives a new request from Acme Corp's CTO asking for a new `Tenant` to be onboarded and Alice user will be the `TenantOwner`. Bill then assigns Alice's identity of alice in the Acme Corp. identity management system. Since Alice is a `TenantOwner`, Bill needs to assign alice the Capsule group defined by --capsule-user-group option, which defaults to `projectcapsule.dev`.
 
 To keep things simple, we assume that Bill just creates a client certificate for authentication using X.509 Certificate Signing Request, so Alice's certificate has `"/CN=alice/O=projectcapsule.dev"`.
 
-**Bill** creates a new tenant solar in the CaaS management portal according to the tenant's profile:
+**Bill** creates a new `Tenant` solar in the CaaS management portal according to the `Tenant`'s profile:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -51,7 +200,7 @@ spec:
     kind: User
 ```
 
-**Bill** checks if the new tenant is created and operational:
+**Bill** checks if the new `Tenant` is created and operational:
 
 ```bash
 kubectl get tenant solar
@@ -59,9 +208,9 @@ NAME   STATE    NAMESPACE QUOTA   NAMESPACE COUNT   NODE SELECTOR   AGE
 solar    Active                     0                                 33m
 ```
 
-> Note that namespaces are not yet assigned to the new tenant. The tenant owners are free to create their namespaces in a self-service fashion and without any intervention from Bill.
+> Note that namespaces are not yet assigned to the new `Tenant`. The `Tenant` owners are free to create their namespaces in a self-service fashion and without any intervention from Bill.
 
-Once the new tenant solar is in place, Bill sends the login credentials to Alice. Alice can log in using her credentials and check if she can create a namespace
+Once the new `Tenant` solar is in place, Bill sends the login credentials to Alice. Alice can log in using her credentials and check if she can create a namespace
 
 ```bash
 kubectl auth can-i create namespaces
@@ -88,7 +237,7 @@ kubectl auth can-i get persistentvolumes
 no
 ```
 
-including the Tenant resources
+including the `Tenant` resources
 
 
 ```
@@ -96,9 +245,9 @@ kubectl auth can-i get tenants
 no
 ```
 
-#### Group of subjects as tenant owner
+### Groups
 
-In the example above, Bill assigned the ownership of solar tenant to alice user. If another user, e.g. Bob needs to administer the solar tenant, Bill can assign the ownership of solar tenant to such user too:
+In the example above, Bill assigned the ownership of solar `Tenant` to alice user. If another user, e.g. Bob needs to administer the solar `Tenant`, Bill can assign the ownership of solar `Tenant` to such user too:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -113,7 +262,7 @@ spec:
     kind: User
 ```
 
-However, it's more likely that Bill assigns the ownership of the solar tenant to a group of users instead of a single one, especially if you use [OIDC Authentication](/docs/guides/authentication#oidc). Bill creates a new group account solar-users in the Acme Corp. identity management system and then he assigns Alice and Bob identities to the solar-users group.
+However, it's more likely that Bill assigns the ownership of the solar `Tenant` to a group of users instead of a single one, especially if you use [OIDC Authentication](/docs/operating/authentication/#oidc). Bill creates a new group account solar-users in the Acme Corp. identity management system and then he assigns Alice and Bob identities to the solar-users group.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -126,18 +275,18 @@ spec:
     kind: Group
 ```
 
-With the configuration above, any user belonging to the `solar-users` group will be the owner of the solar tenant with the same permissions of Alice. For example, Bob can log in with his credentials and issue
+With the configuration above, any user belonging to the `solar-users` group will be the owner of the solar `Tenant` with the same permissions of Alice. For example, Bob can log in with his credentials and issue
 
 ```bash
 kubectl auth can-i create namespaces
 yes
 ```
 
-All the groups you want to promot to Tenant Owners must be part of the Group Scope. You have to add `solar-users` to the CapsuleConfiguration [Group Scope](#group-scope) to make it work.
+All the groups you want to promot to `TenantOwners` must be part of the Group Scope. You have to add `solar-users` to the CapsuleConfiguration [Group Scope](#group-scope) to make it work.
 
-#### ServiceAccounts
+### ServiceAccounts
 
-You can use the Group subject to grant ServiceAccounts the ownership of a tenant. For example, you can create a group of ServiceAccounts and assign it to the tenant:
+You can use the Group subject to grant ServiceAccounts the ownership of a `Tenant`. For example, you can create a group of ServiceAccounts and assign it to the `Tenant`:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -150,29 +299,30 @@ spec:
     kind: ServiceAccount
 ```
 
-Bill can create a ServiceAccount called robot, for example, in the `tenant-system` namespace and leave it to act as Tenant Owner of the solar tenant
+Bill can create a ServiceAccount called robot, for example, in the `tenant-system` namespace and leave it to act as `TenantOwner` of the solar `Tenant`
 
-```bash
+```shell
 kubectl --as system:serviceaccount:tenant-system:robot --as-group projectcapsule.dev auth can-i create namespaces
 yes
 ```
+
 since each service account in a namespace is a member of following group:
 
-```
+```shell
 system:serviceaccounts:{service-account-namespace}
 ```
 
-You have to add `system:serviceaccounts:{service-account-namespace}` to the CapsuleConfiguration [Group Scope](#group-scope) to make it work.
+You have to add `system:serviceaccounts:{service-account-namespace}` to the CapsuleConfiguration [Group Scope](/docs/operating/setup/configuration/#usergroups) or `system:serviceaccounts:{service-account-namespace}:{service-account-name}` to the CapsuleConfiguration [User Scope](/docs/operating/setup/configuration/#usergroups) to make it work.
 
 ### ServiceAccount Promotion
 
-Within a tenant, a ServiceAccount can be promoted to a Tenant Owner. For example, Alice can create a ServiceAccount called robot in the solar tenant and promote it to be a Tenant Owner (This requires Alice to be an owner of the tenant as well):
+Within a `Tenant`, a ServiceAccount can be promoted to a `TenantOwner`. For example, Alice can create a ServiceAccount called robot in the solar `Tenant` and promote it to be a `TenantOwner` (This requires Alice to be an owner of the `Tenant` as well):
 
 ```yaml
 kubectl label sa gitops-reconcile -n green-test owner.projectcapsule.dev/promote=true --as alice --as-group projectcapsule.dev
 ```
 
-Now the ServiceAccount robot can create namespaces in the solar tenant:
+Now the ServiceAccount robot can create namespaces in the solar `Tenant`:
 
 ```bash
 kubectl create ns green-valkey--as system:serviceaccount:green-test:gitops-reconcile
@@ -186,15 +336,14 @@ kubectl label sa gitops-reconcile -n green-test owner.projectcapsule.dev/promote
 
 This feature must be enabled in the [CapsuleConfiguration](/docs/operating/setup/configuration/#allowserviceaccountpromotion).
 
-
 ### Owner Roles
 
-By default, all Tenant Owners will be granted with two ClusterRole resources using the RoleBinding API:
+By default, all `TenantOwners` will be granted with two ClusterRole resources using the RoleBinding API:
 
 1. `admin`: the Kubernetes default one, admin, that grants most of the namespace scoped resources
 2. `capsule-namespace-deleter`: a custom clusterrole, created by Capsule, allowing to delete the created namespaces
 
-You can observe this behavior when you get the tenant solar:
+You can observe this behavior when you get the `Tenant` solar:
 
 ```yaml
 $ kubectl get tnt solar -o yaml
@@ -230,7 +379,7 @@ status:
   state: Active
 ```
 
-In the example below, assuming the tenant owner creates a namespace solar-production in Tenant solar, you'll see the Role Bindings giving the tenant owner full permissions on the tenant namespaces:
+In the example below, assuming the `TenantOwner` creates a namespace solar-production in `Tenant` solar, you'll see the Role Bindings giving the `TenantOwner` full permissions on the `Tenant` namespaces:
 
 ```bash
 $ kubectl get rolebinding -n solar-production
@@ -239,7 +388,7 @@ capsule-solar-0-admin                       ClusterRole/admin                   
 capsule-solar-1-capsule-namespace-deleter   ClusterRole/capsule-namespace-deleter   111m
 ```
 
-When Alice creates the namespaces, the Capsule controller assigns to Alice the following permissions, so that Alice can act as the admin of all the tenant namespaces:
+When Alice creates the namespaces, the Capsule controller assigns to Alice the following permissions, so that Alice can act as the admin of all the `Tenant` namespaces:
 
 ```bash
 $ kubectl get rolebinding -n solar-production -o yaml
@@ -308,9 +457,9 @@ metadata:
   resourceVersion: ""
 ```
 
-In some cases, the cluster admin needs to narrow the range of permissions assigned to tenant owners by assigning a Cluster Role with less permissions than above. Capsule supports the dynamic assignment of any ClusterRole resources for each Tenant Owner.
+In some cases, the cluster admin needs to narrow the range of permissions assigned to `TenantOwners` by assigning a Cluster Role with less permissions than above. Capsule supports the dynamic assignment of any ClusterRole resources for each `TenantOwner`.
 
-For example, assign user Joe the tenant ownership with only [view](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#user-facing-roles) permissions on tenant namespaces:
+For example, assign user Joe the `Tenant` ownership with only [view](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#user-facing-roles) permissions on `Tenant` namespaces:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -337,14 +486,14 @@ capsule-solar-1-capsule-namespace-deleter   ClusterRole/capsule-namespace-delete
 capsule-solar-2-view                        ClusterRole/view                        1s
 ```
 
-so that Joe can only view resources in the tenant namespaces:
+so that Joe can only view resources in the `Tenant` namespaces:
 
 ```bash
 kubectl --as joe --as-group projectcapsule.dev auth can-i delete pods -n solar-production
 no
 ```
 
-> Please, note that, despite created with more restricted permissions, a tenant owner can still create namespaces in the tenant because he belongs to the `projectcapsule.dev` group. If you want a user not acting as tenant owner, but still operating in the tenant, you can assign [additional RoleBindings](#additional-rolebindings) without assigning him the tenant ownership.
+> Please, note that, despite created with more restricted permissions, a `TenantOwner` can still create namespaces in the `Tenant` because he belongs to the `projectcapsule.dev` group. If you want a user not acting as `TenantOwner`, but still operating in the `Tenant`, you can assign [additional RoleBindings](#additional-rolebindings) without assigning him the `Tenant` ownership.
 
 Custom ClusterRoles are also supported. Assuming the cluster admin creates:
 
@@ -411,10 +560,10 @@ EOF
 
 ### Proxy Owner Authorization
 
-> This feature will be deprecated in a future release of Capsule. Instead use [ProxySettings](docs/proxy/proxysettings/)
+> This feature will be deprecated in a future release of Capsule. Instead use [ProxySettings](/docs/proxy/proxysettings/#proxysettings)
 
 
-When you are using the [Capsule Proxy](/docs/integrations/addons/capsule-proxy), the tenant owner can list the cluster-scoped resources. You can control the permissions to cluster scoped resources by defining `proxySettings` for a tenant owner.
+When you are using the [Capsule Proxy](/docs/proxy), the tenant owner can list the cluster-scoped resources. You can control the permissions to cluster scoped resources by defining `proxySettings` for a tenant owner.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -432,7 +581,7 @@ spec:
 
 ## Additional Rolebindings
 
-With tenant rolebindings you can distribute namespaced rolebindings to all namespaces which are assigned to a namespace. Essentially it is then ensured the defined rolebindings are present and reconciled in all namespaces of the tenant. This is useful if users should have more insights on tenant basis. Let's look at an example.
+With `Tenant` rolebindings you can distribute namespaced rolebindings to all namespaces which are assigned to a namespace. Essentially it is then ensured the defined rolebindings are present and reconciled in all namespaces of the `Tenant`. This is useful if users should have more insights on `Tenant` basis. Let's look at an example.
 
 Assuming a cluster-administrator creates the following clusterRole:
 
@@ -449,7 +598,7 @@ rules:
 EOF
 ```
 
-Now the cluster-administrator creates wants to bind this clusterRole in each namespace of the solar tenant. He creates a tenantRoleBinding:
+Now the cluster-administrator creates wants to bind this clusterRole in each namespace of the solar `Tenant`. He creates a tenantRoleBinding:
 
 ```yaml
 kubectl apply -f - << EOF
@@ -478,9 +627,9 @@ As you can see the subjects is a classic [rolebinding subject](https://kubernete
 
 ### Custom Resources
 
-Capsule grants admin permissions to the tenant owners but is only limited to their namespaces. To achieve that, it assigns the ClusterRole [admin](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#user-facing-roles) to the tenant owner. This ClusterRole does not permit the installation of custom resources in the namespaces.
+Capsule grants admin permissions to the `TenantOwners` but is only limited to their namespaces. To achieve that, it assigns the ClusterRole [admin](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#user-facing-roles) to the `TenantOwner`. This ClusterRole does not permit the installation of custom resources in the namespaces.
 
-In order to leave the tenant owner to create Custom Resources in their namespaces, the cluster admin defines a proper Cluster Role. For example:
+In order to leave the `TenantOwner` to create Custom Resources in their namespaces, the cluster admin defines a proper Cluster Role. For example:
 
 ```yaml
 kubectl apply -f - << EOF
@@ -505,7 +654,7 @@ rules:
 EOF
 ```
 
-Bill can assign this role to any namespace in the Alice's tenant by setting it in the tenant manifest:
+Bill can assign this role to any namespace in the Alice's `Tenant` by setting it in the `Tenant` manifest:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -547,6 +696,11 @@ roleRef:
   name: argoproj-provisioner
 ```
 
-With the above example, Capsule is leaving the tenant owner to create namespaced custom resources.
+With the above example, Capsule is leaving the `TenantOwner` to create namespaced custom resources.
 
-> Take Note: a tenant owner having the admin scope on its namespaces only, does not have the permission to create Custom Resources Definitions (CRDs) because this requires a cluster admin permission level. Only Bill, the cluster admin, can create CRDs. This is a known limitation of any multi-tenancy environment based on a single shared control plane.
+> Take Note: a `TenantOwner` having the admin scope on its namespaces only, does not have the permission to create Custom Resources Definitions (CRDs) because this requires a cluster admin permission level. Only Bill, the cluster admin, can create CRDs. This is a known limitation of any multi-tenancy environment based on a single shared control plane.
+
+## Administrators
+
+Administrators are users that have full control over all `Tenants` and their namespaces. They are typically cluster administrators or operators who need to manage the entire cluster and all its `Tenants`. However as administrator you are automatically Owner of all `Tenants`.`Tenants` This means that administrators can create, delete, and manage namespaces and other resources within any `Tenant`, given you are using [label assignments for tenants](/docs/tenants/namespaces/#label).
+

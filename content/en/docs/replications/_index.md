@@ -61,6 +61,11 @@ The GlobalTenantResource is a cluster-scoped resource, thus it has been designed
 
 > Capsule will select all the Tenant resources according to the key tenantSelector. Each object defined in the namespacedItems and matching the provided selector will be replicated into each Namespace bounded to the selected Tenants. Capsule will check every 60 seconds if the resources are replicated and in sync, as defined in the key resyncPeriod.
 
+## Scope
+
+You can change to scope
+
+
 ## TenantResource
 
 Although Capsule is supporting a few amounts of personas, it can be used to allow building an Internal Developer Platform used barely by [Tenant owners](/docs/tenants/permissions#ownership), or users created by these thanks to Service Account.

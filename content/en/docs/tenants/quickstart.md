@@ -106,4 +106,67 @@ Error from server (Forbidden): pods is forbidden:
 User "alice" cannot list resource "pods" in API group "" in the namespace "kube-system"
 ```
 
-See the [concepts](/docs/concepts) for getting more cool things you can do with Capsule.
+## Securing The Network
+
+As Cluster Administrator we want to avoid that tenants can communicate between each other. To achieve that, we can use [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/) to isolate the namespaces created by different tenants.
+
+Let's ensure for any `Tenant` and any of it's future namespaces, that each gits a [NetworkPolicy](https://kubernetes.io/docs/concepts/services-networking/network-policies/), which does not allow ingress/egress traffic to/from other tenants.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalTenantResource
+metadata:
+  name: default-networkpolicies
+spec:
+  resyncPeriod: 60s
+  resources:
+    - rawItems:
+        - apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata:
+            name: default-policy
+          spec:
+            # Apply to all pods in this namespace
+            podSelector: {}
+            policyTypes:
+              - Ingress
+              - Egress
+            ingress:
+              # Allow traffic from the same namespace (intra-namespace communication)
+              - from:
+                  - podSelector: {}
+
+              # Allow traffic from all namespaces within the tenant
+              - from:
+                  - namespaceSelector:
+                      matchLabels:
+                        capsule.clastix.io/tenant: "{{tenant.name}}"
+
+              # Allow ingress from other namespaces labeled (System Namespaces, eg. Monitoring, Ingress)
+              - from:
+                  - namespaceSelector:
+                      matchLabels:
+                        company.com/system: "true"
+
+            egress:
+              # Allow DNS to kube-dns service IP (might be different in your setup)
+              - to:
+                  - ipBlock:
+                      cidr: 10.96.0.10/32
+                ports:
+                  - protocol: UDP
+                    port: 53
+                  - protocol: TCP
+                    port: 53
+
+              # Allow traffic to all namespaces within the tenant
+              - to:
+                  - namespaceSelector:
+                      matchLabels:
+                        capsule.clastix.io/tenant: "{{tenant.name}}"
+```
+
+
+
+
+

@@ -9,6 +9,20 @@ integration: true
 
 [Kyverno](https://kyverno.io) is a policy engine designed for Kubernetes. It provides the ability to validate, mutate, and generate Kubernetes resources using admission control. Kyverno policies are managed as Kubernetes resources and can be applied to a cluster using kubectl. Capsule integrates with Kyverno to provide a set of policies that can be used to improve the security and governance of the Kubernetes cluster.
 
+## Permissions
+
+Some policies are attempting to query Capsule specific information, such as the tenant name based on the namespace. Therefore, we need to ensure that Kyverno has the necessary permissions to read Capsule resources. This can be achieved by extending the Kyverno ClusterRole to include Capsule resources:
+
+```yaml
+admissionController:
+  rbac:
+    clusterRole:
+      extraResources:
+       - apiGroups: ["capsule.clastix.io"]
+         resources: ["*"]
+         verbs: ["get", "list"]
+```
+
 ## Recommended Policies
 
 Not all relevant settings are covered by Capsule. We recommend to use Kyverno to enforce additional policies, as their policy implementation is of a very high standard. Here are some policies you might want to consider in multi-tenant environments:

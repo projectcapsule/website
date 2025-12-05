@@ -1,0 +1,58 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-secrets-to-owners
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: restrict-secrets-to-owners
+      match:
+        resources:
+          kinds:
+            - Pod
+          namespaceSelector:
+            matchExpressions:
+              - key: capsule.clastix.io/tenant
+                operator: Exists
+
+      context:
+        # 1) Tenant owners for this namespace
+        - name: owners
+          apiCall:
+            urlPath: "/apis/capsule.clastix.io/v1beta2/tenants"
+            jmesPath: >
+              items[?contains(status.namespaces, '{{ request.namespace }}')].status.owners | [0]
+
+        # 2) User groups as a separate variable
+        - name: userGroups
+          variable:
+            jmesPath: "request.userInfo.groups"
+            default: []
+
+        # 3) User owners: kind == "User" && name == username
+        - name: userOwnerMatchesCount
+          variable:
+            jmesPath: "length((owners || `[]`)[?kind == 'User' && name == '{{ request.userInfo.username }}'])"
+            default: 0
+
+        - name: groupOwnerMatchesCount
+          variable:
+            jmesPath: "length((owners || `[]`)[?kind == 'Group' && contains(userGroups, name)])"
+            default: 0
+
+      validate:
+        message: >-
+          User {{ request.userInfo.username }} is not an owner of the Tenant for namespace
+          {{ request.namespace }} (neither as User nor via any Group membership).
+          Debug: userOwnerMatches={{ userOwnerMatchesCount }}, groupOwnerMatches={{ groupOwnerMatchesCount }},
+          owners={{ owners }}, groups={{ userGroups }}.
+        deny:
+          conditions:
+            all:
+              - key: "{{ userOwnerMatchesCount }}"
+                operator: Equals
+                value: 0
+              - key: "{{ groupOwnerMatchesCount }}"
+                operator: Equals
+                value: 0

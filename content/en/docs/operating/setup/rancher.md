@@ -47,9 +47,9 @@ It then explains how for the tenant user, the access to Kubernetes resources is 
 
 #### Configure an identity provider for Kubernetes
 
-You can follow [this general guide](/docs/operating/authentication/#oidc) to configure an OIDC authentication for Kubernetes.
+You can follow [this general guide](/docs/operating/authentication/) to configure an OIDC authentication for Kubernetes.
 
-For a Keycloak specific setup yon can check [this resources list](./oidc-keycloak.md).
+For a Keycloak specific setup yon can check [this resources list](/docs/operating/authentication/#oidc).
 
 #### Known issues
 
@@ -99,7 +99,7 @@ When onboarding tenants, the administrator needs to create the following, in ord
   ```
 
   More on declarative `Project`s [here](https://github.com/rancher/rancher/issues/35631).
-- In the identity provider, create a user with [correct OIDC claim](https://capsule.clastix.io/docs/guides/oidc-auth) of the Tenant.
+- In the identity provider, create a user with [correct OIDC claim](/docs/operating/authentication/#oidc) of the Tenant.
 - In Rancher, add the new user to the `Project` with the *Read-only* `Role`.
 - In Rancher, add the new user to the `Cluster` with the *Tenant Member* `Cluster Role`.
 
@@ -277,7 +277,7 @@ The expected CA is the one for which the certificate is inside the `kube-root-ca
 
 ### Capsule Proxy
 
-[Capsule Proxy](docs/proxy/) needs to provide a x509 certificate for which the root CA is trusted by the Cluster Agent.
+[Capsule Proxy](/docs/proxy/) needs to provide a x509 certificate for which the root CA is trusted by the Cluster Agent.
 The goal can be achieved by, either using the Kubernetes CA to sign its certificate, or by using a dedicated root CA.
 
 #### With the Kubernetes root CA
@@ -362,7 +362,7 @@ The same appplies for:
 - `IngressClasses`
 - `PriorityClasses`
 
-More on this in the [official documentation](https://capsule.clastix.io/docs/general/proxy#tenant-owner-authorization).
+More on this in the [official documentation](/docs/tenants/permissions/#proxy-owner-authorization).
 
 
 ## Configure OIDC authentication with Keycloak
