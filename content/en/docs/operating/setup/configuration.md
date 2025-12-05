@@ -107,6 +107,42 @@ manager:
     allowServiceAccountPromotion: true
 ```
 
+### `serviceAccountClient`
+
+```yaml
+options:
+  serviceAccountClient:
+    # Kubernetes API Endpoint to use for the operations 
+    endpoint: "https://capsule-proxy.capsule-system.svc:8081"
+  
+    # Toggles if TLS verification for the endpoint is performed or not
+    skipTlsVerify: false
+  
+    # Key in the secret that holds the CA certificate (e.g., "ca.crt")
+    caSecretKey: "ca.crt"
+  
+    # Name of the secret containing the CA cetificate
+    caSecretName: "capsule-proxy-tls"
+  
+    # Namespace where the CA certificate secret is located
+    caSecretNamespace: "capsule-system"
+
+    # Default ServiceAccount for global resources (GlobalTenantResource) [Cluster Scope]
+    # When defined, users are required to use this ServiceAccount anywhere in the cluster
+    # unless they explicitly provide their own. Once this is set, Capsule will add this ServiceAccount 
+    # for all GlobalTenantResources, if they don't already have a ServiceAccount defined.
+    globalDefaultServiceAccount: "capsule-global-sa"
+
+    # Namespace of the for the ServiceAccount provided by the globalDefaultServiceAccount property
+    globalDefaultServiceAccountNamespace: "tenant-system"
+
+    # Default ServiceAccount for tenant resources (TenantResource) [Namespaced Scope]
+    # When defined, users are required to use this ServiceAccount anywhere in the cluster
+    # unless they explicitly provide their own. Once this is set, Capsule will add this ServiceAccount 
+    # for all GlobalTenantResources, if they don't already have a ServiceAccount defined.
+    tenantDefaultServiceAccount: "default"
+```
+
 ## Controller Options
 
 Depending on the version of the Capsule Controller, the configuration options may vary. You can view the options for the latest version of the Capsule Controller or by executing the controller locally:
