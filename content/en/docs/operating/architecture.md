@@ -35,7 +35,7 @@ They are promoted to [Tenant-Owners](#tenant-owners) for all available tenants. 
 **Note**: Granting Capsule Administrator rights should be done with caution, as it provides extensive control over the cluster's multi-tenant environment. **When granting Capsule Administrator rights, the entity gets the privileges to create any namespace (also not part of capsule tenants) and the privileges to delete any tenant namespaces.**
 
 Capsule Administrators can:
-  - Create and manage [namespaces via labels in any tenant](docs/tenants/namespaces/#label).
+  - Create and manage [namespaces via labels in any tenant](/docs/tenants/namespaces/#label).
   - Create namespaces outside of tenants.
   - Delete namespaces in any tenant.
 
@@ -66,10 +66,6 @@ Tenant Owners can:
   - Delete namespaces within their tenant.
 
 Capsule provides robust tools to strictly enforce tenant boundaries, ensuring that each tenant operates within its defined limits. This separation of duties promotes both security and efficient resource management.
-
-
-
-
 
 [Configure Tenant Owners](/docs/tenants/permissions/#ownership)
 

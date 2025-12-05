@@ -168,18 +168,18 @@ spec:
 In example, the cluster admin is supposed to apply this Kustomization, during the cluster bootstrap that i.e. will reconcile also Flux itself.
 All the remaining Reconciliation resources can be children of this Kustomization.
 
-![bootstrap](./assets/kustomization-hierarchy-root-tenants.png)
+![bootstrap](/images/assets/kustomization-hierarchy-root-tenants.png)
 
 ### Namespace-as-a-Service
 
 Tenants could have his own set of Namespaces to operate on but it should be prepared by higher-level roles, like platform admins: the declarations would be part of the platform space.
 They would be responsible of tenants administration, and each change (e.g. new tenant Namespace) should be a request that would pass through approval.
 
-![no-naas](./assets/flux-tenants-reconciliation.png)
+![no-naas](/images/assets/flux-tenants-reconciliation.png)
 
 What if we would like to provide tenants the ability to manage also their own space the GitOps-way? Enter Capsule.
 
-![naas](./assets/flux-tenants-capsule-reconciliation.png)
+![naas](/images/assets/flux-tenants-capsule-reconciliation.png)
 
 ## Manual setup
 
@@ -311,7 +311,7 @@ To deepen on this please go to [#Insights](#insights).
 
 ### How to setup Tenants GitOps-ready
 
-Given that [Capsule](github.com/projectcapsule/capsule) and [Capsule Proxy](github.com/clastix/capsule-proxy) are installed, and [Flux v2](https://github.com/fluxcd/flux2) configured with [multi-tenancy lockdown](https://fluxcd.io/docs/installation/#multi-tenancy-lockdown) features, of which the patch below:
+Given that [Capsule](github.com/projectcapsule/capsule) and [Capsule Proxy](/docs/proxy) are installed, and [Flux v2](https://github.com/fluxcd/flux2) configured with [multi-tenancy lockdown](https://fluxcd.io/docs/installation/#multi-tenancy-lockdown) features, of which the patch below:
 
 ```yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
@@ -351,13 +351,16 @@ patches:
 
 this is the required set of resources to setup a Tenant:
 - `Namespace`: the Tenant GitOps Reconciler "home". This is not part of the Tenant to avoid a chicken & egg problem:
+
   ```yaml
   apiVersion: v1
   kind: Namespace
   metadata:
     name: my-tenant
   ```
+
 - `ServiceAccount` of the Tenant GitOps Reconciler, in the above `Namespace`:
+
   ```yaml
   apiVersion: v1
   kind: ServiceAccount
@@ -365,7 +368,9 @@ this is the required set of resources to setup a Tenant:
     name: gitops-reconciler
     namespace: my-tenant
   ```
+
 - `Tenant` resource with the above Tenant GitOps Reconciler's SA as Tenant Owner, with:
+
 - Additional binding to *cluster-admin* `ClusterRole` for the Tenant's `Namespace`s and `Namespace` of the Tenant GitOps Reconciler' `ServiceAccount`.
   By default Capsule binds only `admin` ClusterRole, which has no privileges over Custom Resources, but *cluster-admin* has. This is needed to operate on Flux CRs:
   ```yaml
@@ -531,7 +536,7 @@ This is because we need to make tenant reconciliation requests through Capsule P
 
 ### Threats
 
-##### Bypass unprivileged impersonation
+#### Bypass unprivileged impersonation
 
 The reason why we can't set impersonation to be optional is because, as each tenant is allowed to not specify neither the kubeconfig nor the impersonation SA for the Reconciliation resource, and because in any case that kubeconfig could contain whatever privileged credentials, Flux would otherwise use the privileged ServiceAccount, to reconcile tenant resources.
 
@@ -539,7 +544,7 @@ That way, a tenant would be capable of managing the GitOps way the cluster as he
 
 Furthermore, let's see if there are other vulnerabilities we are able to protect from.
 
-##### Impersonate privileged SA
+#### Impersonate privileged SA
 
 Then, what if a tenant tries to escalate by using one of the Flux controllers privileged `ServiceAccount`s? 
 
@@ -547,7 +552,7 @@ As `spec.ServiceAccountName` for Reconciliation resource cannot cross-namespace 
 
 He could neither create the Reconciliation resource where a privileged ServiceAccount is present (like flux-system), as the Namespace has to be owned by the Tenant. Capsule would block those Reconciliation resource creation requests.
 
-##### Create and impersonate privileged SA
+#### Create and impersonate privileged SA
 
 Then, what if a tenant tries to escalate by creating a privileged `ServiceAccount` inside on of his own `Namespace`s?
 
@@ -555,12 +560,12 @@ A tenant could create a `ServiceAccount` in an owned `Namespace`, but he can't n
 
 Now let's go on with the practical part.
 
-##### Change ownership of privileged Namespaces (e.g. flux-system)
+#### Change ownership of privileged Namespaces (e.g. flux-system)
 
 He could try to use privileged `ServiceAccount` by changing ownership of a privileged Namespace so that he could create Reconciliation resource there and using the privileged SA.
 This is not permitted as he can't patch Namespaces which have not been created by him. Capsule request validation would not pass.
 
-For other protections against threats in this multi-tenancy scenario please see the Capsule [Multi-Tenancy Benchmark](/docs/general/mtb). 
+For other protections against threats in this multi-tenancy scenario please see the Capsule [Multi-Tenancy Benchmark](/docs/overview/benchmark/).
 
 ## References
 - https://fluxcd.io/docs/installation/#multi-tenancy-lockdown
