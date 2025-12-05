@@ -311,7 +311,7 @@ To deepen on this please go to [#Insights](#insights).
 
 ### How to setup Tenants GitOps-ready
 
-Given that [Capsule](github.com/projectcapsule/capsule) and [Capsule Proxy](/docs/proxy) are installed, and [Flux v2](https://github.com/fluxcd/flux2) configured with [multi-tenancy lockdown](https://fluxcd.io/docs/installation/#multi-tenancy-lockdown) features, of which the patch below:
+Given that [Capsule](https://github.com/projectcapsule/capsule) and [Capsule Proxy](/docs/proxy) are installed, and [Flux v2](https://github.com/fluxcd/flux2) configured with [multi-tenancy lockdown](https://fluxcd.io/docs/installation/#multi-tenancy-lockdown) features, of which the patch below:
 
 ```yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
