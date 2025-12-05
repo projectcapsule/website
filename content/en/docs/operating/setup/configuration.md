@@ -109,6 +109,10 @@ manager:
 
 ### `serviceAccountClient`
 
+For Replications by default the controller ServiceAccount is used to perform the operations. However it is possible to define a dedicated ServiceAccount to be used for that purpose. Within this configuration you can define properties such as the endpoint of the kube-apiserver and if service account promotion should be allowed for this client. Also declare default service account to be used for replication operations. By default the `https://kubernetes.default.svc` endpoint is used.
+
+[Read More](/docs/tenants/permissions/#serviceaccount-promotion)
+
 ```yaml
 options:
   serviceAccountClient:
@@ -121,7 +125,7 @@ options:
     # Key in the secret that holds the CA certificate (e.g., "ca.crt")
     caSecretKey: "ca.crt"
   
-    # Name of the secret containing the CA cetificate
+    # Name of the secret containing the CA certificate
     caSecretName: "capsule-proxy-tls"
   
     # Namespace where the CA certificate secret is located
