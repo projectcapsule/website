@@ -353,6 +353,7 @@ no
 ### Dynamic resource allocation (DRA)
 Dynamic Resource Allocation (DRA) is a Kubernetes capability that allows Pods to request and use shared resources, typically external devices such as hardware accelerators.
 See [Kubernetes documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/) for more information.
+
 Bill can assign a set of dedicated `DeviceClasses` to tell the `solar` `Tenant` what devices they can request.
 ```yaml
 apiVersion: resource.k8s.io/v1
@@ -387,7 +388,8 @@ With the said Tenant specification, Alice can create a ResourceClaim or Resource
 * Any DeviceClass, which has the label env with the value production
 
 If any of the devices in the ResourceClaim or ResourceClaimTemplate spec is going to use a non-allowed DeviceClass, the entire request will be rejected by the Validation Webhook enforcing it.
-Alice can create a ResourceClaim using only an allowed DeviceClass:
+
+Alice now can create a ResourceClaim using only an allowed DeviceClass:
 ```yaml
 apiVersion: resource.k8s.io/v1
 kind: ResourceClaim
