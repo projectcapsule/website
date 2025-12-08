@@ -19,6 +19,8 @@ weight: 1
 
 * Delegate Administrators for capsule tenants. Administrators have full control (ownership) over all tenants and their namespaces. [Read More](/docs/operating/architecture/#capsule-administrators)
 
+* Added Dynamic Resource Allocation (DRA) support. Administrators can now assign allowed DeviceClasses to tenant owners. [Read More](/docs/tenants/enforcement/#dynamic-resource-allocation-dra)
+
 * All available Classes for a tenant (StorageClasses, GatewayClasses, RuntimeClasses, PriorityClasses, DeviceClasses) are now reported in the Tenant Status. These values can be used by Admission to integrate other resources validation or by external systems for reporting purposes ([Example](/docs/operating/admission-policies/#class-validation)).
 
 ```yaml
