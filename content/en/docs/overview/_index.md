@@ -21,7 +21,7 @@ Kubernetes introduces the Namespace object type to create logical partitions of 
 
 ## Entering Capsule
 
-Capsule takes a different approach. In a single cluster, the Capsule Controller aggregates multiple namespaces in a lightweight abstraction called a Tenant—basically a grouping of Kubernetes namespaces. Within each tenant, users are free to create their namespaces and share all the assigned resources.
+Capsule takes a different approach. In a single cluster, the Capsule Controller aggregates multiple namespaces in a lightweight abstraction called a Tenant, which is basically a grouping of Kubernetes namespaces. Within each tenant, users are free to create their namespaces and share all the assigned resources.
 
 On the other side, the Capsule Policy Engine keeps the different tenants isolated from each other. Network and security policies, resource quotas, limit ranges, RBAC, and other policies defined at the tenant level are automatically inherited by all the namespaces in the tenant. Users are then free to operate their tenants autonomously, without intervention from the cluster administrator.
 
