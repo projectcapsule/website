@@ -31,11 +31,11 @@ Perform the following steps to install the capsule Operator:
 
 2. Install Capsule:
 
-        helm install capsule projectcapsule/capsule --version 0.10.6 -n capsule-system --create-namespace
+        helm install capsule projectcapsule/capsule --version {{< capsule_chart_version >}} -n capsule-system --create-namespace
 
     or (**OCI**)
 
-        helm install capsule oci://ghcr.io/projectcapsule/charts/capsule --version 0.10.6 -n capsule-system --create-namespace
+        helm install capsule oci://ghcr.io/projectcapsule/charts/capsule --version {{< capsule_chart_version >}} -n capsule-system --create-namespace
 
 3. Show the status:
 
@@ -47,7 +47,7 @@ Perform the following steps to install the capsule Operator:
 
     or (**OCI**)
 
-        helm upgrade capsule oci://ghcr.io/projectcapsule/charts/capsule --version 0.10.7
+        helm upgrade capsule oci://ghcr.io/projectcapsule/charts/capsule --version {{< capsule_chart_version >}}
 
 5. Uninstall the Chart
 
@@ -163,7 +163,7 @@ spec:
   project: system
   source:
     repoURL: ghcr.io/projectcapsule/charts
-    targetRevision: 0.11.0
+    targetRevision: {{< capsule_chart_version >}}
     chart: capsule
     helm:
       valuesObject:
@@ -260,7 +260,7 @@ spec:
   chart:
     spec:
       chart: capsule
-      version: "0.11.0"
+      version: "{{< capsule_chart_version >}}"
       sourceRef:
         kind: HelmRepository
         name: capsule
