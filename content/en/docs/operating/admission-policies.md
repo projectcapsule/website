@@ -118,7 +118,7 @@ spec:
     - expression: >
         // deny if any toleration targets control-plane taints
         !has(object.spec.tolerations) ||
-        !exists(object.spec.tolerations, t,
+        !object.spec.tolerations.exists(t,
           t.key in ['node-role.kubernetes.io/master','node-role.kubernetes.io/control-plane']
         )
       message: "Pods may not use tolerations which schedule on control-plane nodes."
@@ -325,7 +325,7 @@ spec:
                 value: "{{`{{ minavailable }}`}}"{{< /tab >}}
 {{% /tabpane %}}
 
-#### Deployment Replicas higher than PDB 
+#### Deployment Replicas higher than PDB
 
 PodDisruptionBudget resources are useful to ensuring minimum availability is maintained at all times.Introducing a PDB where there are already matching Pod controllers may pose a problem if the author is unaware of the existing replica count. This policy ensures that the minAvailable value is not greater or equal to the replica count of any matching existing Deployment. If other Pod controllers should also be included in this check, additional rules may be added to the policy which match those controllers.
 
@@ -477,7 +477,7 @@ spec:
       (has(object.spec.instances) && object.spec.instances >= 2)
     message: "Set `.spec.enablePDB` to `false` for CNPG Clusters when the number of instances is lower than 2."
     messageExpression: |
-      'Set `.spec.enablePDB` to `false` for CNPG Clusters when the number of instances is lower than 2. Current instances: ' + 
+      'Set `.spec.enablePDB` to `false` for CNPG Clusters when the number of instances is lower than 2. Current instances: ' +
       string(has(object.spec.instances) ? object.spec.instances : 1)
     reason: Invalid
 ---
