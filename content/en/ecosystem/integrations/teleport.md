@@ -99,7 +99,7 @@ Create certificates for `teleport.demo`:
 ## Teleport installation
 
 - Run Ubuntu docker image in the `teleport` network using `teleport.demo` alias on port `443`:
-  
+
     ```bash
     docker run -it -v .:/etc/teleport-tls --name teleport --network teleport --network-alias teleport.demo -p 443:443 ubuntu:22.04
     ```

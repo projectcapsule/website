@@ -232,7 +232,7 @@ capsule_tenant_resource_usage{resource="requests.memory",resourcequotaindex="0",
 
 ## Custom Metrics
 
-You can gather more information based on the status of the tenants. These can be scrapped via [Kube-State-Metrics CustomResourcesState Metrics](https://github.com/kubernetes/kube-state-metrics/blob/main/docs/customresourcestate-metrics.md). With these you have the possibility to create custom metrics based on the status of the tenants.
+You can gather more information based on the status of the tenants. These can be scrapped via [Kube-State-Metrics CustomResourcesState Metrics](https://github.com/kubernetes/kube-state-metrics/blob/main/docs/metrics/extend/customresourcestate-metrics.md). With these you have the possibility to create custom metrics based on the status of the tenants.
 
 Here as an example with the [kube-prometheus-stack chart](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack), set the following values:
 

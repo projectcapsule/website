@@ -13,11 +13,11 @@ This guide works with the kubernetes dashboard v2.0.0 ([Chart 6.0.8](https://art
 We recommend to use [Headlamp](/ecosystem/integrations/headlamp/) as a more modern alternative to the Kubernetes Dashboard.
 {{% /pageinfo %}}
 
-This guide describes how to integrate the [Kubernetes Dashboard](https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/) and [Capsule Proxy](/docs/capsule-proxy/) with OIDC authorization. 
+This guide describes how to integrate the [Kubernetes Dashboard](https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/) and [Capsule Proxy](/docs/proxy/_index) with OIDC authorization.
 
 ## OIDC Authentication
 
-Your cluster must also be configured to use [OIDC Authentication](/docs/guides/authentication/#oidc) for seemless Kubernetes RBAC integration. In a such scenario, you should have in the kube-apiserver.yaml manifest the following content:
+Your cluster must also be configured to use [OIDC Authentication](/docs/operating/authentication#oidc) for seemless Kubernetes RBAC integration. In a such scenario, you should have in the kube-apiserver.yaml manifest the following content:
 
 ```yaml
 spec:
@@ -69,7 +69,7 @@ EOF
 ```
 
 
-More information about the keycloak-oidc provider can be found on the [oauth2-proxy documentation](https://oauth2-proxy.github.io/oauth2-proxy/docs/configuration/oauth_provider/#keycloak-oidc-auth-provider). We're ready to install the oauth2-proxy:
+More information about the keycloak-oidc provider can be found on the [oauth2-proxy documentation](https://oauth2-proxy.github.io/oauth2-proxy/configuration/providers/keycloak_oidc). We're ready to install the oauth2-proxy:
 
 ```bash
 helm repo add oauth2-proxy https://oauth2-proxy.github.io/manifests
@@ -78,7 +78,7 @@ helm install oauth2-proxy oauth2-proxy/oauth2-proxy -n ${KUBERNETES_DASHBOARD_NA
 
 ## Configuring Keycloak
 
-The Kubernetes cluster must be configured with a valid OIDC provider: for our guide, we're giving for granted that Keycloak is used, if you need more info please follow the [OIDC Authentication](/docs/guides/oidc-auth) section.
+The Kubernetes cluster must be configured with a valid OIDC provider: for our guide, we're giving for granted that Keycloak is used, if you need more info please follow the [OIDC Authentication](/docs/operating/authentication#oidc) section.
 
 In a such scenario, you should have in the `kube-apiserver.yaml` manifest the following content:
 ```yaml
