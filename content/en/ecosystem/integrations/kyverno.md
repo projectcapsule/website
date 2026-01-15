@@ -27,7 +27,7 @@ admissionController:
 
 Not all relevant settings are covered by Capsule. We recommend to use Kyverno to enforce additional policies, as their policy implementation is of a very high standard. Here are some policies you might want to consider in multi-tenant environments:
 
-[Moved to new page](/docs/operating/setup/admission-policies/)
+[Moved to new page](/docs/operating/architecture.md)
 
 ## References
 
@@ -35,7 +35,7 @@ Here are some policies for reference. We do not provide a complete list of polic
 
 ### Extract tenant based on namespace
 
-To get the tenant name based on the namespace, you can use a [context](https://kyverno.io/docs/writing-policies/external-data-sources/#variables-from-kubernetes-api-server-calls). With this context we resolve the tenant, based on the `{{request.namespace}}` for the requested resource. The context calls `/api/v1/namespaces/` API with the `{{request.namespace}}`. The `jmesPath` is used to check if the tenant label is present. You could assign a default if nothing was found, in this case it's empty string:
+To get the tenant name based on the namespace, you can use a [context](https://kyverno.io/docs/policy-types/cluster-policy/external-data-sources/#variables-from-kubernetes-api-server-calls). With this context we resolve the tenant, based on the `{{request.namespace}}` for the requested resource. The context calls `/api/v1/namespaces/` API with the `{{request.namespace}}`. The `jmesPath` is used to check if the tenant label is present. You could assign a default if nothing was found, in this case it's empty string:
 
 
 ```yaml
@@ -157,7 +157,7 @@ data:
   tenant_identifier_label: "capsule.clastix.io/tenant"
 ```
 
-This configuration can be referenced via [context](https://kyverno.io/docs/writing-policies/external-data-sources/#variables-from-configmaps) in your policies. Let's extend the above policy with the global configuration. Additionally we would like to allow the usage of public namespaces:
+This configuration can be referenced via [context](https://kyverno.io/docs/policy-types/cluster-policy/external-data-sources/#variables-from-configmaps) in your policies. Let's extend the above policy with the global configuration. Additionally we would like to allow the usage of public namespaces:
 
 ```yaml
 apiVersion: kyverno.io/v1

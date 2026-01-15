@@ -16,7 +16,7 @@ While we can not provide a full list of all the monitoring solutions available, 
 ### Loki
 
 
-### Promtail 
+### Promtail
 
 
 
@@ -68,7 +68,7 @@ config:
 
 
 
-As mentioned, the above configuration will not work if the pods on the cluster are not labeled with tenant. You can use the following [Kyverno policy](/docs/integrations/tools/kyverno/) to ensure that all pods are labeled with tenant. If the pod does not belong to any tenant, it will be labeled with management (assuming you have a central management tenant)
+As mentioned, the above configuration will not work if the pods on the cluster are not labeled with tenant. You can use the following [Kyverno policy](./kyverno/) to ensure that all pods are labeled with tenant. If the pod does not belong to any tenant, it will be labeled with management (assuming you have a central management tenant)
 
 ```yaml
 apiVersion: kyverno.io/v1

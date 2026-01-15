@@ -133,7 +133,7 @@ Export "admin" kubeconfig to be able to install Capsule:
 export KUBECONFIG=kubeconfig.conf
 ```
 
-[Install Capsule](/docs/getting-started#install) and create a tenant where alice has ownership. Use the default Tenant example:
+[Install Capsule](./installation#installation) and create a tenant where alice has ownership. Use the default Tenant example:
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/clastix/capsule/master/config/samples/capsule_v1beta1_tenant.yaml
