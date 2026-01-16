@@ -13,13 +13,13 @@
 {{- $scratch.Set "chartVersion" "" -}}
 
 {{- $helmIndexURL := "https://projectcapsule.github.io/charts/index.yaml" -}}
-{{- $remote := resources.GetRemote $helmIndexURL -}}
-
-{{- if $remote.Err -}}
-  {{- /* Remote fetch failed; we can't do better than a placeholder. */ -}}
-  {{- "latest" -}}
-{{- else -}}
-  {{- $data := $remote | transform.Unmarshal -}}
+{{- with try (resources.GetRemote $helmIndexURL) -}}
+  {{- with .Err -}}
+    {{- /* Remote fetch failed; we can't do better than a placeholder. */ -}}
+    {{- "latest" -}}
+  {{- else -}}
+    {{- $remote := .Value -}}
+    {{- $data := $remote | transform.Unmarshal -}}
   {{- $entries := index $data "entries" -}}
   {{- $capsuleCharts := index $entries "capsule" -}}
 
@@ -50,6 +50,6 @@
       {{- end -}}
     {{- end -}}
   {{- end -}}
-
   {{- $scratch.Get "chartVersion" -}}
+  {{- end -}}
 {{- end -}}
