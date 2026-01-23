@@ -50,7 +50,7 @@ The Capsule and its leadership embrace the following values:
 ## Maintainers
 
 Capsule Maintainers have write access to the [project GitHub repository](https://github.com/orgs/projectcapsule). They can merge their own patches or patches from others. The current maintainers
-can be found in [MAINTAINERS.md](./MAINTAINERS.md).  Maintainers collectively manage the project's
+can be found in [MAINTAINERS.md](https://github.com/projectcapsule/capsule/blob/main/MAINTAINERS.md).  Maintainers collectively manage the project's
 resources and contributors.
 
 This privilege is granted with some expectation of responsibility: maintainers
@@ -113,7 +113,7 @@ approves the request. The Maintainers may also choose to delegate working with t
 
 ## Code of Conduct
 
-[Code of Conduct](./CODE_OF_CONDUCT.md)
+[Code of Conduct](https://github.com/projectcapsule/capsule/blob/main/CODE_OF_CONDUCT.md)
 violations by community members will be discussed and resolved in private Maintainer meetings. If a Maintainer is directly involved in the report, the Maintainers will instead designate two Maintainers to work with the CNCF Code of Conduct Committee in resolving it.
 
 ## Security Response Team

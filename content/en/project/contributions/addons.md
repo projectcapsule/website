@@ -8,7 +8,7 @@ Have you written an operator or some other automation which integrates with the 
 
 ## Adding an addon
 
-In the [addons.yaml](https://github.com/projectcapsule/capsule/blob/main/docs/data/addons.yaml) file you can add an addon to the ecosystem. You just need to add an entry for your addon and upon merging it will automatically be added to our website. To add your organization follow these steps:
+In the [addons.yaml](https://github.com/projectcapsule/website/blob/main/data/addons.yaml) file you can add an addon to the ecosystem. You just need to add an entry for your addon and upon merging it will automatically be added to our website. To add your organization follow these steps:
 
 1. Fork the [projectcapsule/capsule](https://github.com/projectcapsule/capsule/fork) project to your personal space.
 2. Clone it locally with `git clone https://github.com/<YOUR-GH-USERNAME>/capsule.git`.

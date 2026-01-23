@@ -9,9 +9,171 @@ Capsule Proxy is an optional add-on of the main Capsule Operator, so make sure y
 
 The capsule-proxy can be deployed in standalone mode, e.g. running as a pod bridging any Kubernetes client to the APIs server. Optionally, it can be deployed as a sidecar container in the backend of a dashboard.
 
-We only support the installation via helm-chart, you can find the chart here:
+We officially only support the installation of Capsule using the Helm chart. The chart itself handles the Installation/Upgrade of needed [CustomResourceDefinitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/). The following Artifacthub repository are official:
 
-* [https://artifacthub.io/packages/helm/capsule-proxy/capsule-proxy](https://artifacthub.io/packages/helm/capsule-proxy/capsule-proxy)
+* [Artifacthub Page (OCI)](https://artifacthub.io/packages/helm/capsule-proxy/capsule-proxy)
+* [Artifacthub Page (Legacy - Best Effort)](https://artifacthub.io/packages/helm/projectcapsule/capsule-proxy)
+
+Perform the following steps to install the capsule Operator:
+
+1. Add repository:
+
+        helm repo add projectcapsule https://projectcapsule.github.io/charts
+
+2. Install Capsule-Proxy:
+
+        helm install capsule-proxy projectcapsule/capsule-proxy -n capsule-system --create-namespace
+
+    or (**OCI**)
+
+        helm install capsule-proxy oci://ghcr.io/projectcapsule/charts/capsule-proxy -n capsule-system --create-namespace
+
+3. Show the status:
+
+        helm status capsule-proxy -n capsule-system
+
+4. Upgrade the Chart
+
+        helm upgrade capsule-proxy projectcapsule/capsule-proxy -n capsule-system
+
+    or (**OCI**)
+
+        helm upgrade capsule-proxy oci://ghcr.io/projectcapsule/charts/capsule-proxy --version 0.13.0
+
+5. Uninstall the Chart
+
+        helm uninstall capsule-proxy -n capsule-system
+
+
+## GitOps
+
+There are no specific requirements for using Capsule with GitOps tools like ArgoCD or FluxCD. You can manage Capsule resources as you would with any other Kubernetes resource.
+
+### ArgoCD
+
+Visit the [ArgoCD Integration](/ecosystem/integrations/argocd/) for more options to integrate Capsule with ArgoCD.
+
+```yaml
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: capsule
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: system
+  source:
+    repoURL: ghcr.io/projectcapsule/charts
+    targetRevision: {{< capsule_chart_version >}} 
+    chart: capsule
+    helm:
+      valuesObject:
+        ...
+        proxy:
+          enabled: true
+          webhooks:
+            enabled: true
+          certManager:
+            generateCertificates: true
+          options:
+            generateCertificates: false
+            oidcUsernameClaim: "email"
+            extraArgs:
+            - "--feature-gates=ProxyClusterScoped=true"
+          serviceMonitor:
+            enabled: true
+            annotations:
+              argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: capsule-system
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - ServerSideApply=true
+    - CreateNamespace=true
+    - PrunePropagationPolicy=foreground
+    - PruneLast=true
+    - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: capsule-repo
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  url: ghcr.io/projectcapsule/charts
+  name: capsule
+  project: system
+  type: helm
+  enableOCI: "true"
+```
+
+### FluxCD
+
+```yaml
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: capsule
+  namespace: flux-system
+spec:
+  serviceAccountName: kustomize-controller
+  targetNamespace: "capsule-system"
+  interval: 10m
+  releaseName: "capsule"
+  chart:
+    spec:
+      chart: capsule
+      version: "{{< capsule_chart_version >}}"
+      sourceRef:
+        kind: HelmRepository
+        name: capsule
+      interval: 24h
+  install:
+    createNamespace: true
+  upgrade:
+    remediation:
+      remediateLastFailure: true
+  driftDetection:
+    mode: enabled
+  values:
+    proxy:
+      enabled: true
+      webhooks:
+        enabled: true
+      certManager:
+        generateCertificates: true
+      options:
+        generateCertificates: false
+        oidcUsernameClaim: "email"
+        extraArgs:
+        - "--feature-gates=ProxyClusterScoped=true"
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: capsule
+  namespace: flux-system
+spec:
+  type: "oci"
+  interval: 12h0m0s
+  url: oci://ghcr.io/projectcapsule/charts
+```
 
 ## Considerations
 

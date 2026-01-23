@@ -14,7 +14,7 @@ description: "Installing the Capsule Controller"
     * MutatingAdmissionWebhook
     * ValidatingAdmissionWebhook
  * A [Kubeconfig](https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/) file accessing the Kubernetes cluster with cluster admin permissions.
- * [Cert-Manager](https://cert-manager.io/) is recommended but not required
+ * [Cert-Manager](https://cert-manager.io/) is required by default but can be disabled. It is used to manage the TLS certificates for the Capsule Admission Webhooks.
 
 ## Installation
 
@@ -31,11 +31,11 @@ Perform the following steps to install the capsule Operator:
 
 2. Install Capsule:
 
-        helm install capsule projectcapsule/capsule --version 0.10.6 -n capsule-system --create-namespace
+        helm install capsule projectcapsule/capsule --version 0.12.4 -n capsule-system --create-namespace
 
     or (**OCI**)
 
-        helm install capsule oci://ghcr.io/projectcapsule/charts/capsule --version 0.10.6 -n capsule-system --create-namespace
+        helm install capsule oci://ghcr.io/projectcapsule/charts/capsule --version 0.12.4 -n capsule-system --create-namespace
 
 3. Show the status:
 
@@ -47,33 +47,107 @@ Perform the following steps to install the capsule Operator:
 
     or (**OCI**)
 
-        helm upgrade capsule oci://ghcr.io/projectcapsule/charts/capsule --version 0.10.7
+        helm upgrade capsule oci://ghcr.io/projectcapsule/charts/capsule --version 0.13.0
 
 5. Uninstall the Chart
 
         helm uninstall capsule -n capsule-system
 
-
-## Considerations
+## Production
 
 Here are some key considerations to keep in mind when installing Capsule. Also check out the **[Best Practices](/docs/operating/best-practices)** for more information.
 
+### Strict RBAC
+
+By default the capsule controller runs with the `ClusterRole` `cluster-admin` which provides full access to the cluster. This is because the controller itself must grant rolebinding on namespace basis which by default reference the `ClusterRole` `admin`, which needs to at least match the permissions for the controller to the ones of the `ClusterRole` `admin`. However, for production environments we recommend setting up more strict RBAC permissions for the Capsule Controller. You can enable the minimal required permissions by setting the following value in the Helm chart:
+
+```yaml
+manager:
+  rbac:
+    strict: true
+```
+
+This will grant the controller with minimal required permissions to operate for itself. However that won't be sufficient for it to function properly. The ClusterRole for the controller allows aggregating further permissions to it via the following labels:
+
+* `projectcapsule.dev/aggregate-to-controller: "true"`
+* `projectcapsule.dev/aggregate-to-controller-instance: {{ .Release.Name }}`
+
+In other words you must aggregate all roles which are provided to the [Tenant Owners via ClusterRoles](/docs/tenants/permissions/#owner-roles) or [Additional Rolebindings ClusterRoles](/docs/tenants/permissions/#strict). **This is only true for `ClusterRoles` which are not managed by Capsule ([See Configuration](/docs/operating/setup/configuration/#rbac))The Default `ClusterRoles` provided to owners by default are `admin` (Not managed by Capsule) and `
+
+```bash
+kubectl label clusterrole admin projectcapsule.dev/aggregate-to-controller=true
+```
+
+Verify that the label has been applied:
+
+```yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: admin
+  labels:
+    projectcapsule.dev/aggregate-to-controller: "true"
+rules:
+...
+```
+
+If you are missing permissions you will see an error status for the respective tenants reflecting
+
+```bash
+ kubectl get
+ tnt
+NAME    STATE    NAMESPACE QUOTA   NAMESPACE COUNT   NODE SELECTOR   READY   STATUS                                                                                                                                                                                                                                                                                                                                          AGE
+green   Active                     2                                 False   cannot sync rolebindings items: rolebindings.rbac.authorization.k8s.io "capsule:managed:658936e7f2a30e35" is forbidden: user "system:serviceaccount:capsule-system:capsule" (groups=["system:serviceaccounts" "system:serviceaccounts:capsule-system" "system:authenticated"]) is attempting to grant RBAC permissions not currently held:...   5s
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Before enabling this option you must 
+
+
+
+
+
+You can enable the minimal required permissions by setting the following value in the Helm chart:
+
+```yaml
+manager:
+  rbac:
+    minimal: true
+```
+
+Before you toggle this option you must implement the required permissions for your use-case. Depending on what you features you are using, you must take manual action:
+
+* [Migrate Additional Rolebindings](/docs/tenants/permissions/#strict)
+
+
+
 ### Admission Policies
 
-While Capsule provides a robust framework for managing multi-tenancy in Kubernetes, it does not include built-in admission policies for enforcing specific security or operational standards for all possible aspects of a Kubernetes cluster. Therefore, it is recommended to use additional tools like [Kyverno](https://kyverno.io/) to enforce admission policies that align with your organization's requirements.
-
-[We provide policy recommendations for Kyverno here](/ecosystem/integrations/kyverno/#recommended-policies).
+While Capsule provides a robust framework for managing multi-tenancy in Kubernetes, it does not include built-in admission policies for enforcing specific security or operational standards for all possible aspects of a Kubernetes cluster.  [We provide additional policy recommendations here](/docs/operating/admission-policies/).
 
 ### Certificate Management
 
-We recommend using [cert-manager](https://cert-manager.io/) to manage the TLS certificates for Capsule. This will ensure that your Capsule installation is secure and that the certificates are automatically renewed. Capsule requires a valid TLS certificate for it's Admission Webserver. By default Capsule reconciles it's own TLS certificate. To use cert-manager, you can set the following values:
+By default Capsule delegates it's Certificate-Management to [Cert-Manager](https://cert-manager.io/). This is the recommended way to manage the TLS certificates for Capsule. However you can also use capsule's built-in TLS reconciler to manage the certificates. This is not recommended for production environments. To enable the TLS reconciler use the following values:
 
 ```yaml
 certManager:
-  generateCertificates: true
+  generateCertificates: false
 tls:
-  enableController: false
-  create: false
+  enableController: true
+  create: true
 ```
 
 ### Webhooks
@@ -88,16 +162,16 @@ Generally we recommend to use [matchconditions](https://kubernetes.io/docs/refer
 
 #### Nodes
 
-There is a webhook which catches interactions with the Node resource. This Webhook is mainly interesting, when you make use of [Node Metadata](/docs/tenants/enforcement/#nodes). In any other case it will just case you problems. By default the webhook is enabled, but you can disable it by setting the following value:
+There is a webhook which catches interactions with the Node resource. This Webhook is mainly interesting, when you make use of [Node Metadata](/docs/tenants/enforcement/#nodes). In any other case it will just case you problems. By default the webhook is **disabled**, but you can enabled it by setting the following value:
 
 ```yaml
 webhooks:
   hooks:
     nodes:
-      enabled: false
+      enabled: true
 ```
 
-Or you could at least consider to set the failure policy to `Ignore`:
+Or you could at least consider to set the failure policy to `Ignore`, if you don't want to disrupt critical nodes:
 
 ```yaml
 webhooks:
@@ -132,24 +206,27 @@ webhooks:
         expression: '!("system:serviceaccounts:kube-system" in request.userInfo.groups)'
 ```
 
-## Compatibility
-
-The Kubernetes compatibility is announced for each [Release](https://github.com/projectcapsule/capsule/releases). Generally we are up to date with the latest upstream Kubernetes Version. Note that the Capsule project offers support only for the latest minor version of Kubernetes. Backwards compatibility with older versions of Kubernetes and OpenShift is offered by [vendors](/support/).
-
 ## GitOps
 
 There are no specific requirements for using Capsule with GitOps tools like ArgoCD or FluxCD. You can manage Capsule resources as you would with any other Kubernetes resource.
 
 ### ArgoCD
 
+Visit the [ArgoCD Integration](/ecosystem/integrations/argocd/) for more options to integrate Capsule with ArgoCD.
+
 Manifests to get you started with ArgoCD. For ArgoCD you might need to skip the validation of the `CapsuleConfiguration` resources, otherwise there might be errors on the first install:
+
+{{% alert title="Information" color="warning" %}}
+The `Validate=false` option is required for the CapsuleConfiguration resource, because ArgoCD tries to validate the resource before the Capsule CRDs are installed via our CRD Lifecycle hook. [Upstream Issue](https://github.com/argoproj/argo-cd/issues/16144). This has mainly been observed in ArgoCD Applications using Service-Side Diff/Apply.
+{{% /alert %}}
 
 ```yaml
 manager:
   options:
     annotations:
-      argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+      argocd.argoproj.io/sync-options: "Validate=false,SkipDryRunOnMissingResource=true"
 ```
+
 
 ```yaml
 ---
@@ -167,45 +244,24 @@ spec:
     targetRevision: 0.11.0
     chart: capsule
     helm:
-      skipCrds: true
       valuesObject:
         crds:
           install: true
-        certManager:
-          generateCertificates: true
-        tls:
-          enableController: false
-          create: false
         manager:
           options:
             annotations:
-              argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+              argocd.argoproj.io/sync-options: "Validate=false,SkipDryRunOnMissingResource=true"
             capsuleConfiguration: default
             ignoreUserGroups:
               - oidc:administators
-            capsuleUserGroups:
-              - oidc:kubernetes-users
-              - system:serviceaccounts:capsule-argo-addon
-        webhooks:
-          hooks:
-            nodes:
-              failurePolicy: Ignore
-        serviceMonitor:
-          enabled: true
-          annotations:
-            argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-        proxy:
-          enabled: true
-          webhooks:
+            users:
+              - kind: Group
+                name: oidc:kubernetes-users
+              - kind: Group
+                name: system:serviceaccounts:tenants-system
+        monitoring:
+          dashboards:
             enabled: true
-          certManager:
-            generateCertificates: true
-          options:
-            generateCertificates: false
-            oidcUsernameClaim: "email"
-            extraArgs:
-            - "--feature-gates=ProxyClusterScoped=true"
-            - "--feature-gates=ProxyAllNamespaced=true"
           serviceMonitor:
             enabled: true
             annotations:
@@ -263,7 +319,7 @@ spec:
   chart:
     spec:
       chart: capsule
-      version: "0.10.6"
+      version: "0.11.0"
       sourceRef:
         kind: HelmRepository
         name: capsule
@@ -278,37 +334,21 @@ spec:
   values:
     crds:
       install: true
-    certManager:
-      generateCertificates: true
-    tls:
-      enableController: false
-      create: false
     manager:
       options:
         capsuleConfiguration: default
         ignoreUserGroups:
           - oidc:administators
-        capsuleUserGroups:
-          - oidc:kubernetes-users
-          - system:serviceaccounts:capsule-argo-addon
-    webhooks:
-      hooks:
-        nodes:
-          failurePolicy: Ignore
-    serviceMonitor:
-      enabled: true
-    proxy:
-      enabled: true
-      webhooks:
+        users:
+          - kind: Group
+            name: oidc:kubernetes-users
+          - kind: Group
+            name: system:serviceaccounts:tenants-system
+    monitoring:
+      dashboards:
         enabled: true
-      certManager:
-        generateCertificates: true
-      options:
-        generateCertificates: false
-        oidcUsernameClaim: "email"
-        extraArgs:
-        - "--feature-gates=ProxyClusterScoped=true"
-        - "--feature-gates=ProxyAllNamespaced=true"
+      serviceMonitor:
+        enabled: true
 ---
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
@@ -387,3 +427,7 @@ To inspect the SBOM of the docker image, run the following command. Replace `<re
 To inspect the SBOM of the helm image, run the following command. Replace `<release_tag>` with an [available release tag](https://github.com/projectcapsule/capsule/pkgs/container/charts%2Fcapsule):
 
     COSIGN_REPOSITORY=ghcr.io/projectcapsule/charts/capsule cosign download sbom ghcr.io/projectcapsule/charts/capsule:<release_tag>
+
+## Compatibility
+
+The Kubernetes compatibility is announced for each [Release](https://github.com/projectcapsule/capsule/releases). Generally we are up to date with the latest upstream Kubernetes Version. Note that the Capsule project offers support only for the latest minor version of Kubernetes. Backwards compatibility with older versions of Kubernetes and OpenShift is offered by [vendors](/support/).

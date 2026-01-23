@@ -169,6 +169,153 @@ capsule_pool_usage_percentage{pool="solar-compute",resource="requests.memory"} 4
 capsule_pool_usage_percentage{pool="solar-size",resource="pods"} 42.857142857142854
 ```
 
+## Replications
+
+Instrumentation for [Replications](../replications/).
+
+### Rules
+
+Example rules to give you some idea, what's possible.
+
+1. Alert on [Replications](../replications/) usage
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: resourcepool-usage-alert
+spec:
+groups:
+  - name: capsule-pool-usage.rules
+    rules:
+      - alert: CapsulePoolHighUsageWarning
+        expr: |
+          capsule_pool_usage_percentage > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: High resource usage in Resourcepool
+          description: |
+            Resource {{ $labels.resource }} in pool {{ $labels.pool }} is at {{ $value }}% usage for the last 10 minutes.
+
+      - alert: CapsulePoolHighUsageCritical
+        expr: |
+          capsule_pool_usage_percentage > 95
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: Critical resource usage in Resourcepool
+          description: |
+            Resource {{ $labels.resource }} in pool {{ $labels.pool }} has exceeded 95% usage for the last 10 minutes.
+```
+
+---
+
+### Metrics
+
+The following Metrics are exposed and can be used for monitoring:
+
+```shell
+# HELP capsule_claim_condition The current condition status of a claim.
+# TYPE capsule_claim_condition gauge
+capsule_claim_condition{condition="Bound",name="compute",pool="solar-compute",reason="Succeeded",target_namespace="solar-prod"} 1
+capsule_claim_condition{condition="Bound",name="compute-10",pool="solar-compute",reason="PoolExhausted",target_namespace="solar-prod"} 0
+capsule_claim_condition{condition="Bound",name="compute-2",pool="solar-compute",reason="Succeeded",target_namespace="solar-prod"} 1
+capsule_claim_condition{condition="Bound",name="compute-3",pool="solar-compute",reason="Succeeded",target_namespace="solar-prod"} 1
+capsule_claim_condition{condition="Bound",name="compute-4",pool="solar-compute",reason="Succeeded",target_namespace="solar-test"} 1
+capsule_claim_condition{condition="Bound",name="compute-5",pool="solar-compute",reason="PoolExhausted",target_namespace="solar-test"} 0
+capsule_claim_condition{condition="Bound",name="compute-6",pool="solar-compute",reason="PoolExhausted",target_namespace="solar-test"} 0
+capsule_claim_condition{condition="Bound",name="pods",pool="solar-size",reason="Succeeded",target_namespace="solar-test"} 1
+
+# HELP capsule_claim_resource The given amount of resources from the claim
+# TYPE capsule_claim_resource gauge
+capsule_claim_resource{name="compute",resource="limits.cpu",target_namespace="solar-prod"} 0.375
+capsule_claim_resource{name="compute",resource="limits.memory",target_namespace="solar-prod"} 4.02653184e+08
+capsule_claim_resource{name="compute",resource="requests.cpu",target_namespace="solar-prod"} 0.375
+capsule_claim_resource{name="compute",resource="requests.memory",target_namespace="solar-prod"} 4.02653184e+08
+capsule_claim_resource{name="compute-10",resource="limits.memory",target_namespace="solar-prod"} 1.073741824e+10
+capsule_claim_resource{name="compute-2",resource="limits.cpu",target_namespace="solar-prod"} 0.5
+capsule_claim_resource{name="compute-2",resource="limits.memory",target_namespace="solar-prod"} 5.36870912e+08
+capsule_claim_resource{name="compute-2",resource="requests.cpu",target_namespace="solar-prod"} 0.5
+capsule_claim_resource{name="compute-2",resource="requests.memory",target_namespace="solar-prod"} 5.36870912e+08
+capsule_claim_resource{name="compute-3",resource="requests.cpu",target_namespace="solar-prod"} 0.5
+capsule_claim_resource{name="compute-4",resource="requests.cpu",target_namespace="solar-test"} 0.5
+capsule_claim_resource{name="compute-5",resource="requests.cpu",target_namespace="solar-test"} 0.5
+capsule_claim_resource{name="compute-6",resource="requests.cpu",target_namespace="solar-test"} 5
+capsule_claim_resource{name="pods",resource="pods",target_namespace="solar-test"} 3
+
+# HELP capsule_pool_available Current resource availability for a given resource in a resource pool
+# TYPE capsule_pool_available gauge
+capsule_pool_available{pool="solar-compute",resource="limits.cpu"} 1.125
+capsule_pool_available{pool="solar-compute",resource="limits.memory"} 1.207959552e+09
+capsule_pool_available{pool="solar-compute",resource="requests.cpu"} 0.125
+capsule_pool_available{pool="solar-compute",resource="requests.memory"} 1.207959552e+09
+capsule_pool_available{pool="solar-size",resource="pods"} 4
+
+# HELP capsule_pool_exhaustion Resources become exhausted, when there's not enough available for all claims and the claims get queued
+# TYPE capsule_pool_exhaustion gauge
+capsule_pool_exhaustion{pool="solar-compute",resource="limits.memory"} 1.073741824e+10
+capsule_pool_exhaustion{pool="solar-compute",resource="requests.cpu"} 5.5
+
+# HELP capsule_pool_exhaustion_percentage Resources become exhausted, when there's not enough available for all claims and the claims get queued (Percentage)
+# TYPE capsule_pool_exhaustion_percentage gauge
+capsule_pool_exhaustion_percentage{pool="solar-compute",resource="limits.memory"} 788.8888888888889
+capsule_pool_exhaustion_percentage{pool="solar-compute",resource="requests.cpu"} 4300
+
+# HELP capsule_pool_limit Current resource limit for a given resource in a resource pool
+# TYPE capsule_pool_limit gauge
+capsule_pool_limit{pool="solar-compute",resource="limits.cpu"} 2
+capsule_pool_limit{pool="solar-compute",resource="limits.memory"} 2.147483648e+09
+capsule_pool_limit{pool="solar-compute",resource="requests.cpu"} 2
+capsule_pool_limit{pool="solar-compute",resource="requests.memory"} 2.147483648e+09
+capsule_pool_limit{pool="solar-size",resource="pods"} 7
+
+# HELP capsule_pool_namespace_usage Current resources claimed on namespace basis for a given resource in a resource pool for a specific namespace
+# TYPE capsule_pool_namespace_usage gauge
+capsule_pool_namespace_usage{pool="solar-compute",resource="limits.cpu",target_namespace="solar-prod"} 0.875
+capsule_pool_namespace_usage{pool="solar-compute",resource="limits.memory",target_namespace="solar-prod"} 9.39524096e+08
+capsule_pool_namespace_usage{pool="solar-compute",resource="requests.cpu",target_namespace="solar-prod"} 1.375
+capsule_pool_namespace_usage{pool="solar-compute",resource="requests.cpu",target_namespace="solar-test"} 0.5
+capsule_pool_namespace_usage{pool="solar-compute",resource="requests.memory",target_namespace="solar-prod"} 9.39524096e+08
+capsule_pool_namespace_usage{pool="solar-size",resource="pods",target_namespace="solar-test"} 3
+
+# HELP capsule_pool_namespace_usage_percentage Current resources claimed on namespace basis for a given resource in a resource pool for a specific namespace (percentage)
+# TYPE capsule_pool_namespace_usage_percentage gauge
+capsule_pool_namespace_usage_percentage{pool="solar-compute",resource="limits.cpu",target_namespace="solar-prod"} 43.75
+capsule_pool_namespace_usage_percentage{pool="solar-compute",resource="limits.memory",target_namespace="solar-prod"} 43.75
+capsule_pool_namespace_usage_percentage{pool="solar-compute",resource="requests.cpu",target_namespace="solar-prod"} 68.75
+capsule_pool_namespace_usage_percentage{pool="solar-compute",resource="requests.cpu",target_namespace="solar-test"} 25
+capsule_pool_namespace_usage_percentage{pool="solar-compute",resource="requests.memory",target_namespace="solar-prod"} 43.75
+capsule_pool_namespace_usage_percentage{pool="solar-size",resource="pods",target_namespace="solar-test"} 42.857142857142854
+
+# HELP capsule_pool_resource Type of resource being used in a resource pool
+# TYPE capsule_pool_resource gauge
+capsule_pool_resource{pool="solar-compute",resource="limits.cpu"} 1
+capsule_pool_resource{pool="solar-compute",resource="limits.memory"} 1
+capsule_pool_resource{pool="solar-compute",resource="requests.cpu"} 1
+capsule_pool_resource{pool="solar-compute",resource="requests.memory"} 1
+capsule_pool_resource{pool="solar-size",resource="pods"} 1
+
+# HELP capsule_pool_usage Current resource usage for a given resource in a resource pool
+# TYPE capsule_pool_usage gauge
+capsule_pool_usage{pool="solar-compute",resource="limits.cpu"} 0.875
+capsule_pool_usage{pool="solar-compute",resource="limits.memory"} 9.39524096e+08
+capsule_pool_usage{pool="solar-compute",resource="requests.cpu"} 1.875
+capsule_pool_usage{pool="solar-compute",resource="requests.memory"} 9.39524096e+08
+capsule_pool_usage{pool="solar-size",resource="pods"} 3
+
+# HELP capsule_pool_usage_percentage Current resource usage for a given resource in a resource pool (percentage)
+# TYPE capsule_pool_usage_percentage gauge
+capsule_pool_usage_percentage{pool="solar-compute",resource="limits.cpu"} 43.75
+capsule_pool_usage_percentage{pool="solar-compute",resource="limits.memory"} 43.75
+capsule_pool_usage_percentage{pool="solar-compute",resource="requests.cpu"} 93.75
+capsule_pool_usage_percentage{pool="solar-compute",resource="requests.memory"} 43.75
+capsule_pool_usage_percentage{pool="solar-size",resource="pods"} 42.857142857142854
+```
+
+
+
 ## Tenants
 
 Instrumentation for [Tenants](../tenants/).

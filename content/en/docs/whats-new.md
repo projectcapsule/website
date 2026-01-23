@@ -7,19 +7,16 @@ weight: 1
 
 ## Features
 
-* Owners can promote ServiceAccounts from their Tenant namespaces to Owners of the Tenant [Read More](/docs/tenants/permissions/#serviceaccount-promotion)
+* Added Implicit Assignment of Tenant Owners [Read More](/docs/tenants/permissions/#implicit-tenant-assignment).
 
-* Reworked Metrics based on improved Tenant state management via Conditions. [Read More](/docs/operating/monitoring/#metrics-1)
-
-* Includes a new approach to how Resources (ResourceQuotas) should be handled across multiple namespaces. With this release, we are introducing the concept of ResourcePools and ResourcePoolClaims. Essentially, you can now define Resources and the audience (namespaces) that can claim these Resources from a ResourcePool. This introduces a shift-left in resource management, where Tenant Owners themselves are responsible for organizing their resources. Comes with a Queuing-Mechanism already in place. This new feature works with all namespaces — not just exclusive Capsule namespaces. [Read More](/docs/resourcepools/)
+* Added Aggregation of Tenant Owners [Read More](/docs/tenants/permissions/#aggregation).
 
 ## Documentation
 
 We have added new documentation for a better experience. See the following Topics:
 
-* **[Best Practices](/docs/operating/best-practices/)**
-* **[Installation](/docs/operating/setup/installation/)**
-* **[Kyverno Policy Recommendations](/ecosystem/integrations/kyverno/#recommended-policies)**
+* **[Extended Admission Policy Recommendations](/docs/operating/admission-policies/)**
+* **[Personas](/docs/operating/admission-policies/)**
 
 ## Ecosystem
 

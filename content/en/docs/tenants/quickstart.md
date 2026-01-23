@@ -14,6 +14,10 @@ kind: Tenant
 metadata:
   name: oil
 spec:
+  permissions:
+    matchOwners:
+    - matchLabels:
+        team: platform
   owners:
   - name: alice
     kind: User
@@ -24,8 +28,54 @@ You can check the tenant just created
 
 ```bash
 $ kubectl get tenants
-NAME   STATE    NAMESPACE QUOTA   NAMESPACE COUNT   NODE SELECTOR   AGE
-solar    Active                     0                                 10s
+NAME   STATE    NAMESPACE QUOTA   NAMESPACE COUNT   NODE SELECTOR   READY   STATUS       AGE
+oil    Active                     0                                 True    reconciled   13s
+```
+
+We create dedicated `TenantOwners` who represent cluster administrators. They are matched by labels defined in the `permissions.matchOwners` section of the `Tenant` spec. In our case, any user or group with the label `team: platform` is considered a `TenantOwner` for the `oil` tenant.
+
+```bash
+kubectl create -f - << EOF
+apiVersion: capsule.clastix.io/v1beta2
+kind: TenantOwner
+metadata:
+  name: platform-team
+  labels:
+    team: platform
+    
+spec:
+  kind: Group
+  name: "oidc:kubernetes:admin"
+EOF
+```
+
+We can now verify all owners of the `oil` tenant:
+
+```bash
+kubectl get tenant oil -o jsonpath='{.status.owners}'
+```
+
+The result should be similar to:
+
+```json
+[
+  {
+    "kind": "Group",
+    "name": "oidc:kubernetes:admin",
+    "clusterRoles": [
+      "admin",
+      "capsule-namespace-deleter"
+    ]
+  },
+  {
+    "kind": "User",
+    "name": "alice",
+    "clusterRoles": [
+      "admin",
+      "capsule-namespace-deleter"
+    ]
+  }
+]
 ```
 
 ## Login as Tenant Owner
@@ -40,10 +90,9 @@ For example, if you are using capsule.clastix.io, users authenticated through a 
 
 Users authenticated through an OIDC token must have in their token:
 
-```
-...
+```json
 "users_groups": [
-  "capsule.clastix.io",
+  "projectcapsule.dev",
   "other_group"
 ]
 ```
@@ -62,7 +111,7 @@ to use it as alice export KUBECONFIG=alice-solar.kubeconfig
 Login as tenant owner
 
 ```bash
-$ export KUBECONFIG=alice-solar.kubeconfig
+export KUBECONFIG=alice-solar.kubeconfig
 ```
 
 ### Impersonation
@@ -70,7 +119,7 @@ $ export KUBECONFIG=alice-solar.kubeconfig
 You can simulate this behavior by using [impersonation](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#user-impersonation):
 
 ```bash
-kubectl --as alice --as-group capsule.clastix.io ...
+kubectl --as alice --as-group projectcapsule.dev ...
 ```
 
 ## Create namespaces
@@ -78,22 +127,22 @@ kubectl --as alice --as-group capsule.clastix.io ...
 As tenant owner, you can create namespaces:
 
 ```bash
-$ kubectl create namespace solar-production
-$ kubectl create namespace solar-development
+kubectl create namespace solar-production
+kubectl create namespace solar-development
 ```
 
-or 
+or
 
 ```bash
-$ kubectl --as alice --as-group capsule.clastix.io create namespace solar-production
-$ kubectl --as alice --as-group capsule.clastix.io create namespace solar-development
+kubectl --as alice --as-group projectcapsule.dev create namespace solar-production
+kubectl --as alice --as-group projectcapsule.dev create namespace solar-development
 ```
 
 And operate with fully admin permissions:
 
 ```bash
-$ kubectl -n solar-development run nginx --image=docker.io/nginx 
-$ kubectl -n solar-development get pods
+kubectl -n solar-development run nginx --image=docker.io/nginx 
+kubectl -n solar-development get pods
 ```
 
 ## Limiting access
@@ -106,4 +155,67 @@ Error from server (Forbidden): pods is forbidden:
 User "alice" cannot list resource "pods" in API group "" in the namespace "kube-system"
 ```
 
-See the [concepts](/docs/concepts) for getting more cool things you can do with Capsule.
+## Securing The Network
+
+As Cluster Administrator we want to avoid that tenants can communicate between each other. To achieve that, we can use [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/) to isolate the namespaces created by different tenants.
+
+Let's ensure for any `Tenant` and any of it's future namespaces, that each gits a [NetworkPolicy](https://kubernetes.io/docs/concepts/services-networking/network-policies/), which does not allow ingress/egress traffic to/from other tenants.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalTenantResource
+metadata:
+  name: default-networkpolicies
+spec:
+  resyncPeriod: 60s
+  resources:
+    - rawItems:
+        - apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata:
+            name: default-policy
+          spec:
+            # Apply to all pods in this namespace
+            podSelector: {}
+            policyTypes:
+              - Ingress
+              - Egress
+            ingress:
+              # Allow traffic from the same namespace (intra-namespace communication)
+              - from:
+                  - podSelector: {}
+
+              # Allow traffic from all namespaces within the tenant
+              - from:
+                  - namespaceSelector:
+                      matchLabels:
+                        capsule.clastix.io/tenant: "{{tenant.name}}"
+
+              # Allow ingress from other namespaces labeled (System Namespaces, eg. Monitoring, Ingress)
+              - from:
+                  - namespaceSelector:
+                      matchLabels:
+                        company.com/system: "true"
+
+            egress:
+              # Allow DNS to kube-dns service IP (might be different in your setup)
+              - to:
+                  - ipBlock:
+                      cidr: 10.96.0.10/32
+                ports:
+                  - protocol: UDP
+                    port: 53
+                  - protocol: TCP
+                    port: 53
+
+              # Allow traffic to all namespaces within the tenant
+              - to:
+                  - namespaceSelector:
+                      matchLabels:
+                        capsule.clastix.io/tenant: "{{tenant.name}}"
+```
+
+
+
+
+
