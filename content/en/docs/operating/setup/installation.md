@@ -31,19 +31,11 @@ Perform the following steps to install the capsule Operator:
 
 2. Install Capsule:
 
-<<<<<<< HEAD
-        helm install capsule projectcapsule/capsule --version 0.12.4 -n capsule-system --create-namespace
-
-    or (**OCI**)
-
-        helm install capsule oci://ghcr.io/projectcapsule/charts/capsule --version 0.12.4 -n capsule-system --create-namespace
-=======
         helm install capsule projectcapsule/capsule --version {{< capsule_chart_version >}} -n capsule-system --create-namespace
 
     or (**OCI**)
 
         helm install capsule oci://ghcr.io/projectcapsule/charts/capsule --version {{< capsule_chart_version >}} -n capsule-system --create-namespace
->>>>>>> 61d27bc82d44fbcdcfcc58f1a9a7dfd851f93b81
 
 3. Show the status:
 
@@ -55,15 +47,12 @@ Perform the following steps to install the capsule Operator:
 
     or (**OCI**)
 
-<<<<<<< HEAD
-        helm upgrade capsule oci://ghcr.io/projectcapsule/charts/capsule --version 0.13.0
-=======
         helm upgrade capsule oci://ghcr.io/projectcapsule/charts/capsule --version {{< capsule_chart_version >}}
->>>>>>> 61d27bc82d44fbcdcfcc58f1a9a7dfd851f93b81
 
 5. Uninstall the Chart
 
         helm uninstall capsule -n capsule-system
+
 
 ## Production
 
@@ -386,14 +375,14 @@ To verify artifacts you need to have [cosign installed](https://github.com/sigst
 
     # Helm Chart
     export COSIGN_REPOSITORY=ghcr.io/projectcapsule/charts/capsule
-
-To verify the signature of the docker image, run the following command. Replace `<release_tag>` with an [available release tag](https://github.com/projectcapsule/capsule/pkgs/container/capsule):
+    
+To verify the signature of the docker image, run the following command.
 
     COSIGN_REPOSITORY=ghcr.io/projectcapsule/charts/capsule cosign verify ghcr.io/projectcapsule/capsule:<release_tag> \
       --certificate-identity-regexp="https://github.com/projectcapsule/capsule/.github/workflows/docker-publish.yml@refs/tags/*" \
       --certificate-oidc-issuer="https://token.actions.githubusercontent.com" | jq
 
-To verify the signature of the helm image, run the following command. Replace `<release_tag>` with an [available release tag](https://github.com/projectcapsule/capsule/pkgs/container/charts%2Fcapsule):
+To verify the signature of the helm image, run the following command.
 
     COSIGN_REPOSITORY=ghcr.io/projectcapsule/charts/capsule cosign verify ghcr.io/projectcapsule/charts/capsule:<release_tag> \
       --certificate-identity-regexp="https://github.com/projectcapsule/capsule/.github/workflows/helm-publish.yml@refs/tags/*" \
@@ -403,22 +392,20 @@ To verify the signature of the helm image, run the following command. Replace `<
 
 Capsule creates and attests to the provenance of its builds using the [SLSA standard](https://slsa.dev/spec/v0.2/provenance) and meets the [SLSA Level 3](https://slsa.dev/spec/v0.1/levels) specification. The attested provenance may be verified using the cosign tool.
 
-Verify the provenance of the docker image. Replace `<release_tag>` with an [available release tag](https://github.com/projectcapsule/capsule/pkgs/container/capsule)
+Verify the provenance of the docker image.
 
-```bash
+```
 cosign verify-attestation --type slsaprovenance \
   --certificate-identity-regexp="https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/*" \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  ghcr.io/projectcapsule/capsule:<release_tag> | jq .payload -r | base64 --decode | jq
+  ghcr.io/projectcapsule/capsule:{{< capsule_chart_version >}} | jq .payload -r | base64 --decode | jq
 ```
 
-Verify the provenance of the helm image. Replace `<release_tag>` with an [available release tag](https://github.com/projectcapsule/capsule/pkgs/container/charts%2Fcapsule)
-
 ```bash
 cosign verify-attestation --type slsaprovenance \
   --certificate-identity-regexp="https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/*" \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  ghcr.io/projectcapsule/charts/capsule:<release_tag> | jq .payload -r | base64 --decode | jq
+  ghcr.io/projectcapsule/charts/capsule:{{< capsule_chart_version >}} | jq .payload -r | base64 --decode | jq
 ```
 
 ### Software Bill of Materials (SBOM)
@@ -432,13 +419,13 @@ An SBOM (Software Bill of Materials) in CycloneDX JSON format is published for e
     export COSIGN_REPOSITORY=ghcr.io/projectcapsule/charts/capsule
 
 
-To inspect the SBOM of the docker image, run the following command. Replace `<release_tag>` with an [available release tag](https://github.com/projectcapsule/capsule/pkgs/container/capsule):
+To inspect the SBOM of the docker image, run the following command.
 
-    COSIGN_REPOSITORY=ghcr.io/projectcapsule/capsule cosign download sbom ghcr.io/projectcapsule/capsule:<release_tag>
+    COSIGN_REPOSITORY=ghcr.io/projectcapsule/capsule cosign download sbom ghcr.io/projectcapsule/capsule:{{< capsule_chart_version >}}
 
-To inspect the SBOM of the helm image, run the following command. Replace `<release_tag>` with an [available release tag](https://github.com/projectcapsule/capsule/pkgs/container/charts%2Fcapsule):
+To inspect the SBOM of the helm image, run the following command.
 
-    COSIGN_REPOSITORY=ghcr.io/projectcapsule/charts/capsule cosign download sbom ghcr.io/projectcapsule/charts/capsule:<release_tag>
+    COSIGN_REPOSITORY=ghcr.io/projectcapsule/charts/capsule cosign download sbom ghcr.io/projectcapsule/charts/capsule:{{< capsule_chart_version >}}
 
 ## Compatibility
 

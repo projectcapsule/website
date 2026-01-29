@@ -111,7 +111,6 @@ to use it as alice export KUBECONFIG=alice-solar.kubeconfig
 Login as tenant owner
 
 ```bash
-export KUBECONFIG=alice-solar.kubeconfig
 ```
 
 ### Impersonation
@@ -132,7 +131,6 @@ kubectl create namespace solar-development
 ```
 
 or
-
 ```bash
 kubectl --as alice --as-group projectcapsule.dev create namespace solar-production
 kubectl --as alice --as-group projectcapsule.dev create namespace solar-development
@@ -141,13 +139,8 @@ kubectl --as alice --as-group projectcapsule.dev create namespace solar-developm
 And operate with fully admin permissions:
 
 ```bash
-<<<<<<< HEAD
 kubectl -n solar-development run nginx --image=docker.io/nginx 
 kubectl -n solar-development get pods
-=======
-$ kubectl -n solar-development run nginx --image=docker.io/nginx
-$ kubectl -n solar-development get pods
->>>>>>> 61d27bc82d44fbcdcfcc58f1a9a7dfd851f93b81
 ```
 
 ## Limiting access
