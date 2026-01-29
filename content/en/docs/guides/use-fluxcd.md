@@ -168,18 +168,18 @@ spec:
 In example, the cluster admin is supposed to apply this Kustomization, during the cluster bootstrap that i.e. will reconcile also Flux itself.
 All the remaining Reconciliation resources can be children of this Kustomization.
 
-![bootstrap](/images/assets/kustomization-hierarchy-root-tenants.png)
+![bootstrap](/images/guides/kustomization-hierarchy-root-tenants.png)
 
 ### Namespace-as-a-Service
 
 Tenants could have his own set of Namespaces to operate on but it should be prepared by higher-level roles, like platform admins: the declarations would be part of the platform space.
 They would be responsible of tenants administration, and each change (e.g. new tenant Namespace) should be a request that would pass through approval.
 
-![no-naas](/images/assets/flux-tenants-reconciliation.png)
+![no-naas](/images/guides/flux-tenants-reconciliation.png)
 
 What if we would like to provide tenants the ability to manage also their own space the GitOps-way? Enter Capsule.
 
-![naas](/images/assets/flux-tenants-capsule-reconciliation.png)
+![naas](/images/guides/flux-tenants-capsule-reconciliation.png)
 
 ## Manual setup
 
@@ -215,6 +215,7 @@ metadata:
 spec:
   owners:
   - name: system:serviceaccount:my-tenant:gitops-reconciler # the Tenant GitOps Reconciler
+    kind: ServiceAccount
 ```
 
 From now on, we'll refer to it as the **Tenant GitOps Reconciler**.

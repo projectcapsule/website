@@ -19,6 +19,6 @@ Feature Gates are a set of key/value pairs that can be used to enable or disable
 
 | **Feature Gate** | **Default Value** | **Description** |
 | :--- | :--- | :--- |
-| `ProxyAllNamespaced` | `false` | `ProxyAllNamespaced` allows to proxy all the Namespaced objects. When enabled, it will discover apis and ensure labels are set for resources in all tenant namespaces resulting in increased memory. However this feature helps with user experience. |
+| `ProxyAllNamespaced` | `true` | `ProxyAllNamespaced` allows to proxy all the Namespaced objects. When enabled, it will discover apis and ensure labels are set for resources in all tenant namespaces resulting in increased memory. However this feature helps with user experience. |
 | `SkipImpersonationReview` | `false` | `SkipImpersonationReview` allows to skip the impersonation review for all requests containing impersonation headers (user and groups). **DANGER:** Enabling this flag allows any user to impersonate as any user or group essentially bypassing any authorization. Only use this option in trusted environments where authorization/authentication is offloaded to external systems. |
-| `ProxyClusterScoped` | `false` | `ProxyClusterScoped` allows to proxy all clusterScoped objects for all tenant users. These can be defined via [ProxySettings](/docs/integrations/capsule-proxy/proxysettings/#cluster-resources) |
+| `ProxyClusterScoped` | `false` | `ProxyClusterScoped` allows to proxy all clusterScoped objects for all tenant users. These can be defined via [ProxySettings](./proxysettings) |

@@ -78,7 +78,7 @@ Capsule is completely declarative and GitOps ready.
 <br/>
 
 <div class="mt-8 mx-auto">
-	<small class="text-white">The Linux Foundation® (TLF) has registered trademarks and uses trademarks. For a list of TLF trademarks, see <a href="https://www.linuxfoundation.org/trademark-usage/">Trademark Usage</a>.</small>
+	<small class="text-white">The Linux Foundation® (TLF) has registered trademarks and uses trademarks. For a list of TLF trademarks, see <a href="https://www.linuxfoundation.org/legal/trademark-usage">Trademark Usage</a>.</small>
 </div>
 
 {{% /blocks/lead %}}

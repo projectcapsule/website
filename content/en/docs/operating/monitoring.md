@@ -33,16 +33,17 @@ Dashboard which grants a detailed overview over the ResourcePools
 Example rules to give you some idea, what's possible.
 
 1. Alert on [ResourcePools](../resourcepools/) usage
+
 ```yaml
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: resourcepool-usage-alert
+  name: capsule-resourcepools-alerts
 spec:
 groups:
-  - name: capsule-pool-usage.rules
+  - name: capsule-resourcepools.rules
     rules:
-      - alert: CapsulePoolHighUsageWarning
+      - alert: CapsuleResourcePoolHighUsageWarning
         expr: |
           capsule_pool_usage_percentage > 90
         for: 10m
@@ -53,7 +54,7 @@ groups:
           description: |
             Resource {{ $labels.resource }} in pool {{ $labels.pool }} is at {{ $value }}% usage for the last 10 minutes.
 
-      - alert: CapsulePoolHighUsageCritical
+      - alert: CapsuleResourcePoolHighUsageCritical
         expr: |
           capsule_pool_usage_percentage > 95
         for: 10m
@@ -63,6 +64,53 @@ groups:
           summary: Critical resource usage in Resourcepool
           description: |
             Resource {{ $labels.resource }} in pool {{ $labels.pool }} has exceeded 95% usage for the last 10 minutes.
+
+      - alert: CapsuleResourcePoolExhausted
+        expr: |
+          capsule_pool_condition{condition="Exhausted"} == 1
+        for: 60m
+        labels:
+          severity: critical
+        annotations:
+          summary: Resource pool exhausted
+          description: |
+            Pool {{ $labels.pool }} has been Exhausted for more than 60 minutes.
+
+      - alert: CapsuleResourcePoolNotReady
+        expr: |
+          capsule_pool_condition{condition="Ready"} == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Resource pool not ready
+          description: |
+            Pool {{ $labels.pool }} has not been Ready for more than 10 minutes.
+
+
+  - name: capsule-resourcepoolclaims.rules
+    rules:
+      - alert: CapsuleResourcePoolClaimExhausted
+        expr: |
+          capsule_claim_condition{condition="Exhausted"} == 1
+        for: 24h
+        labels:
+          severity: critical
+        annotations:
+          summary: ResourcePoolClaim exhausted
+          description: |
+            ResourcePoolClaim {{ $labels.name }}/{{ $labels.target_namespace }} has been Exhausted for more than 24 hours.
+
+      - alert: CapsuleResourcePoolClaimNotReady
+        expr: |
+          capsule_claim_condition{condition="Ready"} == 0
+        for: 60m
+        labels:
+          severity: warning
+        annotations:
+          summary: ResourcePoolClaim not ready
+          description: |
+            ResourcePoolClaim {{ $labels.name }}/{{ $labels.target_namespace }}  has not been Ready for more than 60 minutes.
 ```
 
 ---
@@ -72,16 +120,23 @@ groups:
 The following Metrics are exposed and can be used for monitoring:
 
 ```shell
+
 # HELP capsule_claim_condition The current condition status of a claim.
 # TYPE capsule_claim_condition gauge
-capsule_claim_condition{condition="Bound",name="compute",pool="solar-compute",reason="Succeeded",target_namespace="solar-prod"} 1
-capsule_claim_condition{condition="Bound",name="compute-10",pool="solar-compute",reason="PoolExhausted",target_namespace="solar-prod"} 0
-capsule_claim_condition{condition="Bound",name="compute-2",pool="solar-compute",reason="Succeeded",target_namespace="solar-prod"} 1
-capsule_claim_condition{condition="Bound",name="compute-3",pool="solar-compute",reason="Succeeded",target_namespace="solar-prod"} 1
-capsule_claim_condition{condition="Bound",name="compute-4",pool="solar-compute",reason="Succeeded",target_namespace="solar-test"} 1
-capsule_claim_condition{condition="Bound",name="compute-5",pool="solar-compute",reason="PoolExhausted",target_namespace="solar-test"} 0
-capsule_claim_condition{condition="Bound",name="compute-6",pool="solar-compute",reason="PoolExhausted",target_namespace="solar-test"} 0
-capsule_claim_condition{condition="Bound",name="pods",pool="solar-size",reason="Succeeded",target_namespace="solar-test"} 1
+capsule_claim_condition{condition="Bound",name="get-me-customer",target_namespace="solar-test"} 1
+capsule_claim_condition{condition="Bound",name="get-me-solar",target_namespace="solar-test"} 1
+capsule_claim_condition{condition="Bound",name="get-me-solar-2",target_namespace="solar-test"} 0
+capsule_claim_condition{condition="Exhausted",name="get-me-customer",target_namespace="solar-test"} 0
+capsule_claim_condition{condition="Exhausted",name="get-me-solar",target_namespace="solar-test"} 0
+capsule_claim_condition{condition="Exhausted",name="get-me-solar-2",target_namespace="solar-test"} 1
+capsule_claim_condition{condition="Ready",name="get-me-customer",target_namespace="solar-test"} 1
+capsule_claim_condition{condition="Ready",name="get-me-solar",target_namespace="solar-test"} 1
+capsule_claim_condition{condition="Ready",name="get-me-solar-2",target_namespace="solar-test"} 1
+
+# HELP capsule_claim_pool The current assigned pool of a claim.
+# TYPE capsule_claim_pool gauge
+capsule_claim_pool{name="get-me-solar",pool="solar-compute",target_namespace="solar-test"} 1
+capsule_claim_pool{name="get-me-solar-2",pool="solar-compute",target_namespace="solar-test"} 1
 
 # HELP capsule_claim_resource The given amount of resources from the claim
 # TYPE capsule_claim_resource gauge
@@ -107,6 +162,14 @@ capsule_pool_available{pool="solar-compute",resource="limits.memory"} 1.20795955
 capsule_pool_available{pool="solar-compute",resource="requests.cpu"} 0.125
 capsule_pool_available{pool="solar-compute",resource="requests.memory"} 1.207959552e+09
 capsule_pool_available{pool="solar-size",resource="pods"} 4
+
+
+# HELP capsule_pool_condition Current conditions for a given resource in a resource pool
+# TYPE capsule_pool_condition gauge
+capsule_pool_condition{condition="Exhausted",pool="solar-size"} 0
+capsule_pool_condition{condition="Exhausted",pool="solar-compute"} 1
+capsule_pool_condition{condition="Ready",pool="solar-size"} 1
+capsule_pool_condition{condition="Ready",pool="solar-compute"} 1
 
 # HELP capsule_pool_exhaustion Resources become exhausted, when there's not enough available for all claims and the claims get queued
 # TYPE capsule_pool_exhaustion gauge
@@ -178,6 +241,7 @@ Instrumentation for [Replications](../replications/).
 Example rules to give you some idea, what's possible.
 
 1. Alert on [Replications](../replications/) usage
+  
 ```yaml
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -379,7 +443,7 @@ capsule_tenant_resource_usage{resource="requests.memory",resourcequotaindex="0",
 
 ## Custom Metrics
 
-You can gather more information based on the status of the tenants. These can be scrapped via [Kube-State-Metrics CustomResourcesState Metrics](https://github.com/kubernetes/kube-state-metrics/blob/main/docs/customresourcestate-metrics.md). With these you have the possibility to create custom metrics based on the status of the tenants.
+You can gather more information based on the status of the tenants. These can be scrapped via [Kube-State-Metrics CustomResourcesState Metrics](https://github.com/kubernetes/kube-state-metrics/blob/main/docs/metrics/extend/customresourcestate-metrics.md). With these you have the possibility to create custom metrics based on the status of the tenants.
 
 Here as an example with the [kube-prometheus-stack chart](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack), set the following values:
 

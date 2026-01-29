@@ -42,19 +42,19 @@ Resource Types:
 {{- end -}}
 {{- range .Fields }}
 {{- $lowerDesc := lower .Description }}
-| **{{if .TypeKey}}[{{.Name}}](#{{.TypeKey}}){{else}}{{.Name}}{{end}}** | {{.Type}} | 
+| **{{if .TypeKey}}[{{.Name}}](#{{.TypeKey}}){{else}}{{.Name}}{{end}}** | {{.Type}} |{{" " -}}
+{{- /* Description and schema details stay within the same table cell */ -}}
 {{- if contains "deprecated" $lowerDesc -}}
 <span style="color:red;font-weight:bold">{{ .Description | replace "\n" "<br>" }}</span>
 {{- else -}}
 {{ .Description | replace "\n" "<br>" }}
 {{- end -}}
-{{- if or .Schema.Format .Schema.Enum .Schema.Default .Schema.Minimum .Schema.Maximum }}<br/>{{- end}} 
-{{- if .Schema.Format }}*Format*: {{.Schema.Format}}<br/>{{- end}} 
-{{- if .Schema.Enum }}*Enum*: {{.Schema.Enum | toStrings | join ", "}}<br/>{{- end}} 
-{{- if .Schema.Default }}*Default*: {{.Schema.Default}}<br/>{{- end}} 
-{{- if .Schema.Minimum }}*Minimum*: {{.Schema.Minimum}}<br/>{{- end}} 
-{{- if .Schema.Maximum }}*Maximum*: {{.Schema.Maximum}}<br/>{{- end}} 
-| {{.Required}} |
+{{- if or .Schema.Format .Schema.Enum .Schema.Default .Schema.Minimum .Schema.Maximum }}<br/>{{- end}}
+{{- if .Schema.Format }}*Format*: {{.Schema.Format}}<br/>{{- end}}
+{{- if .Schema.Enum }}*Enum*: {{.Schema.Enum | toStrings | join ", "}}<br/>{{- end}}
+{{- if .Schema.Default }}*Default*: {{.Schema.Default}}<br/>{{- end}}
+{{- if .Schema.Minimum }}*Minimum*: {{.Schema.Minimum}}<br/>{{- end}}
+{{- if .Schema.Maximum }}*Maximum*: {{.Schema.Maximum}}<br/>{{- end}} | {{.Required}} |
 {{- end -}}
 
 {{- end}}{{/* range .Types */}}

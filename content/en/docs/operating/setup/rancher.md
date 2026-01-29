@@ -17,7 +17,7 @@ Tenant users will have the ability to access Kubernetes resources through:
 * Rancher UI
 * Rancher Shell
 * Kubernetes CLI
-  
+
 On the other side, administrators need to manage the Kubernetes clusters through Rancher.
 
 Rancher provides a feature called Projects to segregate resources inside a common domain. At the same time Projects doesn't provide way to segregate Kubernetes cluster-scope resources.
@@ -154,7 +154,7 @@ the `Namespace` is now part of both the Tenant and the Project.
 
 #### Project monitoring
 
-Before proceeding is recommended to read the official Rancher documentation about [Project Monitors](https://ranchermanager.docs.rancher.com/v2.6/how-to-guides/advanced-user-guides/monitoring-alerting-guides/prometheus-federator-guides/project-monitors).
+Before proceeding is recommended to read the official Rancher documentation about [Project Monitors](https://ranchermanager.docs.rancher.com/how-to-guides/advanced-user-guides/monitoring-alerting-guides/prometheus-federator-guides/project-monitors).
 
 In summary, the setup is composed by a cluster-level Prometheus, Prometheus Federator via which single Project-level Prometheus federate to.
 
@@ -261,7 +261,7 @@ Install keeping attention to the following Helm values:
 
 ### Rancher Cluster Agent
 
-In both CLI and dashboard use cases, the [Cluster Agent](https://ranchermanager.docs.rancher.com/v2.5/how-to-guides/new-user-guides/kubernetes-clusters-in-rancher-setup/launch-kubernetes-with-rancher/about-rancher-agents) is responsible for the two-way communication between Rancher and the downstream cluster.
+In both CLI and dashboard use cases, the [Cluster Agent](https://ranchermanager.docs.rancher.com/reference-guides/rancher-manager-architecture/communicating-with-downstream-user-clusters#2-cluster-controllers-and-cluster-agents) is responsible for the two-way communication between Rancher and the downstream cluster.
 
 In a standard setup, the Cluster Agents communicates to the API server. In this setup it will communicate with Capsule Proxy to ensure filtering of cluster-scope resources, for Tenants.
 

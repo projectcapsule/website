@@ -5,7 +5,7 @@ weight: 1
 description: "Create your first Capsule Tenant"
 ---
 
-In Capsule, a Tenant is an abstraction to group multiple namespaces in a single entity within a set of boundaries defined by the Cluster Administrator. The tenant is then assigned to a user or group of users who is called [Tenant Owner](/docs/overview/architecture#ownership). Capsule defines a Tenant as Custom Resource with cluster scope. Create the tenant as cluster admin:
+In Capsule, a Tenant is an abstraction to group multiple namespaces in a single entity within a set of boundaries defined by the Cluster Administrator. The tenant is then assigned to a user or group of users who is called [Tenant Owner](/docs/operating/architecture/#tenant-owners). Capsule defines a Tenant as Custom Resource with cluster scope. Create the tenant as cluster admin:
 
 ```bash
 kubectl create -f - << EOF
@@ -80,7 +80,7 @@ The result should be similar to:
 
 ## Login as Tenant Owner
 
-Each tenant comes with a delegated user or group of users acting as the tenant admin. In the Capsule jargon, this is called the [Tenant Owner](/docs/concepts/ownership/). Other users can operate inside a tenant with different levels of permissions and authorizations assigned directly by the Tenant Owner.
+Each tenant comes with a delegated user or group of users acting as the tenant admin. In the Capsule jargon, this is called the [Tenant Owners](/docs/operating/architecture/#tenant-owners). Other users can operate inside a tenant with different levels of permissions and authorizations assigned directly by the Tenant Owner.
 
 Capsule does not care about the authentication strategy used in the cluster and all the Kubernetes methods of authentication are supported. The only requirement to use Capsule is to assign tenant users to the group defined by --capsule-user-group option, which defaults to `capsule.clastix.io`.
 
@@ -141,8 +141,13 @@ kubectl --as alice --as-group projectcapsule.dev create namespace solar-developm
 And operate with fully admin permissions:
 
 ```bash
+<<<<<<< HEAD
 kubectl -n solar-development run nginx --image=docker.io/nginx 
 kubectl -n solar-development get pods
+=======
+$ kubectl -n solar-development run nginx --image=docker.io/nginx
+$ kubectl -n solar-development get pods
+>>>>>>> 61d27bc82d44fbcdcfcc58f1a9a7dfd851f93b81
 ```
 
 ## Limiting access

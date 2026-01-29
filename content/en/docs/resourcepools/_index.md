@@ -339,6 +339,8 @@ If a `ResourcePoolClaim` is deleted, the resources are released back to the `Res
 - By deleting the `ResourcePoolClaim` object.
 - By annotating the `ResourcePoolClaim` with `projectcapsule.dev/release: "true"`. This will release the `ResourcePoolClaim` from the `ResourcePool` without deleting the object itself and instantly requeue.
 
+Both these actions can only be performed if the `ResourcePoolClaim` is in a `Bound` state `False` (not used currently). Otherwise your first have to free the resources used by the claim in order to release it.
+
 ```shell
 kubectl annotate resourcepoolclaim  skip-the-line -n solar-prod projectcapsule.dev/release="true"
 ```

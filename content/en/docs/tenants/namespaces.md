@@ -11,12 +11,12 @@ Alice, once logged with her credentials, can create a new `Namespace` in her `Te
 kubectl create ns solar-production
 ```
 
-Alice started the name of the `Namespace` prepended by the name of the `Tenant`: this is not a strict requirement but it is highly suggested because it is likely that many different `Tenants` would like to call their `Namespaces` `production`, `test`, or `demo`, etc. The enforcement of this naming convention is optional and can be controlled by the cluster administrator with [forceTenantPrefix](/docs/tenants/configuration/#forcetenantprefix) option.
+Alice started the name of the `Namespace` prepended by the name of the `Tenant`: this is not a strict requirement but it is highly suggested because it is likely that many different `Tenants` would like to call their `Namespaces` `production`, `test`, or `demo`, etc. The enforcement of this naming convention is optional and can be controlled by the cluster administrator with [forceTenantPrefix](/docs/tenants/administration/#force-tenant-prefix) option.
 
 Alice can deploy any resource in any of the `Namespaces`. That is because she is the [owner](/docs/tenants/permissions/#ownership) of the tenant `solar` and therefore she has full control over all `Namespaces` assigned to that `Tenant`.
 
 ```bash
-kubectl -n solar-development run nginx --image=docker.io/nginx 
+kubectl -n solar-development run nginx --image=docker.io/nginx
 kubectl -n solar-development get pods
 ```
 
@@ -114,7 +114,7 @@ spec:
     kind: User
 ```
 
-and 
+and
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -150,7 +150,7 @@ When Alice logs in, she has access to all namespaces belonging to both the solar
 
 > We recommend to use the [forceTenantPrefix](/docs/tenants/administration/#force-tenant-prefix) for production environments.
 
-If the [forceTenantPrefix](/docs/operating/setup/configuration/#forcetenantprefix) option is enabled, which is **not** the case by default, the `Namespaces` are automatically assigned to the right tenant by Capsule because the operator does a lookup on the tenant names. 
+If the [forceTenantPrefix](/docs/tenants/administration/#force-tenant-prefix) option is enabled, which is **not** the case by default, the `Namespaces` are automatically assigned to the right tenant by Capsule because the operator does a lookup on the tenant names.
 
 For example, Alice creates a `Namespace` called `solar-production` and `green-production`:
 
@@ -177,7 +177,7 @@ Error from server (Forbidden): admission webhook "owner.namespace.capsule.clasti
 
 ### Label
 
-The default behavior, if the [forceTenantPrefix](/docs/tenants/configuration/#forcetenantprefix) option is not enabled, Alice needs to specify the `Tenant` name as a label capsule.`clastix.io/tenant=<desired_tenant>` in the `Namespace` manifest:
+The default behavior, if the [forceTenantPrefix](/docs/tenants/administration/#force-tenant-prefix) option is not enabled, Alice needs to specify the `Tenant` name as a label capsule.`clastix.io/tenant=<desired_tenant>` in the `Namespace` manifest:
 
 ```yaml
 kind: Namespace
@@ -188,7 +188,7 @@ metadata:
     capsule.clastix.io/tenant: solar
 ```
 
-If not specified, Capsule will deny with the following message: Unable to assign `Namespace` to `Tenant`: 
+If not specified, Capsule will deny with the following message: Unable to assign `Namespace` to `Tenant`:
 
 ```bash
 $ kubectl create ns solar-production

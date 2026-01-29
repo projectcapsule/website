@@ -31,11 +31,19 @@ Perform the following steps to install the capsule Operator:
 
 2. Install Capsule:
 
+<<<<<<< HEAD
         helm install capsule projectcapsule/capsule --version 0.12.4 -n capsule-system --create-namespace
 
     or (**OCI**)
 
         helm install capsule oci://ghcr.io/projectcapsule/charts/capsule --version 0.12.4 -n capsule-system --create-namespace
+=======
+        helm install capsule projectcapsule/capsule --version {{< capsule_chart_version >}} -n capsule-system --create-namespace
+
+    or (**OCI**)
+
+        helm install capsule oci://ghcr.io/projectcapsule/charts/capsule --version {{< capsule_chart_version >}} -n capsule-system --create-namespace
+>>>>>>> 61d27bc82d44fbcdcfcc58f1a9a7dfd851f93b81
 
 3. Show the status:
 
@@ -47,7 +55,11 @@ Perform the following steps to install the capsule Operator:
 
     or (**OCI**)
 
+<<<<<<< HEAD
         helm upgrade capsule oci://ghcr.io/projectcapsule/charts/capsule --version 0.13.0
+=======
+        helm upgrade capsule oci://ghcr.io/projectcapsule/charts/capsule --version {{< capsule_chart_version >}}
+>>>>>>> 61d27bc82d44fbcdcfcc58f1a9a7dfd851f93b81
 
 5. Uninstall the Chart
 
@@ -241,7 +253,7 @@ spec:
   project: system
   source:
     repoURL: ghcr.io/projectcapsule/charts
-    targetRevision: 0.11.0
+    targetRevision: {{< capsule_chart_version >}}
     chart: capsule
     helm:
       valuesObject:
@@ -319,7 +331,7 @@ spec:
   chart:
     spec:
       chart: capsule
-      version: "0.11.0"
+      version: "{{< capsule_chart_version >}}"
       sourceRef:
         kind: HelmRepository
         name: capsule
@@ -367,7 +379,7 @@ spec:
 
 ### Signature
 
-To verify artifacts you need to have [cosign installed](https://github.com/sigstore/cosign#installation). This guide assumes you are using v2.x of cosign. All of the signatures are created using [keyless signing](https://docs.sigstore.dev/verifying/verify/#keyless-verification-using-openid-connect). You can set the environment variable `COSIGN_REPOSITORY` to point to this repository. For example:
+To verify artifacts you need to have [cosign installed](https://github.com/sigstore/cosign#installation). This guide assumes you are using v2.x of cosign. All of the signatures are created using [keyless signing](https://docs.sigstore.dev/cosign/verifying/verify/#keyless-verification-using-openid-connect). You can set the environment variable `COSIGN_REPOSITORY` to point to this repository. For example:
 
     # Docker Image
     export COSIGN_REPOSITORY=ghcr.io/projectcapsule/capsule

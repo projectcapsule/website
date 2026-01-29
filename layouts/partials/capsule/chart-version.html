@@ -1,0 +1,55 @@
+{{- /* Returns the Capsule Helm chart version to use in examples.
+
+     Logic:
+     - If .Site.Params.version is "latest" or empty, pick the latest chart
+       version from the Helm repo index.
+     - Otherwise, treat .Site.Params.version as a minor series like "v0.11"
+       or "0.11" and pick the newest chart version whose version starts with
+       that minor (for example "0.11.2").
+     - If anything goes wrong, fall back to the latest chart version.
+*/ -}}
+
+{{- $scratch := newScratch -}}
+{{- $scratch.Set "chartVersion" "" -}}
+
+{{- $helmIndexURL := "https://projectcapsule.github.io/charts/index.yaml" -}}
+{{- $remote := resources.GetRemote $helmIndexURL -}}
+
+{{- if $remote.Err -}}
+  {{- /* Remote fetch failed; we can't do better than a placeholder. */ -}}
+  {{- "latest" -}}
+{{- else -}}
+  {{- $data := $remote | transform.Unmarshal -}}
+  {{- $entries := index $data "entries" -}}
+  {{- $capsuleCharts := index $entries "capsule" -}}
+
+  {{- if not (isset .Site.Params "version") -}}
+    {{- $scratch.Set "chartVersion" (index (index $capsuleCharts 0) "version") -}}
+  {{- else -}}
+    {{- $docVersion := .Site.Params.version | default "latest" -}}
+    {{- if or (eq $docVersion "") (eq $docVersion "latest") -}}
+      {{- /* Latest docs: just use the newest chart version. */ -}}
+      {{- $scratch.Set "chartVersion" (index (index $capsuleCharts 0) "version") -}}
+    {{- else -}}
+      {{- /* Archived docs: map docs version (for example "v0.11") to the
+            newest chart version in that minor series (for example 0.11.2).
+       */ -}}
+      {{- $minor := replaceRE "^v" "" $docVersion -}}
+      {{- $prefix := printf "%s." $minor -}}
+
+      {{- range $capsuleCharts -}}
+        {{- $current := $.Scratch.Get "chartVersion" -}}
+        {{- if and (eq $current "") (or (hasPrefix .version $prefix) (eq .version $minor)) -}}
+          {{- $.Scratch.Set "chartVersion" .version -}}
+        {{- end -}}
+      {{- end -}}
+
+      {{- /* Fallback for unexpected version strings: use latest. */ -}}
+      {{- if eq ($scratch.Get "chartVersion") "" -}}
+        {{- $scratch.Set "chartVersion" (index (index $capsuleCharts 0) "version") -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- $scratch.Get "chartVersion" -}}
+{{- end -}}

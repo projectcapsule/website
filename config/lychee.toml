@@ -1,1 +1,4 @@
+root_dir = "content/en"
+fallback_extensions = ["md", "html"]
+exclude = ["https://goteleport.com/"] # Teleport always returns 403, even it is available
 exclude_path = ["public/docs/reference/"]
