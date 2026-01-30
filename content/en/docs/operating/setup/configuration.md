@@ -125,7 +125,7 @@ The reconcile periode caches are invalidated. Invalidation is already attempted 
 ```yaml
 manager:
   options:
-    cacheInvalidation: 24h0m0s
+    cacheInvalidation: 0h30m0s
 ```
 
 ### `rbac`
@@ -157,37 +157,58 @@ manager:
 For Replications by default the controller ServiceAccount is used to perform the operations. However it is possible to define a dedicated ServiceAccount to be used for that purpose. Within this configuration you can define properties such as the endpoint of the kube-apiserver and if service account promotion should be allowed for this client. Also declare default service account to be used for replication operations. By default the `https://kubernetes.default.svc` endpoint is used.
 
 ```yaml
-options:
-  impersonation:
-    # Kubernetes API Endpoint to use for the operations 
-    endpoint: "https://capsule-proxy.capsule-system.svc:8081"
+manager:
+  options:
+    impersonation:
+      # Kubernetes API Endpoint to use for the operations 
+      endpoint: "https://capsule-proxy.capsule-system.svc:8081"
+    
+      # Toggles if TLS verification for the endpoint is performed or not
+      skipTlsVerify: false
+    
+      # Key in the secret that holds the CA certificate (e.g., "ca.crt")
+      caSecretKey: "ca.crt"
+    
+      # Name of the secret containing the CA certificate
+      caSecretName: "capsule-proxy-tls"
+    
+      # Namespace where the CA certificate secret is located
+      caSecretNamespace: "capsule-system"
   
-    # Toggles if TLS verification for the endpoint is performed or not
-    skipTlsVerify: false
+      # Default ServiceAccount for global resources (GlobalTenantResource) [Cluster Scope]
+      # When defined, users are required to use this ServiceAccount anywhere in the cluster
+      # unless they explicitly provide their own. Once this is set, Capsule will add this ServiceAccount 
+      # for all GlobalTenantResources, if they don't already have a ServiceAccount defined.
+      globalDefaultServiceAccount: "capsule-global-sa"
   
-    # Key in the secret that holds the CA certificate (e.g., "ca.crt")
-    caSecretKey: "ca.crt"
+      # Namespace of the for the ServiceAccount provided by the globalDefaultServiceAccount property
+      globalDefaultServiceAccountNamespace: "tenant-system"
   
-    # Name of the secret containing the CA certificate
-    caSecretName: "capsule-proxy-tls"
-  
-    # Namespace where the CA certificate secret is located
-    caSecretNamespace: "capsule-system"
+      # Default ServiceAccount for tenant resources (TenantResource) [Namespaced Scope]
+      # When defined, users are required to use this ServiceAccount anywhere in the cluster
+      # unless they explicitly provide their own. Once this is set, Capsule will add this ServiceAccount 
+      # for all GlobalTenantResources, if they don't already have a ServiceAccount defined.
+      tenantDefaultServiceAccount: "default"
+```
 
-    # Default ServiceAccount for global resources (GlobalTenantResource) [Cluster Scope]
-    # When defined, users are required to use this ServiceAccount anywhere in the cluster
-    # unless they explicitly provide their own. Once this is set, Capsule will add this ServiceAccount 
-    # for all GlobalTenantResources, if they don't already have a ServiceAccount defined.
-    globalDefaultServiceAccount: "capsule-global-sa"
+### `admission`
 
-    # Namespace of the for the ServiceAccount provided by the globalDefaultServiceAccount property
-    globalDefaultServiceAccountNamespace: "tenant-system"
+Configuration for the dynamic admission webhooks used by Capsule for mutating and validating requests. The settings are used from the static webhook configurations created during installation of Capsule and abstracted by the helm chart
 
-    # Default ServiceAccount for tenant resources (TenantResource) [Namespaced Scope]
-    # When defined, users are required to use this ServiceAccount anywhere in the cluster
-    # unless they explicitly provide their own. Once this is set, Capsule will add this ServiceAccount 
-    # for all GlobalTenantResources, if they don't already have a ServiceAccount defined.
-    tenantDefaultServiceAccount: "default"
+```yaml
+manager:
+  options:
+    admission:
+      mutating:
+        client:
+          caBundle: cert
+          url: https://172.24.52.212:9443
+        name: capsule-dynamic
+      validating:
+        client:
+          caBundle: cert
+          url: https://172.24.52.212:9443
+        name: capsule-dynamic
 ```
 
 ## Controller Options

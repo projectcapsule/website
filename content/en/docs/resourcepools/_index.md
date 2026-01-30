@@ -332,18 +332,84 @@ If no Pool can be auto-assigned, the `ResourcePoolClaim` will enter an `Unassign
 
 The Auto-Assignment Process is only executed, when `.spec.pool` is unset on `Create` or `Update` operations.
 
-#### Release
+#### Bound
 
-If a `ResourcePoolClaim` is deleted, the resources are released back to the `ResourcePool`. This means that the resources are no longer reserved for the claim and can be used by other claims. Releasing can be achieved :
+A `ResourcePoolClaim` is considered `Bound`, when the requested resources from the claim were successfully allocated from the `ResourcePool`. And the resources are actually used by any `ResourceQuota` in the namespace the claim was created in. If the resources are not used yet, the `ResourcePoolClaims` is considered `Unused` and can be deleted, change to a different `ResourcePool` or released without any further actions. However when it's resources are used, the claim is `Bound` and can not be modified or deleted until the resources are released (not longer in use).
 
-- By deleting the `ResourcePoolClaim` object.
-- By annotating the `ResourcePoolClaim` with `projectcapsule.dev/release: "true"`. This will release the `ResourcePoolClaim` from the `ResourcePool` without deleting the object itself and instantly requeue.
+The selection of which `ResourcePoolClaim` is `Bound` is based on a greedy pattern. Meaning we sort the `ResourcePoolClaims` by their `CreationTimestamp` and try to allocate them one by one until no more resources are available from the `ResourcePool`.
 
-Both these actions can only be performed if the `ResourcePoolClaim` is in a `Bound` state `False` (not used currently). Otherwise your first have to free the resources used by the claim in order to release it.
+Let's see this in action. We can see that both claims are unused and can be released.
+
 
 ```shell
-kubectl annotate resourcepoolclaim  skip-the-line -n solar-prod projectcapsule.dev/release="true"
+kubectl get resourcepoolclaim -n solar-test
+
+NAME             POOL         READY   MESSAGE      BOUND   REASON            AGE
+get-me-solar     solar-pool   True    reconciled   False   claim is unused   9h
+get-me-solar-2   solar-pool   True    reconciled   False   claim is unused   9h
+
+
+kubectl get resourcequota  -n solar-test
+
+NAME                         REQUEST                                       LIMIT   AGE
+capsule-pool-solar-pool      requests.cpu: 4/4, requests.memory: 4Gi/4Gi           7m53s
+
 ```
+
+We now create a pod to consume the amount of resources provided by the claim `get-me-solar` (`cpu: 2` and `memory: 2Gi`). We can see that half of the claim is now used:
+
+```shell
+kubectl get resourcepoolclaim -n solar-test
+
+NAME             POOL         READY   MESSAGE      BOUND   REASON            AGE
+get-me-solar     solar-pool   True    reconciled   True    claim is used     12m
+get-me-solar-2   solar-pool   True    reconciled   False   claim is unused   12m
+
+kubectl get resourcequota  -n solar-test
+
+NAME                         REQUEST                                       LIMIT   AGE
+capsule-pool-solar-pool      requests.cpu: 2/4, requests.memory: 2Gi/4Gi           11m
+```
+
+We can remove `get-me-solar-2`, as it's still unused:
+
+```shell
+kubectl delete resourcepoolclaim -n solar-test get-me-solar-2
+
+resourcepoolclaim.capsule.clastix.io "get-me-solar-2" deleted
+```
+
+However interactions with `get-me-solar` are now limited, as it's `Bound`:
+
+```shell
+kubectl delete resourcepoolclaim -n solar-test get-me-solar
+
+Error from server (Forbidden): admission webhook "resourcepoolclaims.projectcapsule.dev" denied the request: cannot delete the pool while claim is used in resourcepool solar-pool
+```
+
+If we remove the pod again, the `ResourcePoolClaim` becomes unused again and can be deleted or modified.
+
+```shell
+kubectl get resourcepoolclaim -n solar-test
+
+NAME           POOL         READY   MESSAGE      BOUND   REASON            AGE
+get-me-solar   solar-pool   True    reconciled   False   claim is unused   16m
+
+
+kubectl get resourcequota  -n solar-test
+
+NAME                         REQUEST                                     LIMIT   AGE
+capsule-pool-solar-pool      requests.cpu: 0/2, requests.memory: 0/2Gi           17m
+```
+
+#### Release
+
+If a `ResourcePoolClaim` is deleted, the resources are released back to the `ResourcePool`. This means that the resources are no longer reserved for the claim and can be used by other claims.
+
+- By deleting the `ResourcePoolClaim` object (**Recommended**).
+- By annotating the `ResourcePoolClaim` with `projectcapsule.dev/release: "true"`. This will release the `ResourcePoolClaim` from the `ResourcePool` without deleting the object itself and instantly requeue.
+
+Both these actions can only be performed if the `ResourcePoolClaim` is in a [`Bound`](#bound) state `False` (not used currently). Otherwise your first have to free the resources used by the claim in order to release it. You can verify the `Bound` state for all `ResourcePoolClaims` in a namespace with.
 
 #### Immutable
 

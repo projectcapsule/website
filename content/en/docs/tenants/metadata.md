@@ -6,7 +6,12 @@ description: >
 ---
 ## Managed
 
-By default all namespaced resources within a `Namespace` which are part of a `Tenant` labeled at admission with the `capsule.clastix.io/tenant: <tenant-name>` label.
+By default all namespaced resources within a `Namespace` which are part of a `Tenant` labeled at admission with the following labels:
+
+  * `capsule.clastix.io/managed-by`: `<tenant-name>` (Legacy label)
+  * `projectcapsule.dev/tenant`: `<tenant-name>`
+
+The labels are used by Capsule to identify resources belonging to a specific tenant. This is currently important for the [Capsule Proxy](/docs/proxy/) to filter resources accordingly.
 
 ## Namespaces
 
