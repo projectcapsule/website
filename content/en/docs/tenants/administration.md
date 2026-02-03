@@ -14,7 +14,23 @@ Bill needs to cordon a `Tenant` and its `Namespaces` for several reasons:
   * During incidents or outages
   * During planned maintenance of a dedicated nodes pool in a BYOD scenario
 
-With this said, the `TenantOwner` and the related Service Account living into managed `Namespaces`, cannot proceed to any update, create or delete action.
+With the default installation of Capsule all `CREATE`, `UPDATE` and `DELETE` operations performed by **[Capsule Users](/docs/operating/architecture/#capsule-users)** are droped. Any Updates to Subresources (i.e. `status` updates) and events are allowed to proceed as usual. If you wish to allow specific Operations, you can change the values for the Cordoning Admission via Values (eg. allow `Pod/DELETE` operations):
+
+```yaml
+webhooks:
+  hooks:
+    cordoning:
+      matchConditions:
+
+        - name: skip-pod-create-delete
+          expression: '!(request.resource.resource == "pods" && request.operation in ["DELETE"])'
+
+        # Default conditions to ignore subresources and events
+        - name: ignore-subresources
+          expression: '!has(request.subResource) || request.subResource == ""'
+        - name: ignore-events
+          expression: 'request.resource.resource != "events"'
+```
 
 This is possible by just toggling the specific `Tenant` specification:
 
@@ -30,7 +46,13 @@ spec:
     name: alice
 ```
 
-Any operation performed by Alice, the `TenantOwner`, will be rejected by the Admission controller.
+Any operation performed by Alice, the `TenantOwner`, will be rejected by the Admission controller:
+
+```bash
+kubectl delete pod --all -n solar-test --as alice --as-group projectcapsule.dev
+
+Error from server (Forbidden): admission webhook "cordoning.misc.projectcapsule.dev" denied the request: The current namespace 'solar-test' is cordoned. The attempted operation DELETE for /v1/Pod/nginx-deployment-56f567c7cb-pj86t is not permitted during cordoning status.
+```
 
 Uncordoning can be done by removing the said specification key:
 

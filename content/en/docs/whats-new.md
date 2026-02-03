@@ -19,6 +19,8 @@ weight: 1
 
 ## Features
 
+* Added `RequiredMetadata` for `Namespaces` created in a `Tenant` [Read More](/docs/tenants/metadata/#requiredmetadata).
+
 * Added Implicit Assignment of `TenantOwner` [Read More](/docs/tenants/permissions/#implicit-tenant-assignment).
 
 * Added Aggregation of `TenantOwner` [Read More](/docs/tenants/permissions/#aggregation).
@@ -41,6 +43,8 @@ weight: 1
 ## Fixes
 
 * Introduced fix for `ResourcePool` resource quota calculation when multiple `ResourcePoolClaim`s are present in a namespace but not everything is used. [Read More](/docs/resourcepools/#bound)
+
+* Improved `matchConditions` for Admission Webhooks, which intercept all namespaced items, to avoid processing subresource requests and Events, improving performance and reducing log noise.
 
 
 

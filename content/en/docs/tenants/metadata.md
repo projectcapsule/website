@@ -15,11 +15,59 @@ The labels are used by Capsule to identify resources belonging to a specific ten
 
 ## Namespaces
 
+
+### RequiredMetadata
+
+The cluster admin can enforce tenant owners to add specific metadata as `Labels` and `Annotations` to the `Namespaces` they create. This is a useful feature to enforce a set of [Rules](/docs/tenants/rules/) based on `Labels`.
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  namespaceOptions:
+    requiredMetadata:
+      labels:
+        env: "^(prod|test|dev)$"
+      annotations:
+        example.corp/cost-center: "^INV-[0-9]{4}$"
+```
+
+If you add these properties to a `Tenant`, and there's already a `Namespace` in that `Tenant` that does not comply with the required metadata, the `Namespace` will have admission errors until the required metadata is added to it.
+
+Example with [Rules](/docs/tenants/rules/):
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  namespaceOptions:
+    requiredMetadata:
+      labels:
+        env: "^(prod|test|dev)$"
+      annotations:
+        example.corp/cost-center: "^INV-[0-9]{4}$"
+
+  rules:
+    # Select a subset of namespaces (enviornment=prod) to allow further registries
+    - namespaceSelector:
+        matchExpressions:
+          - key: env
+            operator: In
+            values: ["prod"]
+      enforce:    
+        registries:
+         -  url: "harbor/v2/prod-registry/.*"
+            policy: [ "ifNotPresent" ]
+```
+
 ### AdditionalMetadataList
-{{% alert title="Information" color="info" %}}
-Starting from v0.10.8, it is possible to use templated values for labels and annotations.
-Currently, `{{ tenant.name }}` and `{{ namespace }}` placeholders are available.
-{{% /alert %}}
+
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
 kind: Tenant
@@ -36,6 +84,7 @@ spec:
         labels:
           templated-label: {{ namespace }}
 ```
+
 The cluster admin can "taint" the namespaces created by tenant owners with additional metadata as labels and annotations. There is no specific semantic assigned to these labels and annotations: they will be assigned to the namespaces in the tenant as they are created. However you have the option to be more specific by selecting to which namespaces you want to assign what kind of metadata:
 
 ```yaml
