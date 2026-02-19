@@ -12,7 +12,7 @@ kubectl create -f - << EOF
 apiVersion: capsule.clastix.io/v1beta2
 kind: Tenant
 metadata:
-  name: oil
+  name: solar
 spec:
   owners:
   - name: alice
