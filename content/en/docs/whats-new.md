@@ -9,11 +9,11 @@ weight: 1
 
 * Advisory [GHSA-qjjm-7j9w-pw72](https://github.com/projectcapsule/capsule/security/advisories/GHSA-qjjm-7j9w-pw72) - **High** - Users can create cluster scoped resources anywhere in the cluster if they are allowed to create `TenantResources`. To immidiatly mitigate this, make sure to use [Impersonation](/docs/replications/tenant/#impersonation) for `TenantResources`.
 
-* Advisory [GHSA-2ww6-hf35-mfjm](https://github.com/projectcapsule/capsule/security/advisories/GHSA-2ww6-hf35-mfjm) - **Moderate** - Users may hijack namespaces. via `namespaces/status` privileges. These privileges must have been explicitly granted by Platform Administrators through RBAC rules to be affected. Requests for the `namespaces/status` subresource are now sent to the capsule admission as well.
+* Advisory [GHSA-2ww6-hf35-mfjm](https://github.com/projectcapsule/capsule/security/advisories/GHSA-2ww6-hf35-mfjm) - **Moderate** - Users may hijack namespaces via `namespaces/status` privileges. These privileges must have been explicitly granted by Platform Administrators through RBAC rules to be affected. Requests for the `namespaces/status` subresource are now sent to the Capsule admission webhook as well.
 
 ## Breaking Changes ⚠️
 
-* By default capsule now uses self-signed cert-manager certificates for it's admission webhook. This used to be an optional setting, which has now become default. If you don't have cert-manager available you must explicitly enable the capsule TLS-Controller as [documented here](docs/operating/setup/installation/#certificate-management)
+* By default, Capsule now uses self-signed cert-manager certificates for its admission webhooks. This used to be an optional setting and has now become the default. If you don't have cert-manager installed, you must explicitly re-enable the Capsule TLS controller as [documented here](/docs/operating/setup/installation/#certificate-management).
 
 ## Features ✨
 
@@ -35,29 +35,27 @@ weight: 1
 
 * Added new label `projectcapsule.dev/tenant` which is added for all namespaced resources belonging to a `Tenant` [Read More](/docs/tenants/metadata/#managed).
 
-* Added Configuration Options for managed RBAC [Read More](docs/operating/setup/configuration/#rbac)
+* Added configuration options for managed RBAC [Read More](docs/operating/setup/configuration/#rbac)
 
-* Added Configuration Options for Impersonation [Read More](/docs/operating/setup/configuration/#impersonation)
+* Added configuration options for Impersonation [Read More](/docs/operating/setup/configuration/#impersonation)
 
-* Added Configuration Options for Cache invalidation [Read More](/docs/operating/setup/configuration/#cacheinvalidation)
+* Added configuration options for Cache invalidation [Read More](/docs/operating/setup/configuration/#cacheinvalidation)
 
-* Added Configuration Options for Dynamic Admission Webhooks [Read More](/docs/operating/setup/configuration/#admission)
+* Added configuration options for Dynamic Admission Webhooks [Read More](/docs/operating/setup/configuration/#admission)
  
 
 ## Fixes 🐛
 
-* Introduced fix for `ResourcePool` resource quota calculation when multiple `ResourcePoolClaim`s are present in a namespace but not everything is used. [Read More](/docs/resourcepools/#bound)
+* Fixed `ResourcePool` resource quota calculation when multiple `ResourcePoolClaim`s are present in a namespace but not everything is used. For details, see [ResourcePools bound behavior](/docs/resourcepools/#bound).
 
-* Improved `matchConditions` for Admission Webhooks, which intercept all namespaced items, to avoid processing subresource requests and Events, improving performance and reducing log noise.
-
-
+* Improved `matchConditions` for admission webhooks that intercept all namespaced items, to avoid processing subresource requests and Events, improving performance and reducing log noise.
 
 ## Documentation 📚
 
-We have added new documentation for a better experience. See the following Topics:
+We have added new documentation for a better experience. See the following topics:
 
-* **[Improved Installation Overview](/docs/operating/setup/installation/)**
-* **[Capsule Strict RBAC Installation](/docs/operating/setup/installation/#strict-rbac)**
+* **[Improved installation overview](/docs/operating/setup/installation/)**
+* **[Capsule strict RBAC installation](/docs/operating/setup/installation/#strict-rbac)**
 
 ## Ecosystem 🌐
 
