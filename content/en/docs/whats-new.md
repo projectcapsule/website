@@ -18,29 +18,17 @@ weight: 1
 ## Features ✨
 
 * Complete Renovation of Replications [Read More](/docs/replications/).
-
 * Added `RequiredMetadata` for `Namespaces` created in a `Tenant` [Read More](/docs/tenants/metadata/#requiredmetadata).
-
 * Added rule-based promotions for `ServiceAccounts` in `Tenants` [Read More](/docs/tenants/permissions/#rule-promotion).
-
 * Added Implicit Assignment of `TenantOwner` [Read More](/docs/tenants/permissions/#implicit-tenant-assignment).
-
 * Added Aggregation of `TenantOwner` [Read More](/docs/tenants/permissions/#aggregation).
-
 * Introducing new CRD `RuleStatus` [Read More](/docs/tenants/rules/)
-
 * Introducing `data` field for `Tenants` [Read More](/docs/operating/templating/#data)
-
 * Introducing new OCI Registry enforcement [Read More](/docs/tenants/rules/#registries)
-
 * Added new label `projectcapsule.dev/tenant` which is added for all namespaced resources belonging to a `Tenant` [Read More](/docs/tenants/metadata/#managed).
-
 * Added configuration options for managed RBAC [Read More](docs/operating/setup/configuration/#rbac)
-
 * Added configuration options for Impersonation [Read More](/docs/operating/setup/configuration/#impersonation)
-
 * Added configuration options for Cache invalidation [Read More](/docs/operating/setup/configuration/#cacheinvalidation)
-
 * Added configuration options for Dynamic Admission Webhooks [Read More](/docs/operating/setup/configuration/#admission)
  
 
@@ -94,7 +82,7 @@ In the upcoming releases we are planning to work on the following features:
 
 
 * **CNCF Security Slam 2026** 
-   * Capsule will once again be present at the CNCF and accept contributions from the community to improve the security of the project. [Security Slam 2026](https://securityslam.com/). Recap of the award we received in 2023: 
+   * Capsule will once again be present at the CNCF and accept contributions from the community to improve the security of the project. [Security Slam 2026](https://securityslam.com/slam26/participating-projects). Recap of the award we received in 2023: 
 
 
   ![capsule-cncf-secslam](/images/blog/security-slam-2023/receiver.jpg)
