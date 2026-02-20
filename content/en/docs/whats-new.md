@@ -70,6 +70,7 @@ Newly added documentation to integrate Capsule with other applications:
 
 In the upcoming releases we are planning to work on the following features:
 
+  * Announcing Capsule Swag (Contribution Rewards) 🎁
   * [Custom Resource Quotas](https://github.com/projectcapsule/capsule/issues/1745): A Quota implementation which allows to define custom quota constraints (Enterprise Request).
   * Porting more Properties to the Namespace Rule Approach.
   * Adding `transformers` for `Global`/`TenantResources`.
@@ -83,4 +84,18 @@ In the upcoming releases we are planning to work on the following features:
 
 ## Events 📅
 
-* **CNCF Security Slam 2026** - Capsule will once again be present at the CNCF and accept contributions from the community to improve the security of the project. [Security Slam 2026](https://securityslam.com/).
+* **KubeCon 2026**
+   * **Project Pavilion**: We will be present again at the [Project Pavilion](https://events.linuxfoundation.org/kubecon-cloudnativecon-europe/features-add-ons/project-engagement/#project-pavilion) at KubeCon 2026. The exact schedule has not been announced yet, but we will be hosting a booth and look forward to meeting the community in person again. Feel free to reach out to us if you want to meet us there or have any questions about the project.
+
+   * **Lightning Talk** - Histro Histrov, part of the maintainer team, will be speaking about Capsule at KubeCon 2026 in Amsterdam in a Lightning Talk. [Mark the Session](https://kccnceu2026.sched.com/event/2EFxh/project-lightning-talk-namespace-multi-tenancy-but-all-the-problems-related-to-it-hristo-hristov-maintainer)
+
+* **Capsule Roundtable Summer 2026 🇨🇭**
+    * We are planning to host a Capsule Roundtable in Summer 2026 in Switzerland. The exact date and location will be announced soon, but we are looking forward to meeting the community in person and discussing the future of Capsule. If you are interested in attending or want to know more about the event, [feel free to reach out to us](https://peakscale.ch/en/contact/). The event is intended for users to present their use-cases and share their experiences with the project, as well as for us to present the roadmap and gather feedback from the community (Not a sales event).
+
+
+* **CNCF Security Slam 2026** 
+   * Capsule will once again be present at the CNCF and accept contributions from the community to improve the security of the project. [Security Slam 2026](https://securityslam.com/). Recap of the award we received in 2023: 
+
+
+  ![capsule-cncf-secslam](/images/blog/security-slam-2023/receiver.jpg)
+
