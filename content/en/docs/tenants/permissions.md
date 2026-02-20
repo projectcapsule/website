@@ -5,6 +5,11 @@ description: >
   Grant permissions for tenants
 ---
 
+## Administrators
+
+Administrators are users that have full control over all `Tenants` and their namespaces. They are typically cluster administrators or operators who need to manage the entire cluster and all its `Tenants`. However as administrator you are automatically Owner of all `Tenants`.`Tenants` This means that administrators can create, delete, and manage namespaces and other resources within any `Tenant`, given you are using [label assignments for tenants](/docs/tenants/namespaces/#label).
+
+
 ## Ownership
 
 Capsule introduces the principal, that tenants must have owners ([Tenant Owners](/docs/operating/architecture/#tenant-owners)). The owner of a tenant is a user or a group of users that have the right to create, delete, and manage the [tenant's namespaces](/docs/tenants/namespaces) and other tenant resources. However an owner does not have the permissions to manage the tenants they are owner of. This is still done by cluster-administrators.
@@ -374,28 +379,6 @@ system:serviceaccounts:{service-account-namespace}
 
 You have to add `system:serviceaccounts:{service-account-namespace}` to the CapsuleConfiguration [Group Scope](/docs/operating/setup/configuration/#usergroups) or `system:serviceaccounts:{service-account-namespace}:{service-account-name}` to the CapsuleConfiguration [User Scope](/docs/operating/setup/configuration/#usergroups) to make it work.
 
-### ServiceAccount Promotion
-
-Within a `Tenant`, a ServiceAccount can be promoted to a `TenantOwner`. For example, Alice can create a ServiceAccount called robot in the solar `Tenant` and promote it to be a `TenantOwner` (This requires Alice to be an owner of the `Tenant` as well):
-
-```yaml
-kubectl label sa gitops-reconcile -n green-test owner.projectcapsule.dev/promote=true --as alice --as-group projectcapsule.dev
-```
-
-Now the ServiceAccount robot can create namespaces in the solar `Tenant`:
-
-```bash
-kubectl create ns green-valkey--as system:serviceaccount:green-test:gitops-reconcile
-```
-
-To revoke the promotion, Alice can just remove the label:
-
-```yaml
-kubectl label sa gitops-reconcile -n green-test owner.projectcapsule.dev/promote-  --as alice --as-group projectcapsule.dev
-```
-
-This feature must be enabled in the [CapsuleConfiguration](/docs/operating/setup/configuration/#allowserviceaccountpromotion). The ClusterRoles assigned to promoted ServiceAccounts can be configured in the [CapsuleConfiguration](/docs/operating/setup/configuration/#rbac) as well.
-
 ### Owner Roles
 
 By default, all `TenantOwners` will be granted with two ClusterRole resources using the RoleBinding API:
@@ -639,6 +622,191 @@ spec:
       - tenant-resources
 ```
 
+## Promotion
+
+As [Tenant Owner](#ownership) you can perform `ServiceAccount` Promotion. 
+
+### Owner Promotion
+
+Within a `Tenant`, a ServiceAccount can be promoted to a `TenantOwner`. For example, Alice can create a ServiceAccount called robot in the solar `Tenant` and promote it to be a `TenantOwner` (This requires Alice to be an owner of the `Tenant` as well):
+
+```yaml
+kubectl label sa gitops-reconcile -n green-test owner.projectcapsule.dev/promote=true --as alice --as-group projectcapsule.dev
+```
+
+**Note:** Promotion is only triggered on the label `owner.projectcapsule.dev/promote` with the value `true`
+
+We can now verify if the promotion was successful by checking the `Tenant` status:
+
+```yaml
+kubectl get tnt green  -o jsonpath='{.status.owners}' | jq
+
+[
+  {
+    "clusterRoles": [
+      "capsule-namespace-provisioner",
+      "capsule-namespace-deleter"
+    ],
+    "kind": "ServiceAccount",
+    "name": "system:serviceaccount:green-test:gitops-reconcile"
+  },
+ {
+    "clusterRoles": [
+      "view",
+      "tenant-resources"
+    ],
+    "kind": "User",
+    "name": "joe"
+  }
+]
+```
+
+
+Now the ServiceAccount robot can create namespaces in the solar `Tenant`:
+
+```bash
+kubectl create ns green-valkey--as system:serviceaccount:green-test:gitops-reconcile
+```
+
+To revoke the promotion, Alice can just remove the label:
+
+```yaml
+kubectl label sa gitops-reconcile -n green-test owner.projectcapsule.dev/promote-  --as alice --as-group projectcapsule.dev
+```
+
+This feature must be enabled in the [CapsuleConfiguration](/docs/operating/setup/configuration/#allowserviceaccountpromotion). The ClusterRoles assigned to promoted ServiceAccounts can be configured in the [CapsuleConfiguration](/docs/operating/setup/configuration/#rbac) as well.
+
+You can also dis/enable Owner Promotion per `Tenant`. By default it's enabled, however since it's disabled in the [CapsuleConfiguration](/docs/operating/setup/configuration/#allowserviceaccountpromotion) it can't be used, unless that's enabled as well.
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:  
+  permissions:
+    promotions:
+      allowOwnerPromotion: false
+```
+
+### Rule Promotion
+
+
+As an administrator, you can define promotion rules for each Tenant. A promotion rule selects ServiceAccounts within a Tenant based on specified conditions and assigns them predefined ClusterRoles.
+
+The selected ClusterRoles are then applied across all namespaces belonging to the Tenant, with the corresponding ServiceAccounts configured as subjects. This allows a ServiceAccount in one namespace to automatically receive equivalent permissions in all other namespaces of the same Tenant.
+
+This feature is particularly useful in scenarios involving [Tenant Replications](/docs/replications/#tenantresource), where consistent permissions across namespaces are required.
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:  
+  permissions:
+    promotions:
+      rules:
+
+      # With this rule every promoted ServiceAccount get's the ClusterRole "tenant-replicator" in all Namespaces
+      # of the Tenant solar
+      - clusterRoles: 
+        - "configmap-replicator"
+
+      # With this rule every promoted ServiceAccount with the matching labels get's the ClusterRole "tenant-replicator" in all Namespaces
+      # of the Tenant solar
+      - clusterRoles: 
+        - "secret-replicator"
+        selector:
+          matchLabels:
+            super: "account"
+```
+
+Make sure the `ClusterRoles` exist, otherwise you will get a reconcile error for the corresponding `Tenant`:
+
+```shell
+  conditions:
+  - lastTransitionTime: "2026-02-16T23:08:59Z"
+    message: 'cannot sync rolebindings items: rolebindings.rbac.authorization.k8s.io
+      "tenant-replicator" not found'
+```
+
+If you are running capsule in [Strict Mode](/docs/operating/setup/installation/#strict-rbac) we must ensure the controller can grant the corresponding permissions to the `ServiceAccount` in all of the `Namespaces` in the `Tenant`. We can simply aggregate the same `ClusterRoles` to the controller:
+
+```yaml
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: configmap-replicator
+  labels:
+    projectcapsule.dev/aggregate-to-controller: "true"
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "create", "patch", "watch", "list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: secret-replicator
+  labels:
+    projectcapsule.dev/aggregate-to-controller: "true"
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "create", "patch", "watch", "list", "delete"]
+```
+
+Now as [Tenant Owner](#ownership) we can start promoting `ServiceAccounts` by labeling them with the label `projectcapsule.dev/promote` and the value `true`. This feature must be enabled in the [CapsuleConfiguration](/docs/operating/setup/configuration/#allowserviceaccountpromotion). You will get the following admission error if the feature is disabled:
+
+```shell
+Error from server (Forbidden): admission webhook "serviceaccounts.projectcapsule.dev" denied the request: service account promotion is disabled. Contact cluster administrators
+```
+
+When the feature is enabled the following command will succeded (assuming `alice` is a [Tenant Owner](#ownership) of the `Tenant` solar):
+
+```yaml
+kubectl label sa gitops-reconcile -n solar-test projectcapsule.dev/promote=true --as alice --as-group projectcapsule.dev
+```
+
+We can now verify if the promotion was successful by checking the `Tenant` status:
+
+```yaml
+kubectl get tnt solar  -o jsonpath='{.status.promotions}' | jq
+
+[
+  {
+    "clusterRoles": [
+      "tenant-replicator"
+    ],
+    "kind": "ServiceAccount",
+    "name": "system:serviceaccount:solar-test:gitops-reconcile"
+  }
+]
+```
+
+we can verify the rolebinding was distributed to other `Namespaces` of the `Tenant` solar:
+
+```shell
+kubectl get rolebinding -n solar-prod
+
+NAME                               ROLE                                    AGE
+..
+capsule:managed:7ad688b586eada40   ClusterRole/configmap-replicator        21s
+..
+```
+
+To revoke the promotion, Alice can just remove the label:
+
+```yaml
+kubectl label sa gitops-reconcile -n solar-test projectcapsule.dev/promote-  --as alice --as-group projectcapsule.dev
+```
+
+
+
 ## Additional Rolebindings
 
 With `Tenant` rolebindings you can distribute namespaced rolebindings to all namespaces which are assigned to a namespace. Essentially it is then ensured the defined rolebindings are present and reconciled in all namespaces of the `Tenant`. This is useful if users should have more insights on `Tenant` basis. Let's look at an example.
@@ -781,7 +949,3 @@ roleRef:
 With the above example, Capsule is leaving the `TenantOwner` to create namespaced custom resources.
 
 > Take Note: a `TenantOwner` having the admin scope on its namespaces only, does not have the permission to create Custom Resources Definitions (CRDs) because this requires a cluster admin permission level. Only Bill, the cluster admin, can create CRDs. This is a known limitation of any multi-tenancy environment based on a single shared control plane.
-
-## Administrators
-
-Administrators are users that have full control over all `Tenants` and their namespaces. They are typically cluster administrators or operators who need to manage the entire cluster and all its `Tenants`. However as administrator you are automatically Owner of all `Tenants`.`Tenants` This means that administrators can create, delete, and manage namespaces and other resources within any `Tenant`, given you are using [label assignments for tenants](/docs/tenants/namespaces/#label).

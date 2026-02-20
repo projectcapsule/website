@@ -60,6 +60,12 @@ Here are some key considerations to keep in mind when installing Capsule. Also c
 
 ### Strict RBAC
 
+
+{{% alert title="Attention" color="warning" %}}
+Ensure to first upgrade to version `0.13.0` of capsule before enabling strict mode. As it requires fields which are newly added with version `0.13.0`.
+{{% /alert %}}
+
+
 By default the capsule controller runs with the `ClusterRole` `cluster-admin` which provides full access to the cluster. This is because the controller itself must grant rolebinding on namespace basis which by default reference the `ClusterRole` `admin`, which needs to at least match the permissions for the controller to the ones of the `ClusterRole` `admin`. However, for production environments we recommend setting up more strict RBAC permissions for the Capsule Controller. You can enable the minimal required permissions by setting the following value in the Helm chart:
 
 ```yaml
@@ -206,6 +212,28 @@ webhooks:
       - name: 'exclude-kube-system'
         expression: '!("system:serviceaccounts:kube-system" in request.userInfo.groups)'
 ```
+
+#### Protected
+
+By default resources with the following values are protected by a webhook to be changed by [Capsule Users]:
+
+```yaml
+webhooks:
+  hooks:
+    managed:
+      objectSelector:
+        matchExpressions:
+          - key: "projectcapsule.dev/created-by"
+            operator: In
+            values:
+            - "controller"
+            - "resources"
+          - key: "projectcapsule.dev/managed-by"
+            operator: In
+            values:
+            - "controller"
+```
+
 
 ## GitOps
 
