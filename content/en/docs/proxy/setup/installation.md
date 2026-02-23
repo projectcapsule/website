@@ -206,7 +206,18 @@ It is possible to protect the capsule-proxy using a certificate provided by Let'
 
 If your prerequisite is exposing capsule-proxy using an Ingress, you must rely on the token-based authentication, for example, OIDC or Bearer tokens. Users providing tokens are always able to reach the APIs Server.
 
-### Distribute CA within the Cluster
+### Certificate Management
+
+By default, Capsule delegates its certificate management to cert-manager. This is the recommended way to manage the TLS certificates for Capsule.This relates to certifiacates for the proxy and the admissions server. However, you can also use a job to generate self-signed certificates and store them in a Kubernetes Secret:
+
+```yaml
+options:
+  generateCertificates: true
+certManager:
+  generateCertificates: false  
+```
+
+#### Distribute CA within the Cluster
 
 The capsule-proxy requires the CA certificate to be distributed to the clients. The CA certificate is stored in a Secret named `capsule-proxy` in the `capsule-system` namespace, by default. In most cases the distribution of this secret is required for other clients within the cluster (e.g. the Tekton Dashboard). If you are using Ingress or any other endpoints for all the clients, this step is probably not required.
 

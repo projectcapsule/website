@@ -30,7 +30,7 @@ weight: 1
 * Added configuration options for Impersonation [Read More](/docs/operating/setup/configuration/#impersonation)
 * Added configuration options for Cache invalidation [Read More](/docs/operating/setup/configuration/#cacheinvalidation)
 * Added configuration options for Dynamic Admission Webhooks [Read More](/docs/operating/setup/configuration/#admission)
- 
+* Added Built-In Installation for Gangplank with the Capsule Proxy [Read More](/docs/proxy/gangplank/)
 
 ## Fixes 🐛
 
