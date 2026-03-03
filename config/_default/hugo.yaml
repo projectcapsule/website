@@ -164,7 +164,12 @@ menu:
       pre: <i class='fas fa-briefcase'></i>
       weight: 16
 
+    - name: Resources
+      url: /project/resources/
+      pre: <i class="fa-solid fa-circle-info"></i>
+      weight: 17
+
     - name: Project
       url: /project/
       pre: <i class='fas fa-flask'></i>
-      weight: 17
+      weight: 18
