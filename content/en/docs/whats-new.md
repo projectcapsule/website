@@ -38,6 +38,8 @@ weight: 1
 
 * Improved `matchConditions` for admission webhooks that intercept all namespaced items, to avoid processing subresource requests and Events, improving performance and reducing log noise.
 
+* `Namespaces` are considered active until the Condition `ContentHasNoFinalizers` is `True`. This means that if a `Namespace` has finalizers, it will be considered active until the finalizers are removed. This is a more accurate representation of the state of the `Namespace`, as it can still be active even if it has finalizers. During this all capsule managed resources are still kept and their deletion is blocked until the finalizers are removed.
+
 ## Documentation 📚
 
 We have added new documentation for a better experience. See the following topics:
