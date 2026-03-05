@@ -21,6 +21,8 @@ Resource Types:
 
 - [ResourcePool](#resourcepool)
 
+- [RuleStatus](#rulestatus)
+
 - [TenantOwner](#tenantowner)
 
 - [TenantResource](#tenantresource)
@@ -58,8 +60,11 @@ CapsuleConfigurationSpec defines the Capsule configuration.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **cacheInvalidation** | string | Define the period of time upon a cache invalidation is executed for all caches.<br/>*Default*: 24h<br/> | true |
 | **enableTLSReconciler** | boolean | Toggles the TLS reconciler, the controller that is able to generate CA and certificates for the webhooks<br>when not using an already provided CA and certificate, or when these are managed externally with Vault, or cert-manager.<br/>*Default*: false<br/> | true |
+| **[rbac](#capsuleconfigurationspecrbac)** | object | Define Properties for managed ClusterRoles by Capsule<br/>*Default*: map[]<br/> | true |
 | **[administrators](#capsuleconfigurationspecadministratorsindex)** | []object | Define entities which can act as Administrators in the capsule construct<br>These entities are automatically owners for all existing tenants. Meaning they can add namespaces to any tenant. However they must be specific by using the capsule label<br>for interacting with namespaces. Because if that label is not defined, it's assumed that namespace interaction was not targeted towards a tenant and will therefor<br>be ignored by capsule. | false |
+| **[admission](#capsuleconfigurationspecadmission)** | object | Configuration for dynamic Validating and Mutating Admission webhooks managed by Capsule. | false |
 | **allowServiceAccountPromotion** | boolean | ServiceAccounts within tenant namespaces can be promoted to owners of the given tenant<br>this can be achieved by labeling the serviceaccount and then they are considered owners. This can only be done by other owners of the tenant.<br>However ServiceAccounts which have been promoted to owner can not promote further serviceAccounts.<br/>*Default*: false<br/> | false |
 | **forceTenantPrefix** | boolean | Enforces the Tenant owner, during Namespace creation, to name it using the selected Tenant name as prefix,<br>separated by a dash. This is useful to avoid Namespace name collision in a public CaaS environment.<br/>*Default*: false<br/> | false |
 | **ignoreUserWithGroups** | []string | Define groups which when found in the request of a user will be ignored by the Capsule<br>this might be useful if you have one group where all the users are in, but you want to separate administrators from normal users with additional groups. | false |
@@ -69,6 +74,21 @@ CapsuleConfigurationSpec defines the Capsule configuration.
 | **userGroups** | []string | <span style="color:red;font-weight:bold">Deprecated: use users property instead (https://projectcapsule.dev/docs/operating/setup/configuration/#users)<br><br>Names of the groups considered as Capsule users.</span> | false |
 | **userNames** | []string | <span style="color:red;font-weight:bold">Deprecated: use users property instead (https://projectcapsule.dev/docs/operating/setup/configuration/#users)<br><br>Names of the users considered as Capsule users.</span> | false |
 | **[users](#capsuleconfigurationspecusersindex)** | []object | Define entities which are considered part of the Capsule construct<br>Users not mentioned here will be ignored by Capsule | false |
+
+
+### CapsuleConfiguration.spec.rbac
+
+
+
+Define Properties for managed ClusterRoles by Capsule
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **administrationClusterRoles** | []string | The ClusterRoles applied for Administrators<br/>*Default*: [capsule-namespace-deleter]<br/> | false |
+| **deleter** | string | Name for the ClusterRole required to grant Namespace Deletion permissions.<br/>*Default*: capsule-namespace-deleter<br/> | false |
+| **promotionClusterRoles** | []string | The ClusterRoles applied for ServiceAccounts which had owner Promotion<br/>*Default*: [capsule-namespace-provisioner capsule-namespace-deleter]<br/> | false |
+| **provisioner** | string | Name for the ClusterRole required to grant Namespace Provision permissions.<br/>*Default*: capsule-namespace-provisioner<br/> | false |
 
 
 ### CapsuleConfiguration.spec.administrators[index]
@@ -82,6 +102,113 @@ CapsuleConfigurationSpec defines the Capsule configuration.
 | :---- | :---- | :----------- | :-------- |
 | **kind** | enum | Kind of entity. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
 | **name** | string | Name of the entity. | true |
+
+
+### CapsuleConfiguration.spec.admission
+
+
+
+Configuration for dynamic Validating and Mutating Admission webhooks managed by Capsule.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[mutating](#capsuleconfigurationspecadmissionmutating)** | object | Configure dynamic Mutating Admission for Capsule | false |
+| **[validating](#capsuleconfigurationspecadmissionvalidating)** | object | Configure dynamic Validating Admission for Capsule | false |
+
+
+### CapsuleConfiguration.spec.admission.mutating
+
+
+
+Configure dynamic Mutating Admission for Capsule
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[client](#capsuleconfigurationspecadmissionmutatingclient)** | object | From the upstram struct | true |
+| **annotations** | map[string]string | Annotations added to the Admission Webhook | false |
+| **labels** | map[string]string | Labels added to the Admission Webhook | false |
+| **name** | string | Name the Admission Webhook | false |
+
+
+### CapsuleConfiguration.spec.admission.mutating.client
+
+
+
+From the upstram struct
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **caBundle** | string | `caBundle` is a PEM encoded CA bundle which will be used to validate the webhook's server certificate.<br>If unspecified, system trust roots on the apiserver are used.<br/>*Format*: byte<br/> | false |
+| **[service](#capsuleconfigurationspecadmissionmutatingclientservice)** | object | `service` is a reference to the service for this webhook. Either<br>`service` or `url` must be specified.<br><br>If the webhook is running within the cluster, then you should use `service`. | false |
+| **url** | string | `url` gives the location of the webhook, in standard URL form<br>(`scheme://host:port/path`). Exactly one of `url` or `service`<br>must be specified.<br><br>The `host` should not refer to a service running in the cluster; use<br>the `service` field instead. The host might be resolved via external<br>DNS in some apiservers (e.g., `kube-apiserver` cannot resolve<br>in-cluster DNS as that would be a layering violation). `host` may<br>also be an IP address.<br><br>Please note that using `localhost` or `127.0.0.1` as a `host` is<br>risky unless you take great care to run this webhook on all hosts<br>which run an apiserver which might need to make calls to this<br>webhook. Such installs are likely to be non-portable, i.e., not easy<br>to turn up in a new cluster.<br><br>The scheme must be "https"; the URL must begin with "https://".<br><br>A path is optional, and if present may be any string permissible in<br>a URL. You may use the path to pass an arbitrary string to the<br>webhook, for example, a cluster identifier.<br><br>Attempting to use a user or basic auth e.g. "user:password@" is not<br>allowed. Fragments ("#...") and query parameters ("?...") are not<br>allowed, either. | false |
+
+
+### CapsuleConfiguration.spec.admission.mutating.client.service
+
+
+
+`service` is a reference to the service for this webhook. Either
+`service` or `url` must be specified.
+
+If the webhook is running within the cluster, then you should use `service`.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | `name` is the name of the service.<br>Required | true |
+| **namespace** | string | `namespace` is the namespace of the service.<br>Required | true |
+| **path** | string | `path` is an optional URL path which will be sent in any request to<br>this service. | false |
+| **port** | integer | If specified, the port on the service that hosting webhook.<br>Default to 443 for backward compatibility.<br>`port` should be a valid port number (1-65535, inclusive).<br/>*Format*: int32<br/> | false |
+
+
+### CapsuleConfiguration.spec.admission.validating
+
+
+
+Configure dynamic Validating Admission for Capsule
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[client](#capsuleconfigurationspecadmissionvalidatingclient)** | object | From the upstram struct | true |
+| **annotations** | map[string]string | Annotations added to the Admission Webhook | false |
+| **labels** | map[string]string | Labels added to the Admission Webhook | false |
+| **name** | string | Name the Admission Webhook | false |
+
+
+### CapsuleConfiguration.spec.admission.validating.client
+
+
+
+From the upstram struct
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **caBundle** | string | `caBundle` is a PEM encoded CA bundle which will be used to validate the webhook's server certificate.<br>If unspecified, system trust roots on the apiserver are used.<br/>*Format*: byte<br/> | false |
+| **[service](#capsuleconfigurationspecadmissionvalidatingclientservice)** | object | `service` is a reference to the service for this webhook. Either<br>`service` or `url` must be specified.<br><br>If the webhook is running within the cluster, then you should use `service`. | false |
+| **url** | string | `url` gives the location of the webhook, in standard URL form<br>(`scheme://host:port/path`). Exactly one of `url` or `service`<br>must be specified.<br><br>The `host` should not refer to a service running in the cluster; use<br>the `service` field instead. The host might be resolved via external<br>DNS in some apiservers (e.g., `kube-apiserver` cannot resolve<br>in-cluster DNS as that would be a layering violation). `host` may<br>also be an IP address.<br><br>Please note that using `localhost` or `127.0.0.1` as a `host` is<br>risky unless you take great care to run this webhook on all hosts<br>which run an apiserver which might need to make calls to this<br>webhook. Such installs are likely to be non-portable, i.e., not easy<br>to turn up in a new cluster.<br><br>The scheme must be "https"; the URL must begin with "https://".<br><br>A path is optional, and if present may be any string permissible in<br>a URL. You may use the path to pass an arbitrary string to the<br>webhook, for example, a cluster identifier.<br><br>Attempting to use a user or basic auth e.g. "user:password@" is not<br>allowed. Fragments ("#...") and query parameters ("?...") are not<br>allowed, either. | false |
+
+
+### CapsuleConfiguration.spec.admission.validating.client.service
+
+
+
+`service` is a reference to the service for this webhook. Either
+`service` or `url` must be specified.
+
+If the webhook is running within the cluster, then you should use `service`.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | `name` is the name of the service.<br>Required | true |
+| **namespace** | string | `namespace` is the namespace of the service.<br>Required | true |
+| **path** | string | `path` is an optional URL path which will be sent in any request to<br>this service. | false |
+| **port** | integer | If specified, the port on the service that hosting webhook.<br>Default to 443 for backward compatibility.<br>`port` should be a valid port number (1-65535, inclusive).<br/>*Format*: int32<br/> | false |
 
 
 ### CapsuleConfiguration.spec.nodeMetadata
@@ -161,6 +288,7 @@ CapsuleConfigurationStatus defines the Capsule configuration status.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **lastCacheInvalidation** | string | Last time all caches were invalided<br/>*Format*: date-time<br/> | false |
 | **[users](#capsuleconfigurationstatususersindex)** | []object | Users which are considered Capsule Users and are bound to the Capsule Tenant construct. | false |
 
 
@@ -407,15 +535,48 @@ ResourceQuotaClaimStatus defines the observed state of ResourceQuotaClaim.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[condition](#resourcepoolclaimstatuscondition)** | object | Condtion for this resource claim | false |
+| **[conditions](#resourcepoolclaimstatusconditionsindex)** | []object | Conditions for the resource claim | true |
+| **[allocation](#resourcepoolclaimstatusallocation)** | object | Tracks the Usage from Claimed from this claim and available resources | false |
+| **[condition](#resourcepoolclaimstatuscondition)** | object | <span style="color:red;font-weight:bold">Deprecated: Use Conditions</span> | false |
 | **[pool](#resourcepoolclaimstatuspool)** | object | Reference to the GlobalQuota being claimed from | false |
+
+
+### ResourcePoolClaim.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
+
+
+### ResourcePoolClaim.status.allocation
+
+
+
+Tracks the Usage from Claimed from this claim and available resources
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **available** | map[string]int or string | Used to track the usage of the resource in the pool (diff hard - claimed). May be used for further automation | false |
+| **hard** | map[string]int or string | Hard is the set of enforced hard limits for each named resource.<br>More info: https://kubernetes.io/docs/concepts/policy/resource-quotas/ | false |
+| **used** | map[string]int or string | Used is the current observed total usage of the resource in the namespace. | false |
 
 
 ### ResourcePoolClaim.status.condition
 
 
 
-Condtion for this resource claim
+Deprecated: Use Conditions
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -437,9 +598,8 @@ Reference to the GlobalQuota being claimed from
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **name** | string | Name | false |
-| **namespace** | string | Namespace | false |
-| **uid** | string | UID of the tracked Tenant to pin point tracking | false |
+| **name** | string | Name of the referent. | true |
+| **uid** | string | UID of the tracked Tenant to pin point tracking | true |
 
 ## ResourcePool
 
@@ -531,9 +691,9 @@ Additional Configuration
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **defaultsZero** | boolean | With this option all resources which can be allocated are set to 0 for the resourcequota defaults.<br/>*Default*: false<br/> | false |
-| **deleteBoundResources** | boolean | When a resourcepool is deleted, the resourceclaims bound to it are disassociated from the resourcepool but not deleted.<br>By Enabling this option, the resourceclaims will be deleted when the resourcepool is deleted, if they are in bound state.<br/>*Default*: false<br/> | false |
-| **orderedQueue** | boolean | Claims are queued whenever they are allocated to a pool. A pool tries to allocate claims in order based on their<br>creation date. But no matter their creation time, if a claim is requesting too much resources it's put into the queue<br>but if a lower priority claim still has enough space in the available resources, it will be able to claim them. Eventough<br>it's priority was lower<br>Enabling this option respects to Order. Meaning the Creationtimestamp matters and if a resource is put into the queue, no<br>other claim can claim the same resources with lower priority.<br/>*Default*: false<br/> | false |
+| **defaultsZero** | boolean | With this option all resources which can be allocated are set to 0 for the resourcequota defaults. (Default false)<br/>*Default*: false<br/> | false |
+| **deleteBoundResources** | boolean | When a resourcepool is deleted, the resourceclaims bound to it are disassociated from the resourcepool but not deleted.<br>By Enabling this option, the resourceclaims will be deleted when the resourcepool is deleted, if they are in bound state. (Default false)<br/>*Default*: false<br/> | false |
+| **orderedQueue** | boolean | Claims are queued whenever they are allocated to a pool. A pool tries to allocate claims in order based on their<br>creation date. But no matter their creation time, if a claim is requesting too much resources it's put into the queue<br>but if a lower priority claim still has enough space in the available resources, it will be able to claim them. Eventough<br>it's priority was lower<br>Enabling this option respects to Order. Meaning the Creationtimestamp matters and if a resource is put into the queue, no<br>other claim can claim the same resources with lower priority. (Default false)<br/>*Default*: false<br/> | false |
 
 
 ### ResourcePool.spec.selectors[index]
@@ -573,12 +733,30 @@ GlobalResourceQuotaStatus defines the observed state of GlobalResourceQuota.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[conditions](#resourcepoolstatusconditionsindex)** | []object | Conditions for the resource claim | true |
 | **[allocation](#resourcepoolstatusallocation)** | object | Tracks the Usage from Claimed against what has been granted from the pool | false |
 | **claimCount** | integer | Amount of claims<br/>*Default*: 0<br/> | false |
 | **[claims](#resourcepoolstatusclaimskeyindex)** | map[string][]object | Tracks the quotas for the Resource. | false |
 | **[exhaustions](#resourcepoolstatusexhaustionskey)** | map[string]object | Exhaustions from claims associated with the pool | false |
 | **namespaceCount** | integer | How many namespaces are considered<br/>*Default*: 0<br/> | false |
 | **namespaces** | []string | Namespaces which are considered for claims | false |
+
+
+### ResourcePool.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
 
 
 ### ResourcePool.status.allocation
@@ -604,10 +782,10 @@ ResourceQuotaClaimStatus defines the observed state of ResourceQuotaClaim.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **name** | string | Name of the referent. | true |
+| **namespace** | string | Namespace of the referent. | true |
+| **uid** | string | UID of the tracked Tenant to pin point tracking | true |
 | **claims** | map[string]int or string | Claimed resources | false |
-| **name** | string | Name | false |
-| **namespace** | string | Namespace | false |
-| **uid** | string | UID of the tracked Tenant to pin point tracking | false |
 
 
 ### ResourcePool.status.exhaustions[key]
@@ -621,6 +799,73 @@ ResourceQuotaClaimStatus defines the observed state of ResourceQuotaClaim.
 | :---- | :---- | :----------- | :-------- |
 | **available** | int or string | Available Resources to be claimed | false |
 | **requesting** | int or string | Requesting Resources | false |
+
+## RuleStatus
+
+
+
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | capsule.clastix.io/v1beta2 | true |
+| **kind** | string | RuleStatus | true |
+| **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
+| **[status](#rulestatusstatus)** | object | RuleStatus contains the accumulated rules applying to namespace it's deployed in. | false |
+
+
+### RuleStatus.status
+
+
+
+RuleStatus contains the accumulated rules applying to namespace it's deployed in.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[rule](#rulestatusstatusrule)** | object | Managed Enforcement properties per Namespace (aggregated from rules) | false |
+
+
+### RuleStatus.status.rule
+
+
+
+Managed Enforcement properties per Namespace (aggregated from rules)
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[enforce](#rulestatusstatusruleenforce)** | object | Enforcement Rules applied | false |
+
+
+### RuleStatus.status.rule.enforce
+
+
+
+Enforcement Rules applied
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[registries](#rulestatusstatusruleenforceregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+
+
+### RuleStatus.status.rule.enforce.registries[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **url** | string | OCI Registry endpoint, is treated as regular expression. | true |
+| **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
+| **validation** | []enum | Requesting Resources<br/>*Enum*: pod/images, pod/volumes<br/>*Default*: [pod/images pod/volumes]<br/> | false |
 
 ## TenantOwner
 
@@ -832,7 +1077,7 @@ Tenant is the Schema for the tenants API.
 | **apiVersion** | string | capsule.clastix.io/v1beta2 | true |
 | **kind** | string | Tenant | true |
 | **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
-| **[spec](#tenantspec-1)** | object | TenantSpec defines the desired state of Tenant. | true |
+| **[spec](#tenantspec-1)** | object | TenantSpec defines the desired state of Tenant. | false |
 | **[status](#tenantstatus-1)** | object | Returns the observed state of the Tenant. | false |
 
 
@@ -846,12 +1091,12 @@ TenantSpec defines the desired state of Tenant.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **[additionalRoleBindings](#tenantspecadditionalrolebindingsindex-1)** | []object | Specifies additional RoleBindings assigned to the Tenant. Capsule will ensure that all namespaces in the Tenant always contain the RoleBinding for the given ClusterRole. Optional. | false |
-| **[containerRegistries](#tenantspeccontainerregistries-1)** | object | Specifies the trusted Image Registries assigned to the Tenant. Capsule assures that all Pods resources created in the Tenant can use only one of the allowed trusted registries. Optional. | false |
+| **[containerRegistries](#tenantspeccontainerregistries-1)** | object | <span style="color:red;font-weight:bold">Deprecated: Use Enforcement.Registries instead<br><br>Specifies the trusted Image Registries assigned to the Tenant. Capsule assures that all Pods resources created in the Tenant can use only one of the allowed trusted registries. Optional.</span> | false |
 | **cordoned** | boolean | Toggling the Tenant resources cordoning, when enable resources cannot be deleted.<br/>*Default*: false<br/> | false |
 | **[deviceClasses](#tenantspecdeviceclasses)** | object | Specifies options for the DeviceClass resources. | false |
 | **forceTenantPrefix** | boolean | Use this if you want to disable/enable the Tenant name prefix to specific Tenants, overriding global forceTenantPrefix in CapsuleConfiguration.<br>When set to 'true', it enforces Namespaces created for this Tenant to be named with the Tenant name prefix,<br>separated by a dash (i.e. for Tenant 'foo', namespace names must be prefixed with 'foo-'),<br>this is useful to avoid Namespace name collision.<br>When set to 'false', it allows Namespaces created for this Tenant to be named anything.<br>Overrides CapsuleConfiguration global forceTenantPrefix for the Tenant only.<br>If unset, Tenant uses CapsuleConfiguration's forceTenantPrefix<br>Optional | false |
 | **[gatewayOptions](#tenantspecgatewayoptions)** | object | Specifies options for the GatewayClass resources. | false |
-| **imagePullPolicies** | []enum | Specify the allowed values for the imagePullPolicies option in Pod resources. Capsule assures that all Pod resources created in the Tenant can use only one of the allowed policy. Optional.<br/>*Enum*: Always, Never, IfNotPresent<br/> | false |
+| **imagePullPolicies** | []enum | <span style="color:red;font-weight:bold">Deprecated: Use Enforcement.Registries instead<br><br>Specify the allowed values for the imagePullPolicies option in Pod resources. Capsule assures that all Pod resources created in the Tenant can use only one of the allowed policy. Optional.</span><br/>*Enum*: Always, Never, IfNotPresent<br/> | false |
 | **[ingressOptions](#tenantspecingressoptions-1)** | object | Specifies options for the Ingress resources, such as allowed hostnames and IngressClass. Optional. | false |
 | **[limitRanges](#tenantspeclimitranges-1)** | object | <span style="color:red;font-weight:bold">Deprecated: Use Tenant Replications instead (https://projectcapsule.dev/docs/replications/)<br><br>Specifies the resource min/max usage restrictions to the Tenant. The assigned values are inherited by any namespace created in the Tenant. Optional.</span> | false |
 | **[namespaceOptions](#tenantspecnamespaceoptions-1)** | object | Specifies options for the Namespaces, such as additional metadata or maximum number of namespaces allowed for that Tenant. Once the namespace quota assigned to the Tenant has been reached, the Tenant owner cannot create further namespaces. Optional. | false |
@@ -863,6 +1108,7 @@ TenantSpec defines the desired state of Tenant.
 | **preventDeletion** | boolean | Prevent accidental deletion of the Tenant.<br>When enabled, the deletion request will be declined.<br/>*Default*: false<br/> | false |
 | **[priorityClasses](#tenantspecpriorityclasses-1)** | object | Specifies the allowed priorityClasses assigned to the Tenant.<br>Capsule assures that all Pods resources created in the Tenant can use only one of the allowed PriorityClasses.<br>A default value can be specified, and all the Pod resources created will inherit the declared class.<br>Optional. | false |
 | **[resourceQuotas](#tenantspecresourcequotas-1)** | object | Specifies a list of ResourceQuota resources assigned to the Tenant. The assigned values are inherited by any namespace created in the Tenant. The Capsule operator aggregates ResourceQuota at Tenant level, so that the hard quota is never crossed for the given Tenant. This permits the Tenant owner to consume resources in the Tenant regardless of the namespace. Optional. | false |
+| **[rules](#tenantspecrulesindex)** | []object | Specify enforcement specifications for the scope of the Tenant.<br> We are moving all configuration enforcement. per namespace into a rule construct.<br> It's currently not final.<br><br>Read More: https://projectcapsule.dev/docs/tenants/rules/ | false |
 | **[runtimeClasses](#tenantspecruntimeclasses)** | object | Specifies the allowed RuntimeClasses assigned to the Tenant.<br>Capsule assures that all Pods resources created in the Tenant can use only one of the allowed RuntimeClasses.<br>Optional. | false |
 | **[serviceOptions](#tenantspecserviceoptions-1)** | object | Specifies options for the Service, such as additional metadata or block of certain type of Services. Optional. | false |
 | **[storageClasses](#tenantspecstorageclasses-1)** | object | Specifies the allowed StorageClasses assigned to the Tenant.<br>Capsule assures that all PersistentVolumeClaim resources created in the Tenant can use only one of the allowed StorageClasses.<br>A default value can be specified, and all the PersistentVolumeClaim resources created will inherit the declared class.<br>Optional. | false |
@@ -902,6 +1148,8 @@ or a value for non-objects such as user and group names.
 ### Tenant.spec.containerRegistries
 
 
+
+Deprecated: Use Enforcement.Registries instead
 
 Specifies the trusted Image Registries assigned to the Tenant. Capsule assures that all Pods resources created in the Tenant can use only one of the allowed trusted registries. Optional.
 
@@ -1105,6 +1353,7 @@ Specifies options for the Namespaces, such as additional metadata or maximum num
 | **[forbiddenLabels](#tenantspecnamespaceoptionsforbiddenlabels)** | object | Define the labels that a Tenant Owner cannot set for their Namespace resources. | false |
 | **managedMetadataOnly** | boolean | If enabled only metadata from additionalMetadata is reconciled to the namespaces.<br/>*Default*: false<br/> | false |
 | **quota** | integer | Specifies the maximum number of namespaces allowed for that Tenant. Once the namespace quota assigned to the Tenant has been reached, the Tenant owner cannot create further namespaces. Optional.<br/>*Format*: int32<br/>*Minimum*: 1<br/> | false |
+| **[requiredMetadata](#tenantspecnamespaceoptionsrequiredmetadata)** | object | Required Metadata for namespace within this tenant | false |
 
 
 ### Tenant.spec.namespaceOptions.additionalMetadata
@@ -1190,6 +1439,19 @@ Define the labels that a Tenant Owner cannot set for their Namespace resources.
 | :---- | :---- | :----------- | :-------- |
 | **denied** | []string |  | false |
 | **deniedRegex** | string |  | false |
+
+
+### Tenant.spec.namespaceOptions.requiredMetadata
+
+
+
+Required Metadata for namespace within this tenant
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **annotations** | map[string]string | Annotations that must be defined for each namespace | false |
+| **labels** | map[string]string | Labels that must be defined for each namespace | false |
 
 
 ### Tenant.spec.networkPolicies
@@ -1688,6 +1950,73 @@ that relates the scope name and values.
 | **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty.<br>This array is replaced during a strategic merge patch. | false |
 
 
+### Tenant.spec.rules[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[enforce](#tenantspecrulesindexenforce)** | object | Enforcement Rules applied | false |
+| **[namespaceSelector](#tenantspecrulesindexnamespaceselector)** | object | Select namespaces which are going to usese | false |
+
+
+### Tenant.spec.rules[index].enforce
+
+
+
+Enforcement Rules applied
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[registries](#tenantspecrulesindexenforceregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+
+
+### Tenant.spec.rules[index].enforce.registries[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **url** | string | OCI Registry endpoint, is treated as regular expression. | true |
+| **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
+| **validation** | []enum | Requesting Resources<br/>*Enum*: pod/images, pod/volumes<br/>*Default*: [pod/images pod/volumes]<br/> | false |
+
+
+### Tenant.spec.rules[index].namespaceSelector
+
+
+
+Select namespaces which are going to usese
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecrulesindexnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
 ### Tenant.spec.runtimeClasses
 
 
@@ -1912,6 +2241,7 @@ Available Class Types within Tenant
 | :---- | :---- | :----------- | :-------- |
 | **[conditions](#tenantstatusspacesindexconditionsindex)** | []object | Conditions | true |
 | **name** | string | Namespace Name | true |
+| **[enforce](#tenantstatusspacesindexenforce)** | object | Managed Metadata | false |
 | **[metadata](#tenantstatusspacesindexmetadata)** | object | Managed Metadata | false |
 | **uid** | string | Namespace UID | false |
 
@@ -1931,6 +2261,32 @@ Condition contains details for one aspect of the current state of this API Resou
 | **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
 | **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
 | **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
+
+
+### Tenant.status.spaces[index].enforce
+
+
+
+Managed Metadata
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[registry](#tenantstatusspacesindexenforceregistryindex)** | []object | Registries which are allowed within this namespace | false |
+
+
+### Tenant.status.spaces[index].enforce.registry[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **url** | string | OCI Registry endpoint, is treated as regular expression. | true |
+| **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
+| **validation** | []enum | Requesting Resources<br/>*Enum*: pod/images, pod/volumes<br/>*Default*: [pod/images pod/volumes]<br/> | false |
 
 
 ### Tenant.status.spaces[index].metadata
