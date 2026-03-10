@@ -56,6 +56,11 @@ Newly added documentation to integrate Capsule with other applications:
 * [Argo CD](/ecosystem/integrations/argocd/)
 * [Flux CD](/ecosystem/integrations/fluxcd/)
 
+## Project Updates 💫
+
+  * Incubating [Sandert (ODC Noord)](https://github.com/sandert-k8s) as Maintainer for documentation and website improvements.
+  * Incubating [Corentin (CCL Consulting)](https://github.com/CorentinPtrl) as Maintainer as core maintainer.
+  * Incubating [Lucakuendig (Peak Scale)](https://github.com/lucakuendig) as Community Organizer and Openshift efforts.
 
 ## Roadmap 🗺️
 
@@ -87,14 +92,6 @@ In the upcoming releases we are planning to work on the following features:
 
 
 * **CNCF Security Slam 2026** 
-   * Capsule will once again be present at the CNCF and accept contributions from the community to improve the security of the project. [Security Slam 2026](https://securityslam.com/slam26/participating-projects). Recap of the award we received in 2023: 
+   * Capsule will once again be present at the CNCF and accept contributions from the community to improve the security of the project. [Security Slam 2026](https://securityslam.com/slam26/participating-projects). Recap of the award we received in 2023:
 
   ![capsule-cncf-secslam](/images/blog/security-slam-2023/receiver.jpg)
-
-
-## Project Updates
-
-  * Incubating [Sandert (ODC Noord)](https://github.com/sandert-k8s) as Maintainer for documentation and website improvements.
-  * Incubating [Corentin (CCL Consulting)](https://github.com/CorentinPtrl) as Maintainer as core maintainer.
-  * Incubating [Lucakuendig (Peak Scale)](https://github.com/lucakuendig) as Community Organizer and Openshift efforts.
-
