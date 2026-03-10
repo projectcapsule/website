@@ -31,6 +31,7 @@ weight: 1
 * Added configuration options for Cache invalidation [Read More](/docs/operating/setup/configuration/#cacheinvalidation)
 * Added configuration options for Dynamic Admission Webhooks [Read More](/docs/operating/setup/configuration/#admission)
 * Added Built-In Installation for Gangplank with the Capsule Proxy [Read More](/docs/proxy/gangplank/)
+* `Namespace` admission requests are now only sent to the Capsule admission webhook if the user is considered a capsule user (eg. all ServiceAccounts are considered capsule users). This makes Capsule less disruptive in Outage/Incident scenarios.
 
 ## Fixes 🐛
 
@@ -38,7 +39,7 @@ weight: 1
 
 * Improved `matchConditions` for admission webhooks that intercept all namespaced items, to avoid processing subresource requests and Events, improving performance and reducing log noise.
 
-* `Namespaces` are considered active until the Condition `ContentHasNoFinalizers` is `True`. This means that if a `Namespace` has finalizers, it will be considered active until the finalizers are removed. This is a more accurate representation of the state of the `Namespace`, as it can still be active even if it has finalizers. During this all capsule managed resources are still kept and their deletion is blocked until the finalizers are removed.
+* `Namespaces` are considered active until the Condition `ContentHasNoFinalizers` is `True`. This means that if a `Namespace` has Finalizers, it will be considered active until the Finalizers are removed. This is a more accurate representation of the state of the `Namespace`, as it can still be active even if it has Finalizers. During this all capsule managed resources are still kept and their deletion is blocked until the Finalizers are removed.
 
 ## Documentation 📚
 
@@ -61,16 +62,18 @@ Newly added documentation to integrate Capsule with other applications:
 In the upcoming releases we are planning to work on the following features:
 
   * Announcing Capsule Swag (Contribution Rewards) 🎁
-  * [Custom Resource Quotas](https://github.com/projectcapsule/capsule/issues/1745): A Quota implementation which allows to define custom quota constraints (Enterprise Request).
-  * Porting more Properties to the Namespace Rule Approach.
-  * Adding `transformers` for `Global`/`TenantResources`.
-  * Adding `healthChecks` for `Global`/`TenantResources`.
-  * Using Dynamic Admission to measure Resource Quota Usage at Admission (For Tenant Scope ResourceQuotas and JIT Claiming for ResourcePools)
-  * Introducing Break-The-Glass to allow temporary elevation of permissions for Tenant Owners, with an approval process by Platform Administrators.
-  * Adding custom health checks for ArgoCD to upstream
-  * Improving the documentation with more examples and use-cases.
-  * Bringing back RBAC reflection to Capsule-Proxy
-  * Adding Generic Implementation for `Global`/`TenantResources`.
+  * Capsule: [Custom Resource Quotas](https://github.com/projectcapsule/capsule/issues/1745): A Quota implementation which allows to define custom quota constraints (Enterprise Request).
+  * Capsule: Porting more Properties to the Namespace Rule Approach.
+  * Capsule: Adding `transformers` for `Global`/`TenantResources`.
+  * Capsule: Adding `healthChecks` for `Global`/`TenantResources`.
+  * Capsule: Using Dynamic Admission to measure Resource Quota Usage at Admission (For Tenant Scope ResourceQuotas and JIT Claiming for ResourcePools)
+  * Capsule: Introducing Break-The-Glass to allow temporary elevation of permissions for Tenant Owners, with an approval process by Platform Administrators.
+  * Capsule: Adding custom health checks for ArgoCD to upstream
+  * Capsule: Adding Generic Implementation for `Global`/`TenantResources`.
+  * Website: Improving the documentation with more examples and use-cases.
+  * Capsule-Proxy: Bringing back RBAC reflection to Capsule-Proxy (Generic Namespaced List Permissions)
+  * Capsule-Proxy: Deprecating ProxySettings on Tenants in favour of GlobalProxySettings
+
 
 ## Events 📅
 
@@ -86,6 +89,12 @@ In the upcoming releases we are planning to work on the following features:
 * **CNCF Security Slam 2026** 
    * Capsule will once again be present at the CNCF and accept contributions from the community to improve the security of the project. [Security Slam 2026](https://securityslam.com/slam26/participating-projects). Recap of the award we received in 2023: 
 
-
   ![capsule-cncf-secslam](/images/blog/security-slam-2023/receiver.jpg)
+
+
+## Project Updates
+
+  * Incubating [Sandert (ODC Noord)](https://github.com/sandert-k8s) as Maintainer for documentation and website improvements.
+  * Incubating [Corentin (CCL Consulting)](https://github.com/CorentinPtrl) as Maintainer as core maintainer.
+  * Incubating [Lucakuendig (Peak Scale)](https://github.com/lucakuendig) as Community Organizer and Openshift efforts.
 
