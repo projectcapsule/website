@@ -71,8 +71,8 @@ CapsuleConfigurationSpec defines the Capsule configuration.
 | **[nodeMetadata](#capsuleconfigurationspecnodemetadata)** | object | Allows to set the forbidden metadata for the worker nodes that could be patched by a Tenant.<br>This applies only if the Tenant has an active NodeSelector, and the Owner have right to patch their nodes. | false |
 | **[overrides](#capsuleconfigurationspecoverrides)** | object | Allows to set different name rather than the canonical one for the Capsule configuration objects,<br>such as webhook secret or configurations.<br/>*Default*: map[TLSSecretName:capsule-tls mutatingWebhookConfigurationName:capsule-mutating-webhook-configuration validatingWebhookConfigurationName:capsule-validating-webhook-configuration]<br/> | false |
 | **protectedNamespaceRegex** | string | Disallow creation of namespaces, whose name matches this regexp | false |
-| **userGroups** | []string | <span style="color:red;font-weight:bold">Deprecated: use users property instead (https://projectcapsule.dev/docs/operating/setup/configuration/#users)<br><br>Names of the groups considered as Capsule users.</span> | false |
-| **userNames** | []string | <span style="color:red;font-weight:bold">Deprecated: use users property instead (https://projectcapsule.dev/docs/operating/setup/configuration/#users)<br><br>Names of the users considered as Capsule users.</span> | false |
+| **userGroups** | []string | <span style="color:red;font-weight:bold">Deprecated: use users property instead ([https://projectcapsule.dev/docs/operating/setup/configuration/#users](/docs/operating/setup/configuration/#users))<br><br>Names of the groups considered as Capsule users.</span> | false |
+| **userNames** | []string | <span style="color:red;font-weight:bold">Deprecated: use users property instead ([https://projectcapsule.dev/docs/operating/setup/configuration/#users](/docs/operating/setup/configuration/#users))<br><br>Names of the users considered as Capsule users.</span> | false |
 | **[users](#capsuleconfigurationspecusersindex)** | []object | Define entities which are considered part of the Capsule construct<br>Users not mentioned here will be ignored by Capsule | false |
 
 
@@ -1098,9 +1098,9 @@ TenantSpec defines the desired state of Tenant.
 | **[gatewayOptions](#tenantspecgatewayoptions)** | object | Specifies options for the GatewayClass resources. | false |
 | **imagePullPolicies** | []enum | <span style="color:red;font-weight:bold">Deprecated: Use Enforcement.Registries instead<br><br>Specify the allowed values for the imagePullPolicies option in Pod resources. Capsule assures that all Pod resources created in the Tenant can use only one of the allowed policy. Optional.</span><br/>*Enum*: Always, Never, IfNotPresent<br/> | false |
 | **[ingressOptions](#tenantspecingressoptions-1)** | object | Specifies options for the Ingress resources, such as allowed hostnames and IngressClass. Optional. | false |
-| **[limitRanges](#tenantspeclimitranges-1)** | object | <span style="color:red;font-weight:bold">Deprecated: Use Tenant Replications instead (https://projectcapsule.dev/docs/replications/)<br><br>Specifies the resource min/max usage restrictions to the Tenant. The assigned values are inherited by any namespace created in the Tenant. Optional.</span> | false |
+| **[limitRanges](#tenantspeclimitranges-1)** | object | <span style="color:red;font-weight:bold">Deprecated: Use Tenant Replications instead ([https://projectcapsule.dev/docs/replications/](docs/replications/))<br><br>Specifies the resource min/max usage restrictions to the Tenant. The assigned values are inherited by any namespace created in the Tenant. Optional.</span> | false |
 | **[namespaceOptions](#tenantspecnamespaceoptions-1)** | object | Specifies options for the Namespaces, such as additional metadata or maximum number of namespaces allowed for that Tenant. Once the namespace quota assigned to the Tenant has been reached, the Tenant owner cannot create further namespaces. Optional. | false |
-| **[networkPolicies](#tenantspecnetworkpolicies-1)** | object | <span style="color:red;font-weight:bold">Deprecated: Use Tenant Replications instead (https://projectcapsule.dev/docs/replications/)<br><br>Specifies the NetworkPolicies assigned to the Tenant. The assigned NetworkPolicies are inherited by any namespace created in the Tenant. Optional.</span> | false |
+| **[networkPolicies](#tenantspecnetworkpolicies-1)** | object | <span style="color:red;font-weight:bold">Deprecated: Use Tenant Replications instead ([https://projectcapsule.dev/docs/replications/](docs/replications/))<br><br>Specifies the NetworkPolicies assigned to the Tenant. The assigned NetworkPolicies are inherited by any namespace created in the Tenant. Optional.</span> | false |
 | **nodeSelector** | map[string]string | Specifies the label to control the placement of pods on a given pool of worker nodes. All namespaces created within the Tenant will have the node selector annotation. This annotation tells the Kubernetes scheduler to place pods on the nodes having the selector label. Optional. | false |
 | **[owners](#tenantspecownersindex-1)** | []object | Specifies the owners of the Tenant.<br>Optional | false |
 | **[permissions](#tenantspecpermissions)** | object | Specify Permissions for the Tenant. | false |
@@ -1108,7 +1108,7 @@ TenantSpec defines the desired state of Tenant.
 | **preventDeletion** | boolean | Prevent accidental deletion of the Tenant.<br>When enabled, the deletion request will be declined.<br/>*Default*: false<br/> | false |
 | **[priorityClasses](#tenantspecpriorityclasses-1)** | object | Specifies the allowed priorityClasses assigned to the Tenant.<br>Capsule assures that all Pods resources created in the Tenant can use only one of the allowed PriorityClasses.<br>A default value can be specified, and all the Pod resources created will inherit the declared class.<br>Optional. | false |
 | **[resourceQuotas](#tenantspecresourcequotas-1)** | object | Specifies a list of ResourceQuota resources assigned to the Tenant. The assigned values are inherited by any namespace created in the Tenant. The Capsule operator aggregates ResourceQuota at Tenant level, so that the hard quota is never crossed for the given Tenant. This permits the Tenant owner to consume resources in the Tenant regardless of the namespace. Optional. | false |
-| **[rules](#tenantspecrulesindex)** | []object | Specify enforcement specifications for the scope of the Tenant.<br> We are moving all configuration enforcement. per namespace into a rule construct.<br> It's currently not final.<br><br>Read More: https://projectcapsule.dev/docs/tenants/rules/ | false |
+| **[rules](#tenantspecrulesindex)** | []object | Specify enforcement specifications for the scope of the Tenant.<br> We are moving all configuration enforcement. per namespace into a rule construct.<br> It's currently not final.<br><br>Read More: [https://projectcapsule.dev/docs/tenants/rules/](/docs/tenants/rules/) | false |
 | **[runtimeClasses](#tenantspecruntimeclasses)** | object | Specifies the allowed RuntimeClasses assigned to the Tenant.<br>Capsule assures that all Pods resources created in the Tenant can use only one of the allowed RuntimeClasses.<br>Optional. | false |
 | **[serviceOptions](#tenantspecserviceoptions-1)** | object | Specifies options for the Service, such as additional metadata or block of certain type of Services. Optional. | false |
 | **[storageClasses](#tenantspecstorageclasses-1)** | object | Specifies the allowed StorageClasses assigned to the Tenant.<br>Capsule assures that all PersistentVolumeClaim resources created in the Tenant can use only one of the allowed StorageClasses.<br>A default value can be specified, and all the PersistentVolumeClaim resources created will inherit the declared class.<br>Optional. | false |
@@ -1299,7 +1299,7 @@ Specifies the allowed hostnames in Ingresses for the given Tenant. Capsule assur
 
 
 
-Deprecated: Use Tenant Replications instead (https://projectcapsule.dev/docs/replications/)
+Deprecated: Use Tenant Replications instead ([https://projectcapsule.dev/docs/replications/](/docs/replications/))
 
 Specifies the resource min/max usage restrictions to the Tenant. The assigned values are inherited by any namespace created in the Tenant. Optional.
 
@@ -1347,7 +1347,7 @@ Specifies options for the Namespaces, such as additional metadata or maximum num
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[additionalMetadata](#tenantspecnamespaceoptionsadditionalmetadata-1)** | object | <span style="color:red;font-weight:bold">Deprecated: Use additionalMetadataList instead (https://projectcapsule.dev/docs/tenants/metadata/#additionalmetadatalist)<br><br>Specifies additional labels and annotations the Capsule operator places on any Namespace resource in the Tenant. Optional.</span> | false |
+| **[additionalMetadata](#tenantspecnamespaceoptionsadditionalmetadata-1)** | object | <span style="color:red;font-weight:bold">Deprecated: Use additionalMetadataList instead ([https://projectcapsule.dev/docs/tenants/metadata/#additionalmetadatalist](/docs/tenants/metadata/#additionalmetadatalist))<br><br>Specifies additional labels and annotations the Capsule operator places on any Namespace resource in the Tenant. Optional.</span> | false |
 | **[additionalMetadataList](#tenantspecnamespaceoptionsadditionalmetadatalistindex)** | []object | Specifies additional labels and annotations the Capsule operator places on any Namespace resource in the Tenant via a list. Optional. | false |
 | **[forbiddenAnnotations](#tenantspecnamespaceoptionsforbiddenannotations)** | object | Define the annotations that a Tenant Owner cannot set for their Namespace resources. | false |
 | **[forbiddenLabels](#tenantspecnamespaceoptionsforbiddenlabels)** | object | Define the labels that a Tenant Owner cannot set for their Namespace resources. | false |
@@ -1360,7 +1360,7 @@ Specifies options for the Namespaces, such as additional metadata or maximum num
 
 
 
-Deprecated: Use additionalMetadataList instead (https://projectcapsule.dev/docs/tenants/metadata/#additionalmetadatalist)
+Deprecated: Use additionalMetadataList instead ([https://projectcapsule.dev/docs/tenants/metadata/#additionalmetadatalist](/docs/tenants/metadata/#additionalmetadatalist))
 
 Specifies additional labels and annotations the Capsule operator places on any Namespace resource in the Tenant. Optional.
 
@@ -1458,7 +1458,7 @@ Required Metadata for namespace within this tenant
 
 
 
-Deprecated: Use Tenant Replications instead (https://projectcapsule.dev/docs/replications/)
+Deprecated: Use Tenant Replications instead ([https://projectcapsule.dev/docs/replications/](/docs/replications/))
 
 Specifies the NetworkPolicies assigned to the Tenant. The assigned NetworkPolicies are inherited by any namespace created in the Tenant. Optional.
 
