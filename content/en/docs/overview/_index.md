@@ -1,37 +1,61 @@
 ---
 title: Overview
 weight: 2
-description: Understand the problem Capsule is attempting to solve and how it works
+description: Run multiple teams on a single Kubernetes cluster with strong isolation, self-service, and zero cluster sprawl.
 ---
 
-Capsule implements a multi-tenant, policy-based environment in your Kubernetes cluster. It is designed as a microservices-based ecosystem with a minimalist approach, leveraging only upstream Kubernetes.
+Capsule is a Kubernetes Operator that turns a single cluster into a shared, multi-tenant platform. Teams get their own isolated space: a **Tenant**. Within their Tenant they own namespaces, resource budgets, and policies. Cluster administrators maintain full control, while teams work autonomously without stepping on each other.
 
-With Capsule, you have an ecosystem that addresses the challenges of hosting multiple parties on a shared Kubernetes cluster. Let's look at a typical scenario for using Capsule.
+No custom Kubernetes distribution. No extra tooling your users need to learn. Just plain Kubernetes, made shareable.
 
-<br>
+## The Problem
+
+Kubernetes namespaces provide a basic level of isolation, but they have no hierarchy. As soon as multiple teams or customers need to share a cluster, you face hard choices:
+
+- **Isolation is all-or-nothing** - there is no native way to group namespaces per team or enforce consistent policies across them.
+- **Namespace sprawl** - cluster admins become a bottleneck, manually creating and configuring every namespace.
+- **Cluster sprawl** - organizations spin up a separate cluster per team to achieve proper isolation, multiplying operational overhead across the board.
+
+## How Capsule Works
+
+Capsule introduces the **Tenant**: a lightweight, cluster-scoped resource that groups one or more Kubernetes namespaces under a shared set of boundaries.
+
+Everything defined on a Tenant is automatically inherited by all its namespaces:
+
+- **RBAC bindings** - roles are propagated to every namespace without manual setup.
+- **Resource quotas & limits** - CPU, memory, and storage budgets managed at the tenant level via [Resource Pools](/docs/resourcepools/).
+- **Admission rules** - allowed image registries, pull policies, security contexts, and more.
+- **Templated resource distribution** - using [Replications](/docs/replications/), resources such as NetworkPolicies, ImagePullSecrets, and LimitRanges are automatically distributed into all namespaces a Tenant Owner creates, using Go templates for dynamic values like namespace name or tenant name.
 
 ![capsule-workflow](/images/content/capsule-architecture.drawio.png)
 
-As shown, we can create a new boundary between Kubernetes (cluster) administrators and tenant audiences. While Kubernetes administrators define the boundaries of a tenant, the tenant audience can act within the namespaces of that tenant. For the tenant audience, we differentiate between Tenant Owners and Tenant Users. The main advantage Tenant Owners are granted is the ability to create namespaces within the tenants they own. This achieves a shift-left approach: instead of depending on Kubernetes administrators to create namespaces, Tenant Owners can manage this themselves, thereby granting them greater autonomy within strictly defined boundaries.
+## Who Does What
 
+| Role | Responsibility |
+|---|---|
+| **Cluster Admin** | Installs Capsule, creates Tenants, sets resource budgets and policies. Never a bottleneck for day-to-day namespace work. |
+| **Tenant Owner** | Creates and manages namespaces within their Tenant. Assigns access to team members. No cluster-level permissions needed. |
+| **Tenant User** | Deploys workloads inside tenant namespaces, within the limits the owner has set. |
 
-## What's the problem with the current status?
+This shift-left model means Tenant Owners handle day-to-day namespace operations themselves, freeing cluster admins from repetitive provisioning work.
 
-Kubernetes introduces the Namespace object type to create logical partitions of the cluster as isolated slices. However, when implementing advanced multi-tenancy scenarios, this soon becomes complicated because of the flat structure of Kubernetes namespaces and the impossibility of sharing resources among namespaces belonging to the same tenant. To overcome this, cluster admins tend to provision a dedicated cluster for each group of users, teams, or departments. As an organization grows, the number of clusters to manage and keep aligned becomes an operational nightmare, described as the well-known phenomenon of cluster sprawl.
+## Key Features
 
-## Entering Capsule
+- **[Tenants & Namespaces](/docs/tenants/)**: Group namespaces into logical units per team, product, or customer. Policy inheritance is automatic.
+- **[Resource Pools](/docs/resourcepools/)**: Distribute CPU, memory, and storage budgets across namespaces with flexible claiming rather than fixed per-namespace quotas.
+- **[Replications](/docs/replications/)**: Propagate Kubernetes resources (Secrets, ConfigMaps, etc.) across tenant namespaces automatically.
+- **[Policy Rules](/docs/tenants/rules/)**: Enforce allowed registries, pull policies, and namespace metadata requirements on a per-tenant basis.
+- **[Capsule Proxy](/docs/proxy/)**: Let users run `kubectl get namespaces` and see only their own, without granting cluster-wide LIST permissions. Also works for other cluster-wide requests, like `kubectl get pods -A`, or listing Persistent Volumes that are used by a Persistent Volume Claim inside the tenant.
 
-Capsule takes a different approach. In a single cluster, the Capsule Controller aggregates multiple namespaces in a lightweight abstraction called a Tenant, which is basically a grouping of Kubernetes namespaces. Within each tenant, users are free to create their namespaces and share all the assigned resources.
+## Capsule Controller
 
-On the other side, the Capsule Policy Engine keeps the different tenants isolated from each other. Network and security policies, resource quotas, limit ranges, RBAC, and other policies defined at the tenant level are automatically inherited by all the namespaces in the tenant. Users are then free to operate their tenants autonomously, without intervention from the cluster administrator.
+The Capsule controller is a Kubernetes operator that continuously watches Tenant resources and reconciles the desired state across all namespaces that belong to a tenant. When a Tenant is created or updated, the controller automatically propagates the configured policies to every namespace in that tenant.
 
-<br>
+When a Tenant Owner creates a new namespace, the controller detects it and immediately applies all inherited policies. This means tenants are always in a consistent, compliant state — even as they grow.
 
-![capsule-operator](/images/content/capsule-operator.svg)
+![capsule-operator](/images/content/capsule-operator.png)
 
+## Get Started
 
-## What problems are out of scope
-
-Capsule does not aim to solve the following problems:
-
-* Handling of Custom Resource Definition management. Capsule does not aim to manage the control of Custom Resource Definition. Users have to implement their own solution.
+- [**Quickstart** - create your first Tenant in minutes](/docs/tenants/quickstart/)
+- [**Tenant Docs** - explore everything Tenants can do](/docs/tenants/)
