@@ -74,6 +74,8 @@ A powerful tool to enhance the user-experience for all your users.
 
 `ProxySettings` are created in a namespace of a tenant, if it's not in a namespace of a tenant it's not regarded as valid. With the `ProxySettings` Tenant Owners can further improve the experience for their fellow tenant users.
 
+> `ProxyClusterScoped` is deprecated. Use [`GlobalProxySettings`](#globalproxysettings) instead.
+
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta1
