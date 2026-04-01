@@ -44,6 +44,15 @@ spec:
 
 ## ClusterSecretStores
 
+One possible approach is to generate a ClusterSecretStore scoping it only to the `Namespaces` of one `Tenant`:
+
+
+```yaml
+
+
+```
+
+
 
 
 

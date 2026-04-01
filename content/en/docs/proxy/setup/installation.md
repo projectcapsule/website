@@ -183,13 +183,109 @@ Consdierations when deploying capsule-proxy
 
 Depending on your environment, you can expose the capsule-proxy by:
 
- * `Ingress`
+ * `Gateway API (Recommended)`
+ * `Ingress (Recommended)`
  * `NodePort Service`
  * `LoadBalance Service`
  * `HostPort`
  * `HostNetwork`
 
-Here how it looks like when exposed through an Ingress Controller:
+
+#### Gateway API
+
+If you are using a Gateway API compliant Ingress Controller, you must first make the decision, how TLS is terminiated or rather what's possible in your environment. We have two potential options.
+
+##### Backend Termination (Recommended)
+
+This is where the TLS termination is executed by the capsule-proxy, meaning that the Ingress Controller will just forward the encrypted traffic to the capsule-proxy, which will decrypt it and forward it to the Kubernetes API Server. In this way, the client certificate authentication will be preserved and reversed to the upstream.
+
+1. On your Gateway, add a listener which allows to forward the encrypted traffic to the capsule-proxy (Pass-Through TLS):
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: service-gateway
+  namespace: solar-system
+spec:
+  gatewayClassName: default
+  listeners:
+    - allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: capsule-system
+      hostname: api.cluster-name.company.com
+      name: https-capsule-proxy
+      port: 443
+      protocol: TLS
+      tls:
+        mode: Passthrough
+```
+
+2. Install a `TLSRoute` resource to forward the encrypted traffic to the capsule-proxy:
+
+```yaml
+extraManifests:
+  - apiVersion: gateway.networking.k8s.io/v1
+    kind: TLSRoute
+    metadata:
+      name: capsule-proxy-tls-route
+      namespace: capsule-system
+    spec:
+      parentRefs:
+        - name: service-gateway
+          namespace: solar-system
+          sectionName: https-capsule-proxy
+      hostnames:
+        - api.cluster-name.company.com
+      rules:
+        - backendRefs:
+            - name: capsule-proxy
+              port: 9001
+```
+
+##### Gateway Termination
+
+When the Gateway is terminating we must ensure, that users use the corresponding CA/Serving Certificate in their Kubeconfigs. You must ensure that the CA certificate of the Gateway is distributed to the users, so they can use it to verify the identity of the capsule-proxy. In this way, the client certificate authentication will be withdrawn and not reversed to the upstream.
+
+1. Just create a listener on the Gateway and Reference the TLS certificate. The following example uses the [cert-manager integration](https://cert-manager.io/docs/usage/gateway/):
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: cluster-service-issuer
+    cert-manager.io/private-key-algorithm: RSA
+    cert-manager.io/private-key-size: "4096"
+  name: service-gateway
+  namespace: solar-system
+spec:
+  gatewayClassName: default
+  listeners:
+    - allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: capsule-system
+      hostname: api.cluster-name.company.com
+      name: https-capsule-proxy
+      port: 443
+      protocol: HTTPS
+      tls:
+         certificateRefs:
+         - group: ""
+           kind: Secret
+           name: capsule-proxy-tls
+         mode: Terminate
+```
+
+#### Ingress
+
+When using an Ingress Controller, you can expose the capsule-proxy through an Ingress resource. The Ingress Controller will handle the TLS termination and forward the requests to the capsule-proxy. The capsule-proxy will then forward the requests to the Kubernetes API Server.
 
 ```
                 +-----------+          +-----------+         +-----------+
@@ -198,13 +294,18 @@ Here how it looks like when exposed through an Ingress Controller:
                 ingress-controller     capsule-proxy         kube-apiserver
 ```
 
-### User Authentication
+You can use the Ingress Values provided in the Helm chart to configure the Ingress resource for the capsule-proxy:
 
-The capsule-proxy intercepts all the requests from the kubectl client directed to the APIs Server. Users using a TLS client-based authentication with a certificate and key can talk with the API Server since it can forward client certificates to the Kubernetes APIs server.
+```yaml
+ingress:
+  enabled: true
+  className: "nginx" # or your ingress class name
+  hosts:
+    - host: capsule-proxy.company.com
+      paths:
+        - "/"
+```
 
-It is possible to protect the capsule-proxy using a certificate provided by Let's Encrypt. Keep in mind that, in this way, the TLS termination will be executed by the Ingress Controller, meaning that the authentication based on the client certificate will be withdrawn and not reversed to the upstream.
-
-If your prerequisite is exposing capsule-proxy using an Ingress, you must rely on the token-based authentication, for example, OIDC or Bearer tokens. Users providing tokens are always able to reach the APIs Server.
 
 ### Certificate Management
 
@@ -233,6 +334,14 @@ This can be used for development purposes, but it's not recommended for producti
 
  * [Kubernetes Reflector](https://github.com/EmberStack/kubernetes-reflector)
 
+
+### User Authentication
+
+The capsule-proxy intercepts all the requests from the kubectl client directed to the APIs Server. Users using a TLS client-based authentication with a certificate and key can talk with the API Server since it can forward client certificates to the Kubernetes APIs server.
+
+It is possible to protect the capsule-proxy using a certificate provided by Let's Encrypt. Keep in mind that, in this way, the TLS termination will be executed by the Ingress Controller, meaning that the authentication based on the client certificate will be withdrawn and not reversed to the upstream.
+
+If your prerequisite is exposing capsule-proxy using an Ingress, you must rely on the token-based authentication, for example, OIDC or Bearer tokens. Users providing tokens are always able to reach the APIs Server.
 
 ### HTTP Support
 

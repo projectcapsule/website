@@ -36,10 +36,8 @@ weight: 1
 ## Fixes 🐛
 
 * Fixed `ResourcePool` resource quota calculation when multiple `ResourcePoolClaim`s are present in a namespace but not everything is used. For details, see [ResourcePools bound behavior](/docs/resourcepools/#bound).
-
 * Improved `matchConditions` for admission webhooks that intercept all namespaced items, to avoid processing subresource requests and Events, improving performance and reducing log noise.
-
-* `Namespaces` are considered active until the Condition `ContentHasNoFinalizers` is `True`. This means that if a `Namespace` has Finalizers, it will be considered active until the Finalizers are removed. This is a more accurate representation of the state of the `Namespace`, as it can still be active even if it has Finalizers. During this all capsule managed resources are still kept and their deletion is blocked until the Finalizers are removed.
+* `Namespaces` are considered active until all unmanaged namespaced resources are deleted. [Read More](/docs/tenants/namespaces/#termination)
 
 ## Documentation 📚
 

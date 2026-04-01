@@ -994,3 +994,73 @@ spec:
           - (name): "?*"
             imagePullPolicy: Always{{< /tab >}}
 {{% /tabpane %}}
+
+
+## Certificate Management
+
+
+### Selective ClusterIssuers
+
+Allow certain ClusterIssuers within Tenants:
+
+{{% tabpane lang="yaml" %}}
+  {{% tab header="**Engines**:" disabled=true /%}}
+  {{< tab header="Kyverno" >}}
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: certificates-restrict-clusterissuer-by-tenant-label
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: allow-clusterissuer-only-when-managed-by-matches
+      match:
+        any:
+          - resources:
+              kinds:
+                - cert-manager.io/v1/Certificate
+              namespaceSelector:
+                matchExpressions:
+                  - key: capsule.clastix.io/tenant
+                    operator: Exists
+      context:
+        - name: certManagedBy
+          variable:
+            jmesPath: request.object.metadata.labels."capsule.clastix.io/managed-by" || ''
+        - name: clusterIssuerManagedBy
+          apiCall:
+            urlPath: /apis/cert-manager.io/v1/clusterissuers/{{ request.object.spec.issuerRef.name }}
+            jmesPath: metadata.labels."company.com/tenant" || ''
+            default: ""
+      preconditions:
+        all:
+          - key: "{{ request.object.spec.issuerRef.kind || 'Issuer' }}"
+            operator: Equals
+            value: ClusterIssuer
+          - key: "{{request.operation || 'BACKGROUND'}}"
+            operator: AnyIn
+            value:
+            - CREATE
+            - UPDATE
+      validate:
+        message: >-
+          ClusterIssuer is only allowed when the Certificate label
+          capsule.clastix.io/managed-by ({{certManagedBy}}) matches the referenced ClusterIssuer label
+          company.com/tenant ({{clusterIssuerManagedBy}}).
+        deny:
+          conditions:
+            any:
+              - key: "{{certManagedBy}}"
+                operator: Equals
+                value: ""
+              - key: "{{clusterIssuerManagedBy}}"
+                operator: Equals
+                value: ""
+              - key: "{{certManagedBy}}"
+                operator: NotEquals
+                value: "{{clusterIssuerManagedBy}}"{{< /tab >}}
+{{% /tabpane %}}
+
+
