@@ -229,10 +229,11 @@ metadata:
   name: object-bucket-claim-storage
 spec:
   limit: "500Gi"
-  source:
-    version: v1
-    kind: ObjectBucketClaim
-    path: .spec.additionalConfig.maxSize
+  sources:
+    - version: v1alpha1
+      kind: ObjectBucketClaim
+      group: objectbucket.io
+      path: .spec.additionalConfig.maxSize
   selectors:
     - matchLabels:
         capsule.clastix.io/tenant: solar
