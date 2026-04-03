@@ -12,7 +12,7 @@ The configuration for the Proxy is also declarative via CRDs. This allows both A
 
 As an administrator, you might have the requirement to allow users to query cluster-scoped resources which are not directly linked to a tenant or anything like that. In that case you grant cluster-scoped `LIST` privileges to any subject, no matter what their tenant association is. For example:
 
-```yaml 
+```yaml
 apiVersion: capsule.clastix.io/v1beta1
 kind: GlobalProxySettings
 metadata:
@@ -36,8 +36,7 @@ spec:
 
 With this rule the `User` `alice` can list any cluster-scoped resource which match the `selector` condition. The `apiGroups` and `resources` work the same as known from Kubernetes [`ClusterRoles`](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#api-overview). All of these are valid expressions:
 
-
-```yaml 
+```yaml
 apiVersion: capsule.clastix.io/v1beta1
 kind: GlobalProxySettings
 metadata:
@@ -49,14 +48,14 @@ spec:
       name: alice
     clusterResources:
     - apiGroups:
-      - ""
+      - "capsule.clastix.io/v1beta2"
       resources:
-      - "pods"
+      - "globalcustomquotas"
       operations:
       - List
       selector:
         matchLabels:
-          app.kubernetes.io/type: dev
+          capsule.clastix.io/tenant: green
     - apiGroups:
       - "kyverno.io/v1"
       resources:
