@@ -48,7 +48,7 @@ spec:
       name: alice
     clusterResources:
     - apiGroups:
-      - "capsule.clastix.io/v1beta2"
+      - "capsule.clastix.io"
       resources:
       - "globalcustomquotas"
       operations:
@@ -57,7 +57,7 @@ spec:
         matchLabels:
           capsule.clastix.io/tenant: green
     - apiGroups:
-      - "kyverno.io/v1"
+      - "kyverno.io"
       resources:
       - "*"
       operations:
