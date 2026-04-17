@@ -1085,7 +1085,7 @@ spec:
 
 ### Context
 
-The `context` field lets you load additional Kubernetes resources into the template rendering context. This is useful when you need to iterate over existing objects as part of your template logic:
+The `context` field lets you load additional Kubernetes resources into the template rendering context. This is useful when you need to iterate over existing objects as part of your template logic. To inspect the full context available to a template, you can create a `ConfigMap` that dumps it:
 
 ```yaml
 ---
@@ -1093,6 +1093,7 @@ apiVersion: capsule.clastix.io/v1beta2
 kind: TenantResource
 metadata:
   name: tenant-sops-providers
+  namespace: wind-test
 spec:
   resyncPeriod: 600s
   resources:
@@ -1120,6 +1121,44 @@ spec:
             data:
               context.yaml: |
                 {{- toYAML $ | nindent 4 }}
+```
+
+A useful use case for this can be to add all imagePullSecrets to the `default` service account, so users don't have to add these manually to their deployment spec. In the example below, all the secrets with the label `imagePullSecret: "true"` are selected from the current Namespace. The names of these secrets are added to the `default` service account's `.imagePullSecrets` for all Namespaces of the Tenant:
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: TenantResource
+metadata:
+  name: imagepullsecrets-default-sa-green
+  namespace: wind-test
+spec:
+  settings:
+    adopt: true
+  resyncPeriod: 600s
+  resources:
+    - context:
+        resources:
+          - index: secrets
+            apiVersion: v1
+            kind: Secret
+            namespace: "{{.namespace}}"
+            selector:
+              matchLabels:
+                imagePullSecret: "true"
+      generators:
+        - template: |
+            ---
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: default
+            {{- if $.secrets }}
+            imagePullSecrets:
+            {{- range $.secrets }}
+              - name: {{ .metadata.name }}
+            {{- end }}
+            {{- end }}
 ```
 
 #### Base Context

@@ -56,7 +56,7 @@ Newly added documentation to integrate Capsule with other applications:
 
 ## Project Updates 💫
 
-  * Incubating [Sandert (ODC Noord)](https://github.com/sandert-k8s) as Maintainer for documentation and website improvements.
+  * Incubating [Sander (ODC Noord)](https://github.com/sandert-k8s) as Maintainer for documentation and website improvements.
   * Incubating [Corentin (CCL Consulting)](https://github.com/CorentinPtrl) as Maintainer as core maintainer.
   * Incubating [Lucakuendig (Peak Scale)](https://github.com/lucakuendig) as Community Organizer and Openshift efforts.
 
@@ -89,7 +89,7 @@ In the upcoming releases we are planning to work on the following features:
     * We are planning to host a Capsule Roundtable in Summer 2026 in Switzerland. The exact date and location will be announced soon, but we are looking forward to meeting the community in person and discussing the future of Capsule. If you are interested in attending or want to know more about the event, [feel free to reach out to us](https://peakscale.ch/en/contact/). The event is intended for users to present their use-cases and share their experiences with the project, as well as for us to present the roadmap and gather feedback from the community (Not a sales event).
 
 
-* **CNCF Security Slam 2026** 
+* **CNCF Security Slam 2026**
    * Capsule will once again be present at the CNCF and accept contributions from the community to improve the security of the project. [Security Slam 2026](https://securityslam.com/slam26/participating-projects). Recap of the award we received in 2023:
 
   ![capsule-cncf-secslam](/images/blog/security-slam-2023/receiver.jpg)
