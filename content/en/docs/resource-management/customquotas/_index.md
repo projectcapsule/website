@@ -7,22 +7,48 @@ description: >
 
 ## Concept
 
-CustomQuotas complement ResourceQuotas by enforcing limits on "custom" usage metrics that are extracted from objects themselves:
+CustomQuotas complement Kubernetes `ResourceQuota` by enforcing limits on **custom usage metrics extracted from objects themselves**.
 
-- `CustomQuota`: namespaced CRD that limits usage within a single namespace, matching objects by labels. **Can only be used for namespaced resources**.
-- `ClusterCustomQuota`: cluster-scoped CRD that aggregates usage across a set of namespaces selected by label selectors.
+Capsule provides two quota resources:
 
-Under the hood, an admission webhook tracks object lifecycle and updates the quota status. If an operation would push usage above the defined limit, it's denied.
+- `CustomQuota`: namespaced CRD that limits usage **inside one namespace**. It can only target **namespaced resources**.
+- `GlobalCustomQuota`: cluster-scoped CRD that aggregates usage across a set of namespaces selected by label selectors.
+
+A quota is defined by:
+
+- a `limit`
+- one or more `sources`
+- optional selectors to restrict which objects are counted
+
+Each matching object contributes a quantity to the quota. Capsule persists the current aggregate in `status.usage.used` and keeps the list of counted objects in `status.claims`.
 
 ## Calculation
 
+CustomQuotas are calculated in two cooperating parts:
 
+- **Admission webhook**: performs enforcement during `CREATE`, `UPDATE`, and `DELETE`
+- **Controller reconcile loop**: rebuilds the quota status from the actual cluster state and keeps it authoritative
 
 ### Admission
 
-In order to enforce the quotas, an admission webhook is used. The webhook intercepts create, update, and delete operations on objects matching the quota's source criteria. It calculates the new usage based on the defined JSONPath and updates the quota status accordingly (It's also cached to avoid racing conditions). If the new usage would exceed the defined limit, the webhook denies the operation.
+The admission webhook intercepts operations for the configured resource kinds and evaluates whether the change would violate any matching quota.
 
-By default, no objects are sent to this webhook. **You must explicitly enable it and configure the matching criteria** (e.g., by GVK or namespace labels) to have it enforce your quotas. This allows you to roll out CustomQuotas gradually and avoid unintended disruptions. Here's a basic example where we enable the webhook for all operations on `Pods` in namespaces labeled with `capsule.clastix.io/tenant=solar` via the helm chart:
+For each matching quota it:
+
+1. matches the object against the quota source `GVK`
+2. evaluates source selectors
+3. computes the requested usage for the operation
+4. creates or updates a short-lived **reservation** in the corresponding `QuantityLedger`
+5. denies the request if `persistedUsed + inflightReserved + requested > limit`
+
+This makes quota enforcement safe even during bursts of concurrent requests.
+
+> **Without the Admission Webhook enabled, CustomQuotas are observational only.**  
+> The controllers still rebuild and report usage, but requests are not denied.
+
+By default, no objects are sent to this webhook. You must explicitly enable it and configure matching rules.
+
+Example: enable calculations for all Pod create/update/delete operations in tenant namespaces:
 
 ```yaml
 webhooks:
@@ -96,129 +122,427 @@ The following constraints apply to the JSONPath:
   * Values can resolve to array results, which are then summed up. (For example, `.spec.containers[*].resources.limits.cpu` would sum the CPU limits of all containers in a Pod.)
   * Missing fields are treated as zero (`0`). We allow Keys to be missing be default. Meaning if you eg define this JP `.spec.initContainers[*].resources.limits.cpu` on a Pod that has no initContainers, it will simply contribute 0 to the usage instead of causing an error. This is useful for flexibility and to avoid unintended disruptions, but it also means that you need to be careful when defining your JSONPaths to ensure they accurately capture the intended usage.
 
-### Operations
+### Quota Matches
 
+As it's the case with native [ResourceQuotas](https://kubernetes.io/docs/concepts/policy/resource-quotas/#how-resource-quota-works), when a request is made, Capsule evaluates all existing CustomQuotas and GlobalCustomQuotas to determine which ones match the request. Always the smallest quantity of quotas is enforced, meaning that if multiple quotas match a request, the one with the least available capacity will be the one that determines whether the request is allowed or denied.
 
+Let's look at this example. We have a `GlobalCustomQuota` targeting all namespaces of the tenant `solar` with a limit of 6 Pods, and a `CustomQuota` in the namespace `solar-test` (part of tenant solar) with a limit of 3 Pods:
 
-
-
-### How usage is calculated
-
-For any create, update, or delete of an object matching the quota, the controller reads the value at `spec.source.path` from the object, parses it as a kubernetes Quantity, and adjusts the `status.used` accordingly:
-
-- On create: used += newUsage; claim is added.
-- On update: used += (newUsage - oldUsage); claim is added if this is the first time the object matches.
-- On delete: used -= oldUsage; claim is removed.
-
-If used + delta would exceed `spec.limit`, the admission webhook denies the operation.
-
-Notes:
-
-- Non-parsable values default to 0 and are ignored.
-- Only objects whose GVK (group, version, kind) matches `spec.source` are considered.
-- For `CustomQuota`, scopeSelectors are evaluated against the object labels; only matching objects count.
-- For `ClusterCustomQuota`, both the namespace must match selectors and the object labels must match scopeSelectors.
-
-## GlobalCustomQuota
-
-
-
-
-
-
-### Monitoring
-
-See how you can monitor `GlobalCustomQuota` usage via Prometheus metrics. The example metrics are based on this `GlobalCustomQuota` definition:
-
-```yaml
+```
+---
 apiVersion: capsule.clastix.io/v1beta2
 kind: GlobalCustomQuota
 metadata:
-  name: cpu-limit
+  name: pod-count-limit
 spec:
-  limit: "5"
+  limit: 6
   namespaceSelectors:
   - matchLabels:
       capsule.clastix.io/tenant: solar
   sources:
   - group: ""
     kind: Pod
-    op: add
-    path: .spec.containers[*].resources.limits.cpu
+    op: count
     version: v1
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: CustomQuota
+metadata:
+  name: pod-count-limit
+  namespace: solar-test
+spec:
+  limit: 3
+  sources:
   - group: ""
     kind: Pod
-    op: add
-    path: .spec.initContainers[*].resources.limits.cpu
+    op: count
     version: v1
+```
+
+When we now try to create 6 `Pods` in the namespace `solar-test`, we can observe that the `GlobalCustomQuota` allows only 6 Pods in total across all namespaces of the tenant, while the `CustomQuota` allows only 3 Pods in the `solar-test` namespace:
+
+```yaml
+kubectl get pod -n solar-test
+
+NAME                                READY   STATUS    RESTARTS   AGE
+nginx-deployment-6ff89574f8-2jbvp   1/1     Running   0          4m20s
+nginx-deployment-6ff89574f8-sdzvr   1/1     Running   0          4m20s
+nginx-deployment-6ff89574f8-tvk74   1/1     Running   0          4m20s
+```
+
+We can see that requests are blocked because of the limits by the `CustomQuota` first, as it has the least available capacity (3 available vs 6 available in the `GlobalCustomQuota`):
+
+```
+115s        Warning   FailedCreate        replicaset/nginx-deployment-6ff89574f8   Error creating: admission webhook "calculation.custom-quotas.projectcapsule.dev" denied the request: creating resource exceeds limit for CustomQuota "pod-count-limit" (requested=1, currentUsed=4, available=0, limit=3, inflightReserved=1)
+```
+
+### Namespace Scope
+
+[`GlobalCustomQuota`](#globalcustomquota) and [`CustomQuota`](#customquota) can operate in any namespace, they don't have to be part of a capsule tenant. This means that you can define a `CustomQuota` in any namespace, even if it's not part of a tenant, and it will still be enforced for objects in that namespace. Similarly, you can define a `GlobalCustomQuota` that selects namespaces based on labels, regardless of whether those namespaces are part of a tenant or not.
+
+## Sources
+
+A quota may define one or many sources. Each source describes:
+
+  * which objects are candidates (`group`, `version`, `kind`)
+  * what value is extracted from them ([`path`](#path), if applicable)
+  * how that value contributes to usage ([`op`](#operations))
+  * optional additional source-level selectors
+
+In practice, a source answers:
+
+ > “For objects of this kind, what should count toward the quota?”
+
+Sources are evaluated independently and then aggregated into one total.
+
+### GVK
+
+Each source must identify a Kubernetes resource type by Group / Version / Kind. Example for a core Kubernetes Pod:
+
+```yaml
+group: ""
+version: v1
+kind: Pod
+```
+
+Example for CRDs:
+
+```yaml
+group: objectbucket.io
+version: v1alpha1
+kind: ObjectBucketClaim
+```
+
+```yaml
+group: s3.aws.upbound.io
+version: v1beta1
+kind: Bucket
+```
+
+How matching works:
+
+* only objects whose GVK exactly matches the source are considered
+* for [`CustomQuota`](#customquota), the target resource must be namespaced
+* for [`GlobalCustomQuota`](#globalcustomquota), both namespaced Kubernetes resources and namespaced CRDs are supported across all selected namespaces
+if a source refers to a GVK that is not installed or not discoverable, the controller reports a reconcile failure in the quota condition
+
+A source does not automatically follow subresources, versions, or related objects. If you want to count two kinds, define two sources.
+
+For example, to count both Pods and PVCs, use two sources:
+
+```yaml
+spec:
+  sources:
+    - group: ""
+      version: v1
+      kind: Pod
+      op: count
+    - group: ""
+      version: v1
+      kind: PersistentVolumeClaim
+      op: count
+```
+
+### Path
+
+path defines which value is extracted from a matching object.
+
+Use path when the operation is [`add`](#add) or [`sub`](#sub) and you want to sum up numeric fields from the objects, such as CPU requests or storage sizes. **You can not use path with [`count`](#count)**.
+
+The path expression leverages [JSONPath](#jsonpath) syntax and must resolve to a numeric value or an array of numeric values. The resulting number is added to the quota usage according to the defined operation. Here some examples of paths:
+
+
+Count requested PVC storage:
+
+```yaml
+path: .spec.resources.requests.storage
+```
+
+Sum all container CPU requests in a Pod:
+
+```yaml
+path: .spec.containers[*].resources.requests.cpu
+```
+
+Sum ephemeral volume claim sizes declared inside a Pod:
+
+```yaml
+path: .spec.volumes[*].ephemeral.volumeClaimTemplate.spec.resources.requests.storage
+```
+
+Important notes:
+
+* the extracted value must be parseable as a Kubernetes Quantity
+* if the expression resolves to multiple values, Capsule sums them
+* missing fields contribute 0
+
+### Operations
+
+Each source has an `op` (operation) field. For every matching object, the controller rebuild determines the effective usage contribution per source:
+
+  * `add`: used += value
+  * `sub`: used -= value
+  * `count`: used += 1
+
+On updates, usage is recalculated from the current object state and the authoritative quota status is rebuilt from scratch from all matching objects.
+
+#### `add`
+
+Adds the extracted quantity to the quota usage. Typical use cases:
+
+  * CPU requests
+  * memory limits
+  * PVC storage
+  * emptyDir or ephemeral storage sizes
+
+This is the default behavior.
+
+Example:
+
+```yaml
+spec:
+  sources:
+    - group: ""
+      version: v1
+      kind: PersistentVolumeClaim
+      op: add
+      path: .spec.resources.requests.storage
+```
+
+#### `sub`
+
+Subtracts the extracted quantity from the quota usage. This is useful when you want a source to offset or discount usage from another source.
+
+#### `count`
+
+Counts matching objects as 1 each. Rules for count:
+
+  * `path` must not be set
+  * each matching object contributes exactly 1
+
+Example:
+
+```yaml
+spec:
+  sources:
+    - group: ""
+      version: v1
+      kind: Pod
+      op: count
+```
+
+### Selectors
+
+Each source can optionally include extra selectors to further restrict which objects contribute to usage. Capsule evaluates selectors after the object already matched the source GVK. Each entry will be aggregated with OR semantics, meaning that if an object matches any of the selector entries, it is counted. [LabelSelectors](#labelselectors) and [FieldSelectors](#fieldselectors) can be combined within the same selector entry with AND semantics, meaning that an object must match both to be counted.
+
+#### LabelSelectors
+
+A source selector may contain Kubernetes-style matchLabels / matchExpressions against the object labels.
+
+```yaml
+spec:
+  sources:
+    - version: v1
+      group: ""
+      kind: PersistentVolumeClaim
+      op: add
+      path: .spec.resources.requests.storage
+      selectors:
+        - matchExpressions:
+            - key: "team"
+              operator: In
+              values: ["platform", "dev"]
+        - matchLabels:
+            - key: "team"
+              operator: In
+              values: ["platform", "dev"]
+```
+
+#### FieldSelectors
+
+fieldSelectors are additional per-source filters. Each entry is a JSONPath expression evaluated against the candidate object.
+
+A selector entry matches when its JSONPath result is truthy:
+
+  * empty result, `false` or `0`: false
+  * any other non-empty result: true
+
+Given:
+
+```yaml
+spec:
+  sources:
+    - version: v1
+      group: ""
+      kind: PersistentVolumeClaim
+      op: add
+      path: .spec.resources.requests.storage
+      selectors:
+        - fieldSelectors:
+          - '.spec.accessModes[?(@=="ReadWriteOnce")]'
+          - '.status.phase'
+```
+
+the selector matches only if:
+
+  * the label selector matches, and
+  * `.spec.accessModes[?(@=="ReadWriteMany")]` returns a non-empty result, and
+  * `.status.phase` returns a non-empty result
+
+Within one `selectors` entry:
+
+* labelSelector AND all `fieldSelectors`
+
+Across multiple selectors entries:
+
+* OR semantics
+
+`FieldSelectors` are **not** Kubernetes API field selectors. They are evaluated by Capsule using JSONPath after the object has been listed.
+
+##### Examples
+
+Match PVCs that contain ReadWriteMany
+
+```yaml
+selectors:
+  - fieldSelectors:
+      - '.spec.accessModes[?(@=="ReadWriteMany")]'
+```
+
+Match objects where a field exists
+
+```yaml
+selectors:
+  - fieldSelectors:
+      - '.spec.storageClassName'
+```
+
+Match objects where a boolean field is true
+
+```yaml
+selectors:
+  - fieldSelectors:
+      - '.spec.suspend'
+```
+
+If `.spec.suspend` resolves to true, it matches.
+If it resolves to false or is missing, it does not match.
+
+Match objects with a specific condition present in an array
+
+```yaml
+selectors:
+  - fieldSelectors:
+      - '.status.conditions[?(@.type=="Ready")]'
+```
+
+This matches if at least one Ready condition exists.
+
+
+
+## GlobalCustomQuota
+
+`GlobalCustomQuota` aggregates usage across multiple namespaces.
+
+### Sources
+
+Sources can be distributed across many namespaces. Other than that, they follow the same [Sources rules](#sources).
+
+### Selectors
+
+Selectors preevaluated items considered for the quota. Only items matching the selectors are counted towards usage. [Selectors from Sources](#selectors) are applied after the source GVK is matched, so they can be used to further filter which objects are counted based on their labels or fields. However they can't select items which are not selected by the selectors on `GlobalCustomQuota` level. This means that if you want to select items across multiple namespaces, you need to use `namespaceSelectors` and not `selectors`.
+
+#### NamespaceSelectors
+
+Definition of `spec.namespaceSelectors` determines which namespaces are in scope. Only objects from matching namespaces are considered This enforces a 500Gi cap on ObjectBucketClaim storage in namespaces labeled with `capsule.clastix.io/tenant=solar`:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalCustomQuota
+metadata:
+  name: object-bucket-claim-storage
+spec:
+  limit: "500Gi"
+  namespaceSelectors:
+    - matchLabels:
+        capsule.clastix.io/tenant: solar
+  sources:
+    - version: v1alpha1
+      kind: ObjectBucketClaim
+      group: objectbucket.io
+      op: add
+      path: .spec.additionalConfig.maxSize
+```
+
+The collected namespaces are also reported in `status.namespaces` and can be used for informational purposes or by external systems to understand which namespaces are contributing to the quota usage.
+
+```yaml
+kubectl get globalcustomquota pod-count-limit -o yaml
+
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalCustomQuota
+metadata:
+  name: object-bucket-claim-storage
+spec:
+  limit: "500Gi"
+  namespaceSelectors:
+    - matchLabels:
+        capsule.clastix.io/tenant: solar
+  sources:
+    - version: v1alpha1
+      kind: ObjectBucketClaim
+      group: objectbucket.io
+      op: add
+      path: .spec.additionalConfig.maxSize
 status:
-  claims:
-  - group: ""
-    kind: Pod
-    name: netshoot
-    namespace: solar-test
-    uid: 0086632e-c49e-4453-b622-310918908d00
-    usage: "3"
-    version: v1
   conditions:
-  - lastTransitionTime: "2026-03-31T18:12:02Z"
+  - lastTransitionTime: "2026-04-17T08:13:17Z"
     message: reconciled
     reason: Succeeded
     status: "True"
     type: Ready
   namespaces:
   - solar-prod
-  - solar-test
   targets:
-  - group: ""
-    kind: Pod
-    op: add
-    path: .spec.containers[*].resources.limits.cpu
-    scope: namespace
-    version: v1
-  - group: ""
-    kind: Pod
-    op: add
-    path: .spec.initContainers[*].resources.limits.cpu
-    scope: namespace
-    version: v1
+    - version: v1alpha1
+      kind: ObjectBucketClaim
+      group: objectbucket.io
+      op: add
+      path: .spec.additionalConfig.maxSize
   usage:
-    available: "1"
-    used: "4"
+    available: "500Gi"
+    used: "0"
 ```
 
-#### Metrics
+#### ScopeSelectors
 
-The following metrics are exposed for each `GlobalCustomQuota`:
+Sources can be distributed across multiple namespaces. Other than that follow [#sources](#sources) rules. This enforces a 500Gi cap on ObjectBucketClaim storage in namespaces labeled with `capsule.clastix.io/tenant=solar`, counting only claims labeled with `objectbucket.io/storage-class=gold`:
 
-```shell
-# TYPE capsule_global_custom_quota_condition gauge
-capsule_global_custom_quota_condition{condition="Ready",custom_quota="cpu-limit"} 1
-
-# HELP capsule_global_custom_quota_resource_available Available resources for given global_custom quota
-# TYPE capsule_global_custom_quota_resource_available gauge
-capsule_global_custom_quota_resource_available{custom_quota="cpu-limit"} 1
-
-# HELP capsule_global_custom_quota_resource_item_usage Claimed resources from given item
-# TYPE capsule_global_custom_quota_resource_item_usage gauge
-capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limit",group="",kind="Pod",name="netshoot",target_namespace="solar-test"} 3
-
-# HELP capsule_global_custom_quota_resource_limit Current resource limit for given global custom quota
-# TYPE capsule_global_custom_quota_resource_limit gauge
-capsule_global_custom_quota_resource_limit{custom_quota="cpu-limit"} 5
-
-# HELP capsule_global_custom_quota_resource_usage Current resource usage for given global custom quota
-# TYPE capsule_global_custom_quota_resource_usage gauge
-capsule_global_custom_quota_resource_usage{custom_quota="cpu-limit"} 4
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalCustomQuota
+metadata:
+  name: object-bucket-claim-storage
+spec:
+  limit: "500Gi"
+  namespaceSelectors:
+    - matchLabels:
+        capsule.clastix.io/tenant: solar
+  scopeSelectors:
+    - matchLabels:
+        objectbucket.io/storage-class: gold
+  sources:
+    - version: v1alpha1
+      kind: ObjectBucketClaim
+      group: objectbucket.io
+      op: add
+      path: .spec.additionalConfig.maxSize
 ```
 
-#### Rules
 
+### Examples
 
-
-## Examples
-
-### Limit total max storage across bucket claims for selected namespaces
+#### Limit total max storage across bucket claims for selected namespaces
 
 This enforces a 500Gi cap on max storage requested by `ObjectBucketClaims` in all namespaces labeled with `capsule.clastix.io/tenant=solar`, but only counting those claims with the storage class label `objectbucket.io/storage-class=gold`.
 
@@ -242,82 +566,248 @@ spec:
         objectbucket.io/storage-class: gold
 ```
 
+#### Limit the number of LoadBalancer Services across tenant namespaces
+
+This limits the total number of Services of type LoadBalancer across all namespaces of one tenant.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalCustomQuota
+metadata:
+  name: customer-a-loadbalancers
+spec:
+  limit: 3
+  namespaceSelectors:
+    - matchLabels:
+        customer: a
+  sources:
+    - group: ""
+      version: v1
+      kind: Service
+      op: count
+      selectors:
+        - fieldSelectors:
+            - '.spec.type[?(@=="LoadBalancer")]'
+```
+
+#### Aggregate ephemeral and persistent storage
+
+This policy combines:
+
+* storage requested by Pod ephemeral volume claim templates
+* storage requested by PVCs
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalCustomQuota
+metadata:
+  name: solar-storage-aggregate
+spec:
+  limit: 5Gi
+  namespaceSelectors:
+  - matchLabels:
+      capsule.clastix.io/tenant: solar
+  sources:
+    - group: ""
+      version: v1
+      kind: Pod
+      op: add
+      path: ".spec.volumes[*].ephemeral.volumeClaimTemplate.spec.resources.requests.storage"
+    - group: ""
+      version: v1
+      kind: PersistentVolumeClaim
+      op: add
+      path: ".spec.resources.requests.storage"
+      selectors:
+        - fieldSelectors:
+            - '.spec.accessModes[?(@=="ReadWriteOnce")]'
+```
+
+
+#### Count Crossplane Buckets across tenant namespaces
+
+This limits how many Crossplane S3 buckets may exist across a tenant.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalCustomQuota
+metadata:
+  name: tenant-crossplane-buckets
+spec:
+  limit: 5
+  namespaceSelectors:
+    - matchLabels:
+        capsule.clastix.io/tenant: solar
+  sources:
+    - group: s3.aws.upbound.io
+      version: v1beta1
+      kind: Bucket
+      op: count
+```
+
+### Monitoring
+
+See how you can monitor `GlobalCustomQuota` usage via Prometheus metrics. The example metrics are based on this `GlobalCustomQuota` definition:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalCustomQuota
+metadata:
+  name: cpu-limits
+spec:
+  limit: 5
+  namespaceSelectors:
+  - matchLabels:
+      capsule.clastix.io/tenant: solar
+  sources:
+  - group: ""
+    kind: Pod
+    op: add
+    path: .spec.containers[*].resources.limits.cpu
+    version: v1
+  - group: ""
+    kind: Pod
+    op: add
+    path: .spec.initContainers[*].resources.limits.cpu
+    version: v1
+status:
+  claims:
+  - group: ""
+    kind: Pod
+    name: nginx-deployment-6ff89574f8-299zf
+    namespace: solar-test
+    uid: f7ff7d7c-7128-4f44-ad13-3c44882420f8
+    usage: 250m
+    version: v1
+  - group: ""
+    kind: Pod
+    name: nginx-deployment-6ff89574f8-9zzzw
+    namespace: solar-test
+    uid: 24c1bdea-000d-4e10-8af6-eb23c44ceaa3
+    usage: 250m
+    version: v1
+  - group: ""
+    kind: Pod
+    name: nginx-deployment-6ff89574f8-gnf8f
+    namespace: solar-test
+    uid: 25368dd6-b3e7-4cbd-9fc8-9082db50372e
+    usage: 250m
+    version: v1
+  - group: ""
+    kind: Pod
+    name: nginx-deployment-6ff89574f8-l68c5
+    namespace: solar-test
+    uid: bb697ba6-6512-4d63-acf8-6d058364c9d4
+    usage: 250m
+    version: v1
+  - group: ""
+    kind: Pod
+    name: nginx-deployment-6ff89574f8-lrzvd
+    namespace: solar-test
+    uid: 50556db5-0134-4f0a-a0b8-56235f2bdc59
+    usage: 250m
+    version: v1
+  - group: ""
+    kind: Pod
+    name: nginx-deployment-6ff89574f8-5hzp9
+    namespace: solar-test
+    uid: 7c6d1252-f649-4106-bfae-22c558c798df
+    usage: 250m
+    version: v1
+  conditions:
+  - lastTransitionTime: "2026-04-17T08:29:15Z"
+    message: reconciled
+    reason: Succeeded
+    status: "True"
+    type: Ready
+  namespaces:
+  - solar-prod
+  - solar-test
+  targets:
+  - group: ""
+    kind: Pod
+    op: add
+    path: .spec.containers[*].resources.limits.cpu
+    scope: namespace
+    version: v1
+  - group: ""
+    kind: Pod
+    op: add
+    path: .spec.initContainers[*].resources.limits.cpu
+    scope: namespace
+    version: v1
+  usage:
+    available: 3500m
+    used: 1500m
+```
+
+#### Metrics
+
+The following metrics are exposed for each `GlobalCustomQuota`:
+
+```shell
+# HELP capsule_global_custom_quota_condition Provides per global custom quota condition status
+# TYPE capsule_global_custom_quota_condition gauge
+capsule_global_custom_quota_condition{condition="Ready",custom_quota="cpu-limits"} 1
+
+# HELP capsule_global_custom_quota_resource_item_usage Claimed resources from given item
+# TYPE capsule_global_custom_quota_resource_item_usage gauge
+capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limits",group="",kind="Pod",name="nginx-deployment-6ff89574f8-299zf",target_namespace="solar-test"} 0.25
+capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limits",group="",kind="Pod",name="nginx-deployment-6ff89574f8-5hzp9",target_namespace="solar-test"} 0.25
+capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limits",group="",kind="Pod",name="nginx-deployment-6ff89574f8-9zzzw",target_namespace="solar-test"} 0.25
+capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limits",group="",kind="Pod",name="nginx-deployment-6ff89574f8-gnf8f",target_namespace="solar-test"} 0.25
+capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limits",group="",kind="Pod",name="nginx-deployment-6ff89574f8-l68c5",target_namespace="solar-test"} 0.25
+capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limits",group="",kind="Pod",name="nginx-deployment-6ff89574f8-lrzvd",target_namespace="solar-test"} 0.25
+
+# TYPE capsule_global_custom_quota_resource_limit gauge
+capsule_global_custom_quota_resource_limit{custom_quota="cpu-limits"} 5
+
+# TYPE capsule_global_custom_quota_resource_available gauge
+capsule_global_custom_quota_resource_available{custom_quota="cpu-limits"} 3.5
+
+# TYPE capsule_global_custom_quota_resource_usage gauge
+capsule_global_custom_quota_resource_usage{custom_quota="cpu-limits"} 1.5
+```
+
+#### Rules
 
 
 
 ## CustomQuota
 
+`CustomQuota` is namespaced and only counts resources in the same namespace as the quota.
 
 
-### Limit total PVC storage per team
+### Selectors
 
-This enforces a 200Gi cap on total storage requested by `PersistentVolumeClaims` in the namespace, counting only claims labeled with `team=platform`.
+Selectors preevaluated items considered for the quota. Only items matching the selectors are counted towards usage. [Selectors from Sources](#selectors) are applied after the source GVK is matched, so they can be used to further filter which objects are counted based on their labels or fields. However they can't select items which are not selected by the selectors on `GlobalCustomQuota` level. This means that if you want to select items across multiple namespaces, you need to use `namespaceSelectors` and not `selectors`.
+
+#### ScopeSelectors
+
+Sources can be distributed across multiple namespaces. Other than that follow [#sources](#sources) rules. This enforces a 500Gi cap on ObjectBucketClaim storage  counting only claims labeled with `objectbucket.io/storage-class=gold`:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
 kind: CustomQuota
 metadata:
-  name: pvc-storage-limit
-  namespace: team-a
+  name: object-bucket-claim-storage
+  namespace: solar-test
 spec:
-  limit: "200Gi"
-  source:
-    version: v1
-    kind: PersistentVolumeClaim
-    path: .spec.resources.requests.storage
+  limit: "500Gi"
   scopeSelectors:
     - matchLabels:
-        team: platform
+        objectbucket.io/storage-class: gold
+  sources:
+    - version: v1alpha1
+      kind: ObjectBucketClaim
+      group: objectbucket.io
+      op: add
+      path: .spec.additionalConfig.maxSize
 ```
 
-## Admission behavior and immutability
 
-- Deny on limit breach: If an object creation or update would cause used to exceed limit, the request is denied.
-- Live tracking: The webhook updates `status.used` and `status.available` during admission; controllers recompute aggregates on spec changes.
-- Claims lifecycle: The `status.claims` list is the authoritative set of objects currently counted. It's updated on create/update/delete.
 
-## Selection
+#### Examples
 
-- Object selection: scopeSelectors use standard Kubernetes LabelSelectors applied to the object labels.
-- Namespace selection (`ClusterCustomQuota`): selectors use standard LabelSelectors applied to namespaces; only those namespaces contribute objects.
-
-## Observability
-
-You can list quotas and see usage directly via kubectl:
-
-```shell
-kubectl get customquota -n team-a
-NAME                USED   LIMIT   AVAILABLE
-pvc-storage-limit   100Gi  200Gi   100Gi
-
-kubectl get clustercustomquota
-NAME                          USED   LIMIT   AVAILABLE
-object-bucket-claim-storage   100Gi  500Gi   400Gi
-```
-
-Each quota also shows the claims list in the status for debugging:
-
-```shell
-kubectl get customquota pvc-storage-limit -n team-a -o yaml | yq '.status'
-```
-
-## Common patterns
-
-- Storage governance: Sum requested storage on PVCs by storage class, team, or environment.
-- CRD-specific quotas: Point to your CRD GVK and a numeric/quantity field to enforce caps.
-
-## Edge cases and notes
-
-- Zero values: If limit is 0, all matching operations are denied unless used is also 0; useful for temporary freezes.
-- Missing fields: If the path doesn't exist on an object, it contributes 0.
-- Path value type: The path must resolve to a string that can be parsed as a Quantity (e.g., "3", "500Mi", "1Gi"). Non-numeric strings are treated as 0.
-
-## Migration and coexistence
-
-CustomQuotas are independent of Kubernetes core ResourceQuotas. You can use them side-by-side: ResourceQuotas gate core resource consumption at the namespace boundary, while CustomQuotas enforce domain-specific caps derived from object fields.
-
-When introducing CustomQuotas:
-
-- Start with read-only observation by setting a high limit and watching status.used.
-- Lower limits gradually and observe denied operations in admission logs.
-- Keep selectors narrow to avoid accidental broad impact.
+CREATE EXAMPLES HERE

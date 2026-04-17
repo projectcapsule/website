@@ -248,6 +248,10 @@ extraManifests:
 
 ##### Gateway Termination
 
+{{% alert title="Support" color="warning" %}}
+With Gateway Termination currently only [Bearer Token authentication](#bearer-token-authentication) is supported, meaning that users providing tokens are always able to reach the APIs Server. [Client certificate authentication](#client-certificate-authentication) is not supported in this scenario. If the Gateway must terminate, you must consider using [Forwarded Client Certificate Authentication (XFCC)](#forwarded-client-certificate-authentication-xfcc) if supported by your Gateway Controller.
+{{% /alert %}}
+
 When the Gateway is terminating we must ensure, that users use the corresponding CA/Serving Certificate in their Kubeconfigs. You must ensure that the CA certificate of the Gateway is distributed to the users, so they can use it to verify the identity of the capsule-proxy. In this way, the client certificate authentication will be withdrawn and not reversed to the upstream.
 
 1. Just create a listener on the Gateway and Reference the TLS certificate. The following example uses the [cert-manager integration](https://cert-manager.io/docs/usage/gateway/):
@@ -306,6 +310,34 @@ ingress:
         - "/"
 ```
 
+### User Authentication
+
+The capsule-proxy intercepts all the requests from the kubectl client directed to the APIs Server. Users using a TLS client-based authentication with a certificate and key can talk with the API Server since it can forward client certificates to the Kubernetes APIs server.
+
+
+#### Bearer Token Authentication
+
+
+#### Client Certificate Authentication
+
+
+
+It is possible to protect the capsule-proxy using a certificate provided by Let's Encrypt. Keep in mind that, in this way, the TLS termination will be executed by the Ingress Controller, meaning that the authentication based on the client certificate will be withdrawn and not reversed to the upstream. For such cases you may want to rely on the token-based authentication, for example, OIDC or Bearer tokens. Users providing tokens are always able to reach the APIs Server or consider using the [Forwarded Client Certificate Authentication (XFCC)](#forwarded-client-certificate-authentication-xfcc) if supported by your Ingress Controller.
+
+#### Forwarded Client Certificate Authentication (XFCC)
+
+
+It is possible to protect the capsule-proxy using a certificate provided by Let's Encrypt. Keep in mind that, in this way, the TLS termination will be executed by the Ingress Controller, meaning that the authentication based on the client certificate will be withdrawn and not reversed to the upstream.
+
+If your prerequisite is exposing capsule-proxy using an Ingress, you must rely on the token-based authentication, for example, OIDC or Bearer tokens. Users providing tokens are always able to reach the APIs Server.
+
+
+
+### Trusted Sources
+
+
+
+
 
 ### Certificate Management
 
@@ -334,14 +366,82 @@ This can be used for development purposes, but it's not recommended for producti
 
  * [Kubernetes Reflector](https://github.com/EmberStack/kubernetes-reflector)
 
+##### External Secrets (ESO)
 
-### User Authentication
+How to distribute the CA certificate using External Secrets Operator (ESO). In the following example we have `Headlamp` running in a different namespace and we want to distribute the CA certificate to it.
 
-The capsule-proxy intercepts all the requests from the kubectl client directed to the APIs Server. Users using a TLS client-based authentication with a certificate and key can talk with the API Server since it can forward client certificates to the Kubernetes APIs server.
+First allow ServiceAccount `headlamp` to read the Secret `capsule-proxy` in the `capsule-system` namespace:
 
-It is possible to protect the capsule-proxy using a certificate provided by Let's Encrypt. Keep in mind that, in this way, the TLS termination will be executed by the Ingress Controller, meaning that the authentication based on the client certificate will be withdrawn and not reversed to the upstream.
+```yaml 
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: headlamp:capsule-proxy-ca-reader
+  namespace: capsule-system
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["capsule-proxy"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: headlamp:capsule-proxy-ca-reader
+  namespace: capsule-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: headlamp:capsule-proxy-ca-reader
+subjects:
+  - kind: ServiceAccount
+    name: headlamp
+    namespace: dashboard-system
+```
 
-If your prerequisite is exposing capsule-proxy using an Ingress, you must rely on the token-based authentication, for example, OIDC or Bearer tokens. Users providing tokens are always able to reach the APIs Server.
+Create ExternalSecret to sync the Secret `capsule-proxy` from the `capsule-system` namespace to the `dashboard-system` namespace:
+
+```yaml
+---
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: capsule-proxy-ca
+  namespace: dashboard-system
+spec:
+  provider:
+    kubernetes:
+      remoteNamespace: capsule-system
+      server:
+        url: https://kubernetes.default.svc
+        caProvider:
+          type: ConfigMap
+          name: kube-root-ca.crt
+          key: ca.crt
+      auth:
+        serviceAccount:
+          name: headlamp
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: capsule-proxy-ca
+  namespace: dashboard-system
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: SecretStore
+    name: capsule-proxy-ca
+  target:
+    name: capsule-proxy-ca
+    creationPolicy: Owner
+  data:
+    - secretKey: ca.crt
+      remoteRef:
+        key: capsule-proxy
+        property: ca.crt
+```
 
 ### HTTP Support
 

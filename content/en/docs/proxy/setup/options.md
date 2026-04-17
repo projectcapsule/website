@@ -67,10 +67,10 @@ options:
 The following options are available for the Capsule Proxy Controller:
 
 ```shell
-      --auth-preferred-types string           Authentication types to be used for requests. Possible Auth Types: [BearerToken, TLSCertificate]
+      --allowed-paths strings                 URL paths which are not inspected by capsule-proxy (still require valid authentication) (default [/api,/apis,/version])
+      --auth-preferred-types string           Authentication types to be used for requests. Possible Auth Types: [BearerToken, TLSCertificate, XForwardedClientCert]
                                               First match is used and can be specified multiple times as comma separated values or by using the flag multiple times. (default "[TLSCertificate,BearerToken]")
       --capsule-configuration-name string     Name of the CapsuleConfiguration used to retrieve the Capsule user groups names (default "default")
-      --capsule-user-group strings            Names of the groups for capsule users (deprecated: use capsule-configuration-name)
       --client-connection-burst int32         Burst to use for interacting with kubernetes apiserver. (default 30)
       --client-connection-qps float32         QPS to use for interacting with kubernetes apiserver. (default 20)
       --disable-caching                       Disable the go-client caching to hit directly the Kubernetes API Server, it disables any local caching as the rolebinding reflector (default: false)
@@ -93,7 +93,9 @@ The following options are available for the Capsule Proxy Controller:
       --rolebindings-resync-period duration   Resync period for rolebindings reflector (default 10h0m0s)
       --ssl-cert-path string                  Path to the TLS certificate (default: /opt/capsule-proxy/tls.crt)
       --ssl-key-path string                   Path to the TLS certificate key (default: /opt/capsule-proxy/tls.key)
+      --trusted-proxy-cidrs strings           CIDR ranges of trusted proxies allowed to make requests to the proxy
       --webhook-port int                      The port the webhook server binds to. (default 9443)
+      --xfcc-header-name string               Name of the header inspected for forwarded client certificates (default "X-Forwarded-Client-Cert")
       --zap-devel                             Development Mode defaults(encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn). Production Mode defaults(encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error)
       --zap-encoder encoder                   Zap log encoding (one of 'json' or 'console')
       --zap-log-level level                   Zap Level to configure the verbosity of logging. Can be one of 'debug', 'info', 'error', 'panic'or any integer value > 0 which corresponds to custom debug levels of increasing verbosity
