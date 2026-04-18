@@ -196,8 +196,8 @@ spec:
  This allows users to essentially schedule anything in the namespace:
 
 ```shell
-NAME                     AGE     REQUEST           LIMIT
-capsule-pool-exmaple     2m47s
+ NAME                     AGE     REQUEST           LIMIT
+capsule-pool-example     2m47s
 ```
 
 To prevent this, you might consider using the [DefaultsZero option](#defaultszero). This option can also be combined with setting other defaults, not part of the `.spec.quota.hard`. Here we are additionally restricting the creation of `persistentvolumeclaims`:
@@ -238,7 +238,7 @@ Options that can be defined on a per-`ResourcePool` basis and influence the gene
 
 #### OrderedQueue
 
-When `ResourecePoolClaims` are allocated to a pool, they are placed in a queue. The pool attempts to allocate claims in the order of their [creation timestamps](#priority). However, even if a claim was created earlier, if it requests more resources than are currently available, it will remain in the queue. Meanwhile, a lower-priority claim that fits within the available resources may still be allocated—despite its lower priority.
+When `ResourcePoolClaims` are allocated to a pool, they are placed in a queue. The pool attempts to allocate claims in the order of their [creation timestamps](#priority). However, even if a claim was created earlier, if it requests more resources than are currently available, it will remain in the queue. Meanwhile, a lower-priority claim that fits within the available resources may still be allocated—despite its lower priority.
 
 Enabling this option enforces strict ordering: claims cannot be skipped, even if they block other claims from being fulfilled due to resource exhaustion. The `CreationTimestamp` is strictly respected, meaning that once a claim is queued, no subsequent claim can bypass it—even if it requires fewer resources.
 
@@ -292,7 +292,7 @@ spec:
 
 ## ResourcePoolClaims
 
-`ResourcePoolClaims` declared claims of resources from a single `ResourcePool`. When a `ResourcePoolClaim` is successfully bound to a `ResourcePool`, it's requested resources are stacked to the `ResourceQuota` from the `ResourcePool` in the corresponding namespaces, where the `ResourcePoolClaim` was declared. So the declaration of a `ResourcePoolClaim` is very simple:
+`ResourcePoolClaims` declared claims of resources from a single `ResourcePool`. When a `ResourcePoolClaim` is successfully bound to a `ResourcePool`, its requested resources are stacked to the `ResourceQuota` from the `ResourcePool` in the corresponding namespaces, where the `ResourcePoolClaim` was declared. So the declaration of a `ResourcePoolClaim` is very simple:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -345,7 +345,7 @@ kubectl annotate resourcepoolclaim  skip-the-line -n solar-prod projectcapsule.d
 
 #### Immutable
 
-Once a `ResourcePoolClaim` has successfully claimed resources from a `ResourcePool`, the claim is immutable. This means that the claim cannot be modified or deleted until the resources have been released back to the `ResourcePool`. This means `ResourcePoolClaim` can not be expanded or shrunk, without [releasing](#release).
+Once a `ResourcePoolClaim` has successfully claimed resources from a `ResourcePool`, the claim is immutable. This means that the claim cannot be modified or deleted until the resources have been released back to the `ResourcePool`. This means a `ResourcePoolClaim` cannot be expanded or shrunk without [releasing](#release).
 
 ### Queue
 
@@ -648,9 +648,9 @@ Success 🍀
 
 This part should provide you with a little bit of back story, as to why this implementation was done the way it currently is. Let's start.
 
-Since the begining of capsule we are struggeling with a concurrency probelm regarding `ResourcesQuotas`, this was already early detected in [Issue 49](https://github.com/projectcapsule/capsule/issues/49). Let's quickly recap what really the problem is with the current `ResourceQuota` centric approach.
+Since the beginning of Capsule we are struggling with a concurrency problem regarding `ResourceQuotas`; this was already early detected in [Issue 49](https://github.com/projectcapsule/capsule/issues/49). Let's quickly recap what really the problem is with the current `ResourceQuota` centric approach.
 
-With the current `ResourceQuota` with `Scope: Tenant` we encounter the problem, that resourcequotas spread across multiple namespaces refering to one tenant quota can be overprovisioned, if an operation is executed in parallel (eg. total is `services/count: 3`, in each namespace you could then create 3 services, leading to a possible overprovision of hard `* amount-namespaces`). The Problem in this approach is, that we are not doing anything with Webhooks, therefor we rely on the speed of the controller, where this entire construct becomes a matter of luck and racing conditions.
+With the current `ResourceQuota` with `Scope: Tenant` we encounter the problem that resource quotas spread across multiple namespaces referring to one tenant quota can be overprovisioned if an operation is executed in parallel (eg. total is `services/count: 3`, in each namespace you could then create 3 services, leading to a possible overprovision of hard `* amount-namespaces`). The problem in this approach is that we are not doing anything with Webhooks; therefore we rely on the speed of the controller, where this entire construct becomes a matter of luck and racing conditions.
 
 So, there needs to be change. But times have also changed and we have listened to our users, so the new approach to `ResourceQuotas` should:
 

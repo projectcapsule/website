@@ -5,11 +5,11 @@ description: >
   Understand the Capsule configuration options and how to use them.
 ---
 
-The configuration for the capsule controller is done via it's dedicated configration Custom Resource. You can explain the configuration options and how to use them:
+The configuration for the capsule controller is done via its dedicated configuration Custom Resource. You can explain the configuration options and how to use them:
 
 ## CapsuleConfiguration
 
-The configuration for Capsule is done via it's dedicated configration Custom Resource. You can explain the configuration options and how to use them:
+The configuration for Capsule is done via its dedicated configuration Custom Resource. You can explain the configuration options and how to use them:
 
 ```shell
 kubectl explain capsuleConfiguration.spec
@@ -74,7 +74,7 @@ manager:
 ```
 
 ### `nodeMetadata`
-Allows to set the forbidden metadata for the worker nodes that could be patched by a Tenant. This applies only if the Tenant has an active NodeSelector, and the Owner have right to patch their nodes.
+Allows to set the forbidden metadata for the worker nodes that could be patched by a Tenant. This applies only if the Tenant has an active NodeSelector, and the Owners have the right to patch their nodes.
 
 ```yaml
 manager:
@@ -108,7 +108,7 @@ manager:
 
 ### `allowServiceAccountPromotion`
 
-ServiceAccounts within tenant namespaces can be promoted to owners of the given tenant this can be achieved by labeling the serviceaccount and then they are considered owners. This can only be done by other owners of the tenant. However ServiceAccounts which have been promoted to owner can not promote further serviceAccounts.
+ServiceAccounts within tenant namespaces can be promoted to owners of the given tenant; this can be achieved by labeling the ServiceAccount and then they are considered owners. This can only be done by other owners of the tenant. However ServiceAccounts which have been promoted to owner cannot promote further ServiceAccounts.
 
 [Read More](/docs/tenants/permissions/#serviceaccount-promotion)
 
