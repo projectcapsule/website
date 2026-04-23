@@ -11,12 +11,15 @@ weight: 1
 
 * Advisory [GHSA-2ww6-hf35-mfjm](https://github.com/projectcapsule/capsule/security/advisories/GHSA-2ww6-hf35-mfjm) - **Moderate** - Users may hijack namespaces via `namespaces/status` privileges. These privileges must have been explicitly granted by Platform Administrators through RBAC rules to be affected. Requests for the `namespaces/status` subresource are now sent to the Capsule admission webhook as well.
 
+* **(Enterprise)**: Projectcapsule is now providing their releases on an immutable OCI registry, which allows users to verify the integrity of the images and provides a more secure way to distribute the images. Which is not possible on GHCR due to the fact that GHCR does not support immutability of images.
+
 ## Breaking Changes ⚠️
 
 * By default, Capsule now uses self-signed cert-manager certificates for its admission webhooks. This used to be an optional setting and has now become the default. If you don't have cert-manager installed, you must explicitly re-enable the Capsule TLS controller as [documented here](/docs/operating/setup/installation/#certificate-management).
 
 ## Features ✨
 
+* Add new Quota System with `GlobalCustomQuotas` and `CustomQuotas`. [Read More](/docs/resource-management/customquotas/).
 * Complete Renovation of Replications [Read More](/docs/replications/).
 * Added `RequiredMetadata` for `Namespaces` created in a `Tenant` [Read More](/docs/tenants/metadata/#requiredmetadata).
 * Added rule-based promotions for `ServiceAccounts` in `Tenants` [Read More](/docs/tenants/permissions/#rule-promotion).
@@ -57,19 +60,14 @@ Newly added documentation to integrate Capsule with other applications:
 ## Project Updates 💫
 
   * Incubating [Sander (ODC Noord)](https://github.com/sandert-k8s) as Maintainer for documentation and website improvements.
-  * Incubating [Corentin (CCL Consulting)](https://github.com/CorentinPtrl) as Maintainer as core maintainer.
-  * Incubating [Lucakuendig (Peak Scale)](https://github.com/lucakuendig) as Community Organizer and Openshift efforts.
 
 ## Roadmap 🗺️
 
 In the upcoming releases we are planning to work on the following features:
 
-  * Announcing Capsule Swag (Contribution Rewards) 🎁
-  * Capsule: [Custom Resource Quotas](https://github.com/projectcapsule/capsule/issues/1745): A Quota implementation which allows to define custom quota constraints (Enterprise Request).
   * Capsule: Porting more Properties to the Namespace Rule Approach.
   * Capsule: Adding `transformers` for `Global`/`TenantResources`.
   * Capsule: Adding `healthChecks` for `Global`/`TenantResources`.
-  * Capsule: Using Dynamic Admission to measure Resource Quota Usage at Admission (For Tenant Scope ResourceQuotas and JIT Claiming for ResourcePools)
   * Capsule: Introducing Break-The-Glass to allow temporary elevation of permissions for Tenant Owners, with an approval process by Platform Administrators.
   * Capsule: Adding custom health checks for ArgoCD to upstream
   * Capsule: Adding Generic Implementation for `Global`/`TenantResources`.

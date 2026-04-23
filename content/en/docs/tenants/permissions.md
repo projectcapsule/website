@@ -805,8 +805,6 @@ To revoke the promotion, Alice can just remove the label:
 kubectl label sa gitops-reconcile -n solar-test projectcapsule.dev/promote-  --as alice --as-group projectcapsule.dev
 ```
 
-
-
 ## Additional Rolebindings
 
 With `Tenant` rolebindings you can distribute namespaced rolebindings to all namespaces which are assigned to a namespace. Essentially it is then ensured the defined rolebindings are present and reconciled in all namespaces of the `Tenant`. This is useful if users should have more insights on `Tenant` basis. Let's look at an example.
@@ -873,6 +871,193 @@ rules:
 - apiGroups: ["monitoring.coreos.com"]
   resources: ["servicemonitors"]
   verbs: ["get", "list", "watch"]
+```
+
+### Built-in ClusterRoles
+
+We strongly recommend you use custom ClusterRoles for your `Tenant` rolebindings, but you can also use built-in ClusterRoles (`admin` (default for Tenant Owners), `view` and `edit`). For example, if you want to give the `view` permissions to Joe in all namespaces of the solar `Tenant`, you can use the built-in `view` ClusterRole.
+
+In that case it also makes sense to use [ClusterRole Aggregation](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#aggregated-clusterroles). In the following example we are creating custom aggregated ClusterRoles for these three built-in clusterroles, to allow interactions with the GatewayAPI resources:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant:admins:extension
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+rules:
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources:
+      - gateways
+      - httproutes
+      - grpcroutes
+      - tlsroutes
+      - tcproutes
+      - udproutes
+      - referencegrants
+      - backendtlspolicies
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources:
+      - gateways/status
+      - httproutes/status
+      - grpcroutes/status
+      - tlsroutes/status
+      - tcproutes/status
+      - udproutes/status
+      - referencegrants/status
+      - backendtlspolicies/status
+    verbs: ["get"]
+  - apiGroups: ["gateway.envoyproxy.io"]
+    resources:
+      - clienttrafficpolicies
+      - backendtrafficpolicies
+      - securitypolicies
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["gateway.envoyproxy.io"]
+    resources:
+      - clienttrafficpolicies/status
+      - backendtrafficpolicies/status
+      - securitypolicies/status
+    verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant:members:extension
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+rules:
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources:
+      - gateways
+      - httproutes
+      - grpcroutes
+      - tlsroutes
+      - tcproutes
+      - udproutes
+      - referencegrants
+      - backendtlspolicies
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources:
+      - gateways/status
+      - httproutes/status
+      - grpcroutes/status
+      - tlsroutes/status
+      - tcproutes/status
+      - udproutes/status
+      - referencegrants/status
+      - backendtlspolicies/status
+    verbs: ["get"]
+  - apiGroups: ["gateway.envoyproxy.io"]
+    resources:
+      - clienttrafficpolicies
+      - backendtrafficpolicies
+      - securitypolicies
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["gateway.envoyproxy.io"]
+    resources:
+      - clienttrafficpolicies/status
+      - backendtrafficpolicies/status
+      - securitypolicies/status
+    verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant:viewers:extension
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+rules:
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources:
+      - gateways
+      - httproutes
+      - grpcroutes
+      - tlsroutes
+      - tcproutes
+      - udproutes
+      - referencegrants
+      - backendtlspolicies
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources:
+      - gateways/status
+      - httproutes/status
+      - grpcroutes/status
+      - tlsroutes/status
+      - tcproutes/status
+      - udproutes/status
+      - referencegrants/status
+      - backendtlspolicies/status
+    verbs: ["get"]
+  - apiGroups: ["gateway.envoyproxy.io"]
+    resources:
+      - clienttrafficpolicies
+      - backendtrafficpolicies
+      - securitypolicies
+    verbs: ["get", "list", "watch", "create"]
+  - apiGroups: ["gateway.envoyproxy.io"]
+    resources:
+      - clienttrafficpolicies/status
+      - backendtrafficpolicies/status
+      - securitypolicies/status
+    verbs: ["get"]
+```
+
+### Selective Distribution
+
+You may have the use-case where you want to distribute different ClusterRoles to different namespaces of the same `Tenant`. For example, you want to give `view` permissions to a operational group in all namespaces of the solar `Tenant` with `environment=production` label, but you want to give `edit` permissions to the operations group inall other namespaces. You can achieve this by leveraging [GlobalTenantResources](/docs/replications/global/):
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalTenantResource
+metadata:
+  name: operators-rolebindings
+spec:
+  resyncPeriod: 60s
+  resources:
+    - namespaceSelector:
+        matchExpressions:
+        - key: environment
+          operator: NotIn
+          values:
+          - prod
+      rawItems:
+        - apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: operators-rw
+          subjects:
+          - kind: Group
+            name: tenant:{{tenant.name}}:operators
+            namespace: "{{namespace}}"
+          roleRef:
+            kind: ClusterRole
+            name: view
+            apiGroup: rbac.authorization.k8s.io
+
+    - namespaceSelector:
+        matchLabels:
+          environment: prod
+      rawItems:
+        - apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: operators-view-only
+          subjects:
+          - kind: Group
+            name: tenant:{{tenant.name}}:operators
+            namespace: "{{namespace}}"
+          roleRef:
+            kind: ClusterRole
+            name: edit
+            apiGroup: rbac.authorization.k8s.io
 ```
 
 ### Custom Resources

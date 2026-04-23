@@ -180,6 +180,10 @@ We can see that requests are blocked because of the limits by the `CustomQuota` 
 
 [`GlobalCustomQuota`](#globalcustomquota) and [`CustomQuota`](#customquota) can operate in any namespace, they don't have to be part of a capsule tenant. This means that you can define a `CustomQuota` in any namespace, even if it's not part of a tenant, and it will still be enforced for objects in that namespace. Similarly, you can define a `GlobalCustomQuota` that selects namespaces based on labels, regardless of whether those namespaces are part of a tenant or not.
 
+### Race Conditions
+
+`GlobalCustomQuotas` and `CustomQuotas` are designed are considered when the target GVK has been posted to their status. If you quickly create workloads that match the GVK of a quota before the quota has been fully reconciled and posted to status, there is a possibility that those workloads are not counted towards the quota usage until the next reconciliation loop. This is because the admission webhook relies on the quota status to determine which quotas to enforce, and if the quota has not yet been reconciled and posted to status, it may not be considered during admission.
+
 ## Sources
 
 A quota may define one or many sources. Each source describes:
@@ -438,8 +442,6 @@ selectors:
 
 This matches if at least one Ready condition exists.
 
-
-
 ## GlobalCustomQuota
 
 `GlobalCustomQuota` aggregates usage across multiple namespaces.
@@ -539,8 +541,42 @@ spec:
       path: .spec.additionalConfig.maxSize
 ```
 
+### Options
+
+Additional options available for `GlobalCustomQuota`.
+
+
+#### emitMetricPerClaimUsage
+
+Additionaly expose usage metrics for each claim contributing to the quota. This is disabled by default to avoid high cardinality in the metrics, but can be enabled for more granular monitoring and alerting. By default this option is disabled.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalCustomQuota
+metadata:
+  name: object-bucket-claim-storage
+spec:
+  options:
+    emitMetricPerClaimUsage: true
+  ...
+```
+
+Example metrics:
+
+```
+# HELP capsule_global_custom_quota_resource_item_usage Claimed resources from given item
+# TYPE capsule_global_custom_quota_resource_item_usage gauge
+capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limits",group="",kind="Pod",name="nginx-deployment-6ff89574f8-299zf",target_namespace="solar-test"} 0.25
+capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limits",group="",kind="Pod",name="nginx-deployment-6ff89574f8-5hzp9",target_namespace="solar-test"} 0.25
+capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limits",group="",kind="Pod",name="nginx-deployment-6ff89574f8-9zzzw",target_namespace="solar-test"} 0.25
+capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limits",group="",kind="Pod",name="nginx-deployment-6ff89574f8-gnf8f",target_namespace="solar-test"} 0.25
+capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limits",group="",kind="Pod",name="nginx-deployment-6ff89574f8-l68c5",target_namespace="solar-test"} 0.25
+capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limits",group="",kind="Pod",name="nginx-deployment-6ff89574f8-lrzvd",target_namespace="solar-test"} 0.25
+```
 
 ### Examples
+
+Feel free to contribute examples if you have found interesting use cases!
 
 #### Limit total max storage across bucket claims for selected namespaces
 
@@ -751,6 +787,18 @@ The following metrics are exposed for each `GlobalCustomQuota`:
 # TYPE capsule_global_custom_quota_condition gauge
 capsule_global_custom_quota_condition{condition="Ready",custom_quota="cpu-limits"} 1
 
+# TYPE capsule_global_custom_quota_resource_limit gauge
+capsule_global_custom_quota_resource_limit{custom_quota="cpu-limits"} 5
+
+# TYPE capsule_global_custom_quota_resource_available gauge
+capsule_global_custom_quota_resource_available{custom_quota="cpu-limits"} 3.5
+
+# TYPE capsule_global_custom_quota_resource_usage gauge
+capsule_global_custom_quota_resource_usage{custom_quota="cpu-limits"} 1.5
+
+## -- Requires .spec.options.emitMetricPerClaimUsage to be enabled
+## May cause high cardinality if many claims are present, use with caution.
+
 # HELP capsule_global_custom_quota_resource_item_usage Claimed resources from given item
 # TYPE capsule_global_custom_quota_resource_item_usage gauge
 capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limits",group="",kind="Pod",name="nginx-deployment-6ff89574f8-299zf",target_namespace="solar-test"} 0.25
@@ -760,28 +808,19 @@ capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limits",group=
 capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limits",group="",kind="Pod",name="nginx-deployment-6ff89574f8-l68c5",target_namespace="solar-test"} 0.25
 capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limits",group="",kind="Pod",name="nginx-deployment-6ff89574f8-lrzvd",target_namespace="solar-test"} 0.25
 
-# TYPE capsule_global_custom_quota_resource_limit gauge
-capsule_global_custom_quota_resource_limit{custom_quota="cpu-limits"} 5
-
-# TYPE capsule_global_custom_quota_resource_available gauge
-capsule_global_custom_quota_resource_available{custom_quota="cpu-limits"} 3.5
-
-# TYPE capsule_global_custom_quota_resource_usage gauge
-capsule_global_custom_quota_resource_usage{custom_quota="cpu-limits"} 1.5
 ```
-
-#### Rules
-
-
 
 ## CustomQuota
 
 `CustomQuota` is namespaced and only counts resources in the same namespace as the quota.
 
+### Sources
+
+Sources can originate in the same Namespace as the `CustomQuota` is deployed in. Other than that, they follow the same [Sources rules](#sources).
 
 ### Selectors
 
-Selectors preevaluated items considered for the quota. Only items matching the selectors are counted towards usage. [Selectors from Sources](#selectors) are applied after the source GVK is matched, so they can be used to further filter which objects are counted based on their labels or fields. However they can't select items which are not selected by the selectors on `GlobalCustomQuota` level. This means that if you want to select items across multiple namespaces, you need to use `namespaceSelectors` and not `selectors`.
+Selectors preevaluated items considered for the quota. Only items matching the selectors are counted towards usage. [Selectors from Sources](#selectors) are applied after the source GVK is matched, so they can be used to further filter which objects are counted based on their labels or fields. However they can't select items which are not selected by the selectors on `CustomQuota` level.
 
 #### ScopeSelectors
 
@@ -807,7 +846,228 @@ spec:
 ```
 
 
+### Options
 
-#### Examples
+Additional options available for `CustomQuota`.
 
-CREATE EXAMPLES HERE
+#### emitMetricPerClaimUsage
+
+Additionaly expose usage metrics for each claim contributing to the quota. This is disabled by default to avoid high cardinality in the metrics, but can be enabled for more granular monitoring and alerting. By default this option is disabled.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: CustomQuota
+metadata:
+  name: pod-count-limit
+  namespace: wind-test
+spec:
+  options:
+    emitMetricPerClaimUsage: true
+  ...
+```
+
+Example metrics:
+
+```
+# HELP capsule_custom_quota_resource_item_usage Claimed resources from given item
+# TYPE capsule_custom_quota_resource_item_usage gauge
+capsule_custom_quota_resource_item_usage{custom_quota="pod-count-limit",group="",kind="Pod",name="nginx-deployment-77bc6bd484-4qm4h",target_namespace="wind-test"} 1
+capsule_custom_quota_resource_item_usage{custom_quota="pod-count-limit",group="",kind="Pod",name="nginx-deployment-77bc6bd484-bsnfz",target_namespace="wind-test"} 1
+capsule_custom_quota_resource_item_usage{custom_quota="pod-count-limit",group="",kind="Pod",name="nginx-deployment-77bc6bd484-f8qcv",target_namespace="wind-test"} 1
+```
+
+### Examples
+
+Feel free to contribute examples if you have found interesting use cases!
+
+#### Limit total PVC storage in one namespace
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: CustomQuota
+metadata:
+  name: pvc-storage-limit
+  namespace: team-a
+spec:
+  limit: "200Gi"
+  scopeSelectors:
+    - matchLabels:
+        team: platform
+  sources:
+    - version: v1
+      kind: PersistentVolumeClaim
+      group: ""
+      op: add
+      path: .spec.resources.requests.storage
+```
+
+#### Limit the number of LoadBalancer Services in one namespace
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: CustomQuota
+metadata:
+  name: namespace-loadbalancers
+  namespace: team-a
+spec:
+  limit: 2
+  sources:
+    - group: ""
+      version: v1
+      kind: Service
+      op: count
+      selectors:
+        - fieldSelectors:
+            - '.spec.type[?(@=="LoadBalancer")]'
+```
+
+#### Limit total memory requests of Pods in one namespace
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: CustomQuota
+metadata:
+  name: pod-memory-requests
+  namespace: team-a
+spec:
+  limit: 16Gi
+  sources:
+    - group: ""
+      version: v1
+      kind: Pod
+      op: add
+      path: .spec.containers[*].resources.requests.memory
+    - group: ""
+      version: v1
+      kind: Pod
+      op: add
+      path: .spec.initContainers[*].resources.requests.memory
+```
+
+#### Count Crossplane SQL instances in one namespace
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: CustomQuota
+metadata:
+  name: sql-instances
+  namespace: team-a
+spec:
+  limit: 3
+  sources:
+    - group: database.gcp.upbound.io
+      version: v1beta1
+      kind: SQLDatabaseInstance
+      op: count
+```
+
+#### Count only suspended CronJobs
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: CustomQuota
+metadata:
+  name: suspended-cronjobs
+  namespace: team-a
+spec:
+  limit: 5
+  sources:
+    - group: batch
+      version: v1
+      kind: CronJob
+      op: count
+      selectors:
+        - fieldSelectors:
+            - '.spec.suspend'
+```
+
+### Monitoring
+
+See how you can monitor `CustomQuota` usage via Prometheus metrics. The example metrics are based on this `CustomQuota` definition:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: CustomQuota
+metadata:
+  name: pod-count-limit
+  namespace: wind-test
+spec:
+  limit: 3
+  options:
+    emitMetricPerClaimUsage: false
+  sources:
+  - group: ""
+    kind: Pod
+    op: count
+    version: v1
+status:
+  claims:
+  - group: ""
+    kind: Pod
+    name: nginx-deployment-77bc6bd484-4qm4h
+    namespace: wind-test
+    uid: c6df70ce-f483-4b02-af65-c8c150d22ed2
+    usage: "1"
+    version: v1
+  - group: ""
+    kind: Pod
+    name: nginx-deployment-77bc6bd484-f8qcv
+    namespace: wind-test
+    uid: eeae006b-5ce8-442b-b6c3-f208387545a7
+    usage: "1"
+    version: v1
+  - group: ""
+    kind: Pod
+    name: nginx-deployment-77bc6bd484-bsnfz
+    namespace: wind-test
+    uid: 9e1135a7-b286-4768-becd-147b37c999f8
+    usage: "1"
+    version: v1
+  conditions:
+  - lastTransitionTime: "2026-04-23T09:21:29Z"
+    message: reconciled
+    reason: Succeeded
+    status: "True"
+    type: Ready
+  targets:
+  - group: ""
+    kind: Pod
+    op: count
+    scope: namespace
+    version: v1
+  usage:
+    available: "0"
+    used: "3"
+```
+
+#### Metrics
+
+The following metrics are exposed for each `CustomQuota`:
+
+```
+# HELP capsule_custom_quota_condition Provides per custom quota condition status
+# TYPE capsule_custom_quota_condition gauge
+capsule_custom_quota_condition{condition="Ready",custom_quota="pod-count-limit",target_namespace="wind-test"} 1
+
+# HELP capsule_custom_quota_resource_available Available resources for given custom quota
+# TYPE capsule_custom_quota_resource_available gauge
+capsule_custom_quota_resource_available{custom_quota="pod-count-limit",target_namespace="wind-test"} 0
+
+# HELP capsule_custom_quota_resource_limit Current resource limit for given custom quota
+# TYPE capsule_custom_quota_resource_limit gauge
+capsule_custom_quota_resource_limit{custom_quota="pod-count-limit",target_namespace="wind-test"} 3
+
+# HELP capsule_custom_quota_resource_usage Current resource usage for given custom quota
+# TYPE capsule_custom_quota_resource_usage gauge
+capsule_custom_quota_resource_usage{custom_quota="pod-count-limit",target_namespace="wind-test"} 3
+
+
+## -- Requires .spec.options.emitMetricPerClaimUsage to be enabled
+## May cause high cardinality if many claims are present, use with caution.
+
+# HELP capsule_custom_quota_resource_item_usage Claimed resources from given item
+# TYPE capsule_custom_quota_resource_item_usage gauge
+capsule_custom_quota_resource_item_usage{custom_quota="pod-count-limit",group="",kind="Pod",name="nginx-deployment-77bc6bd484-4qm4h",target_namespace="wind-test"} 1
+capsule_custom_quota_resource_item_usage{custom_quota="pod-count-limit",group="",kind="Pod",name="nginx-deployment-77bc6bd484-bsnfz",target_namespace="wind-test"} 1
+capsule_custom_quota_resource_item_usage{custom_quota="pod-count-limit",group="",kind="Pod",name="nginx-deployment-77bc6bd484-f8qcv",target_namespace="wind-test"} 1
+```
