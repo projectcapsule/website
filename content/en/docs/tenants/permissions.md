@@ -42,7 +42,7 @@ To explain these entries, let's inspect one of them:
 
 * `kind`: It can be [User](#users), [Group](#groups) or [ServiceAccount](#serviceaccounts)
 * `name`: Is the reference name of the user, group or serviceaccount we want to bind
-* `clusterRoles`: ClusterRoles which are bound for each namespace of teh tenant to the owner. By default, Capsule assigns `admin` and `capsule-namespace-deleter` roles to each owner, but you can customize them as explained in [Owner Roles](#owner-roles) section.
+* `clusterRoles`: ClusterRoles which are bound for each namespace of the tenant to the owner. By default, Capsule assigns `admin` and `capsule-namespace-deleter` roles to each owner, but you can customize them as explained in [Owner Roles](#owner-roles) section.
 
 With this information available you
 

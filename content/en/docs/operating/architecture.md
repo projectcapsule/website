@@ -12,8 +12,8 @@ Introducing a new separation of duties can lead to a significant paradigm shift.
 
 The answer to this question may be influenced by the following aspects:
 
-* **Are the Cluster Adminsitrators willing to grant permissions to Tenant Owners**? 
-  * _You might have a problem with know-how and probably your organisation is not yet pushing Kubernetes itself enough as a key strategic plattform. The key here is enabling Plattform Users through good UX and know-how transfers_
+* **Are the Cluster Administrators willing to grant permissions to Tenant Owners**? 
+  * _You might have a problem with know-how and probably your organisation is not yet pushing Kubernetes itself enough as a key strategic platform. The key here is enabling Platform Users through good UX and know-how transfers_
 
 * **Who is responsible for the deployed workloads within the Tenants?**? 
   * _If Platform Administrators are still handling this, a true “shift left” has not yet been achieved._
@@ -58,7 +58,7 @@ Any entity which needs to interact with tenants and their namespaces must be def
 **Every Tenant Owner must be a [Capsule User](#capsule-users)**
 
 
-They manage the namespaces within their tenants and perform administrative tasks confined to their tenant boundaries. This delegation allows teams to operate more autonomously while still adhering to organizational policies. Tenant Owners can be used to shift reposnsability of one tenant towards this user group. promoting them to the SPOC of all namespaces within the tenant.
+They manage the namespaces within their tenants and perform administrative tasks confined to their tenant boundaries. This delegation allows teams to operate more autonomously while still adhering to organizational policies. Tenant Owners can be used to shift responsibility of one tenant towards this user group, promoting them to the SPOC of all namespaces within the tenant.
 
 Tenant Owners can:
 
@@ -71,11 +71,11 @@ Capsule provides robust tools to strictly enforce tenant boundaries, ensuring th
 
 ## Layouts
 
-Let's dicuss different Tenant Layouts which could be used . These are just approaches we have seen, however you might also find a combination of these which fits your use-case.
+Let's discuss different Tenant Layouts which could be used. These are just approaches we have seen, however you might also find a combination of these which fits your use-case.
 
 ### Tenant As A Service
 
-With this approach you essentially just provide your Customers with the Tenant on your cluster. The rest is their responsability. This concludes to a shared responsibility model. This can be achieved when also the Tenant Owners are responsible for everything they are provisiong within their Tenant's namespaces.
+With this approach you essentially just provide your Customers with the Tenant on your cluster. The rest is their responsibility. This concludes to a shared responsibility model. This can be achieved when also the Tenant Owners are responsible for everything they are provisioning within their Tenant's namespaces.
 
 ![Resourcepool Dashboard](/images/content/architecture/layout-taas.drawio.png)
 
