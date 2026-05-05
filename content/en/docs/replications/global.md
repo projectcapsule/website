@@ -636,6 +636,7 @@ By default, a `GlobalTenantResource` replicates resources into **every Namespace
 
 Possible values:
 
+  * `None`: Replicate based on items generated within generators. Essentially not reconciling based on items but running once.
   * `Tenant`: Replicate once per Tenant.
   * `Namespace`: Replicate into each Namespace of the selected Tenants. *(Default)*
 
@@ -1446,4 +1447,109 @@ namespace:
             - kubernetes
     status:
         phase: Active
+```
+
+## Examples
+
+Different use cases for `GlobalTenantResource` objects.
+
+### Generate ServiceAccount Tenant Owner per Tenant
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalTenantResource
+metadata:
+  name: gitops-reconciler
+spec:
+  resyncPeriod: 60s
+  resources:
+    - rawItems:
+        - apiVersion: capsule.clastix.io/v1beta2
+          kind: TenantOwner
+          metadata:
+            name: "{{tenant.name}}-{{namespace}}"
+          spec:
+            clusterRoles:
+              - capsule-namespace-deleter
+              - admin
+            kind: ServiceAccount
+            name: "system:serviceaccount:{{namespace}}:gitops-reconciler"
+```
+
+### Manage Global Proxy Settings per Tenant
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalTenantResource
+metadata:
+  name: capsule-proxy-settings
+spec:
+  scope: Tenant
+  resyncPeriod: 30s
+  resources:
+    - generators:
+        - missingKey: zero
+          template: |
+            ---
+            apiVersion: capsule.clastix.io/v1beta1
+            kind: GlobalProxySettings
+            metadata:
+              name: {{ $.tenant.metadata.name }}-proxy-settings
+            spec:
+              rules:
+              - subjects:
+                {{- range $.tenant.status.owners }}
+                - kind: {{ .kind }}
+                  name: {{ .name }}
+                {{- end }}
+                clusterResources:
+                - apiGroups:
+                  - "capsule.clastix.io"
+                  resources:
+                  - "globalcustomquotas"
+                  operations:
+                  - List
+                  selector:
+                    matchLabels:
+                      company.com/tenant: {{ $.tenant.metadata.name }}
+```
+
+### Generate Cortex/Mimir Overrides per Tenant
+
+This example shows the case when you need to populate content in a subkey, where Server-Side Apply is not sufficient, since it cannot manage specific fields of an object, but only the whole object itself. In this case, we can use a generator to generate the whole content of the subkey based on the Tenant's data.
+
+With Cortex/Mimir, you can use the `overrides` field to specify tenant-specific configuration ([limits](https://grafana.com/docs/mimir/latest/configure/configuration-parameters/#limits)). This example generates a `ConfigMap` for each Tenant containing its overrides, based on the Tenant's data, if provided. This is a case, where the [scope](#scope) is set to `None`, since we don't want to replicate the generated `ConfigMap` into each Namespace, but just have it available in a single location for consumption by an external system:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalTenantResource
+metadata:
+  name: mimir-overrides-cluster
+spec:
+  scope: None
+  resyncPeriod: 30s
+  resources:
+    - context:
+        resources:
+          - apiVersion: capsule.clastix.io/v1beta2
+            kind: Tenant
+            index: tnts
+      generators:
+        - missingKey: zero
+          template: |
+            ---
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: mimir-overrides
+              namespace: observability-system
+            data:
+              overrides.yaml: |
+                overrides:
+                {{- range $i, $tnt := $.tnts }}
+                  {{ $tnt.metadata.name }}:
+                    ingestion_rate: {{ $tnt | dig "spec" "data" "limits" "ingestionRate" 10000 }}
+                    ingestion_burst_size: {{ $tnt | dig "spec" "data" "limits" "ingestionBurstSize" 20000 }}
+                {{- end }}
 ```

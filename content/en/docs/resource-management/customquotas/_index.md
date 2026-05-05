@@ -98,10 +98,17 @@ webhooks:
             - "pods"
           scope: Namespaced
       matchConditions:
-      - name: 'exclude-kubelet-requests'
-        expression: '!("system:nodes" in request.userInfo.groups)'
-      - name: 'exclude-kube-system'
-        expression: '!("system:serviceaccounts:kube-system" in request.userInfo.groups)'
+        # Execlude Event and Subresource requests to avoid performance issues and disruptions in case of issues with the webhook (Example).
+        - name: ignore-subresources
+          expression: '!has(request.subResource) || request.subResource == ""'
+        - name: ignore-events
+          expression: 'request.resource.resource != "events"'
+  
+        # Execlude Entities which never count towards quotas to avoid performance issues and disruptions in case of issues with the webhook (Example).
+        - name: 'exclude-kubelet-requests'
+          expression: '!("system:nodes" in request.userInfo.groups)'
+        - name: 'exclude-kube-system'
+          expression: '!("system:serviceaccounts:kube-system" in request.userInfo.groups)'
 ```
 
 **Without the Admission Webhook enabled, CustomQuotas are purely observational and do not enforce limits.** You can use this mode to monitor usage and understand the impact before enabling enforcement.
