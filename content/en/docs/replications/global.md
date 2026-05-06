@@ -1515,6 +1515,116 @@ spec:
                       company.com/tenant: {{ $.tenant.metadata.name }}
 ```
 
+### Collect HTTPRoutes within per Tenant and aggregate to managed gateway
+
+The following example solves a common problem with Gateway-API and Certificate management. Assume you have a managed gateway with a managed cluster-issuer. In this case we can load all the HTTPRoutes and template the corresponding tenant. The following example also allows to modify the EnvoyProxy instance with [Tenant Data](/docs/operating/templating/#data)
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalTenantResource
+metadata:
+  name: managed-envoy-gateway
+spec:
+  scope: Tenant
+  resyncPeriod: 30s
+  resources:
+    - context:
+        resources:
+          - apiVersion: gateway.networking.k8s.io/v1
+            kind: HTTPRoute
+            index: https
+            selector:
+              matchLabels:
+                projectcapsule.dev/tenant: "{{tenant.name}}"
+      generators:
+        - missingKey: zero
+          template: |
+            {{- $ingressBandwidth := dig "spec" "data" "networking" "ingress" "bandwidth" "" $.tenant }}
+            {{- $egressBandwidth := dig "spec" "data" "networking" "egress" "bandwidth" "" $.tenant }}
+            {{- $loadBalancerIP := dig "spec" "data" "networking" "ingress" "loadbalancer" "" $.tenant }}
+            ---
+            apiVersion: gateway.envoyproxy.io/v1alpha1
+            kind: EnvoyProxy
+            metadata:
+              name: tenant-{{ $.tenant.metadata.name }}-gateway
+              namespace: tenant-{{ $.tenant.metadata.name }}-system
+            spec:
+              logging:
+                level:
+                  default: info
+              provider:
+                type: Kubernetes
+                kubernetes:
+                  envoyDeployment:
+                    replicas: 2
+                    pod:
+                      priorityClassName: tenant-critical
+                      {{- if or $ingressBandwidth $egressBandwidth }}
+                      annotations:
+                        {{- with $ingressBandwidth }}
+                        kubernetes.io/ingress-bandwidth: {{ . }}
+                        {{- end }}
+                        {{- with $egressBandwidth }}
+                        kubernetes.io/egress-bandwidth: {{ . }}
+                        {{- end }}
+                      {{- end }}
+                  {{- with $loadBalancerIP }}
+                  envoyService:
+                    loadBalancerIP: {{ . }}
+                  {{- end }}
+
+        - missingKey: zero
+          template: |
+            ---
+            apiVersion: gateway.networking.k8s.io/v1
+            kind: Gateway
+            metadata:
+              name: tenant-{{ $.tenant.metadata.name }}-gateway
+              namespace: tenant-{{ $.tenant.metadata.name }}-system
+              annotations:
+                cert-manager.io/cluster-issuer: managed-cluster-issuer
+                cert-manager.io/private-key-size: "4096"
+                cert-manager.io/private-key-algorithm: RSA
+            spec:
+              gatewayClassName: tenants
+              infrastructure:
+                parametersRef:
+                  group: gateway.envoyproxy.io
+                  kind: EnvoyProxy
+                  name: tenant-{{ $.tenant.metadata.name }}-gateway
+              listeners:
+                - name: http-challenge
+                  port: 80
+                  protocol: HTTP
+                  allowedRoutes:
+                    namespaces:
+                      from: Selector
+                      selector:
+                        matchLabels:
+                          capsule.clastix.io/tenant: "{{ $.tenant.metadata.name }}"
+                {{- range $_, $http := $.https }}
+                  {{- range $i, $hostname := $http.spec.hostnames }}
+                - name: {{ $http.metadata.namespace }}-{{ $http.metadata.name }}-{{ $i }}
+                  port: 443
+                  protocol: HTTPS
+                  hostname: {{ $hostname}}
+                  tls:
+                    mode: Terminate
+                    certificateRefs:
+                      - group: ''
+                        kind: Secret
+                        name: {{ $http.metadata.namespace }}-{{ $http.metadata.name }}-{{ $i }}-tls
+                  allowedRoutes:
+                    namespaces:
+                      from: Selector
+                      selector:
+                        matchLabels:
+                           kubernetes.io/metadata.name: "{{ $http.metadata.namespace }}"
+                  {{- end }}
+                {{- end }}
+```
+
 ### Generate Cortex/Mimir Overrides per Tenant
 
 This example shows the case when you need to populate content in a subkey, where Server-Side Apply is not sufficient, since it cannot manage specific fields of an object, but only the whole object itself. In this case, we can use a generator to generate the whole content of the subkey based on the Tenant's data.

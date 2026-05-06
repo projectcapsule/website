@@ -12,7 +12,7 @@ For simple template cases we provide a fast templating engine. With this engine,
 Available fields are:
 
   * `{{tenant.name}}`: The Name of the Tenant
-  * `{{namespace}}`: The Name of the Tenant
+  * `{{namespace}}`: The Name of the namespace within the tenant (current context)
 
 
 ## Sprout Templating
