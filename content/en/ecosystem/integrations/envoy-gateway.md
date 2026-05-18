@@ -16,125 +16,118 @@ Each tenant will get it's own `-system` `Namespace`. However that namespace is n
 
 ## Example
 
-## Gateway 
+Implementation of the above architecture looks something like this.
 
+### Managed Gateway
 
+With this [GlobalTenantResource](/docs/replications/global/) we generate the managed gateway for each tenant. The `EnvoyProxy` is the custom resource used by the Envoy Gateway project to manage the lifecycle of the Envoy instances. The `Gateway` is the standard resource defined by the Gateway API, which references the `EnvoyProxy` as infrastructure and defines the listeners and allowed routes.
 
-
-
-
-
-
-
+```yaml
 ---
-apiVersion: gateway.envoyproxy.io/v1alpha1
-kind: EnvoyProxy
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalTenantResource
 metadata:
-  name: itbs-tenant-{{ $.Values.name }}-gateway
-  namespace: itbs-tenant-{{ $.Values.name }}-system
+  name: managed-envoy-gateway
 spec:
-  logging:
-    level:
-      default: debug
-  provider:
-    type: Kubernetes
-    kubernetes:
-      envoyDeployment:
-        replicas: 2
-      {{- if $.Values.networking.gateway.loadbalancer }}
-      envoyService:
-        loadBalancerIP: {{ $.Values.networking.ingress.loadbalancer }}
-      {{- end }}
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: itbs-tenant-{{ $.Values.name }}-gateway
-  namespace: itbs-tenant-{{ $.Values.name }}-system
-  {{- if $.Values.networking.gateway.issuer.enabled }}
-  annotations:
-    cert-manager.io/issuer: itbs-tenant-{{ $.Values.name }}-http
-    cert-manager.io/private-key-size: "4096"
-    cert-manager.io/private-key-algorithm: RSA
-  {{- end }}
-spec:
-  gatewayClassName: {{$.Values.cluster.gateway.classes.platform}}
-  infrastructure:
-    parametersRef:
-      group: gateway.envoyproxy.io
-      kind: EnvoyProxy
-      name: itbs-tenant-{{ $.Values.name }}-gateway
-  listeners:
-    - name: http-challenge
-      port: 80
-      protocol: HTTP
-      hostname: "*.{{ $.Values.name }}.{{ $.Values.cluster.name }}.{{ $.Values.infrastructure.dns.zone }}"
-      allowedRoutes:  # Only this tenant's capsule namespaces can attach routes to this listener
-        namespaces:
-          from: Selector
-          selector:
-            matchLabels:
-              tenant.itbs.ch/tenant: "{{ $.Values.name }}"
+  scope: Tenant
+  resyncPeriod: 30s
+  resources:
+    - context:
+        resources:
+          - apiVersion: gateway.networking.k8s.io/v1
+            kind: HTTPRoute
+            index: https
+            selector:
+              matchLabels:
+                projectcapsule.dev/tenant: "{{tenant.name}}"
+      generators:
+        - missingKey: zero
+          template: |
+            {{- $ingressBandwidth := dig "spec" "data" "networking" "ingress" "bandwidth" "" $.tenant }}
+            {{- $egressBandwidth := dig "spec" "data" "networking" "egress" "bandwidth" "" $.tenant }}
+            {{- $loadBalancerIP := dig "spec" "data" "networking" "ingress" "loadbalancer" "" $.tenant }}
+            ---
+            apiVersion: gateway.envoyproxy.io/v1alpha1
+            kind: EnvoyProxy
+            metadata:
+              name: tenant-{{ $.tenant.metadata.name }}-gateway
+              namespace: tenant-{{ $.tenant.metadata.name }}-system
+            spec:
+              logging:
+                level:
+                  default: info
+              provider:
+                type: Kubernetes
+                kubernetes:
+                  envoyDeployment:
+                    replicas: 2
+                    pod:
+                      priorityClassName: tenant-critical
+                      {{- if or $ingressBandwidth $egressBandwidth }}
+                      annotations:
+                        {{- with $ingressBandwidth }}
+                        kubernetes.io/ingress-bandwidth: {{ . }}
+                        {{- end }}
+                        {{- with $egressBandwidth }}
+                        kubernetes.io/egress-bandwidth: {{ . }}
+                        {{- end }}
+                      {{- end }}
+                  {{- with $loadBalancerIP }}
+                  envoyService:
+                    loadBalancerIP: {{ . }}
+                  {{- end }}
 
-    {{- if $.Values.metrics.enabled }}
-    - name: https-alertmanager
-      protocol: HTTPS
-      port: 443
-      hostname: "alertmanager.{{ $.Values.name }}.{{ .Values.cluster.name }}.{{ .Values.infrastructure.dns.zone }}"
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - group: ''
-            kind: Secret
-            name: alertmanager-tls
-      allowedRoutes:
-        namespaces:
-          from: Selector
-          selector:
-            matchLabels:
-              tenant.itbs.ch/tenant-system: "{{ $.Values.name }}"
-    - name: https-prometheus
-      protocol: HTTPS
-      port: 443
-      hostname: "prometheus.{{ $.Values.name }}.{{ .Values.cluster.name }}.{{ .Values.infrastructure.dns.zone }}"
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - group: ''
-            kind: Secret
-            name: prometheus-tls
-      allowedRoutes:
-        namespaces:
-          from: Selector
-          selector:
-            matchLabels:
-              tenant.itbs.ch/tenant-system: "{{ $.Values.name }}"
-    {{- end }}
-    {{- if $.Values.grafana.enabled }}
-    - name: https-grafana
-      protocol: HTTPS
-      port: 443
-      hostname: "grafana.{{ $.Values.name }}.{{ .Values.cluster.name }}.{{ .Values.infrastructure.dns.zone }}"
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - group: ''
-            kind: Secret
-            name: grafana-tls
-      allowedRoutes:
-        namespaces:
-          from: Selector
-          selector:
-            matchLabels:
-              tenant.itbs.ch/tenant-system: "{{ $.Values.name }}"
-    {{- end }}
-
-
-
-## EnvoyProxy
-
-
-## Certificate Management
+        - missingKey: zero
+          template: |
+            ---
+            apiVersion: gateway.networking.k8s.io/v1
+            kind: Gateway
+            metadata:
+              name: tenant-{{ $.tenant.metadata.name }}-gateway
+              namespace: tenant-{{ $.tenant.metadata.name }}-system
+              annotations:
+                cert-manager.io/cluster-issuer: managed-cluster-issuer
+                cert-manager.io/private-key-size: "4096"
+                cert-manager.io/private-key-algorithm: RSA
+            spec:
+              gatewayClassName: tenants
+              infrastructure:
+                parametersRef:
+                  group: gateway.envoyproxy.io
+                  kind: EnvoyProxy
+                  name: tenant-{{ $.tenant.metadata.name }}-gateway
+              listeners:
+                - name: http-challenge
+                  port: 80
+                  protocol: HTTP
+                  allowedRoutes:
+                    namespaces:
+                      from: Selector
+                      selector:
+                        matchLabels:
+                          capsule.clastix.io/tenant: "{{ $.tenant.metadata.name }}"
+                {{- range $_, $http := $.https }}
+                  {{- range $i, $hostname := $http.spec.hostnames }}
+                - name: {{ $http.metadata.namespace }}-{{ $http.metadata.name }}-{{ $i }}
+                  port: 443
+                  protocol: HTTPS
+                  hostname: {{ $hostname}}
+                  tls:
+                    mode: Terminate
+                    certificateRefs:
+                      - group: ''
+                        kind: Secret
+                        name: {{ $http.metadata.namespace }}-{{ $http.metadata.name }}-{{ $i }}-tls
+                  allowedRoutes:
+                    namespaces:
+                      from: Selector
+                      selector:
+                        matchLabels:
+                           kubernetes.io/metadata.name: "{{ $http.metadata.namespace }}"
+                  {{- end }}
+                {{- end }}
+```
+### Certificate Management
 
 If we additionally would like to do Certificate Management via [cert-manager](https://cert-manager.io/docs/) in combination with [ACME HTTP-01 challenges](https://cert-manager.io/docs/configuration/acme/http01/) we probably want to provide the users with a `ClusterIssuer` per `Tenant`:
 
