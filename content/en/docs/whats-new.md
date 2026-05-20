@@ -21,13 +21,12 @@ weight: 1
 
 * Add new Quota System with `GlobalCustomQuotas` and `CustomQuotas`. [Read More](/docs/resource-management/customquotas/).
 * Complete Renovation of Replications [Read More](/docs/replications/).
-* Introducing new CRD `RuleStatus` [Read More](/docs/tenants/rules/).
+* Introducing new rule approach for tenant enforcement [Read More](/docs/tenants/rules/).
 * Added `RequiredMetadata` for `Namespaces` created in a `Tenant` [Read More](/docs/tenants/metadata/#requiredmetadata).
 * Introducing new OCI Registry enforcement [Read More](/docs/tenants/rules/#registries)
 * Added rule-based promotions for `ServiceAccounts` in `Tenants` [Read More](/docs/tenants/rules/#promotions).
 * Added Implicit Assignment of `TenantOwner` [Read More](/docs/tenants/permissions/#implicit-tenant-assignment).
 * Added Aggregation of `TenantOwner` [Read More](/docs/tenants/permissions/#aggregation).
-* Introducing new CRD `RuleStatus` [Read More](/docs/tenants/rules/).
 * Introducing `data` field for `Tenants` [Read More](/docs/operating/templating/#data).
 * Added new label `projectcapsule.dev/tenant` which is added for all namespaced resources belonging to a `Tenant` [Read More](/docs/tenants/metadata/#managed).
 * Added configuration options for managed RBAC [Read More](docs/operating/setup/configuration/#rbac)

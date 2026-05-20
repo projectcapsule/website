@@ -219,14 +219,12 @@ kind: Pod
 Example for CRDs:
 
 ```yaml
-group: objectbucket.io
-version: v1alpha1
+apiVersion: objectbucket.io/v1alpha1
 kind: ObjectBucketClaim
 ```
 
 ```yaml
-group: s3.aws.upbound.io
-version: v1beta1
+apiVersion: s3.aws.upbound.io/v1beta1
 kind: Bucket
 ```
 
@@ -244,12 +242,10 @@ For example, to count both Pods and PVCs, use two sources:
 ```yaml
 spec:
   sources:
-    - group: ""
-      version: v1
+    - apiVersion: v1
       kind: Pod
       op: count
-    - group: ""
-      version: v1
+    - apiVersion: v1
       kind: PersistentVolumeClaim
       op: count
 ```
@@ -313,8 +309,7 @@ Example:
 ```yaml
 spec:
   sources:
-    - group: ""
-      version: v1
+    - apiVersion: v1
       kind: PersistentVolumeClaim
       op: add
       path: .spec.resources.requests.storage
@@ -336,8 +331,7 @@ Example:
 ```yaml
 spec:
   sources:
-    - group: ""
-      version: v1
+    - apiVersion: v1
       kind: Pod
       op: count
 ```
@@ -353,8 +347,7 @@ A source selector may contain Kubernetes-style matchLabels / matchExpressions ag
 ```yaml
 spec:
   sources:
-    - version: v1
-      group: ""
+    - apiVersion: v1
       kind: PersistentVolumeClaim
       op: add
       path: .spec.resources.requests.storage
@@ -383,8 +376,7 @@ Given:
 ```yaml
 spec:
   sources:
-    - version: v1
-      group: ""
+    - apiVersion: v1
       kind: PersistentVolumeClaim
       op: add
       path: .spec.resources.requests.storage
@@ -476,9 +468,8 @@ spec:
     - matchLabels:
         capsule.clastix.io/tenant: solar
   sources:
-    - version: v1alpha1
+    - apiVersion: objectbucket.io/v1alpha1
       kind: ObjectBucketClaim
-      group: objectbucket.io
       op: add
       path: .spec.additionalConfig.maxSize
 ```
@@ -498,9 +489,8 @@ spec:
     - matchLabels:
         capsule.clastix.io/tenant: solar
   sources:
-    - version: v1alpha1
+    - apiVersion: objectbucket.io/v1alpha1
       kind: ObjectBucketClaim
-      group: objectbucket.io
       op: add
       path: .spec.additionalConfig.maxSize
 status:
@@ -541,9 +531,8 @@ spec:
     - matchLabels:
         objectbucket.io/storage-class: gold
   sources:
-    - version: v1alpha1
+    - apiVersion: objectbucket.io/v1alpha1
       kind: ObjectBucketClaim
-      group: objectbucket.io
       op: add
       path: .spec.additionalConfig.maxSize
 ```
@@ -551,7 +540,6 @@ spec:
 ### Options
 
 Additional options available for `GlobalCustomQuota`.
-
 
 #### emitMetricPerClaimUsage
 
@@ -597,9 +585,9 @@ metadata:
 spec:
   limit: "500Gi"
   sources:
-    - version: v1alpha1
+    - apiVersion: objectbucket.io/v1alpha1
       kind: ObjectBucketClaim
-      group: objectbucket.io
+      op: add
       path: .spec.additionalConfig.maxSize
   selectors:
     - matchLabels:
@@ -624,8 +612,7 @@ spec:
     - matchLabels:
         customer: a
   sources:
-    - group: ""
-      version: v1
+    - apiVersion: v1
       kind: Service
       op: count
       selectors:
@@ -652,13 +639,11 @@ spec:
   - matchLabels:
       capsule.clastix.io/tenant: solar
   sources:
-    - group: ""
-      version: v1
+    - apiVersion: v1
       kind: Pod
       op: add
       path: ".spec.volumes[*].ephemeral.volumeClaimTemplate.spec.resources.requests.storage"
-    - group: ""
-      version: v1
+    - apiVersion: v1
       kind: PersistentVolumeClaim
       op: add
       path: ".spec.resources.requests.storage"
@@ -683,8 +668,7 @@ spec:
     - matchLabels:
         capsule.clastix.io/tenant: solar
   sources:
-    - group: s3.aws.upbound.io
-      version: v1beta1
+    - apiVersion: s3.aws.upbound.io/v1beta1
       kind: Bucket
       op: count
 ```
@@ -704,16 +688,14 @@ spec:
   - matchLabels:
       capsule.clastix.io/tenant: solar
   sources:
-  - group: ""
+  - apiVersion: v1
     kind: Pod
     op: add
     path: .spec.containers[*].resources.limits.cpu
-    version: v1
-  - group: ""
+  - apiVersion: v1
     kind: Pod
     op: add
     path: .spec.initContainers[*].resources.limits.cpu
-    version: v1
 status:
   claims:
   - group: ""
@@ -845,9 +827,8 @@ spec:
     - matchLabels:
         objectbucket.io/storage-class: gold
   sources:
-    - version: v1alpha1
+    - apiVersion: objectbucket.io/v1alpha1
       kind: ObjectBucketClaim
-      group: objectbucket.io
       op: add
       path: .spec.additionalConfig.maxSize
 ```
@@ -901,9 +882,8 @@ spec:
     - matchLabels:
         team: platform
   sources:
-    - version: v1
+    - apiVersion: v1
       kind: PersistentVolumeClaim
-      group: ""
       op: add
       path: .spec.resources.requests.storage
 ```
@@ -919,8 +899,7 @@ metadata:
 spec:
   limit: 2
   sources:
-    - group: ""
-      version: v1
+    - apiVersion: v1
       kind: Service
       op: count
       selectors:
@@ -939,13 +918,11 @@ metadata:
 spec:
   limit: 16Gi
   sources:
-    - group: ""
-      version: v1
+    - apiVersion: v1
       kind: Pod
       op: add
       path: .spec.containers[*].resources.requests.memory
-    - group: ""
-      version: v1
+    - apiVersion: v1
       kind: Pod
       op: add
       path: .spec.initContainers[*].resources.requests.memory
@@ -962,8 +939,7 @@ metadata:
 spec:
   limit: 3
   sources:
-    - group: database.gcp.upbound.io
-      version: v1beta1
+    - apiVersion: database.gcp.upbound.io/v1beta1
       kind: SQLDatabaseInstance
       op: count
 ```
@@ -979,8 +955,7 @@ metadata:
 spec:
   limit: 5
   sources:
-    - group: batch
-      version: v1
+    - apiVersion: batch/v1
       kind: CronJob
       op: count
       selectors:
@@ -1003,10 +978,9 @@ spec:
   options:
     emitMetricPerClaimUsage: false
   sources:
-  - group: ""
+  - apiVersion: "v1"
     kind: Pod
     op: count
-    version: v1
 status:
   claims:
   - group: ""
