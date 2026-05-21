@@ -750,7 +750,7 @@ manager:
       tenantDefaultServiceAccount: "default"
 ```
 
-The default ServiceAccount must have sufficient RBAC. You can use a [GlobalTenantResource](../global/) to distribute the required `RoleBinding` across all Tenants:
+The default ServiceAccount must have sufficient RBAC. You can use a [GlobalTenantResource](/docs/replications/global/) to distribute the required `RoleBinding` across all Tenants:
 
 ```yaml
 ---
