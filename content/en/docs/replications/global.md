@@ -7,7 +7,7 @@ description: >
 
 ## Overview
 
-`GlobalTenantResource` is a cluster-scoped CRD designed for cluster administrators. It lets you automatically replicate Kubernetes resources - such as Secrets, ConfigMaps, or custom resources - into the Namespaces of selected Tenants. Tenant owners cannot create `GlobalTenantResource` objects; for tenant-scoped replication, see [TenantResource](../tenant/).
+`GlobalTenantResource` is a cluster-scoped CRD designed for cluster administrators. It lets you automatically replicate Kubernetes resources - such as Secrets, ConfigMaps, or custom resources - into the Namespaces of selected Tenants. Tenant owners cannot create `GlobalTenantResource` objects; for tenant-scoped replication, see [TenantResource](/docs/replications/tenant/).
 
 The diagram below shows that an Administrator can create a `GlobalTenantResource`. In the `GlobalTenantResource` spec, an Administrator specifies which resource they would like to replicate, and where this resource should be replicated to. When applied, this resource gets automatically distributed across all Namespaces of the `Tenants` that are selected in the `GlobalTenantResource`.
 

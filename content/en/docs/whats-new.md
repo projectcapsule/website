@@ -29,7 +29,7 @@ weight: 1
 * Added Aggregation of `TenantOwner` [Read More](/docs/tenants/permissions/#aggregation).
 * Introducing `data` field for `Tenants` [Read More](/docs/operating/templating/#data).
 * Added new label `projectcapsule.dev/tenant` which is added for all namespaced resources belonging to a `Tenant` [Read More](/docs/tenants/metadata/#managed).
-* Added configuration options for managed RBAC [Read More](docs/operating/setup/configuration/#rbac)
+* Added configuration options for managed RBAC [Read More](/docs/operating/setup/configuration/#rbac)
 * Added configuration options for Impersonation [Read More](/docs/operating/setup/configuration/#impersonation)
 * Added configuration options for Cache invalidation [Read More](/docs/operating/setup/configuration/#cacheinvalidation)
 * Added configuration options for Dynamic Admission Webhooks [Read More](/docs/operating/setup/configuration/#admission)
