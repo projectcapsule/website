@@ -5,7 +5,7 @@ description: >
   Configure policies and restrictions on tenant-basis with Rules
 ---
 
-Enforcement rules allow Bill, the cluster admin, to set policies and restrictions on a per-`Tenant` basis. These rules are enforced by Capsule Admission Webhooks when Alice, the `TenantOwner`, creates or modifies resources in her `Namespaces`. With the Rule Construct we can profile namespaces within a tenant to adhere to specific policies, depending on metadata. 
+Enforcement rules allow Bill, the cluster admin, to set policies and restrictions on a per-`Tenant` basis. These rules are enforced by Capsule Admission Webhooks when Alice, the `TenantOwner`, creates or modifies resources in her `Namespaces`. With the Rule Construct we can profile namespaces within a tenant to adhere to specific policies, depending on metadata.
 
 ## Namespace Selector
 
@@ -43,7 +43,6 @@ Note that rules are combined together. In the above example, all namespaces with
 ## Permissions
 
 Declare permission distribution rules for the selected namespaces.
-
 ### Promotions
 
 As an administrator, you can define promotion rules . A promotion rule selects ServiceAccounts within a Tenant based on specified conditions and assigns them predefined ClusterRoles.
@@ -176,8 +175,6 @@ kubectl label sa gitops-reconcile -n solar-test projectcapsule.dev/promote-  --a
 
 
 ## Enforcement
-
-Declare Enforcement rules for the selected namespaces.
 
 ### Registries
 
