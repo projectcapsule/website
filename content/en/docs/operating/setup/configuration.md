@@ -217,13 +217,22 @@ Depending on the version of the Capsule Controller, the configuration options ma
 
 ```bash
 $ go run ./cmd/. --zap-log-level 7 -h
-2025/09/13 23:50:30 maxprocs: Leaving GOMAXPROCS=8: CPU quota undefined
-Usage of /var/folders/ts/43yg7sk56ls3r3xjf66npgpm0000gn/T/go-build2624543463/b001/exe/cmd:
+
+      --client-connection-burst int32     Burst to use for interacting with kubernetes apiserver. (default 30)
+      --client-connection-qps float32     QPS to use for interacting with kubernetes apiserver. (default 20)
       --configuration-name string         The CapsuleConfiguration resource name to use (default "default")
+      --enable-http2                      If set, HTTP/2 will be enabled for the metrics and webhook servers
       --enable-leader-election            Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.
       --enable-pprof                      Enables Pprof endpoint for profiling (not recommend in production)
       --metrics-addr string               The address the metric endpoint binds to. (default ":8080")
+      --metrics-cert-key string           The name of the metrics server key file. (default "tls.key")
+      --metrics-cert-name string          The name of the metrics server certificate file. (default "tls.crt")
+      --metrics-cert-path string          The directory that contains the metrics server certificate.
+      --metrics-secure                    If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.
       --version                           Print the Capsule version and exit
+      --webhook-cert-key string           The name of the webhook key file. (default "tls.key")
+      --webhook-cert-name string          The name of the webhook certificate file. (default "tls.crt")
+      --webhook-cert-path string          The directory that contains the webhook certificate. (default "/tmp/k8s-webhook-server/serving-certs")
       --webhook-port int                  The port the webhook server binds to. (default 9443)
       --workers int                       MaxConcurrentReconciles is the maximum number of concurrent Reconciles which can be run. (default 1)
       --zap-devel                         Development Mode defaults(encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn). Production Mode defaults(encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error)
@@ -240,4 +249,3 @@ manager:
   extraArgs:
   - "--enable-leader-election=true"
 ```
-
