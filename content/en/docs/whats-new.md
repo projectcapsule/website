@@ -5,111 +5,78 @@ description: >
 weight: 1
 ---
 
-## Features
+## Security 🔒
 
-* Admission Webhooks return warnings for deprecated fields in Capsule resources. You are encouraged to update your resources accordingly.
+* Advisory [GHSA-qjjm-7j9w-pw72](https://github.com/projectcapsule/capsule/security/advisories/GHSA-qjjm-7j9w-pw72) - **High** - Users can create cluster scoped resources anywhere in the cluster if they are allowed to create `TenantResources`. To immediately mitigate this, make sure to use [Impersonation](/docs/replications/tenant/#impersonation) for `TenantResources`.
 
-* Added `--enable-pprof` flag to enable pprof endpoint for profiling Capsule controller performance. Not recommended for production environments. [Read More](/docs/operating/setup/configuration/#controller-options).
-  
-* Added `--workers` flag to define the `MaxConcurrentReconciles` for relevant controllers [Read More](/docs/operating/setup/configuration/#controller-options).
+* Advisory [GHSA-2ww6-hf35-mfjm](https://github.com/projectcapsule/capsule/security/advisories/GHSA-2ww6-hf35-mfjm) - **Moderate** - Users may hijack namespaces via `namespaces/status` privileges. These privileges must have been explicitly granted by Platform Administrators through RBAC rules to be affected. Requests for the `namespaces/status` subresource are now sent to the Capsule admission webhook as well.
 
-* Combined [Capsule Users](/docs/operating/architecture/#capsule-users) Configuration for defining all users and groups which should be considered for Capsule tenancy. This simplifies the configuration and avoids confusion between users and groups. [Read More](/docs/operating/setup/configuration/#users)
+* **(Enterprise)**: Projectcapsule is now providing their releases on an immutable OCI registry, which allows users to verify the integrity of the images and provides a more secure way to distribute the images. Which is not possible on GHCR due to the fact that GHCR does not support immutability of images.
 
-* All namespaced items, which belong to a Capsule Tenant, are now labeled with the Tenant name (eg. `capsule.clastix.io/tenant: solar`). This allows easier filtering and querying of resources belonging to a specific Tenant or Namespace. **Note**: This happens at admission, not in the background. If you want your existing resources to be labeled, you need to reapply them or patch them manually to get the labels added.
+## Breaking Changes ⚠️
 
-* Delegate Administrators for capsule tenants. Administrators have full control (ownership) over all tenants and their namespaces. [Read More](/docs/operating/architecture/#capsule-administrators)
+* By default, Capsule now uses self-signed cert-manager certificates for its admission webhooks. This used to be an optional setting and has now become the default. If you don't have cert-manager installed, you must explicitly re-enable the Capsule TLS controller as [documented here](/docs/operating/setup/installation/#certificate-management).
 
-* Added Dynamic Resource Allocation (DRA) support. Administrators can now assign allowed DeviceClasses to tenant owners. [Read More](/docs/tenants/enforcement/#dynamic-resource-allocation-dra)
+## Features ✨
 
-* All available Classes for a tenant (StorageClasses, GatewayClasses, RuntimeClasses, PriorityClasses, DeviceClasses) are now reported in the Tenant Status. These values can be used by Admission to integrate other resources validation or by external systems for reporting purposes ([Example](/docs/operating/admission-policies/#class-validation)).
+* Add new Quota System with `GlobalCustomQuotas` and `CustomQuotas`. [Read More](/docs/resource-management/customquotas/).
+* Complete Renovation of Replications [Read More](/docs/replications/).
+* Introducing new rule approach for tenant enforcement [Read More](/docs/tenants/rules/).
+* Added `RequiredMetadata` for `Namespaces` created in a `Tenant` [Read More](/docs/tenants/metadata/#requiredmetadata).
+* Introducing new OCI Registry enforcement [Read More](/docs/tenants/rules/#registries)
+* Added rule-based promotions for `ServiceAccounts` in `Tenants` [Read More](/docs/tenants/rules/#promotions).
+* Added Implicit Assignment of `TenantOwner` [Read More](/docs/tenants/permissions/#implicit-tenant-assignment).
+* Added Aggregation of `TenantOwner` [Read More](/docs/tenants/permissions/#aggregation).
+* Introducing `data` field for `Tenants` [Read More](/docs/operating/templating/#data).
+* Added new label `projectcapsule.dev/tenant` which is added for all namespaced resources belonging to a `Tenant` [Read More](/docs/tenants/metadata/#managed).
+* Added configuration options for managed RBAC [Read More](/docs/operating/setup/configuration/#rbac)
+* Added configuration options for Impersonation [Read More](/docs/operating/setup/configuration/#impersonation)
+* Added configuration options for Cache invalidation [Read More](/docs/operating/setup/configuration/#cacheinvalidation)
+* Added configuration options for Dynamic Admission Webhooks [Read More](/docs/operating/setup/configuration/#admission)
+* Added Built-In Installation for Gangplank with the Capsule Proxy [Read More](/docs/proxy/gangplank/)
 
-```yaml
-apiVersion: capsule.clastix.io/v1beta2
-kind: Tenant
-metadata:
-  name: solar
-...
-status:
-  classes:
-    priority:
-    - system-cluster-critical
-    - system-node-critical
-    runtime:
-    - customer-containerd
-    - customer-runu
-    - customer-virt
-    - default-runtime
-    - disallowed
-    - legacy
-    storage:
-    - standard
-```
+## Fixes 🐛
 
-* All available Owners for a tenant are now reported in the Tenant Status. This allows external systems to query the Tenant resource for its owners instead of querying the RBAC system.
+* Fixed `ResourcePool` resource quota calculation when multiple `ResourcePoolClaim`s are present in a namespace but not everything is used. For details, see [ResourcePools bound behavior](/docs/resourcepools/#bound).
+* Improved `matchConditions` for admission webhooks that intercept all namespaced items, to avoid processing subresource requests and Events, improving performance and reducing log noise.
+* `Namespaces` are considered active until all unmanaged namespaced resources are deleted. [Read More](/docs/tenants/namespaces/#termination)
+* `PersistentVolumeClaims` support now providing `.spec.selector`. When `.spec.selector` is provided we always aggregate a custom `matchExpressions` for the `PersistentVolumeClaims` to ensure that only the `PersistentVolumeClaims` created in the `Tenant` can mount `PersistentVolumes` provisioned from/for the same `Tenant` [Read More](/docs/resource-management/customquotas/#persistentvolumeclaims)
 
-```yaml
-apiVersion: capsule.clastix.io/v1beta2
-kind: Tenant
-metadata:
-  name: solar
-...
-status:
-  owners:
-  - clusterRoles:
-    - admin
-    - capsule-namespace-deleter
-    kind: Group
-    name: oidc:org:devops:a
-  - clusterRoles:
-    - admin
-    - capsule-namespace-deleter
-    - mega-admin
-    - controller
-    kind: ServiceAccount
-    name: system:serviceaccount:capsule:controller
-  - clusterRoles:
-    - admin
-    - capsule-namespace-deleter
-    kind: User
-    name: alice
-```
+## Documentation 📚
 
-* Introduction of the `TenantOwner` CRD. [Read More](/docs/tenants/permissions/#tenant-owners)
+We have added new documentation for a better experience. See the following topics:
 
-```yaml
-apiVersion: capsule.clastix.io/v1beta2
-kind: TenantOwner
-metadata:
-  labels:
-    team: devops
-  name: devops
-spec:
-  kind: Group
-  name: "oidc:org:devops:a"
-  clusterRoles:
-    - "mega-admin"
-    - "controller"
-```
+* **[Improved installation overview](/docs/operating/setup/installation/)**
+* **[Capsule strict RBAC installation](/docs/operating/setup/installation/#strict-rbac)**
 
-## Fixes
-
-* Admission Webhooks for namespaces had certain dependencies on the first reconcile of a tenant (namespace being allocated to this tenant). This bug has been fixed and now namespaces are correctly assigned to the tenant (at admission) even if the tenant has not yet been reconciled.
-
-* The entire core package and admission webhooks have been majorly refactored to improve maintainability and extensibility of Capsule.
-
-## Documentation
-
-We have added new documentation for a better experience. See the following Topics:
-
-* **[Extended Admission Policy Recommendations](/docs/operating/admission-policies/)**
-* **[Personas](/docs/operating/admission-policies/)**
-
-## Ecosystem
+## Ecosystem 🌐
 
 Newly added documentation to integrate Capsule with other applications:
 
-* [OpenCost](/ecosystem/integrations/opencost/)
-* [Headlamp](/ecosystem/integrations/headlamp/)
-* [Gangplank](/ecosystem/integrations/gangplank/)
-* [Teleport](/ecosystem/integrations/teleport/)
-* [Openshift](/docs/operating/setup/openshift/)
+* [CoreDNS Plugin](https://github.com/CorentinPtrl/capsule_coredns) (Community Contribution)
+* [Argo CD](/ecosystem/integrations/argocd/)
+* [Flux CD](/ecosystem/integrations/fluxcd/)
+
+## Project Updates 💫
+
+  * Incubating [Sander (ODC Noord)](https://github.com/sandert-k8s) as Maintainer for documentation and website improvements.
+
+## Roadmap 🗺️
+
+In the upcoming releases we are planning to work on the following features:
+
+  * Capsule: Porting more Properties to the Namespace Rule Approach.
+  * Capsule: Adding `transformers` for `Global`/`TenantResources`.
+  * Capsule: Adding `healthChecks` for `Global`/`TenantResources`.
+  * Capsule: Introducing Break-The-Glass to allow temporary elevation of permissions for Tenant Owners, with an approval process by Platform Administrators.
+  * Capsule: Adding custom health checks for ArgoCD to upstream
+  * Capsule: Adding Generic Implementation for `Global`/`TenantResources`.
+  * Website: Improving the documentation with more examples and use-cases.
+  * Capsule-Proxy: Bringing back RBAC reflection to Capsule-Proxy (Generic Namespaced List Permissions)
+  * Capsule-Proxy: Deprecating ProxySettings on Tenants in favour of GlobalProxySettings
+
+
+## Events 📅
+
+* **Capsule Roundtable Summer 2026 🇨🇭**
+    * We are planning to host a Capsule Roundtable in Summer 2026 in Switzerland (**28. Mai 2026**). The exact date and location will be announced soon, but we are looking forward to meeting the community in person and discussing the future of Capsule. If you are interested in attending or want to know more about the event, [feel free to reach out to us](https://peakscale.ch/en/contact/). The event is intended for users to present their use-cases and share their experiences with the project, as well as for us to present the roadmap and gather feedback from the community (Not a sales event).

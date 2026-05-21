@@ -1,7 +1,7 @@
 ---
 title: Best Practices
 weight: 2
-description: Best Practices when running Capsule in production 
+description: Best Practices when running Capsule in production
 ---
 
 
@@ -30,7 +30,7 @@ Instead, a centralized secrets management system should be established — such 
 To integrate these external secret stores with Kubernetes, the [External Secrets Operator (ESO)](https://external-secrets.io/latest/) is a recommended solution. It automatically syncs defined secrets from external sources as Kubernetes secrets, and supports dynamic rotation, access control, and auditing.
 
 If no external secret store is available, there should at least be a secure way to store sensitive data in Git.
-In our ecosystem, we provide a solution based on SOPS (Secrets OPerationS) for this use case.
+In our ecosystem, we provide a solution based on SOPS (Secrets OPerationS) for this use case; called the [sops-operator](https://github.com/peak-scale/sops-operator).
 
 [👉 Demonstration](https://killercoda.com/peakscale/course/playgrounds/sops-secrets)
 

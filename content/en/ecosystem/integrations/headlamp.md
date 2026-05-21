@@ -83,7 +83,7 @@ volumes:
             path: token
         - secret:
             items:
-              - key: ca
+              - key: ca.crt
                 path: ca.crt
             name: capsule-proxy
         - downwardAPI:
@@ -107,6 +107,7 @@ initContainers:
   - name: capsule-proxy
     mountPath: /ca
   securityContext:
+    runAsNonRoot: true
     capabilities:
       drop:
       - ALL
@@ -115,8 +116,6 @@ initContainers:
     privileged: false
     runAsUser: 65534
     runAsGroup: 65534
-    fsGroup: 65534
-    fsGroupChangePolicy: "Always"
 podSecurityContext:
   runAsNonRoot: true
   seccompProfile:

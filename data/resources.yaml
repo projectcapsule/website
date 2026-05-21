@@ -1,4 +1,22 @@
 resources:
+  - title: "REX Ubisoft - Quand et comment partager un cluster : retour d'expérience sur Capsule chez Ubisoft"
+    youtube: "NAx2s_o1iuE"
+    date: "2026-02-25"
+    type: "video"
+    tags:
+      - customer-journey
+  - title: "REX DINUM -Les ingrédients multitenancy et authentification pour une distribution k8s open-source"
+    youtube: "zWayprWXWVg"
+    date: "2026-02-25"
+    type: "video"
+    tags:
+      - customer-journey
+  - title: "REX Renault - Kubernetes as a Service : sécurité, innovation et self-service à grande échelle"
+    youtube: "F8x6DBeNeqg"
+    date: "2026-02-25"
+    type: "video"
+    tags:
+      - customer-journey
   - title: "The State of Multi-tenancy in Kubernetes by LoftLabs"
     url: https://www.linkedin.com/events/7297698298100936704/comments/
     date: "2025-02-27"

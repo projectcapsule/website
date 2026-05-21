@@ -1,6 +1,6 @@
 ---
 title: Enforcement
-weight: 5
+weight: 6
 description: >
   Configure policies and restrictions on tenant-basis
 ---

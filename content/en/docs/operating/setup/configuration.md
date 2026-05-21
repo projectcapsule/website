@@ -1,6 +1,6 @@
 ---
-title: Controller Options
-weight: 100
+title: Configuration
+weight: 2
 description: >
   Understand the Capsule configuration options and how to use them.
 ---
@@ -118,35 +118,97 @@ manager:
     allowServiceAccountPromotion: true
 ```
 
-### `userGroups`
+### `cacheInvalidation`
 
-{{% alert title="Information" color="info" %}}
-**Deprecated**: This option is deprecated and will be removed in future releases. [Please use the `users` option to specify both user and group owners for Capsule tenancy](#users).
-{{% /alert %}}
-
-Names of the groups for Capsule users. Users must have this group to be considered for the Capsule tenancy. If a user does not have any group mentioned here, they are not recognized as a Capsule user.
+The reconcile periode caches are invalidated. Invalidation is already attempted when resources change, however in certain scenarios it might be necessary to do out of order cache invalidations to ensure proper garbage collection of resources.
 
 ```yaml
 manager:
   options:
-    capsuleUserGroups:
-      - system:serviceaccounts:tenants-gitops
-      - company:org:users
+    cacheInvalidation: 0h30m0s
 ```
 
-### `userNames`
+### `rbac`
 
-{{% alert title="Information" color="info" %}}
-**Deprecated**: This option is deprecated and will be removed in future releases. [Please use the `users` option to specify both user and group owners for Capsule tenancy](#users).
-{{% /alert %}}
-
-Names of the users for Capsule users. Users must have this name to be considered for the Capsule tenancy. If userGroups are set, the properties are ORed, meaning that a user can be recognized as a Capsule user if they have one of the groups or one of the names.
+Define configurations for the RBAC which is being managed and applied by Capsule.
 
 ```yaml
 manager:
   options:
-    userNames:
-      - system:serviceaccount:crossplane-system:crossplane-k8s-provider
+    rbac:
+      # -- The ClusterRoles applied for Administrators
+      adminitrationClusterRoles: 
+        - capsule-namespace-deleter
+
+      # -- The ClusterRoles applied for ServiceAccounts which had owner Promotion
+      promotionClusterRoles:
+        - capsule-namespace-provisioner
+        - capsule-namespace-deleter
+
+      # -- Name for the ClusterRole required to grant Namespace Deletion permissions.
+      deleter: capsule-namespace-deleter
+
+      # -- Name for the ClusterRole required to grant Namespace Provision permissions.
+      provisioner: capsule-namespace-provisioner
+```
+
+### `impersonation`
+
+For Replications by default the controller ServiceAccount is used to perform the operations. However it is possible to define a dedicated ServiceAccount to be used for that purpose. Within this configuration you can define properties such as the endpoint of the kube-apiserver and if service account promotion should be allowed for this client. Also declare default service account to be used for replication operations. By default the `https://kubernetes.default.svc` endpoint is used.
+
+```yaml
+manager:
+  options:
+    impersonation:
+      # Kubernetes API Endpoint to use for the operations 
+      endpoint: "https://capsule-proxy.capsule-system.svc:8081"
+    
+      # Toggles if TLS verification for the endpoint is performed or not
+      skipTlsVerify: false
+    
+      # Key in the secret that holds the CA certificate (e.g., "ca.crt")
+      caSecretKey: "ca.crt"
+    
+      # Name of the secret containing the CA certificate
+      caSecretName: "capsule-proxy-tls"
+    
+      # Namespace where the CA certificate secret is located
+      caSecretNamespace: "capsule-system"
+  
+      # Default ServiceAccount for global resources (GlobalTenantResource) [Cluster Scope]
+      # When defined, users are required to use this ServiceAccount anywhere in the cluster
+      # unless they explicitly provide their own. Once this is set, Capsule will add this ServiceAccount 
+      # for all GlobalTenantResources, if they don't already have a ServiceAccount defined.
+      globalDefaultServiceAccount: "capsule-global-sa"
+  
+      # Namespace of the for the ServiceAccount provided by the globalDefaultServiceAccount property
+      globalDefaultServiceAccountNamespace: "tenant-system"
+  
+      # Default ServiceAccount for tenant resources (TenantResource) [Namespaced Scope]
+      # When defined, users are required to use this ServiceAccount anywhere in the cluster
+      # unless they explicitly provide their own. Once this is set, Capsule will add this ServiceAccount 
+      # for all GlobalTenantResources, if they don't already have a ServiceAccount defined.
+      tenantDefaultServiceAccount: "default"
+```
+
+### `admission`
+
+Configuration for the dynamic admission webhooks used by Capsule for mutating and validating requests. The settings are used from the static webhook configurations created during installation of Capsule and abstracted by the helm chart
+
+```yaml
+manager:
+  options:
+    admission:
+      mutating:
+        client:
+          caBundle: cert
+          url: https://172.24.52.212:9443
+        name: capsule-dynamic
+      validating:
+        client:
+          caBundle: cert
+          url: https://172.24.52.212:9443
+        name: capsule-dynamic
 ```
 
 ## Controller Options
@@ -155,13 +217,22 @@ Depending on the version of the Capsule Controller, the configuration options ma
 
 ```bash
 $ go run ./cmd/. --zap-log-level 7 -h
-2025/09/13 23:50:30 maxprocs: Leaving GOMAXPROCS=8: CPU quota undefined
-Usage of /var/folders/ts/43yg7sk56ls3r3xjf66npgpm0000gn/T/go-build2624543463/b001/exe/cmd:
+
+      --client-connection-burst int32     Burst to use for interacting with kubernetes apiserver. (default 30)
+      --client-connection-qps float32     QPS to use for interacting with kubernetes apiserver. (default 20)
       --configuration-name string         The CapsuleConfiguration resource name to use (default "default")
+      --enable-http2                      If set, HTTP/2 will be enabled for the metrics and webhook servers
       --enable-leader-election            Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.
       --enable-pprof                      Enables Pprof endpoint for profiling (not recommend in production)
       --metrics-addr string               The address the metric endpoint binds to. (default ":8080")
+      --metrics-cert-key string           The name of the metrics server key file. (default "tls.key")
+      --metrics-cert-name string          The name of the metrics server certificate file. (default "tls.crt")
+      --metrics-cert-path string          The directory that contains the metrics server certificate.
+      --metrics-secure                    If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.
       --version                           Print the Capsule version and exit
+      --webhook-cert-key string           The name of the webhook key file. (default "tls.key")
+      --webhook-cert-name string          The name of the webhook certificate file. (default "tls.crt")
+      --webhook-cert-path string          The directory that contains the webhook certificate. (default "/tmp/k8s-webhook-server/serving-certs")
       --webhook-port int                  The port the webhook server binds to. (default 9443)
       --workers int                       MaxConcurrentReconciles is the maximum number of concurrent Reconciles which can be run. (default 1)
       --zap-devel                         Development Mode defaults(encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn). Production Mode defaults(encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error)
@@ -178,4 +249,3 @@ manager:
   extraArgs:
   - "--enable-leader-election=true"
 ```
-

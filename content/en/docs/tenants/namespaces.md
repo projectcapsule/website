@@ -2,7 +2,7 @@
 title: Namespaces
 weight: 2
 description: >
-  Assign Namespace to tenants
+  Namespace to Tenant relation
 ---
 
 Alice, once logged with her credentials, can create a new `Namespace` in her `Tenant`, as simply issuing:
@@ -194,6 +194,23 @@ If not specified, Capsule will deny with the following message: Unable to assign
 $ kubectl create ns solar-production
 Error from server (Forbidden): admission webhook "owner.namespace.capsule.clastix.io" denied the request: Please use capsule.clastix.io/tenant label when creating a namespace
 ```
+
+## Termination
+
+Capsule keeps it's managed resources as long as possible. Meaning even if a `Namespace` is terminated we verify the following things, before any capsule managed resources are finally removed:
+
+1. There are no pods in the namespace left (including pods with finalizers). Users must take own action to resolve finalizing pods.
+2. All other namespaced resources have removed finalizers and are deleted (capsule will initiate that step)
+3. Finally capsule managed resources are removed.
+
+This ensures proper cleanup of namespaces without having namespaces being stuck in `Terminating` phase and requiring administrator attention.
+
+If you are running a Kubernetes Version below `1.33` you should make sure, that the `FeatureGate` `OrderedNamespaceDeletion` is enabled. This already enforces this order by default:
+
+* All Pods must be absent
+* Only after all pods are absent other namespaced items are removed.
+
+[As stated in the following KEP](https://github.com/kubernetes/enhancements/issues/5080).
 
 ## Cordon
 

@@ -30,20 +30,23 @@ In Capsule, we introduce a new persona called the `Tenant Owner`. The goal is to
 
 ### Capsule Administrators
 
+[Configure Capsule Administrators](/docs/operating/setup/configuration/#administrators). The ClusterRoles assigned to Administrators can be configured in the [CapsuleConfiguration](/docs/operating/setup/configuration/#rbac) as well.
+
 They are promoted to [Tenant-Owners](#tenant-owners) for all available tenants. Effectively granting them the ability to manage all namespaces within the cluster, across all tenants.
 
 **Note**: Granting Capsule Administrator rights should be done with caution, as it provides extensive control over the cluster's multi-tenant environment. **When granting Capsule Administrator rights, the entity gets the privileges to create any namespace (also not part of capsule tenants) and the privileges to delete any tenant namespaces.**
 
 Capsule Administrators can:
+
   - Create and manage [namespaces via labels in any tenant](/docs/tenants/namespaces/#label).
   - Create namespaces outside of tenants.
   - Delete namespaces in any tenant.
 
 Administrators come in handy in bootstrap scenarios or GitOps scenarios where certain users/serviceaccounts need to be able to manage namespaces for all tenants.
 
-[Configure Capsule Administrators](/docs/operating/setup/configuration/#administrators)
-
 ### Capsule Users
+
+[Configure Capsule Users](/docs/operating/setup/configuration/#users)
 
 Any entity which needs to interact with tenants and their namespaces must be defined as a **Capsule User**. This is where the flexibility of Capsule comes into play. You can define users or groups as Capsule Users, allowing them to create and manage namespaces within any tenant they have access to. If they are not defined as Capsule Users, any interactions will be ignored by Capsule. Often a best practice is to define a single group which identifies all your tenant users. This way you can have one generic group for all your users and then use additional groups to separate responsibilities (e.g. administrators vs normal users).
 
@@ -51,11 +54,32 @@ Any entity which needs to interact with tenants and their namespaces must be def
 
 ![Capsule Users Admission](/images/content/capsule-users-admission.drawio.png)
 
-[Configure Capsule Users](/docs/operating/setup/configuration/#users)
+You can always verify the effective Capsule Users by checking the Configuration Status. As this is variable with [Tenant Owners](#tenant-owners), the status will always show the effective users:
+
+```bash
+kubectl get capsuleconfiguration default -o jsonpath='{.status.users}' | jq
+
+[
+  {
+    "kind": "Group",
+    "name": "oidc:kubernetes:admin"
+  },
+  {
+    "kind": "Group",
+    "name": "projectcapsule.dev"
+  },
+  {
+    "kind": "User",
+    "name": "test-user"
+  }
+]
+```
 
 ### Tenant Owners
 
-**Every Tenant Owner must be a [Capsule User](#capsule-users)**
+[Configure Tenant Owners](/docs/tenants/permissions/#ownership)
+
+**Every Tenant Owner must be a [Capsule User](#capsule-users). By using the [TenantOwner CRD](/docs/tenants/permissions/#tenant-owners) this is automatically handeled.**
 
 
 They manage the namespaces within their tenants and perform administrative tasks confined to their tenant boundaries. This delegation allows teams to operate more autonomously while still adhering to organizational policies. Tenant Owners can be used to shift reposnsability of one tenant towards this user group. promoting them to the SPOC of all namespaces within the tenant.
@@ -66,8 +90,6 @@ Tenant Owners can:
   - Delete namespaces within their tenant.
 
 Capsule provides robust tools to strictly enforce tenant boundaries, ensuring that each tenant operates within its defined limits. This separation of duties promotes both security and efficient resource management.
-
-[Configure Tenant Owners](/docs/tenants/permissions/#ownership)
 
 ## Layouts
 

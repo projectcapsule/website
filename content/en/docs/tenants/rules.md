@@ -40,9 +40,141 @@ spec:
 
 Note that rules are combined together. In the above example, all namespaces within the `solar` tenant will be enforced to use images from `harbor/v2/customer-registry/*`, while namespaces labeled with `env=prod` will also be allowed to pull images from `harbor/v2/prod-registry/*`.
 
-## Enforcement
+## Permissions
 
-Declare Enforcement rules for the selected namespaces.
+Declare permission distribution rules for the selected namespaces.
+### Promotions
+
+As an administrator, you can define promotion rules . A promotion rule selects ServiceAccounts within a Tenant based on specified conditions and assigns them predefined ClusterRoles.
+
+The selected ClusterRoles are then applied across all namespaces belonging to the Tenant (or a subset), with the corresponding ServiceAccounts configured as subjects. This allows a ServiceAccount in one namespace to automatically receive equivalent permissions in all other namespaces of the same Tenant.
+
+This feature is particularly useful in scenarios involving [Tenant Replications](/docs/replications/#tenantresource), where consistent permissions across namespaces are required.
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:  
+  ...
+  rules:
+    - permissions:
+        promotions:
+          # With this rule every promoted ServiceAccount get's the ClusterRole "tenant-replicator" in all Namespaces of the Tenant solar
+          - clusterRoles: 
+              - "configmap-replicator"
+  
+          # With this rule every promoted ServiceAccount with the matching labels get's the ClusterRole "tenant-replicator" in all Namespaces of the Tenant solar
+          - clusterRoles: 
+              - "secret-replicator"
+            selector:
+              matchLabels:
+                super: "account"
+
+    - namespaceSelector:
+        matchExpressions:
+          - key: env
+            operator: In
+            values: ["prod"]
+      permissions:
+        promotions:
+          # With this rule every promoted ServiceAccount with the matching labels get's the ClusterRole "tenant-replicator" in namespaces of the Tenant solar matching the selector (env=prod)
+          - clusterRoles: 
+              - "secret-replicator:prod"
+```
+
+Make sure the `ClusterRoles` exist, otherwise you will get a reconcile error for the corresponding `Tenant`:
+
+```shell
+  conditions:
+  - lastTransitionTime: "2026-02-16T23:08:59Z"
+    message: 'cannot sync rolebindings items: rolebindings.rbac.authorization.k8s.io
+      "tenant-replicator" not found'
+```
+
+If you are running capsule in [Strict Mode](/docs/operating/setup/installation/#strict-rbac) we must ensure the controller can grant the corresponding permissions to the `ServiceAccount` in all of the `Namespaces` in the `Tenant`. We can simply aggregate the same `ClusterRoles` to the controller:
+
+```yaml
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: configmap-replicator
+  labels:
+    projectcapsule.dev/aggregate-to-controller: "true"
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "create", "patch", "watch", "list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: secret-replicator
+  labels:
+    projectcapsule.dev/aggregate-to-controller: "true"
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "create", "patch", "watch", "list", "delete"]
+```
+
+Now as [Tenant Owner](#ownership) we can start promoting `ServiceAccounts` by labeling them with the label `projectcapsule.dev/promote` and the value `true`. This feature must be enabled in the [CapsuleConfiguration](/docs/operating/setup/configuration/#allowserviceaccountpromotion). You will get the following admission error if the feature is disabled:
+
+```shell
+Error from server (Forbidden): admission webhook "serviceaccounts.projectcapsule.dev" denied the request: service account promotion is disabled. Contact cluster administrators
+```
+
+When the feature is enabled the following command will succeded (assuming `alice` is a [Tenant Owner](#ownership) of the `Tenant` solar):
+
+```yaml
+kubectl label sa gitops-reconcile -n solar-test projectcapsule.dev/promote=true --as alice --as-group projectcapsule.dev
+```
+
+We can now verify if the promotion was successful by checking the `Tenant` status:
+
+```yaml
+kubectl get tnt solar  -o jsonpath='{.status.promotions}' | jq
+
+[
+  {
+    "clusterRoles": [
+      "tenant-replicator"
+    ],
+    "kind": "ServiceAccount",
+    "name": "system:serviceaccount:solar-test:gitops-reconcile"
+    "targets": [
+      "solar-test",
+      "solar-prod"
+    ]
+  }
+]
+```
+
+we can verify the rolebinding was distributed to other `Namespaces` of the `Tenant` solar:
+
+```shell
+kubectl get rolebinding -n solar-prod
+
+NAME                               ROLE                                    AGE
+..
+capsule:managed:7ad688b586eada40   ClusterRole/configmap-replicator        21s
+..
+```
+
+To revoke the promotion, Alice can just remove the label:
+
+```yaml
+kubectl label sa gitops-reconcile -n solar-test projectcapsule.dev/promote-  --as alice --as-group projectcapsule.dev
+```
+
+
+
+
+
+## Enforcement
 
 ### Registries
 
@@ -215,9 +347,9 @@ spec:
 
 Define the allowed image pull policies for the specified registry URL. Supported policies are:
 
-* `Always`: The image is always pulled.
-* `IfNotPresent`: The image is pulled only if it is not already present on the node.
-* `Never`: The image is never pulled. If the image is not present on the node, the Pod will fail to start.
+  * `Always`: The image is always pulled.
+  * `IfNotPresent`: The image is pulled only if it is not already present on the node.
+  * `Never`: The image is never pulled. If the image is not present on the node, the Pod will fail to start.
 
 This configuration is optional. If no policy is specified, all image pull policies are allowed for the given registry.
 
@@ -242,8 +374,8 @@ spec:
 
 Define on which parts of the Pod the registry policy must be validated. Currently supported validation targets are:
 
-* `pod/images`: Validate the images used in the Pod spec (For `Containers`, `InitContainers` and `EphemeralContainers`).
-* `pod/volumes`: Validate the images used in the Pod `Volumes` ([Read More](https://kubernetes.io/docs/tasks/configure-pod-container/image-volumes/))
+  * `pod/images`: Validate the images used in the Pod spec (For `Containers`, `InitContainers` and `EphemeralContainers`).
+  * `pod/volumes`: Validate the images used in the Pod `Volumes` ([Read More](https://kubernetes.io/docs/tasks/configure-pod-container/image-volumes/))
 
 **By default, both targets are validated**. You can override this behavior by specifying the `validation` field for each registry:
 

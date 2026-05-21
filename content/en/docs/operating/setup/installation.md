@@ -6,24 +6,24 @@ description: "Installing the Capsule Controller"
 
 ## Requirements
 
- * [Helm 3](https://github.com/helm/helm/releases) is required when installing the Capsule Operator chart. Follow Helm’s official  for installing helm on your particular operating system.
- * A Kubernetes cluster 1.16+ with following [Admission Controllers](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/) enabled:
+ * [Helm 3](https://github.com/helm/helm/releases) is required when installing the Capsule Operator chart. Follow Helm’s official documentation for installing Helm on your operating system.
+ * A Kubernetes cluster (v1.16+) with the following [Admission Controllers](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/) enabled:
     * PodNodeSelector
     * LimitRanger
     * ResourceQuota
     * MutatingAdmissionWebhook
     * ValidatingAdmissionWebhook
  * A [Kubeconfig](https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/) file accessing the Kubernetes cluster with cluster admin permissions.
- * [Cert-Manager](https://cert-manager.io/) is recommended but not required
+ * [Cert-Manager](https://cert-manager.io/) is required by default but can be disabled. It is used to manage the TLS certificates for the Capsule Admission Webhooks.
 
 ## Installation
 
-We officially only support the installation of Capsule using the Helm chart. The chart itself handles the Installation/Upgrade of needed [CustomResourceDefinitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/). The following Artifacthub repository are official:
+We officially only support the installation of Capsule using the Helm chart. The chart itself handles the installation/upgrade of the required [CustomResourceDefinitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/). The following Artifact Hub repositories are official:
 
-* [Artifacthub Page (OCI)](https://artifacthub.io/packages/helm/capsule/capsule)
-* [Artifacthub Page (Legacy - Best Effort)](https://artifacthub.io/packages/helm/projectcapsule/capsule)
+* [Artifact Hub Page (OCI)](https://artifacthub.io/packages/helm/capsule/capsule)
+* [Artifact Hub Page (Legacy - Best Effort)](https://artifacthub.io/packages/helm/projectcapsule/capsule)
 
-Perform the following steps to install the capsule Operator:
+Perform the following steps to install the Capsule operator:
 
 1. Add repository:
 
@@ -54,9 +54,72 @@ Perform the following steps to install the capsule Operator:
         helm uninstall capsule -n capsule-system
 
 
-## Considerations
+## Production
 
 Here are some key considerations to keep in mind when installing Capsule. Also check out the **[Best Practices](/docs/operating/best-practices)** for more information.
+
+### Strict RBAC
+
+
+{{% alert title="Attention" color="warning" %}}
+Ensure to first upgrade to version `0.13.0` of capsule before enabling strict mode. As it requires fields which are newly added with version `0.13.0`.
+{{% /alert %}}
+
+
+By default, the Capsule controller runs with the ClusterRole `cluster-admin`, which provides full access to the cluster. This is because the controller itself must grant RoleBindings on a per-namespace basis that by default reference the ClusterRole `admin`, which needs to at least match the permissions of the controller itself. However, for production environments we recommend configuring stricter RBAC permissions for the Capsule controller. You can enable the minimal required permissions by setting the following value in the Helm chart:
+
+```yaml
+manager:
+  rbac:
+    strict: true
+```
+
+This grants the controller the minimal permissions required for its own operation. However, that alone is not sufficient for it to function properly. The ClusterRole for the controller allows aggregating further permissions to it via the following labels:
+
+* `projectcapsule.dev/aggregate-to-controller: "true"`
+* `projectcapsule.dev/aggregate-to-controller-instance: {{ .Release.Name }}`
+
+In other words, you must aggregate all ClusterRoles that are assigned to [Tenant owners](/docs/tenants/permissions/#owner-roles) or used for [additional RoleBindings](/docs/tenants/permissions/#strict). This applies only to ClusterRoles that are not managed by Capsule (see [Configuration](/docs/operating/setup/configuration/#rbac)). By default, the only such ClusterRole granted to owners is `admin` (not managed by Capsule).
+
+```bash
+kubectl label clusterrole admin projectcapsule.dev/aggregate-to-controller=true
+```
+
+Verify that the label has been applied:
+
+```yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: admin
+  labels:
+    projectcapsule.dev/aggregate-to-controller: "true"
+rules:
+...
+```
+
+If you are missing permissions you will see an error status for the respective tenants reflecting
+
+```bash
+kubectl get tnt
+NAME    STATE    NAMESPACE QUOTA   NAMESPACE COUNT   NODE SELECTOR   READY   STATUS                                                                                                                                                                                                                                                                                                                                          AGE
+green   Active                     2                                 False   cannot sync rolebindings items: rolebindings.rbac.authorization.k8s.io "capsule:managed:658936e7f2a30e35" is forbidden: user "system:serviceaccount:capsule-system:capsule" (groups=["system:serviceaccounts" "system:serviceaccounts:capsule-system" "system:authenticated"]) is attempting to grant RBAC permissions not currently held:...   5s
+
+```
+
+Alternatively, you can enable only the minimal required permissions by setting the following value in the Helm chart:
+
+```yaml
+manager:
+  rbac:
+    minimal: true
+```
+
+Before you enable this option, you must implement the required permissions for your use case. Depending on which features you are using, you may need to take manual action, for example:
+
+* [Migrate additional RoleBindings](/docs/tenants/permissions/#strict)
+
+
 
 ### Admission Policies
 
@@ -64,21 +127,21 @@ While Capsule provides a robust framework for managing multi-tenancy in Kubernet
 
 ### Certificate Management
 
-We recommend using [cert-manager](https://cert-manager.io/) to manage the TLS certificates for Capsule. This will ensure that your Capsule installation is secure and that the certificates are automatically renewed. Capsule requires a valid TLS certificate for it's Admission Webserver. By default Capsule reconciles it's own TLS certificate. To use cert-manager, you can set the following values:
+By default, Capsule delegates its certificate management to [cert-manager](https://cert-manager.io/). This is the recommended way to manage the TLS certificates for Capsule. However, you can also use Capsule's built-in TLS reconciler to manage the certificates. This is not recommended for production environments. To enable the TLS reconciler, use the following values:
 
 ```yaml
 certManager:
-  generateCertificates: true
+  generateCertificates: false
 tls:
-  enableController: false
-  create: false
+  enableController: true
+  create: true
 ```
 
 ### Webhooks
 
-Capsule makes use of [webhooks for admission control](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers). Ensure that your cluster supports webhooks and that they are properly configured. The webhooks are automatically created by Capsule during installation. However some of these webhooks will cause problems when capsule is not running  (this is especially problematic in single-node clusters). Here are the webhooks you need to watch out for.
+Capsule makes use of [webhooks for admission control](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers). Ensure that your cluster supports webhooks and that they are properly configured. The webhooks are automatically created by Capsule during installation. However, some of these webhooks will cause problems when Capsule is not running (this is especially problematic in single-node clusters). Here are the webhooks you need to watch out for.
 
-Generally we recommend to use [matchconditions](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchconditions) for all the webhooks to avoid problems when Capsule is not running. You should exclude your system critical components from the Capsule webhooks. For namespaced resources (`pods`, `services`, etc.) the webhooks all select only namespaces which are part of a Capsule Tenant. If your system critical components are not part of a Capsule Tenant, they will not be affected by the webhooks. However, if you have system critical components which are part of a Capsule Tenant, you should exclude them from the Capsule webhooks by using [matchconditions](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchconditions) as well or add more specific [namespaceselectors](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-namespaceselector)/[objectselectors](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-objectselector) to exclude them. This can also be considered to improve performance.
+Generally, we recommend using [matchConditions](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchconditions) for all webhooks to avoid problems when Capsule is not running. You should exclude your system-critical components from the Capsule webhooks. For namespaced resources (`pods`, `services`, etc.) the webhooks select only namespaces that are part of a Capsule Tenant. If your system-critical components are not part of a Capsule Tenant, they will not be affected by the webhooks. However, if you have system-critical components that are part of a Capsule Tenant, you should exclude them from the Capsule webhooks by using [matchConditions](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchconditions) as well, or add more specific [namespaceSelectors](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-namespaceselector)/[objectSelectors](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-objectselector) to exclude them. This can also improve performance.
 
 [Refer to the webhook values](https://artifacthub.io/packages/helm/projectcapsule/capsule#webhooks-parameters).
 
@@ -86,7 +149,7 @@ Generally we recommend to use [matchconditions](https://kubernetes.io/docs/refer
 
 #### Nodes
 
-There is a webhook which catches interactions with the Node resource. This Webhook is mainly interesting, when you make use of [Node Metadata](/docs/tenants/enforcement/#nodes). In any other case it will just case you problems. By default the webhook is **disabled**, but you can enabled it by setting the following value:
+There is a webhook which catches interactions with the Node resource. This webhook is mainly relevant when you make use of [Node metadata](/docs/tenants/enforcement/#nodes). In most other cases, it will only cause problems. By default, the webhook is **disabled**, but you can enable it by setting the following value:
 
 ```yaml
 webhooks:
@@ -104,7 +167,7 @@ webhooks:
       failurePolicy: Ignore
 ```
 
-If you still want to use the feature, you could execlude the kube-system namespace (or any other namespace you want to exclude) from the webhook by setting the following value:
+If you still want to use the feature, you could exclude the kube-system namespace (or any other namespace you want to exclude) from the webhook by setting the following value:
 
 ```yaml
 webhooks:
@@ -119,7 +182,7 @@ webhooks:
 
 #### Namespaces
 
-Namespaces are the most important resource in Capsule. The Namespace Webhook is responsible for enforcing the Capsule Tenant boundaries. It is enabled by default and should not be disabled. However, you may change the matchConditions to execlude certain namespaces from the Capsule Tenant boundaries. For example, you can exclude the kube-system namespace by setting the following value:
+Namespaces are the most important resource in Capsule. The Namespace webhook is responsible for enforcing the Capsule Tenant boundaries. It is enabled by default and should not be disabled. However, you may change the matchConditions to exclude certain namespaces from the Capsule Tenant boundaries. For example, you can exclude the kube-system namespace by setting the following value:
 
 ```yaml
 webhooks:
@@ -130,11 +193,35 @@ webhooks:
         expression: '!("system:serviceaccounts:kube-system" in request.userInfo.groups)'
 ```
 
+#### Protected
+
+By default resources with the following values are protected by a webhook to be changed by [Capsule Users]:
+
+```yaml
+webhooks:
+  hooks:
+    managed:
+      objectSelector:
+        matchExpressions:
+          - key: "projectcapsule.dev/created-by"
+            operator: In
+            values:
+            - "controller"
+            - "resources"
+          - key: "projectcapsule.dev/managed-by"
+            operator: In
+            values:
+            - "controller"
+```
+
+
 ## GitOps
 
 There are no specific requirements for using Capsule with GitOps tools like ArgoCD or FluxCD. You can manage Capsule resources as you would with any other Kubernetes resource.
 
 ### ArgoCD
+
+Visit the [ArgoCD Integration](/ecosystem/integrations/argocd/) for more options to integrate Capsule with ArgoCD.
 
 Manifests to get you started with ArgoCD. For ArgoCD you might need to skip the validation of the `CapsuleConfiguration` resources, otherwise there might be errors on the first install:
 
@@ -169,11 +256,6 @@ spec:
       valuesObject:
         crds:
           install: true
-        certManager:
-          generateCertificates: true
-        tls:
-          enableController: false
-          create: false
         manager:
           options:
             annotations:
@@ -181,28 +263,14 @@ spec:
             capsuleConfiguration: default
             ignoreUserGroups:
               - oidc:administators
-            capsuleUserGroups:
-              - oidc:kubernetes-users
-              - system:serviceaccounts:capsule-argo-addon
+            users:
+              - kind: Group
+                name: oidc:kubernetes-users
+              - kind: Group
+                name: system:serviceaccounts:tenants-system
         monitoring:
           dashboards:
             enabled: true
-          serviceMonitor:
-            enabled: true
-            annotations:
-              argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-        proxy:
-          enabled: true
-          webhooks:
-            enabled: true
-          certManager:
-            generateCertificates: true
-          options:
-            generateCertificates: false
-            oidcUsernameClaim: "email"
-            extraArgs:
-            - "--feature-gates=ProxyClusterScoped=true"
-            - "--feature-gates=ProxyAllNamespaced=true"
           serviceMonitor:
             enabled: true
             annotations:
@@ -275,36 +343,21 @@ spec:
   values:
     crds:
       install: true
-    certManager:
-      generateCertificates: true
-    tls:
-      enableController: false
-      create: false
     manager:
       options:
         capsuleConfiguration: default
         ignoreUserGroups:
           - oidc:administators
-        capsuleUserGroups:
-          - oidc:kubernetes-users
-          - system:serviceaccounts:capsule-argo-addon
+        users:
+          - kind: Group
+            name: oidc:kubernetes-users
+          - kind: Group
+            name: system:serviceaccounts:tenants-system
     monitoring:
       dashboards:
         enabled: true
       serviceMonitor:
         enabled: true
-    proxy:
-      enabled: true
-      webhooks:
-        enabled: true
-      certManager:
-        generateCertificates: true
-      options:
-        generateCertificates: false
-        oidcUsernameClaim: "email"
-        extraArgs:
-        - "--feature-gates=ProxyClusterScoped=true"
-        - "--feature-gates=ProxyAllNamespaced=true"
 ---
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
@@ -331,13 +384,13 @@ To verify artifacts you need to have [cosign installed](https://github.com/sigst
     # Helm Chart
     export COSIGN_REPOSITORY=ghcr.io/projectcapsule/charts/capsule
 
-To verify the signature of the docker image, run the following command. Replace `<release_tag>` with an [available release tag](https://github.com/projectcapsule/capsule/pkgs/container/capsule):
+To verify the signature of the docker image, run the following command.
 
     COSIGN_REPOSITORY=ghcr.io/projectcapsule/charts/capsule cosign verify ghcr.io/projectcapsule/capsule:<release_tag> \
       --certificate-identity-regexp="https://github.com/projectcapsule/capsule/.github/workflows/docker-publish.yml@refs/tags/*" \
       --certificate-oidc-issuer="https://token.actions.githubusercontent.com" | jq
 
-To verify the signature of the helm image, run the following command. Replace `<release_tag>` with an [available release tag](https://github.com/projectcapsule/capsule/pkgs/container/charts%2Fcapsule):
+To verify the signature of the helm image, run the following command.
 
     COSIGN_REPOSITORY=ghcr.io/projectcapsule/charts/capsule cosign verify ghcr.io/projectcapsule/charts/capsule:<release_tag> \
       --certificate-identity-regexp="https://github.com/projectcapsule/capsule/.github/workflows/helm-publish.yml@refs/tags/*" \
@@ -347,22 +400,20 @@ To verify the signature of the helm image, run the following command. Replace `<
 
 Capsule creates and attests to the provenance of its builds using the [SLSA standard](https://slsa.dev/spec/v0.2/provenance) and meets the [SLSA Level 3](https://slsa.dev/spec/v0.1/levels) specification. The attested provenance may be verified using the cosign tool.
 
-Verify the provenance of the docker image. Replace `<release_tag>` with an [available release tag](https://github.com/projectcapsule/capsule/pkgs/container/capsule)
+Verify the provenance of the docker image.
 
-```bash
+```
 cosign verify-attestation --type slsaprovenance \
   --certificate-identity-regexp="https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/*" \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  ghcr.io/projectcapsule/capsule:<release_tag> | jq .payload -r | base64 --decode | jq
+  ghcr.io/projectcapsule/capsule:{{< capsule_chart_version >}} | jq .payload -r | base64 --decode | jq
 ```
 
-Verify the provenance of the helm image. Replace `<release_tag>` with an [available release tag](https://github.com/projectcapsule/capsule/pkgs/container/charts%2Fcapsule)
-
 ```bash
 cosign verify-attestation --type slsaprovenance \
   --certificate-identity-regexp="https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@refs/tags/*" \
   --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  ghcr.io/projectcapsule/charts/capsule:<release_tag> | jq .payload -r | base64 --decode | jq
+  ghcr.io/projectcapsule/charts/capsule:{{< capsule_chart_version >}} | jq .payload -r | base64 --decode | jq
 ```
 
 ### Software Bill of Materials (SBOM)
@@ -376,13 +427,13 @@ An SBOM (Software Bill of Materials) in CycloneDX JSON format is published for e
     export COSIGN_REPOSITORY=ghcr.io/projectcapsule/charts/capsule
 
 
-To inspect the SBOM of the docker image, run the following command. Replace `<release_tag>` with an [available release tag](https://github.com/projectcapsule/capsule/pkgs/container/capsule):
+To inspect the SBOM of the docker image, run the following command.
 
-    COSIGN_REPOSITORY=ghcr.io/projectcapsule/capsule cosign download sbom ghcr.io/projectcapsule/capsule:<release_tag>
+    COSIGN_REPOSITORY=ghcr.io/projectcapsule/capsule cosign download sbom ghcr.io/projectcapsule/capsule:{{< capsule_chart_version >}}
 
-To inspect the SBOM of the helm image, run the following command. Replace `<release_tag>` with an [available release tag](https://github.com/projectcapsule/capsule/pkgs/container/charts%2Fcapsule):
+To inspect the SBOM of the helm image, run the following command.
 
-    COSIGN_REPOSITORY=ghcr.io/projectcapsule/charts/capsule cosign download sbom ghcr.io/projectcapsule/charts/capsule:<release_tag>
+    COSIGN_REPOSITORY=ghcr.io/projectcapsule/charts/capsule cosign download sbom ghcr.io/projectcapsule/charts/capsule:{{< capsule_chart_version >}}
 
 ## Compatibility
 

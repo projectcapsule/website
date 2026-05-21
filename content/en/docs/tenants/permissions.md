@@ -5,6 +5,11 @@ description: >
   Grant permissions for tenants
 ---
 
+## Administrators
+
+Administrators are users that have full control over all `Tenants` and their namespaces. They are typically cluster administrators or operators who need to manage the entire cluster and all its `Tenants`. However as administrator you are automatically Owner of all `Tenants`.`Tenants` This means that administrators can create, delete, and manage namespaces and other resources within any `Tenant`, given you are using [label assignments for tenants](/docs/tenants/namespaces/#label).
+
+
 ## Ownership
 
 Capsule introduces the principal, that tenants must have owners ([Tenant Owners](/docs/operating/architecture/#tenant-owners)). The owner of a tenant is a user or a group of users that have the right to create, delete, and manage the [tenant's namespaces](/docs/tenants/namespaces) and other tenant resources. However an owner does not have the permissions to manage the tenants they are owner of. This is still done by cluster-administrators.
@@ -45,7 +50,6 @@ To explain these entries, let's inspect one of them:
 * `clusterRoles`: ClusterRoles which are bound for each namespace of teh tenant to the owner. By default, Capsule assigns `admin` and `capsule-namespace-deleter` roles to each owner, but you can customize them as explained in [Owner Roles](#owner-roles) section.
 
 With this information available you
-
 
 ### Tenant Owners
 
@@ -106,12 +110,9 @@ status:
 This can also be combined with direct owner declarations. In the example, both `alice` user and all `TenantOwners` with label `team: devops` and `TenantOwners` with label `customer: x` will be owners of the `solar` tenant.
 
 ```yaml
-```yaml
 apiVersion: capsule.clastix.io/v1beta2
 kind: Tenant
 metadata:
-  labels:
-    kubernetes.io/metadata.name: oil
   name: solar
 spec:
   owners:
@@ -181,6 +182,71 @@ status:
 
 We. can see that the `system:serviceaccount:capsule:controller` ServiceAccount now has additional `mega-admin` and `controller` roles assigned.
 
+#### Implicit Tenant Assignment
+
+If a `TenantOwner` is created all `Tenants` are always matching the label `projectcapsule.dev/tenant` on `TenantOwner` with the name of the `Tenant`. This means that if you create a `TenantOwner` with the name solar, it will automatically become owner of the solar `Tenant`. This can only be done for one tenant at a time (because the label is unique) and is intended that way.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: TenantOwner
+metadata:
+  labels:
+    projectcapsule.dev/tenant: "solar"
+  name: solar-test-gitops-reconciler
+spec:
+  kind: ServiceAccount
+  name: "system:serviceaccount:solar-test:gitops-reconciler"
+```
+
+With this `Tenant` specification:
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec: {}
+```
+
+We can observe that the owner is automatically assigned for the `Tenant` solar:
+
+```yaml
+kubectl get tnt solar -o yaml
+
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  cordoned: false
+  preventDeletion: false
+status:
+  owners:
+  - clusterRoles:
+    - admin
+    - capsule-namespace-deleter
+    kind: ServiceAccount
+    name: system:serviceaccount:solar-test:gitops-reconciler
+```
+
+#### Aggregation
+
+All subjects defined in `TenantOwner` resources are automatically considered [Capsule Users](/docs/operating/architecture/#capsule-users) and don't need to mentioned further in the CapsuleConfiguration [User Scope](/docs/operating/setup/configuration/#users). If you don't want this behavior, you can disable it by setting `aggregate: false` in the `TenantOwner` spec:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: TenantOwner
+metadata:
+  labels:
+    customer: x
+  name: controller
+spec:
+  kind: ServiceAccount
+  name: "system:serviceaccount:capsule:controller"
+  aggregate: false
+```
+
 ### Users
 
 **Bill**, the cluster admin, receives a new request from Acme Corp's CTO asking for a new `Tenant` to be onboarded and Alice user will be the `TenantOwner`. Bill then assigns Alice's identity of alice in the Acme Corp. identity management system. Since Alice is a `TenantOwner`, Bill needs to assign alice the Capsule group defined by --capsule-user-group option, which defaults to `projectcapsule.dev`.
@@ -239,8 +305,7 @@ no
 
 including the `Tenant` resources
 
-
-```
+```shell
 kubectl auth can-i get tenants
 no
 ```
@@ -313,28 +378,6 @@ system:serviceaccounts:{service-account-namespace}
 ```
 
 You have to add `system:serviceaccounts:{service-account-namespace}` to the CapsuleConfiguration [Group Scope](/docs/operating/setup/configuration/#usergroups) or `system:serviceaccounts:{service-account-namespace}:{service-account-name}` to the CapsuleConfiguration [User Scope](/docs/operating/setup/configuration/#usergroups) to make it work.
-
-### ServiceAccount Promotion
-
-Within a `Tenant`, a ServiceAccount can be promoted to a `TenantOwner`. For example, Alice can create a ServiceAccount called robot in the solar `Tenant` and promote it to be a `TenantOwner` (This requires Alice to be an owner of the `Tenant` as well):
-
-```yaml
-kubectl label sa gitops-reconcile -n green-test owner.projectcapsule.dev/promote=true --as alice --as-group projectcapsule.dev
-```
-
-Now the ServiceAccount robot can create namespaces in the solar `Tenant`:
-
-```bash
-kubectl create ns green-valkey--as system:serviceaccount:green-test:gitops-reconcile
-```
-
-To revoke the promotion, Alice can just remove the label:
-
-```yaml
-kubectl label sa gitops-reconcile -n green-test owner.projectcapsule.dev/promote-  --as alice --as-group projectcapsule.dev
-```
-
-This feature must be enabled in the [CapsuleConfiguration](/docs/operating/setup/configuration/#allowserviceaccountpromotion).
 
 ### Owner Roles
 
@@ -579,6 +622,79 @@ spec:
       - tenant-resources
 ```
 
+## Promotion
+
+As [Tenant Owner](#ownership) you can perform `ServiceAccount` Promotion. 
+
+### Owner Promotion
+
+Within a `Tenant`, a ServiceAccount can be promoted to a `TenantOwner`. For example, Alice can create a ServiceAccount called robot in the solar `Tenant` and promote it to be a `TenantOwner` (This requires Alice to be an owner of the `Tenant` as well):
+
+```yaml
+kubectl label sa gitops-reconcile -n green-test owner.projectcapsule.dev/promote=true --as alice --as-group projectcapsule.dev
+```
+
+**Note:** Promotion is only triggered on the label `owner.projectcapsule.dev/promote` with the value `true`
+
+We can now verify if the promotion was successful by checking the `Tenant` status:
+
+```yaml
+kubectl get tnt green  -o jsonpath='{.status.owners}' | jq
+
+[
+  {
+    "clusterRoles": [
+      "capsule-namespace-provisioner",
+      "capsule-namespace-deleter"
+    ],
+    "kind": "ServiceAccount",
+    "name": "system:serviceaccount:green-test:gitops-reconcile"
+  },
+ {
+    "clusterRoles": [
+      "view",
+      "tenant-resources"
+    ],
+    "kind": "User",
+    "name": "joe"
+  }
+]
+```
+
+
+Now the ServiceAccount robot can create namespaces in the solar `Tenant`:
+
+```bash
+kubectl create ns green-valkey--as system:serviceaccount:green-test:gitops-reconcile
+```
+
+To revoke the promotion, Alice can just remove the label:
+
+```yaml
+kubectl label sa gitops-reconcile -n green-test owner.projectcapsule.dev/promote-  --as alice --as-group projectcapsule.dev
+```
+
+This feature must be enabled in the [CapsuleConfiguration](/docs/operating/setup/configuration/#allowserviceaccountpromotion). The ClusterRoles assigned to promoted ServiceAccounts can be configured in the [CapsuleConfiguration](/docs/operating/setup/configuration/#rbac) as well.
+
+You can also dis/enable Owner Promotion per `Tenant`. By default it's enabled, however since it's disabled in the [CapsuleConfiguration](/docs/operating/setup/configuration/#allowserviceaccountpromotion) it can't be used, unless that's enabled as well.
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:  
+  permissions:
+    promotions:
+      allowOwnerPromotion: false
+```
+
+### Rule based Promotion
+
+[Read More](/docs/tenants/rules/#promotions)
+
+
 ## Additional Rolebindings
 
 With `Tenant` rolebindings you can distribute namespaced rolebindings to all namespaces which are assigned to a namespace. Essentially it is then ensured the defined rolebindings are present and reconciled in all namespaces of the `Tenant`. This is useful if users should have more insights on `Tenant` basis. Let's look at an example.
@@ -624,6 +740,215 @@ EOF
 ```
 
 As you can see the subjects is a classic [rolebinding subject](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#referring-to-subjects). This way you grant permissions to the subject user **Joe**, who only can list and watch servicemonitors in the solar tenant namespaces, but has no other permissions.
+
+### Strict
+
+If you have [strict RBAC enabled for the controller](/docs/operating/setup/installation/#strict-rbac), you need to ensure that the controller ServiceAccount has the permission to create RoleBindings for the specified ClusterRole. The Controller Aggregates ClusterRoles with the labels (OR):
+
+  - `projectcapsule.dev/aggregate-to-controller: "true"`
+  - `projectcapsule.dev/aggregate-to-controller-instance: {{ .Release.Name }}`
+
+So for the above example, you need to label the `prometheus-servicemonitors-viewer` ClusterRole like this:
+
+```yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: prometheus-servicemonitors-viewer
+  labels:
+    projectcapsule.dev/aggregate-to-controller: "true"
+rules:
+- apiGroups: ["monitoring.coreos.com"]
+  resources: ["servicemonitors"]
+  verbs: ["get", "list", "watch"]
+```
+
+### Built-in ClusterRoles
+
+We strongly recommend you use custom ClusterRoles for your `Tenant` rolebindings, but you can also use built-in ClusterRoles (`admin` (default for Tenant Owners), `view` and `edit`). For example, if you want to give the `view` permissions to Joe in all namespaces of the solar `Tenant`, you can use the built-in `view` ClusterRole.
+
+In that case it also makes sense to use [ClusterRole Aggregation](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#aggregated-clusterroles). In the following example we are creating custom aggregated ClusterRoles for these three built-in clusterroles, to allow interactions with the GatewayAPI resources:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant:admins:extension
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+rules:
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources:
+      - gateways
+      - httproutes
+      - grpcroutes
+      - tlsroutes
+      - tcproutes
+      - udproutes
+      - referencegrants
+      - backendtlspolicies
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources:
+      - gateways/status
+      - httproutes/status
+      - grpcroutes/status
+      - tlsroutes/status
+      - tcproutes/status
+      - udproutes/status
+      - referencegrants/status
+      - backendtlspolicies/status
+    verbs: ["get"]
+  - apiGroups: ["gateway.envoyproxy.io"]
+    resources:
+      - clienttrafficpolicies
+      - backendtrafficpolicies
+      - securitypolicies
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["gateway.envoyproxy.io"]
+    resources:
+      - clienttrafficpolicies/status
+      - backendtrafficpolicies/status
+      - securitypolicies/status
+    verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant:members:extension
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+rules:
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources:
+      - gateways
+      - httproutes
+      - grpcroutes
+      - tlsroutes
+      - tcproutes
+      - udproutes
+      - referencegrants
+      - backendtlspolicies
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources:
+      - gateways/status
+      - httproutes/status
+      - grpcroutes/status
+      - tlsroutes/status
+      - tcproutes/status
+      - udproutes/status
+      - referencegrants/status
+      - backendtlspolicies/status
+    verbs: ["get"]
+  - apiGroups: ["gateway.envoyproxy.io"]
+    resources:
+      - clienttrafficpolicies
+      - backendtrafficpolicies
+      - securitypolicies
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["gateway.envoyproxy.io"]
+    resources:
+      - clienttrafficpolicies/status
+      - backendtrafficpolicies/status
+      - securitypolicies/status
+    verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant:viewers:extension
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+rules:
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources:
+      - gateways
+      - httproutes
+      - grpcroutes
+      - tlsroutes
+      - tcproutes
+      - udproutes
+      - referencegrants
+      - backendtlspolicies
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources:
+      - gateways/status
+      - httproutes/status
+      - grpcroutes/status
+      - tlsroutes/status
+      - tcproutes/status
+      - udproutes/status
+      - referencegrants/status
+      - backendtlspolicies/status
+    verbs: ["get"]
+  - apiGroups: ["gateway.envoyproxy.io"]
+    resources:
+      - clienttrafficpolicies
+      - backendtrafficpolicies
+      - securitypolicies
+    verbs: ["get", "list", "watch", "create"]
+  - apiGroups: ["gateway.envoyproxy.io"]
+    resources:
+      - clienttrafficpolicies/status
+      - backendtrafficpolicies/status
+      - securitypolicies/status
+    verbs: ["get"]
+```
+
+### Selective Distribution
+
+You may have the use-case where you want to distribute different ClusterRoles to different namespaces of the same `Tenant`. For example, you want to give `view` permissions to a operational group in all namespaces of the solar `Tenant` with `environment=production` label, but you want to give `edit` permissions to the operations group inall other namespaces. You can achieve this by leveraging [GlobalTenantResources](/docs/replications/global/):
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalTenantResource
+metadata:
+  name: operators-rolebindings
+spec:
+  resyncPeriod: 60s
+  resources:
+    - namespaceSelector:
+        matchExpressions:
+        - key: environment
+          operator: NotIn
+          values:
+          - prod
+      rawItems:
+        - apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: operators-rw
+          subjects:
+          - kind: Group
+            name: tenant:{{tenant.name}}:operators
+            namespace: "{{namespace}}"
+          roleRef:
+            kind: ClusterRole
+            name: view
+            apiGroup: rbac.authorization.k8s.io
+
+    - namespaceSelector:
+        matchLabels:
+          environment: prod
+      rawItems:
+        - apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: operators-view-only
+          subjects:
+          - kind: Group
+            name: tenant:{{tenant.name}}:operators
+            namespace: "{{namespace}}"
+          roleRef:
+            kind: ClusterRole
+            name: edit
+            apiGroup: rbac.authorization.k8s.io
+```
 
 ### Custom Resources
 
@@ -699,8 +1024,3 @@ roleRef:
 With the above example, Capsule is leaving the `TenantOwner` to create namespaced custom resources.
 
 > Take Note: a `TenantOwner` having the admin scope on its namespaces only, does not have the permission to create Custom Resources Definitions (CRDs) because this requires a cluster admin permission level. Only Bill, the cluster admin, can create CRDs. This is a known limitation of any multi-tenancy environment based on a single shared control plane.
-
-## Administrators
-
-Administrators are users that have full control over all `Tenants` and their namespaces. They are typically cluster administrators or operators who need to manage the entire cluster and all its `Tenants`. However as administrator you are automatically Owner of all `Tenants`.`Tenants` This means that administrators can create, delete, and manage namespaces and other resources within any `Tenant`, given you are using [label assignments for tenants](/docs/tenants/namespaces/#label).
-
