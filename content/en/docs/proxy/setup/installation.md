@@ -312,32 +312,62 @@ ingress:
 
 ### User Authentication
 
-The capsule-proxy intercepts all the requests from the kubectl client directed to the APIs Server. Users using a TLS client-based authentication with a certificate and key can talk with the API Server since it can forward client certificates to the Kubernetes APIs server.
+The capsule-proxy intercepts all the requests from the kubectl client directed to the APIs Server. Users using a TLS client-based authentication with a certificate and key can talk with the API Server since it can forward client certificates to the Kubernetes APIs server. You can configure the capsule-proxy to use multiple authentication methods, for example, you can prefer Bearer Token authentication over TLS client-based authentication or use Forwarded Client Certificate Authentication (XFCC) if supported by your Ingress Controller. The following sections describe the supported authentication methods.
+
+```yaml
+options:
+  authPreferredTypes: "BearerToken,TLSCertificate,XForwardedClientCert"
+```
 
 
 #### Bearer Token Authentication
 
+Bearer Token authentication is supported by default, meaning that users providing tokens are always able to reach the APIs Server. You can configure the capsule-proxy to prefer Bearer Token authentication over TLS client-based authentication:
+
+```yaml
+options:
+  authPreferredTypes: "BearerToken"
+```
 
 #### Client Certificate Authentication
 
-
-
 It is possible to protect the capsule-proxy using a certificate provided by Let's Encrypt. Keep in mind that, in this way, the TLS termination will be executed by the Ingress Controller, meaning that the authentication based on the client certificate will be withdrawn and not reversed to the upstream. For such cases you may want to rely on the token-based authentication, for example, OIDC or Bearer tokens. Users providing tokens are always able to reach the APIs Server or consider using the [Forwarded Client Certificate Authentication (XFCC)](#forwarded-client-certificate-authentication-xfcc) if supported by your Ingress Controller.
 
-#### Forwarded Client Certificate Authentication (XFCC)
+```yaml
+options:
+  authPreferredTypes: "TLSCertificate"
+```
 
+#### Forwarded Client Certificate Authentication (XFCC)
 
 It is possible to protect the capsule-proxy using a certificate provided by Let's Encrypt. Keep in mind that, in this way, the TLS termination will be executed by the Ingress Controller, meaning that the authentication based on the client certificate will be withdrawn and not reversed to the upstream.
 
 If your prerequisite is exposing capsule-proxy using an Ingress, you must rely on the token-based authentication, for example, OIDC or Bearer tokens. Users providing tokens are always able to reach the APIs Server.
 
+```yaml
+options:
+  authPreferredTypes: "XForwardedClientCert"
+```
 
+By default the HTTP-Header used for the client certificate is `X-Forwarded-Client-Cert`, but it can be customized using the `--xfcc-header-name` argument:
+
+```yaml
+options:
+  authPreferredTypes: "XForwardedClientCert"
+  extraArgs:
+    - "--xfcc-header-name=X-My-Custom-Client-Cert"
+```
 
 ### Trusted Sources
 
+CIDR ranges of trusted proxies allowed to send forwarded client certificate headers:
 
-
-
+```yaml
+options:
+  extraArgs:
+    - "--trusted-proxy-cidrs=10.0.0.0/8"
+    - "--trusted-proxy-cidrs=127.0.0.1/32"
+```
 
 ### Certificate Management
 
