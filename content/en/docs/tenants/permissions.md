@@ -79,10 +79,10 @@ metadata:
 spec:
   permissions:
     matchOwners:
-    - matchLabels:
-        team: devops
-    - matchLabels:
-        customer: x
+      - matchLabels:
+          team: devops
+      - matchLabels:
+          customer: x
 ```
 
 Since the ownership is now loosely coupled, all `TenantOwners` matching the given labels will be owners of the tenant. We can verify this via the `.status.owners` field of the Tenant resource:
@@ -624,7 +624,7 @@ spec:
 
 ## Promotion
 
-As [Tenant Owner](#ownership) you can perform `ServiceAccount` Promotion. 
+As [Tenant Owner](#ownership) you can perform `ServiceAccount` Promotion.
 
 ### Owner Promotion
 
@@ -684,7 +684,7 @@ apiVersion: capsule.clastix.io/v1beta2
 kind: Tenant
 metadata:
   name: solar
-spec:  
+spec:
   permissions:
     promotions:
       allowOwnerPromotion: false
