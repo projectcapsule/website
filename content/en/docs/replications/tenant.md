@@ -1284,3 +1284,15 @@ namespace:
         phase: Active
 ```
 
+### Monitoring
+
+Currently mainly the conditions of `TenantResources` are exposed as metrics:
+
+```
+# HELP capsule_resource_condition The current condition status of a tenant resource.
+# TYPE capsule_resource_condition gauge
+capsule_resource_condition{condition="Cordoned",name="templated-forbidden-namespace",target_namespace="e2e-tenantresource-ssa-system"} 0
+capsule_resource_condition{condition="Ready",name="templated-forbidden-namespace",target_namespace="e2e-tenantresource-ssa-system"} 1
+```
+
+
