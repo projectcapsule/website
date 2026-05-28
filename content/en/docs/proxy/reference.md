@@ -79,7 +79,7 @@ GlobalProxySettingsSpec defines the desired state of GlobalProxySettings.
 
 
 
-
+ClusterResource Specification
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -87,7 +87,7 @@ GlobalProxySettingsSpec defines the desired state of GlobalProxySettings.
 | **apiGroups** | []string | APIGroups is the name of the APIGroup that contains the resources. If multiple API groups are specified, any action requested against any resource listed will be allowed. '*' represents all resources. Empty string represents v1 api resources. | true |
 | **resources** | []string | Resources is a list of resources this rule applies to. '*' represents all resources. | true |
 | **[selector](#globalproxysettingsspecrulesindexclusterresourcesindexselector)** | object | Select all cluster scoped resources with the given label selector.<br>Defining a selector which does not match any resources is considered not selectable (eg. using operation NotExists). | true |
-| **operations** | []enum | <span style="color:red;font-weight:bold">Operations which can be executed on the selected resources.<br>Deprecated: For all registered Routes only LIST ang GET requests will intercepted<br>Other permissions must be implemented via kubernetes native RBAC</span><br/>*Enum*: List, Update, Delete<br/> | false |
+| **operations** | []enum | <span style="color:red;font-weight:bold">Deprecated: For all registered Routes only LIST ang GET requests will intercepted<br><br>Operations which can be executed on the selected resources.<br>Other permissions must be implemented via kubernetes native RBAC</span><br/>*Enum*: List, Update, Delete<br/> | false |
 
 
 ### GlobalProxySettings.spec.rules[index].clusterResources[index].selector
@@ -161,14 +161,14 @@ Resource is Namespace-scoped and applies the settings to the belonged Tenant.
 | **kind** | enum | Kind of tenant owner. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
 | **name** | string | Name of tenant owner. | true |
 | **[clusterResources](#proxysettingspecsubjectsindexclusterresourcesindex)** | []object | Cluster Resources for tenant Owner. | false |
-| **[proxySettings](#proxysettingspecsubjectsindexproxysettingsindex)** | []object | Proxy settings for tenant owner. | false |
+| **[proxySettings](#proxysettingspecsubjectsindexproxysettingsindex)** | []object | <span style="color:red;font-weight:bold">Deprecated: Use Global Proxy Settings instead (https://projectcapsule.dev/docs/proxy/proxysettings/#globalproxysettings)<br><br>Proxy settings for tenant owner.</span> | false |
 
 
 ### ProxySetting.spec.subjects[index].clusterResources[index]
 
 
 
-
+ClusterResource Specification
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -176,7 +176,7 @@ Resource is Namespace-scoped and applies the settings to the belonged Tenant.
 | **apiGroups** | []string | APIGroups is the name of the APIGroup that contains the resources. If multiple API groups are specified, any action requested against any resource listed will be allowed. '*' represents all resources. Empty string represents v1 api resources. | true |
 | **resources** | []string | Resources is a list of resources this rule applies to. '*' represents all resources. | true |
 | **[selector](#proxysettingspecsubjectsindexclusterresourcesindexselector)** | object | Select all cluster scoped resources with the given label selector.<br>Defining a selector which does not match any resources is considered not selectable (eg. using operation NotExists). | true |
-| **operations** | []enum | <span style="color:red;font-weight:bold">Operations which can be executed on the selected resources.<br>Deprecated: For all registered Routes only LIST ang GET requests will intercepted<br>Other permissions must be implemented via kubernetes native RBAC</span><br/>*Enum*: List, Update, Delete<br/> | false |
+| **operations** | []enum | <span style="color:red;font-weight:bold">Deprecated: For all registered Routes only LIST ang GET requests will intercepted<br><br>Operations which can be executed on the selected resources.<br>Other permissions must be implemented via kubernetes native RBAC</span><br/>*Enum*: List, Update, Delete<br/> | false |
 
 
 ### ProxySetting.spec.subjects[index].clusterResources[index].selector
