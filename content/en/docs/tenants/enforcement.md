@@ -563,7 +563,7 @@ Any attempt of Alice to use a non-valid `GatewayClass`, or missing it, is denied
 
 > Note: The Default `GatewayClass` must have a label which is allowed within the tenant. This behavior is only implemented this way for the `GatewayClass` default.
 
-This feature allows specifying a custom default value on a `Tenant` basis. Currently there is no global default feature for a `GatewayClass`. Each [Gateway](https://gateway-api.sigs.k8s.io/api-types/gateway/) must have a `spec.gatewayClassName` set.
+This feature allows specifying a custom default value on a `Tenant` basis. Currently there is no global default feature for a `GatewayClass`. Each [Gateway](https://gateway-api.sigs.k8s.io/docs/concepts/api-overview/#gateway) must have a `spec.gatewayClassName` set.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2

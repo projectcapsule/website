@@ -279,7 +279,7 @@ extraVolumeMounts:
 - `kubectl create ns foo-bar` (should fail, since not owner)
 - `kubectl create ns oil-bar` (should succeed)
 
-From here you could enable `ProxyClusterScoped` [feature gate](https://projectcapsule.dev/docs/proxy/options/) to allow listing of cluster scoped resources via [ProxySettings](https://projectcapsule.dev/docs/proxy/proxysettings/).
+From here you could enable `ProxyClusterScoped` [feature gate](/docs/proxy/setup/options/) to allow listing of cluster scoped resources via [ProxySettings](/docs/proxy/proxysettings/).
 
 ## Cleanup
 
