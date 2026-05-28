@@ -118,8 +118,8 @@ manager:
 Before you enable this option, you must implement the required permissions for your use case. Depending on which features you are using, you may need to take manual action, for example:
 
 * [Migrate additional RoleBindings](/docs/tenants/permissions/#strict)
-
-
+* [Migrate `TenantResources` to use impersonation](/docs/replications/tenant/#impersonation)
+* [Migrate `GlobalTenantResources` to use impersonation](/docs/replications/global/#impersonation)
 
 ### Admission Policies
 
