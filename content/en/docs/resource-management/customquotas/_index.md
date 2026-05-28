@@ -127,7 +127,7 @@ The following constraints apply to the JSONPath:
     * `\r` (carriage return) 
     * `\t` (tab)
   * Values can resolve to array results, which are then summed up. (For example, `.spec.containers[*].resources.limits.cpu` would sum the CPU limits of all containers in a Pod.)
-  * Missing fields are treated as zero (`0`). We allow Keys to be missing be default. Meaning if you eg define this JP `.spec.initContainers[*].resources.limits.cpu` on a Pod that has no initContainers, it will simply contribute 0 to the usage instead of causing an error. This is useful for flexibility and to avoid unintended disruptions, but it also means that you need to be careful when defining your JSONPaths to ensure they accurately capture the intended usage.
+  * Missing fields are resulting in an error, as it's assumed that if a path requires calculation it should force the targeted sources to define these paths. Meaning if you eg define this JP `.spec.initContainers[*].resources.limits.cpu` on a Pod that has no initContainers, it will error. If you want to only calculate the path if it exists, you can use a [fielselector](#fieldselectors) to only match objects where the path exists, for example with `.spec.initContainers` as fieldSelector.
 
 ### Quota Matches
 

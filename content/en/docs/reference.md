@@ -15,7 +15,13 @@ Resource Types:
 
 - [CapsuleConfiguration](#capsuleconfiguration)
 
+- [CustomQuota](#customquota)
+
+- [GlobalCustomQuota](#globalcustomquota)
+
 - [GlobalTenantResource](#globaltenantresource)
+
+- [QuantityLedger](#quantityledger)
 
 - [ResourcePoolClaim](#resourcepoolclaim)
 
@@ -68,6 +74,7 @@ CapsuleConfigurationSpec defines the Capsule configuration.
 | **allowServiceAccountPromotion** | boolean | ServiceAccounts within tenant namespaces can be promoted to owners of the given tenant<br>this can be achieved by labeling the serviceaccount and then they are considered owners. This can only be done by other owners of the tenant.<br>However ServiceAccounts which have been promoted to owner can not promote further serviceAccounts.<br/>*Default*: false<br/> | false |
 | **forceTenantPrefix** | boolean | Enforces the Tenant owner, during Namespace creation, to name it using the selected Tenant name as prefix,<br>separated by a dash. This is useful to avoid Namespace name collision in a public CaaS environment.<br/>*Default*: false<br/> | false |
 | **ignoreUserWithGroups** | []string | Define groups which when found in the request of a user will be ignored by the Capsule<br>this might be useful if you have one group where all the users are in, but you want to separate administrators from normal users with additional groups. | false |
+| **[impersonation](#capsuleconfigurationspecimpersonation)** | object | Service Account Client configuration for impersonation properties | false |
 | **[nodeMetadata](#capsuleconfigurationspecnodemetadata)** | object | Allows to set the forbidden metadata for the worker nodes that could be patched by a Tenant.<br>This applies only if the Tenant has an active NodeSelector, and the Owner have right to patch their nodes. | false |
 | **[overrides](#capsuleconfigurationspecoverrides)** | object | Allows to set different name rather than the canonical one for the Capsule configuration objects,<br>such as webhook secret or configurations.<br/>*Default*: map[TLSSecretName:capsule-tls mutatingWebhookConfigurationName:capsule-mutating-webhook-configuration validatingWebhookConfigurationName:capsule-validating-webhook-configuration]<br/> | false |
 | **protectedNamespaceRegex** | string | Disallow creation of namespaces, whose name matches this regexp | false |
@@ -114,6 +121,7 @@ Configuration for dynamic Validating and Mutating Admission webhooks managed by 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **[mutating](#capsuleconfigurationspecadmissionmutating)** | object | Configure dynamic Mutating Admission for Capsule | false |
+| **serviceName** | string | Service Name of the Admission Service<br/>*Default*: capsule-webhook-service<br/> | false |
 | **[validating](#capsuleconfigurationspecadmissionvalidating)** | object | Configure dynamic Validating Admission for Capsule | false |
 
 
@@ -126,17 +134,18 @@ Configure dynamic Mutating Admission for Capsule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[client](#capsuleconfigurationspecadmissionmutatingclient)** | object | From the upstram struct | true |
+| **[client](#capsuleconfigurationspecadmissionmutatingclient)** | object | whats the problem | true |
 | **annotations** | map[string]string | Annotations added to the Admission Webhook | false |
 | **labels** | map[string]string | Labels added to the Admission Webhook | false |
 | **name** | string | Name the Admission Webhook | false |
+| **[webhooks](#capsuleconfigurationspecadmissionmutatingwebhooksindex)** | []object | Define Dynamic Admission Webhooks | false |
 
 
 ### CapsuleConfiguration.spec.admission.mutating.client
 
 
 
-From the upstram struct
+whats the problem
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -164,6 +173,181 @@ If the webhook is running within the cluster, then you should use `service`.
 | **port** | integer | If specified, the port on the service that hosting webhook.<br>Default to 443 for backward compatibility.<br>`port` should be a valid port number (1-65535, inclusive).<br/>*Format*: int32<br/> | false |
 
 
+### CapsuleConfiguration.spec.admission.mutating.webhooks[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **admissionReviewVersions** | []string | AdmissionReviewVersions is an ordered list of preferred `AdmissionReview`<br>versions the Webhook expects. API server will try to use first version in<br>the list which it supports. If none of the versions specified in this list<br>supported by API server, validation will fail for this object.<br>If a persisted webhook configuration specifies allowed versions and does not<br>include any versions known to the API Server, calls to the webhook will fail<br>and be subject to the failure policy. | true |
+| **name** | string | The name of the admission webhook.<br>Name should be fully qualified, e.g., imagepolicy.kubernetes.io, where<br>"imagepolicy" is the name of the webhook, and kubernetes.io is the name<br>of the organization.<br>Required. | true |
+| **path** | string | `path` is the URL path which will be sent in any request to<br>this service. | true |
+| **sideEffects** | string | SideEffects states whether this webhook has side effects.<br>Acceptable values are: None, NoneOnDryRun (webhooks created via v1beta1 may also specify Some or Unknown).<br>Webhooks with side effects MUST implement a reconciliation system, since a request may be<br>rejected by a future step in the admission chain and the side effects therefore need to be undone.<br>Requests with the dryRun attribute will be auto-rejected if they match a webhook with<br>sideEffects == Unknown or Some. | true |
+| **failurePolicy** | string | FailurePolicy defines how unrecognized errors from the admission endpoint are handled -<br>allowed values are Ignore or Fail. Defaults to Fail. | false |
+| **[matchConditions](#capsuleconfigurationspecadmissionmutatingwebhooksindexmatchconditionsindex)** | []object | MatchConditions is a list of conditions that must be met for a request to be sent to this<br>webhook. Match conditions filter requests that have already been matched by the rules,<br>namespaceSelector, and objectSelector. An empty list of matchConditions matches all requests.<br>There are a maximum of 64 match conditions allowed.<br><br>The exact matching logic is (in order):<br>  1. If ANY matchCondition evaluates to FALSE, the webhook is skipped.<br>  2. If ALL matchConditions evaluate to TRUE, the webhook is called.<br>  3. If any matchCondition evaluates to an error (but none are FALSE):<br>     - If failurePolicy=Fail, reject the request<br>     - If failurePolicy=Ignore, the error is ignored and the webhook is skipped | false |
+| **matchPolicy** | string | matchPolicy defines how the "rules" list is used to match incoming requests.<br>Allowed values are "Exact" or "Equivalent".<br><br>- Exact: match a request only if it exactly matches a specified rule.<br>For example, if deployments can be modified via apps/v1, apps/v1beta1, and extensions/v1beta1,<br>but "rules" only included `apiGroups:["apps"], apiVersions:["v1"], resources: ["deployments"]`,<br>a request to apps/v1beta1 or extensions/v1beta1 would not be sent to the webhook.<br><br>- Equivalent: match a request if modifies a resource listed in rules, even via another API group or version.<br>For example, if deployments can be modified via apps/v1, apps/v1beta1, and extensions/v1beta1,<br>and "rules" only included `apiGroups:["apps"], apiVersions:["v1"], resources: ["deployments"]`,<br>a request to apps/v1beta1 or extensions/v1beta1 would be converted to apps/v1 and sent to the webhook.<br><br>Defaults to "Equivalent" | false |
+| **[namespaceSelector](#capsuleconfigurationspecadmissionmutatingwebhooksindexnamespaceselector)** | object | NamespaceSelector decides whether to run the webhook on an object based<br>on whether the namespace for that object matches the selector. If the<br>object itself is a namespace, the matching is performed on<br>object.metadata.labels. If the object is another cluster scoped resource,<br>it never skips the webhook.<br><br>For example, to run the webhook on any objects whose namespace is not<br>associated with "runlevel" of "0" or "1";  you will set the selector as<br>follows:<br>"namespaceSelector": {<br>  "matchExpressions": [<br>    {<br>      "key": "runlevel",<br>      "operator": "NotIn",<br>      "values": [<br>        "0",<br>        "1"<br>      ]<br>    }<br>  ]<br>}<br><br>If instead you want to only run the webhook on any objects whose<br>namespace is associated with the "environment" of "prod" or "staging";<br>you will set the selector as follows:<br>"namespaceSelector": {<br>  "matchExpressions": [<br>    {<br>      "key": "environment",<br>      "operator": "In",<br>      "values": [<br>        "prod",<br>        "staging"<br>      ]<br>    }<br>  ]<br>}<br><br>See<br>https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/<br>for more examples of label selectors.<br><br>Default to the empty LabelSelector, which matches everything. | false |
+| **[objectSelector](#capsuleconfigurationspecadmissionmutatingwebhooksindexobjectselector)** | object | ObjectSelector decides whether to run the webhook based on if the<br>object has matching labels. objectSelector is evaluated against both<br>the oldObject and newObject that would be sent to the webhook, and<br>is considered to match if either object matches the selector. A null<br>object (oldObject in the case of create, or newObject in the case of<br>delete) or an object that cannot have labels (like a<br>DeploymentRollback or a PodProxyOptions object) is not considered to<br>match.<br>Use the object selector only if the webhook is opt-in, because end<br>users may skip the admission webhook by setting the labels.<br>Default to the empty LabelSelector, which matches everything. | false |
+| **[opts](#capsuleconfigurationspecadmissionmutatingwebhooksindexopts)** | object | Capsule Custom Admission Options | false |
+| **reinvocationPolicy** | string | reinvocationPolicy indicates whether this webhook should be called multiple times as part of a single admission evaluation.<br>Allowed values are "Never" and "IfNeeded".<br><br>Never: the webhook will not be called more than once in a single admission evaluation.<br><br>IfNeeded: the webhook will be called at least one additional time as part of the admission evaluation<br>if the object being admitted is modified by other admission plugins after the initial webhook call.<br>Webhooks that specify this option *must* be idempotent, able to process objects they previously admitted.<br>Note:<br>* the number of additional invocations is not guaranteed to be exactly one.<br>* if additional invocations result in further modifications to the object, webhooks are not guaranteed to be invoked again.<br>* webhooks that use this option may be reordered to minimize the number of additional invocations.<br>* to validate an object after all mutations are guaranteed complete, use a validating admission webhook instead.<br><br>Defaults to "Never". | false |
+| **[rules](#capsuleconfigurationspecadmissionmutatingwebhooksindexrulesindex)** | []object | Rules describes what operations on what resources/subresources the webhook cares about.<br>The webhook cares about an operation if it matches _any_ Rule.<br>However, in order to prevent ValidatingAdmissionWebhooks and MutatingAdmissionWebhooks<br>from putting the cluster in a state which cannot be recovered from without completely<br>disabling the plugin, ValidatingAdmissionWebhooks and MutatingAdmissionWebhooks are never called<br>on admission requests for ValidatingWebhookConfiguration and MutatingWebhookConfiguration objects. | false |
+| **timeoutSeconds** | integer | TimeoutSeconds specifies the timeout for this webhook. After the timeout passes,<br>the webhook call will be ignored or the API call will fail based on the<br>failure policy.<br>The timeout value must be between 1 and 30 seconds.<br>Default to 10 seconds.<br/>*Format*: int32<br/> | false |
+
+
+### CapsuleConfiguration.spec.admission.mutating.webhooks[index].matchConditions[index]
+
+
+
+MatchCondition represents a condition which must by fulfilled for a request to be sent to a webhook.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **expression** | string | Expression represents the expression which will be evaluated by CEL. Must evaluate to bool.<br>CEL expressions have access to the contents of the AdmissionRequest and Authorizer, organized into CEL variables:<br><br>'object' - The object from the incoming request. The value is null for DELETE requests.<br>'oldObject' - The existing object. The value is null for CREATE requests.<br>'request' - Attributes of the admission request(/pkg/apis/admission/types.go#AdmissionRequest).<br>'authorizer' - A CEL Authorizer. May be used to perform authorization checks for the principal (user or service account) of the request.<br>  See https://pkg.go.dev/k8s.io/apiserver/pkg/cel/library#Authz<br>'authorizer.requestResource' - A CEL ResourceCheck constructed from the 'authorizer' and configured with the<br>  request resource.<br>Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/<br><br>Required. | true |
+| **name** | string | Name is an identifier for this match condition, used for strategic merging of MatchConditions,<br>as well as providing an identifier for logging purposes. A good name should be descriptive of<br>the associated expression.<br>Name must be a qualified name consisting of alphanumeric characters, '-', '_' or '.', and<br>must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or<br>'123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]') with an<br>optional DNS subdomain prefix and '/' (e.g. 'example.com/MyName')<br><br>Required. | true |
+
+
+### CapsuleConfiguration.spec.admission.mutating.webhooks[index].namespaceSelector
+
+
+
+NamespaceSelector decides whether to run the webhook on an object based
+on whether the namespace for that object matches the selector. If the
+object itself is a namespace, the matching is performed on
+object.metadata.labels. If the object is another cluster scoped resource,
+it never skips the webhook.
+
+For example, to run the webhook on any objects whose namespace is not
+associated with "runlevel" of "0" or "1";  you will set the selector as
+follows:
+"namespaceSelector": {
+  "matchExpressions": [
+    {
+      "key": "runlevel",
+      "operator": "NotIn",
+      "values": [
+        "0",
+        "1"
+      ]
+    }
+  ]
+}
+
+If instead you want to only run the webhook on any objects whose
+namespace is associated with the "environment" of "prod" or "staging";
+you will set the selector as follows:
+"namespaceSelector": {
+  "matchExpressions": [
+    {
+      "key": "environment",
+      "operator": "In",
+      "values": [
+        "prod",
+        "staging"
+      ]
+    }
+  ]
+}
+
+See
+https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+for more examples of label selectors.
+
+Default to the empty LabelSelector, which matches everything.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#capsuleconfigurationspecadmissionmutatingwebhooksindexnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### CapsuleConfiguration.spec.admission.mutating.webhooks[index].namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### CapsuleConfiguration.spec.admission.mutating.webhooks[index].objectSelector
+
+
+
+ObjectSelector decides whether to run the webhook based on if the
+object has matching labels. objectSelector is evaluated against both
+the oldObject and newObject that would be sent to the webhook, and
+is considered to match if either object matches the selector. A null
+object (oldObject in the case of create, or newObject in the case of
+delete) or an object that cannot have labels (like a
+DeploymentRollback or a PodProxyOptions object) is not considered to
+match.
+Use the object selector only if the webhook is opt-in, because end
+users may skip the admission webhook by setting the labels.
+Default to the empty LabelSelector, which matches everything.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#capsuleconfigurationspecadmissionmutatingwebhooksindexobjectselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### CapsuleConfiguration.spec.admission.mutating.webhooks[index].objectSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### CapsuleConfiguration.spec.admission.mutating.webhooks[index].opts
+
+
+
+Capsule Custom Admission Options
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **administrators** | boolean | If enabled, the request is only sent to admission if the user is mentioned<br>As Part of the Capsule Administrators<br/>*Default*: false<br/> | true |
+| **capsuleUsers** | boolean | If enabled, the request is only sent to admission if the user is mentioned<br>As Part of the Capsule Users<br/>*Default*: false<br/> | true |
+
+
+### CapsuleConfiguration.spec.admission.mutating.webhooks[index].rules[index]
+
+
+
+RuleWithOperations is a tuple of Operations and Resources. It is recommended to make
+sure that all the tuple expansions are valid.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiGroups** | []string | APIGroups is the API groups the resources belong to. '*' is all groups.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **apiVersions** | []string | APIVersions is the API versions the resources belong to. '*' is all versions.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **operations** | []string | Operations is the operations the admission hook cares about - CREATE, UPDATE, DELETE, CONNECT or *<br>for all of those operations and any future admission operations that are added.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **resources** | []string | Resources is a list of resources this rule applies to.<br><br>For example:<br>'pods' means pods.<br>'pods/log' means the log subresource of pods.<br>'*' means all resources, but not subresources.<br>'pods/*' means all subresources of pods.<br>'*/scale' means all scale subresources.<br>'*/*' means all resources and their subresources.<br><br>If wildcard is present, the validation rule will ensure resources do not<br>overlap with each other.<br><br>Depending on the enclosing object, subresources might not be allowed.<br>Required. | false |
+| **scope** | string | scope specifies the scope of this rule.<br>Valid values are "Cluster", "Namespaced", and "*"<br>"Cluster" means that only cluster-scoped resources will match this rule.<br>Namespace API objects are cluster-scoped.<br>"Namespaced" means that only namespaced resources will match this rule.<br>"*" means that there are no scope restrictions.<br>Subresources match the scope of their parent resource.<br>Default is "*". | false |
+
+
 ### CapsuleConfiguration.spec.admission.validating
 
 
@@ -173,17 +357,18 @@ Configure dynamic Validating Admission for Capsule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[client](#capsuleconfigurationspecadmissionvalidatingclient)** | object | From the upstram struct | true |
+| **[client](#capsuleconfigurationspecadmissionvalidatingclient)** | object | whats the problem | true |
 | **annotations** | map[string]string | Annotations added to the Admission Webhook | false |
 | **labels** | map[string]string | Labels added to the Admission Webhook | false |
 | **name** | string | Name the Admission Webhook | false |
+| **[webhooks](#capsuleconfigurationspecadmissionvalidatingwebhooksindex)** | []object | Define Dynamic Admission Webhooks | false |
 
 
 ### CapsuleConfiguration.spec.admission.validating.client
 
 
 
-From the upstram struct
+whats the problem
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -209,6 +394,199 @@ If the webhook is running within the cluster, then you should use `service`.
 | **namespace** | string | `namespace` is the namespace of the service.<br>Required | true |
 | **path** | string | `path` is an optional URL path which will be sent in any request to<br>this service. | false |
 | **port** | integer | If specified, the port on the service that hosting webhook.<br>Default to 443 for backward compatibility.<br>`port` should be a valid port number (1-65535, inclusive).<br/>*Format*: int32<br/> | false |
+
+
+### CapsuleConfiguration.spec.admission.validating.webhooks[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **admissionReviewVersions** | []string | AdmissionReviewVersions is an ordered list of preferred `AdmissionReview`<br>versions the Webhook expects. API server will try to use first version in<br>the list which it supports. If none of the versions specified in this list<br>supported by API server, validation will fail for this object.<br>If a persisted webhook configuration specifies allowed versions and does not<br>include any versions known to the API Server, calls to the webhook will fail<br>and be subject to the failure policy. | true |
+| **name** | string | The name of the admission webhook.<br>Name should be fully qualified, e.g., imagepolicy.kubernetes.io, where<br>"imagepolicy" is the name of the webhook, and kubernetes.io is the name<br>of the organization.<br>Required. | true |
+| **path** | string | `path` is the URL path which will be sent in any request to<br>this service. | true |
+| **sideEffects** | string | SideEffects states whether this webhook has side effects.<br>Acceptable values are: None, NoneOnDryRun (webhooks created via v1beta1 may also specify Some or Unknown).<br>Webhooks with side effects MUST implement a reconciliation system, since a request may be<br>rejected by a future step in the admission chain and the side effects therefore need to be undone.<br>Requests with the dryRun attribute will be auto-rejected if they match a webhook with<br>sideEffects == Unknown or Some. | true |
+| **failurePolicy** | string | FailurePolicy defines how unrecognized errors from the admission endpoint are handled -<br>allowed values are Ignore or Fail. Defaults to Fail. | false |
+| **[matchConditions](#capsuleconfigurationspecadmissionvalidatingwebhooksindexmatchconditionsindex)** | []object | MatchConditions is a list of conditions that must be met for a request to be sent to this<br>webhook. Match conditions filter requests that have already been matched by the rules,<br>namespaceSelector, and objectSelector. An empty list of matchConditions matches all requests.<br>There are a maximum of 64 match conditions allowed.<br><br>The exact matching logic is (in order):<br>  1. If ANY matchCondition evaluates to FALSE, the webhook is skipped.<br>  2. If ALL matchConditions evaluate to TRUE, the webhook is called.<br>  3. If any matchCondition evaluates to an error (but none are FALSE):<br>     - If failurePolicy=Fail, reject the request<br>     - If failurePolicy=Ignore, the error is ignored and the webhook is skipped | false |
+| **matchPolicy** | string | matchPolicy defines how the "rules" list is used to match incoming requests.<br>Allowed values are "Exact" or "Equivalent".<br><br>- Exact: match a request only if it exactly matches a specified rule.<br>For example, if deployments can be modified via apps/v1, apps/v1beta1, and extensions/v1beta1,<br>but "rules" only included `apiGroups:["apps"], apiVersions:["v1"], resources: ["deployments"]`,<br>a request to apps/v1beta1 or extensions/v1beta1 would not be sent to the webhook.<br><br>- Equivalent: match a request if modifies a resource listed in rules, even via another API group or version.<br>For example, if deployments can be modified via apps/v1, apps/v1beta1, and extensions/v1beta1,<br>and "rules" only included `apiGroups:["apps"], apiVersions:["v1"], resources: ["deployments"]`,<br>a request to apps/v1beta1 or extensions/v1beta1 would be converted to apps/v1 and sent to the webhook.<br><br>Defaults to "Equivalent" | false |
+| **[namespaceSelector](#capsuleconfigurationspecadmissionvalidatingwebhooksindexnamespaceselector)** | object | NamespaceSelector decides whether to run the webhook on an object based<br>on whether the namespace for that object matches the selector. If the<br>object itself is a namespace, the matching is performed on<br>object.metadata.labels. If the object is another cluster scoped resource,<br>it never skips the webhook.<br><br>For example, to run the webhook on any objects whose namespace is not<br>associated with "runlevel" of "0" or "1";  you will set the selector as<br>follows:<br>"namespaceSelector": {<br>  "matchExpressions": [<br>    {<br>      "key": "runlevel",<br>      "operator": "NotIn",<br>      "values": [<br>        "0",<br>        "1"<br>      ]<br>    }<br>  ]<br>}<br><br>If instead you want to only run the webhook on any objects whose<br>namespace is associated with the "environment" of "prod" or "staging";<br>you will set the selector as follows:<br>"namespaceSelector": {<br>  "matchExpressions": [<br>    {<br>      "key": "environment",<br>      "operator": "In",<br>      "values": [<br>        "prod",<br>        "staging"<br>      ]<br>    }<br>  ]<br>}<br><br>See<br>https://kubernetes.io/docs/concepts/overview/working-with-objects/labels<br>for more examples of label selectors.<br><br>Default to the empty LabelSelector, which matches everything. | false |
+| **[objectSelector](#capsuleconfigurationspecadmissionvalidatingwebhooksindexobjectselector)** | object | ObjectSelector decides whether to run the webhook based on if the<br>object has matching labels. objectSelector is evaluated against both<br>the oldObject and newObject that would be sent to the webhook, and<br>is considered to match if either object matches the selector. A null<br>object (oldObject in the case of create, or newObject in the case of<br>delete) or an object that cannot have labels (like a<br>DeploymentRollback or a PodProxyOptions object) is not considered to<br>match.<br>Use the object selector only if the webhook is opt-in, because end<br>users may skip the admission webhook by setting the labels.<br>Default to the empty LabelSelector, which matches everything. | false |
+| **[opts](#capsuleconfigurationspecadmissionvalidatingwebhooksindexopts)** | object | Capsule Custom Admission Options | false |
+| **[rules](#capsuleconfigurationspecadmissionvalidatingwebhooksindexrulesindex)** | []object | Rules describes what operations on what resources/subresources the webhook cares about.<br>The webhook cares about an operation if it matches _any_ Rule.<br>However, in order to prevent ValidatingAdmissionWebhooks and MutatingAdmissionWebhooks<br>from putting the cluster in a state which cannot be recovered from without completely<br>disabling the plugin, ValidatingAdmissionWebhooks and MutatingAdmissionWebhooks are never called<br>on admission requests for ValidatingWebhookConfiguration and MutatingWebhookConfiguration objects. | false |
+| **timeoutSeconds** | integer | TimeoutSeconds specifies the timeout for this webhook. After the timeout passes,<br>the webhook call will be ignored or the API call will fail based on the<br>failure policy.<br>The timeout value must be between 1 and 30 seconds.<br>Default to 10 seconds.<br/>*Format*: int32<br/> | false |
+
+
+### CapsuleConfiguration.spec.admission.validating.webhooks[index].matchConditions[index]
+
+
+
+MatchCondition represents a condition which must by fulfilled for a request to be sent to a webhook.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **expression** | string | Expression represents the expression which will be evaluated by CEL. Must evaluate to bool.<br>CEL expressions have access to the contents of the AdmissionRequest and Authorizer, organized into CEL variables:<br><br>'object' - The object from the incoming request. The value is null for DELETE requests.<br>'oldObject' - The existing object. The value is null for CREATE requests.<br>'request' - Attributes of the admission request(/pkg/apis/admission/types.go#AdmissionRequest).<br>'authorizer' - A CEL Authorizer. May be used to perform authorization checks for the principal (user or service account) of the request.<br>  See https://pkg.go.dev/k8s.io/apiserver/pkg/cel/library#Authz<br>'authorizer.requestResource' - A CEL ResourceCheck constructed from the 'authorizer' and configured with the<br>  request resource.<br>Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/<br><br>Required. | true |
+| **name** | string | Name is an identifier for this match condition, used for strategic merging of MatchConditions,<br>as well as providing an identifier for logging purposes. A good name should be descriptive of<br>the associated expression.<br>Name must be a qualified name consisting of alphanumeric characters, '-', '_' or '.', and<br>must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or<br>'123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]') with an<br>optional DNS subdomain prefix and '/' (e.g. 'example.com/MyName')<br><br>Required. | true |
+
+
+### CapsuleConfiguration.spec.admission.validating.webhooks[index].namespaceSelector
+
+
+
+NamespaceSelector decides whether to run the webhook on an object based
+on whether the namespace for that object matches the selector. If the
+object itself is a namespace, the matching is performed on
+object.metadata.labels. If the object is another cluster scoped resource,
+it never skips the webhook.
+
+For example, to run the webhook on any objects whose namespace is not
+associated with "runlevel" of "0" or "1";  you will set the selector as
+follows:
+"namespaceSelector": {
+  "matchExpressions": [
+    {
+      "key": "runlevel",
+      "operator": "NotIn",
+      "values": [
+        "0",
+        "1"
+      ]
+    }
+  ]
+}
+
+If instead you want to only run the webhook on any objects whose
+namespace is associated with the "environment" of "prod" or "staging";
+you will set the selector as follows:
+"namespaceSelector": {
+  "matchExpressions": [
+    {
+      "key": "environment",
+      "operator": "In",
+      "values": [
+        "prod",
+        "staging"
+      ]
+    }
+  ]
+}
+
+See
+https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+for more examples of label selectors.
+
+Default to the empty LabelSelector, which matches everything.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#capsuleconfigurationspecadmissionvalidatingwebhooksindexnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### CapsuleConfiguration.spec.admission.validating.webhooks[index].namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### CapsuleConfiguration.spec.admission.validating.webhooks[index].objectSelector
+
+
+
+ObjectSelector decides whether to run the webhook based on if the
+object has matching labels. objectSelector is evaluated against both
+the oldObject and newObject that would be sent to the webhook, and
+is considered to match if either object matches the selector. A null
+object (oldObject in the case of create, or newObject in the case of
+delete) or an object that cannot have labels (like a
+DeploymentRollback or a PodProxyOptions object) is not considered to
+match.
+Use the object selector only if the webhook is opt-in, because end
+users may skip the admission webhook by setting the labels.
+Default to the empty LabelSelector, which matches everything.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#capsuleconfigurationspecadmissionvalidatingwebhooksindexobjectselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### CapsuleConfiguration.spec.admission.validating.webhooks[index].objectSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### CapsuleConfiguration.spec.admission.validating.webhooks[index].opts
+
+
+
+Capsule Custom Admission Options
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **administrators** | boolean | If enabled, the request is only sent to admission if the user is mentioned<br>As Part of the Capsule Administrators<br/>*Default*: false<br/> | true |
+| **capsuleUsers** | boolean | If enabled, the request is only sent to admission if the user is mentioned<br>As Part of the Capsule Users<br/>*Default*: false<br/> | true |
+
+
+### CapsuleConfiguration.spec.admission.validating.webhooks[index].rules[index]
+
+
+
+RuleWithOperations is a tuple of Operations and Resources. It is recommended to make
+sure that all the tuple expansions are valid.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiGroups** | []string | APIGroups is the API groups the resources belong to. '*' is all groups.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **apiVersions** | []string | APIVersions is the API versions the resources belong to. '*' is all versions.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **operations** | []string | Operations is the operations the admission hook cares about - CREATE, UPDATE, DELETE, CONNECT or *<br>for all of those operations and any future admission operations that are added.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **resources** | []string | Resources is a list of resources this rule applies to.<br><br>For example:<br>'pods' means pods.<br>'pods/log' means the log subresource of pods.<br>'*' means all resources, but not subresources.<br>'pods/*' means all subresources of pods.<br>'*/scale' means all scale subresources.<br>'*/*' means all resources and their subresources.<br><br>If wildcard is present, the validation rule will ensure resources do not<br>overlap with each other.<br><br>Depending on the enclosing object, subresources might not be allowed.<br>Required. | false |
+| **scope** | string | scope specifies the scope of this rule.<br>Valid values are "Cluster", "Namespaced", and "*"<br>"Cluster" means that only cluster-scoped resources will match this rule.<br>Namespace API objects are cluster-scoped.<br>"Namespaced" means that only namespaced resources will match this rule.<br>"*" means that there are no scope restrictions.<br>Subresources match the scope of their parent resource.<br>Default is "*". | false |
+
+
+### CapsuleConfiguration.spec.impersonation
+
+
+
+Service Account Client configuration for impersonation properties
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **caSecretKey** | string | Key in the secret that holds the CA certificate (e.g., "ca.crt")<br/>*Default*: ca.crt<br/> | false |
+| **caSecretName** | string | Name of the secret containing the CA certificate | false |
+| **caSecretNamespace** | string | Namespace where the CA certificate secret is located | false |
+| **endpoint** | string | Kubernetes API Endpoint to use for impersonation | false |
+| **globalDefaultServiceAccount** | string | Default ServiceAccount for global resources (GlobalTenantResource)<br>When defined, users are required to use this ServiceAccount anywhere in the cluster<br>unless they explicitly provide their own. | false |
+| **globalDefaultServiceAccountNamespace** | string | Default ServiceAccount for global resources (GlobalTenantResource)<br>When defined, users are required to use this ServiceAccount anywhere in the cluster<br>unless they explicitly provide their own. | false |
+| **skipTlsVerify** | boolean | If true, TLS certificate verification is skipped (not recommended for production)<br/>*Default*: false<br/> | false |
+| **tenantDefaultServiceAccount** | string | Default ServiceAccount for namespaced resources (TenantResource)<br>When defined, users are required to use this ServiceAccount within the namespace<br>where they deploy the resource, unless they explicitly provide their own. | false |
 
 
 ### CapsuleConfiguration.spec.nodeMetadata
@@ -262,8 +640,8 @@ such as webhook secret or configurations.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **TLSSecretName** | string | Defines the Secret name used for the webhook server.<br>Must be in the same Namespace where the Capsule Deployment is deployed.<br/>*Default*: capsule-tls<br/> | true |
-| **mutatingWebhookConfigurationName** | string | Name of the MutatingWebhookConfiguration which contains the dynamic admission controller paths and resources.<br/>*Default*: capsule-mutating-webhook-configuration<br/> | true |
-| **validatingWebhookConfigurationName** | string | Name of the ValidatingWebhookConfiguration which contains the dynamic admission controller paths and resources.<br/>*Default*: capsule-validating-webhook-configuration<br/> | true |
+| **mutatingWebhookConfigurationName** | string | <span style="color:red;font-weight:bold">Deprecated: use dynamic admission instead<br><br>Name of the MutatingWebhookConfiguration which contains the dynamic admission controller paths and resources.</span><br/>*Default*: capsule-mutating-webhook-configuration<br/> | true |
+| **validatingWebhookConfigurationName** | string | <span style="color:red;font-weight:bold">Deprecated: use dynamic admission instead<br><br>Name of the ValidatingWebhookConfiguration which contains the dynamic admission controller paths and resources.</span><br/>*Default*: capsule-validating-webhook-configuration<br/> | true |
 
 
 ### CapsuleConfiguration.spec.users[index]
@@ -288,7 +666,6 @@ CapsuleConfigurationStatus defines the Capsule configuration status.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **lastCacheInvalidation** | string | Last time all caches were invalided<br/>*Format*: date-time<br/> | false |
 | **[users](#capsuleconfigurationstatususersindex)** | []object | Users which are considered Capsule Users and are bound to the Capsule Tenant construct. | false |
 
 
@@ -303,6 +680,496 @@ CapsuleConfigurationStatus defines the Capsule configuration status.
 | :---- | :---- | :----------- | :-------- |
 | **kind** | enum | Kind of entity. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
 | **name** | string | Name of the entity. | true |
+
+## CustomQuota
+
+
+
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | capsule.clastix.io/v1beta2 | true |
+| **kind** | string | CustomQuota | true |
+| **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
+| **[spec](#customquotaspec)** | object | CustomQuotaSpec. | true |
+| **[status](#customquotastatus)** | object | CustomQuotaStatus defines the observed state of GlobalResourceQuota. | false |
+
+
+### CustomQuota.spec
+
+
+
+CustomQuotaSpec.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **limit** | int or string | Resource Quantity as limit | true |
+| **[options](#customquotaspecoptions)** | object | Additional Options for the CustomQuotaSpecification<br/>*Default*: map[emitMetricPerClaimUsage:false]<br/> | true |
+| **[sources](#customquotaspecsourcesindex)** | []object | Target resource | true |
+| **[scopeSelectors](#customquotaspecscopeselectorsindex)** | []object | Select items governed by this quota | false |
+
+
+### CustomQuota.spec.options
+
+
+
+Additional Options for the CustomQuotaSpecification
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **emitMetricPerClaimUsage** | boolean | Additionally expose usage metrics for each claim contributing to the quota.<br>This is disabled by default to avoid high cardinality in the metrics, but can be enabled for more granular monitoring and alerting.<br/>*Default*: false<br/> | false |
+
+
+### CustomQuota.spec.sources[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | API version of the referent. | true |
+| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
+| **op** | enum | Operation used to evaluate usage.<br/>*Enum*: add, sub, count<br/>*Default*: add<br/> | false |
+| **path** | string | Path on GVK where usage is evaluated.<br>Must be empty when op is "count".<br>Required and non-empty for all other operations. | false |
+| **[selectors](#customquotaspecsourcesindexselectorsindex)** | []object | Provide more granular selectors for these sources<br>The ScopeSelector and NamespaceSelector are always applied<br>Allowing these selectors to make further selecting on the resulting subset. | false |
+
+
+### CustomQuota.spec.sources[index].selectors[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **fieldSelectors** | []string | Additional boolean JSONPath expressions.<br>All must evaluate to true for this selector to match. | false |
+| **[matchExpressions](#customquotaspecsourcesindexselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### CustomQuota.spec.sources[index].selectors[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### CustomQuota.spec.scopeSelectors[index]
+
+
+
+A label selector is a label query over a set of resources. The result of matchLabels and
+matchExpressions are ANDed. An empty label selector matches all objects. A null
+label selector matches no objects.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#customquotaspecscopeselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### CustomQuota.spec.scopeSelectors[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### CustomQuota.status
+
+
+
+CustomQuotaStatus defines the observed state of GlobalResourceQuota.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[conditions](#customquotastatusconditionsindex)** | []object | Conditions | true |
+| **[targets](#customquotastatustargetsindex)** | []object | Targeting GVK | true |
+| **[claims](#customquotastatusclaimsindex)** | []object | Objects regarding this policy | false |
+| **[usage](#customquotastatususage)** | object | Usage measurements | false |
+
+
+### CustomQuota.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
+
+
+### CustomQuota.status.targets[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **group** | string |  | true |
+| **kind** | string |  | true |
+| **version** | string |  | true |
+| **op** | enum | Operation used to evaluate usage.<br/>*Enum*: add, sub, count<br/>*Default*: add<br/> | false |
+| **path** | string | Path on GVK where usage is evaluated.<br>Must be empty when op is "count".<br>Required and non-empty for all other operations. | false |
+| **scope** | string | Path on GVK where usage is evaluated | false |
+| **[selectors](#customquotastatustargetsindexselectorsindex)** | []object | Provide more granular selectors for these sources<br>The ScopeSelector and NamespaceSelector are always applied<br>Allowing these selectors to make further selecting on the resulting subset. | false |
+
+
+### CustomQuota.status.targets[index].selectors[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **fieldSelectors** | []string | Additional boolean JSONPath expressions.<br>All must evaluate to true for this selector to match. | false |
+| **[matchExpressions](#customquotastatustargetsindexselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### CustomQuota.status.targets[index].selectors[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### CustomQuota.status.claims[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **group** | string |  | true |
+| **kind** | string |  | true |
+| **name** | string | Name of the referent. | true |
+| **uid** | string | UID of the tracked Tenant to pin point tracking | true |
+| **usage** | int or string | Resource Quantity for given item | true |
+| **version** | string |  | true |
+| **namespace** | string | Namespace of the referent, when not specified it acts as LocalObjectReference. | false |
+
+
+### CustomQuota.status.usage
+
+
+
+Usage measurements
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **available** | int or string | Used is the current observed total available of the resource (limit - used). | false |
+| **used** | int or string | Used is the current observed total usage of the resource. | false |
+
+## GlobalCustomQuota
+
+
+
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | capsule.clastix.io/v1beta2 | true |
+| **kind** | string | GlobalCustomQuota | true |
+| **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
+| **[spec](#globalcustomquotaspec)** | object | ClusterCustomQuotaSpec. | true |
+| **[status](#globalcustomquotastatus)** | object | CustomQuotaStatus defines the observed state of GlobalResourceQuota. | false |
+
+
+### GlobalCustomQuota.spec
+
+
+
+ClusterCustomQuotaSpec.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **limit** | int or string | Resource Quantity as limit | true |
+| **[options](#globalcustomquotaspecoptions)** | object | Additional Options for the CustomQuotaSpecification<br/>*Default*: map[emitMetricPerClaimUsage:false]<br/> | true |
+| **[sources](#globalcustomquotaspecsourcesindex)** | []object | Target resource | true |
+| **[namespaceSelectors](#globalcustomquotaspecnamespaceselectorsindex)** | []object | Select specifc namespaces where this Quota selects items. | false |
+| **[scopeSelectors](#globalcustomquotaspecscopeselectorsindex)** | []object | Select items governed by this quota | false |
+
+
+### GlobalCustomQuota.spec.options
+
+
+
+Additional Options for the CustomQuotaSpecification
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **emitMetricPerClaimUsage** | boolean | Additionally expose usage metrics for each claim contributing to the quota.<br>This is disabled by default to avoid high cardinality in the metrics, but can be enabled for more granular monitoring and alerting.<br/>*Default*: false<br/> | false |
+
+
+### GlobalCustomQuota.spec.sources[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | API version of the referent. | true |
+| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
+| **op** | enum | Operation used to evaluate usage.<br/>*Enum*: add, sub, count<br/>*Default*: add<br/> | false |
+| **path** | string | Path on GVK where usage is evaluated.<br>Must be empty when op is "count".<br>Required and non-empty for all other operations. | false |
+| **[selectors](#globalcustomquotaspecsourcesindexselectorsindex)** | []object | Provide more granular selectors for these sources<br>The ScopeSelector and NamespaceSelector are always applied<br>Allowing these selectors to make further selecting on the resulting subset. | false |
+
+
+### GlobalCustomQuota.spec.sources[index].selectors[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **fieldSelectors** | []string | Additional boolean JSONPath expressions.<br>All must evaluate to true for this selector to match. | false |
+| **[matchExpressions](#globalcustomquotaspecsourcesindexselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### GlobalCustomQuota.spec.sources[index].selectors[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### GlobalCustomQuota.spec.namespaceSelectors[index]
+
+
+
+Selector for resources and their labels or selecting origin namespaces
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#globalcustomquotaspecnamespaceselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### GlobalCustomQuota.spec.namespaceSelectors[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### GlobalCustomQuota.spec.scopeSelectors[index]
+
+
+
+A label selector is a label query over a set of resources. The result of matchLabels and
+matchExpressions are ANDed. An empty label selector matches all objects. A null
+label selector matches no objects.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#globalcustomquotaspecscopeselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### GlobalCustomQuota.spec.scopeSelectors[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### GlobalCustomQuota.status
+
+
+
+CustomQuotaStatus defines the observed state of GlobalResourceQuota.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[conditions](#globalcustomquotastatusconditionsindex)** | []object | Conditions | true |
+| **[targets](#globalcustomquotastatustargetsindex)** | []object | Targeting GVK | true |
+| **[claims](#globalcustomquotastatusclaimsindex)** | []object | Objects regarding this policy | false |
+| **namespaces** | []string | Observed Namespaces | false |
+| **[usage](#globalcustomquotastatususage)** | object | Usage measurements | false |
+
+
+### GlobalCustomQuota.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
+
+
+### GlobalCustomQuota.status.targets[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **group** | string |  | true |
+| **kind** | string |  | true |
+| **version** | string |  | true |
+| **op** | enum | Operation used to evaluate usage.<br/>*Enum*: add, sub, count<br/>*Default*: add<br/> | false |
+| **path** | string | Path on GVK where usage is evaluated.<br>Must be empty when op is "count".<br>Required and non-empty for all other operations. | false |
+| **scope** | string | Path on GVK where usage is evaluated | false |
+| **[selectors](#globalcustomquotastatustargetsindexselectorsindex)** | []object | Provide more granular selectors for these sources<br>The ScopeSelector and NamespaceSelector are always applied<br>Allowing these selectors to make further selecting on the resulting subset. | false |
+
+
+### GlobalCustomQuota.status.targets[index].selectors[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **fieldSelectors** | []string | Additional boolean JSONPath expressions.<br>All must evaluate to true for this selector to match. | false |
+| **[matchExpressions](#globalcustomquotastatustargetsindexselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### GlobalCustomQuota.status.targets[index].selectors[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### GlobalCustomQuota.status.claims[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **group** | string |  | true |
+| **kind** | string |  | true |
+| **name** | string | Name of the referent. | true |
+| **uid** | string | UID of the tracked Tenant to pin point tracking | true |
+| **usage** | int or string | Resource Quantity for given item | true |
+| **version** | string |  | true |
+| **namespace** | string | Namespace of the referent, when not specified it acts as LocalObjectReference. | false |
+
+
+### GlobalCustomQuota.status.usage
+
+
+
+Usage measurements
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **available** | int or string | Used is the current observed total available of the resource (limit - used). | false |
+| **used** | int or string | Used is the current observed total usage of the resource. | false |
 
 ## GlobalTenantResource
 
@@ -334,7 +1201,12 @@ GlobalTenantResourceSpec defines the desired state of GlobalTenantResource.
 | :---- | :---- | :----------- | :-------- |
 | **[resources](#globaltenantresourcespecresourcesindex)** | []object | Defines the rules to select targeting Namespace, along with the objects that must be replicated. | true |
 | **resyncPeriod** | string | Define the period of time upon a second reconciliation must be invoked.<br>Keep in mind that any change to the manifests will trigger a new reconciliation.<br/>*Default*: 60s<br/> | true |
+| **[settings](#globaltenantresourcespecsettings)** | object | Provide additional settings<br/>*Default*: map[]<br/> | true |
+| **cordoned** | boolean | When cordoning a replication it will no longer execute any applies or deletions (paused).<br>This is useful for maintenances<br/>*Default*: false<br/> | false |
+| **[dependsOn](#globaltenantresourcespecdependsonindex)** | []object | DependsOn may contain a meta.NamespacedObjectReference slice<br>with references to TenantResource resources that must be ready before this<br>TenantResource can be reconciled. | false |
 | **pruningOnDelete** | boolean | When the replicated resource manifest is deleted, all the objects replicated so far will be automatically deleted.<br>Disable this to keep replicated resources although the deletion of the replication manifest.<br/>*Default*: true<br/> | false |
+| **scope** | enum | Resource Scope, Can either be<br>- Tenant: Create Resources for each tenant  in selected Tenants<br>- Namespace: Create Resources for each namespace in selected Tenants<br/>*Enum*: Namespace, Tenant, None<br/>*Default*: Namespace<br/> | false |
+| **[serviceAccount](#globaltenantresourcespecserviceaccount)** | object | Local ServiceAccount which will perform all the actions defined in the TenantResource<br>You must provide permissions accordingly to that ServiceAccount | false |
 | **[tenantSelector](#globaltenantresourcespectenantselector)** | object | Defines the Tenant selector used target the tenants on which resources must be propagated. | false |
 
 
@@ -348,9 +1220,11 @@ GlobalTenantResourceSpec defines the desired state of GlobalTenantResource.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **[additionalMetadata](#globaltenantresourcespecresourcesindexadditionalmetadata)** | object | Besides the Capsule metadata required by TenantResource controller, defines additional metadata that must be<br>added to the replicated resources. | false |
+| **[context](#globaltenantresourcespecresourcesindexcontext)** | object | Provide additional template context, which can be used throughout all<br>the declared items for the replication | false |
+| **[generators](#globaltenantresourcespecresourcesindexgeneratorsindex)** | []object | Templates for advanced use cases | false |
 | **[namespaceSelector](#globaltenantresourcespecresourcesindexnamespaceselector)** | object | Defines the Namespace selector to select the Tenant Namespaces on which the resources must be propagated.<br>In case of nil value, all the Tenant Namespaces are targeted. | false |
 | **[namespacedItems](#globaltenantresourcespecresourcesindexnamespaceditemsindex)** | []object | List of the resources already existing in other Namespaces that must be replicated. | false |
-| **rawItems** | []RawExtension | List of raw resources that must be replicated. | false |
+| **rawItems** | []object | List of raw resources that must be replicated. | false |
 
 
 ### GlobalTenantResource.spec.resources[index].additionalMetadata
@@ -365,6 +1239,78 @@ added to the replicated resources.
 | :---- | :---- | :----------- | :-------- |
 | **annotations** | map[string]string |  | false |
 | **labels** | map[string]string |  | false |
+
+
+### GlobalTenantResource.spec.resources[index].context
+
+
+
+Provide additional template context, which can be used throughout all
+the declared items for the replication
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[resources](#globaltenantresourcespecresourcesindexcontextresourcesindex)** | []object |  | false |
+
+
+### GlobalTenantResource.spec.resources[index].context.resources[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | API version of the referent. | true |
+| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
+| **index** | string | Index to mount the resource in the template context | false |
+| **name** | string | Name of the values referent. This is useful<br>when you traying to get a specific resource | false |
+| **namespace** | string | Namespace of the values referent. | false |
+| **optional** | boolean | Only relevant if name is set. If an item is not optional, there will be an error thrown when it does not exist<br/>*Default*: true<br/> | false |
+| **[selector](#globaltenantresourcespecresourcesindexcontextresourcesindexselector)** | object | Selector which allows to get any amount of these resources based on labels | false |
+
+
+### GlobalTenantResource.spec.resources[index].context.resources[index].selector
+
+
+
+Selector which allows to get any amount of these resources based on labels
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#globaltenantresourcespecresourcesindexcontextresourcesindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### GlobalTenantResource.spec.resources[index].context.resources[index].selector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### GlobalTenantResource.spec.resources[index].generators[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **missingKey** | enum | Missing Key Option for templating<br/>*Enum*: invalid, zero, error<br/>*Default*: zero<br/> | false |
+| **template** | string | Template contains any amount of yaml which is applied to Kubernetes.<br>This can be a single resource or multiple resources | false |
 
 
 ### GlobalTenantResource.spec.resources[index].namespaceSelector
@@ -400,22 +1346,24 @@ relates the key and values.
 
 
 
-
+Reference
 
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | API version of the referent. | true |
 | **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
-| **namespace** | string | Namespace of the referent.<br>More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/ | true |
-| **[selector](#globaltenantresourcespecresourcesindexnamespaceditemsindexselector)** | object | Label selector used to select the given resources in the given Namespace. | true |
-| **apiVersion** | string | API version of the referent. | false |
+| **name** | string | Name of the values referent. This is useful<br>when you traying to get a specific resource | false |
+| **namespace** | string | Namespace of the values referent. | false |
+| **optional** | boolean | Only relevant if name is set. If an item is not optional, there will be an error thrown when it does not exist<br/>*Default*: true<br/> | false |
+| **[selector](#globaltenantresourcespecresourcesindexnamespaceditemsindexselector)** | object | Selector which allows to get any amount of these resources based on labels | false |
 
 
 ### GlobalTenantResource.spec.resources[index].namespacedItems[index].selector
 
 
 
-Label selector used to select the given resources in the given Namespace.
+Selector which allows to get any amount of these resources based on labels
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -437,6 +1385,45 @@ relates the key and values.
 | **key** | string | key is the label key that the selector applies to. | true |
 | **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
 | **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### GlobalTenantResource.spec.settings
+
+
+
+Provide additional settings
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **adopt** | boolean | Enabling this allows TenanResources to interact with objects which were not created by a TenantResource. In this case on prune no deletion of the entire object is made.<br/>*Default*: false<br/> | false |
+| **force** | boolean | Force indicates that in case of conflicts with server-side apply, the client should acquire ownership of the conflicting field.<br>You may create collisions with this.<br/>*Default*: false<br/> | false |
+
+
+### GlobalTenantResource.spec.dependsOn[index]
+
+
+
+LocalObjectReference contains enough information to locate the referenced Kubernetes resource object.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name of the referent. | true |
+
+
+### GlobalTenantResource.spec.serviceAccount
+
+
+
+Local ServiceAccount which will perform all the actions defined in the TenantResource
+You must provide permissions accordingly to that ServiceAccount
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name of the referent. | true |
+| **namespace** | string | Namespace of the referent. | true |
 
 
 ### GlobalTenantResource.spec.tenantSelector
@@ -476,11 +1463,50 @@ GlobalTenantResourceStatus defines the observed state of GlobalTenantResource.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[processedItems](#globaltenantresourcestatusprocesseditemsindex)** | []object | List of the replicated resources for the given TenantResource. | true |
-| **selectedTenants** | []string | List of Tenants addressed by the GlobalTenantResource. | true |
+| **size** | integer | How many items are being replicated by the TenantResource. | true |
+| **[conditions](#globaltenantresourcestatusconditionsindex)** | []object | Condition of the GlobalTenantResource. | false |
+| **[processedItems](#globaltenantresourcestatusprocesseditemsindex)** | []object | List of the replicated resources for the given TenantResource. | false |
+| **selectedTenants** | []string | List of Tenants addressed by the GlobalTenantResource. | false |
+| **[serviceAccount](#globaltenantresourcestatusserviceaccount)** | object | Serviceaccount used for impersonation | false |
+
+
+### GlobalTenantResource.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
 
 
 ### GlobalTenantResource.status.processedItems[index]
+
+
+
+Advanced Status Item for pin pointing items in tenants/namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **group** | string |  | false |
+| **kind** | string |  | false |
+| **name** | string |  | false |
+| **namespace** | string |  | false |
+| **origin** | string |  | false |
+| **[status](#globaltenantresourcestatusprocesseditemsindexstatus)** | object |  | false |
+| **tenant** | string |  | false |
+| **version** | string |  | false |
+
+
+### GlobalTenantResource.status.processedItems[index].status
 
 
 
@@ -489,10 +1515,172 @@ GlobalTenantResourceStatus defines the observed state of GlobalTenantResource.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
-| **name** | string | Name of the referent.<br>More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names | true |
-| **namespace** | string | Namespace of the referent.<br>More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/ | true |
-| **apiVersion** | string | API version of the referent. | false |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **created** | boolean | Indicates wether the resource was created or adopted | false |
+| **lastApply** | string | An opaque value that represents the internal version of this object that can<br>be used by clients to determine when objects have changed. May be used for optimistic<br>concurrency, change detection, and the watch operation on a resource or set of resources.<br>Clients must treat these values as opaque and passed unmodified back to the server.<br>They may only be valid for a particular resource or set of resources.<br><br>Populated by the system.<br>Read-only.<br>Value must be treated as opaque by clients and .<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency<br/>*Format*: date-time<br/> | false |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | false |
+
+
+### GlobalTenantResource.status.serviceAccount
+
+
+
+Serviceaccount used for impersonation
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name of the referent. | true |
+| **namespace** | string | Namespace of the referent. | true |
+
+## QuantityLedger
+
+
+
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | capsule.clastix.io/v1beta2 | true |
+| **kind** | string | QuantityLedger | true |
+| **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
+| **[spec](#quantityledgerspec)** | object | QuotaLedgerSpec contains the immutable target reference. | false |
+| **[status](#quantityledgerstatus)** | object | QuantityLedgerStatus contains the mutable coordination state used by admission<br>and quota controllers. | false |
+
+
+### QuantityLedger.spec
+
+
+
+QuotaLedgerSpec contains the immutable target reference.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[targetRef](#quantityledgerspectargetref)** | object | TargetRef points to the quota object that this ledger belongs to. | true |
+
+
+### QuantityLedger.spec.targetRef
+
+
+
+TargetRef points to the quota object that this ledger belongs to.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | string | Kind of the target quota resource, for example "CustomQuota" or "GlobalCustomQuota". | true |
+| **name** | string | Name of the target quota resource. | true |
+| **apiGroup** | string | APIGroup of the target quota resource, for example "capsule.clastix.io". | false |
+| **namespace** | string | Namespace of the target quota resource.<br>Must be empty for cluster-scoped targets. | false |
+| **uid** | string | UID of the target quota resource.<br>Optional, but useful for stale reference detection. | false |
+
+
+### QuantityLedger.status
+
+
+
+QuantityLedgerStatus contains the mutable coordination state used by admission
+and quota controllers.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **allocated** | int or string | Allocated is the admission-owned total that has been accepted by the webhook.<br>It must be updated only through optimistic concurrency on QuantityLedger. | false |
+| **[conditions](#quantityledgerstatusconditionsindex)** | []object | Conditions for the resource claim | false |
+| **[pendingDeletes](#quantityledgerstatuspendingdeletesindex)** | []object | Pending delete hints carried over from admission delete handling. | false |
+| **[reservations](#quantityledgerstatusreservationsindex)** | []object | Active inflight reservations for this quota. | false |
+| **reserved** | int or string | Reserved is the aggregate sum of all active reservations.<br>Controllers/webhooks should treat this as derived data from Reservations. | false |
+
+
+### QuantityLedger.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
+
+
+### QuantityLedger.status.pendingDeletes[index]
+
+
+
+QuantityLedgerPendingDelete tracks objects that are expected to disappear from claims
+soon, but may still temporarily appear during rebuild due to propagation delay.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **createdAt** | string | <br/>*Format*: date-time<br/> | true |
+| **[objectRef](#quantityledgerstatuspendingdeletesindexobjectref)** | object | QuotaLedgerObjectRef identifies the object for which a reservation exists.<br>UID may be empty for CREATE admission before the object is persisted. | true |
+
+
+### QuantityLedger.status.pendingDeletes[index].objectRef
+
+
+
+QuotaLedgerObjectRef identifies the object for which a reservation exists.
+UID may be empty for CREATE admission before the object is persisted.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | APIVersion of the tracked object, for example "v1". | true |
+| **kind** | string | Kind of the tracked object, for example "Pod". | true |
+| **apiGroup** | string | APIGroup of the tracked object. | false |
+| **name** | string | Name of the tracked object. | false |
+| **namespace** | string | Namespace of the tracked object. | false |
+| **uid** | string | UID of the tracked object. | false |
+
+
+### QuantityLedger.status.reservations[index]
+
+
+
+QuantityLedgerReservation represents one active inflight reservation.
+ID should be stable for retries of the same admission request.
+In practice, admission.Request.UID is a good default.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **createdAt** | string | Time the reservation was first created.<br/>*Format*: date-time<br/> | true |
+| **id** | string | Unique reservation identifier. | true |
+| **[objectRef](#quantityledgerstatusreservationsindexobjectref)** | object | Object that this reservation is intended to create/update. | true |
+| **updatedAt** | string | Time the reservation was last refreshed or updated.<br/>*Format*: date-time<br/> | true |
+| **usage** | int or string | Amount reserved for this request. | true |
+| **expiresAt** | string | Time after which the reservation may be considered stale.<br/>*Format*: date-time<br/> | false |
+
+
+### QuantityLedger.status.reservations[index].objectRef
+
+
+
+Object that this reservation is intended to create/update.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | APIVersion of the tracked object, for example "v1". | true |
+| **kind** | string | Kind of the tracked object, for example "Pod". | true |
+| **apiGroup** | string | APIGroup of the tracked object. | false |
+| **name** | string | Name of the tracked object. | false |
+| **namespace** | string | Namespace of the tracked object. | false |
+| **uid** | string | UID of the tracked object. | false |
 
 ## ResourcePoolClaim
 
@@ -815,7 +2003,46 @@ ResourceQuotaClaimStatus defines the observed state of ResourceQuotaClaim.
 | **apiVersion** | string | capsule.clastix.io/v1beta2 | true |
 | **kind** | string | RuleStatus | true |
 | **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
+| **[spec](#rulestatusspecindex)** | []object |  | false |
 | **[status](#rulestatusstatus)** | object | RuleStatus contains the accumulated rules applying to namespace it's deployed in. | false |
+
+
+### RuleStatus.spec[index]
+
+
+
+For future inmplementatiosn where users might manage RuleStatus CRs tehmselves
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[enforce](#rulestatusspecindexenforce)** | object | Enforcement for given rule | false |
+
+
+### RuleStatus.spec[index].enforce
+
+
+
+Enforcement for given rule
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[registries](#rulestatusspecindexenforceregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+
+
+### RuleStatus.spec[index].enforce.registries[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **url** | string | OCI Registry endpoint, is treated as regular expression. | true |
+| **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
+| **validation** | []enum | Requesting Resources<br/>*Enum*: pod/images, pod/volumes<br/>*Default*: [pod/images pod/volumes]<br/> | false |
 
 
 ### RuleStatus.status
@@ -827,7 +2054,25 @@ RuleStatus contains the accumulated rules applying to namespace it's deployed in
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[conditions](#rulestatusstatusconditionsindex)** | []object | Conditions | true |
 | **[rule](#rulestatusstatusrule)** | object | Managed Enforcement properties per Namespace (aggregated from rules) | false |
+
+
+### RuleStatus.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
 
 
 ### RuleStatus.status.rule
@@ -839,14 +2084,14 @@ Managed Enforcement properties per Namespace (aggregated from rules)
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[enforce](#rulestatusstatusruleenforce)** | object | Enforcement Rules applied | false |
+| **[enforce](#rulestatusstatusruleenforce)** | object | Enforcement for given rule | false |
 
 
 ### RuleStatus.status.rule.enforce
 
 
 
-Enforcement Rules applied
+Enforcement for given rule
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -932,7 +2177,11 @@ TenantResourceSpec defines the desired state of TenantResource.
 | :---- | :---- | :----------- | :-------- |
 | **[resources](#tenantresourcespecresourcesindex)** | []object | Defines the rules to select targeting Namespace, along with the objects that must be replicated. | true |
 | **resyncPeriod** | string | Define the period of time upon a second reconciliation must be invoked.<br>Keep in mind that any change to the manifests will trigger a new reconciliation.<br/>*Default*: 60s<br/> | true |
+| **[settings](#tenantresourcespecsettings)** | object | Provide additional settings<br/>*Default*: map[]<br/> | true |
+| **cordoned** | boolean | When cordoning a replication it will no longer execute any applies or deletions (paused).<br>This is useful for maintenances<br/>*Default*: false<br/> | false |
+| **[dependsOn](#tenantresourcespecdependsonindex)** | []object | DependsOn may contain a meta.NamespacedObjectReference slice<br>with references to TenantResource resources that must be ready before this<br>TenantResource can be reconciled. | false |
 | **pruningOnDelete** | boolean | When the replicated resource manifest is deleted, all the objects replicated so far will be automatically deleted.<br>Disable this to keep replicated resources although the deletion of the replication manifest.<br/>*Default*: true<br/> | false |
+| **[serviceAccount](#tenantresourcespecserviceaccount)** | object | Local ServiceAccount which will perform all the actions defined in the TenantResource<br>You must provide permissions accordingly to that ServiceAccount | false |
 
 
 ### TenantResource.spec.resources[index]
@@ -945,9 +2194,11 @@ TenantResourceSpec defines the desired state of TenantResource.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **[additionalMetadata](#tenantresourcespecresourcesindexadditionalmetadata)** | object | Besides the Capsule metadata required by TenantResource controller, defines additional metadata that must be<br>added to the replicated resources. | false |
+| **[context](#tenantresourcespecresourcesindexcontext)** | object | Provide additional template context, which can be used throughout all<br>the declared items for the replication | false |
+| **[generators](#tenantresourcespecresourcesindexgeneratorsindex)** | []object | Templates for advanced use cases | false |
 | **[namespaceSelector](#tenantresourcespecresourcesindexnamespaceselector)** | object | Defines the Namespace selector to select the Tenant Namespaces on which the resources must be propagated.<br>In case of nil value, all the Tenant Namespaces are targeted. | false |
 | **[namespacedItems](#tenantresourcespecresourcesindexnamespaceditemsindex)** | []object | List of the resources already existing in other Namespaces that must be replicated. | false |
-| **rawItems** | []RawExtension | List of raw resources that must be replicated. | false |
+| **rawItems** | []object | List of raw resources that must be replicated. | false |
 
 
 ### TenantResource.spec.resources[index].additionalMetadata
@@ -962,6 +2213,78 @@ added to the replicated resources.
 | :---- | :---- | :----------- | :-------- |
 | **annotations** | map[string]string |  | false |
 | **labels** | map[string]string |  | false |
+
+
+### TenantResource.spec.resources[index].context
+
+
+
+Provide additional template context, which can be used throughout all
+the declared items for the replication
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[resources](#tenantresourcespecresourcesindexcontextresourcesindex)** | []object |  | false |
+
+
+### TenantResource.spec.resources[index].context.resources[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | API version of the referent. | true |
+| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
+| **index** | string | Index to mount the resource in the template context | false |
+| **name** | string | Name of the values referent. This is useful<br>when you traying to get a specific resource | false |
+| **namespace** | string | Namespace of the values referent. | false |
+| **optional** | boolean | Only relevant if name is set. If an item is not optional, there will be an error thrown when it does not exist<br/>*Default*: true<br/> | false |
+| **[selector](#tenantresourcespecresourcesindexcontextresourcesindexselector)** | object | Selector which allows to get any amount of these resources based on labels | false |
+
+
+### TenantResource.spec.resources[index].context.resources[index].selector
+
+
+
+Selector which allows to get any amount of these resources based on labels
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantresourcespecresourcesindexcontextresourcesindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### TenantResource.spec.resources[index].context.resources[index].selector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### TenantResource.spec.resources[index].generators[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **missingKey** | enum | Missing Key Option for templating<br/>*Enum*: invalid, zero, error<br/>*Default*: zero<br/> | false |
+| **template** | string | Template contains any amount of yaml which is applied to Kubernetes.<br>This can be a single resource or multiple resources | false |
 
 
 ### TenantResource.spec.resources[index].namespaceSelector
@@ -997,22 +2320,24 @@ relates the key and values.
 
 
 
-
+Reference
 
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | API version of the referent. | true |
 | **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
-| **namespace** | string | Namespace of the referent.<br>More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/ | true |
-| **[selector](#tenantresourcespecresourcesindexnamespaceditemsindexselector)** | object | Label selector used to select the given resources in the given Namespace. | true |
-| **apiVersion** | string | API version of the referent. | false |
+| **name** | string | Name of the values referent. This is useful<br>when you traying to get a specific resource | false |
+| **namespace** | string | Namespace of the values referent. | false |
+| **optional** | boolean | Only relevant if name is set. If an item is not optional, there will be an error thrown when it does not exist<br/>*Default*: true<br/> | false |
+| **[selector](#tenantresourcespecresourcesindexnamespaceditemsindexselector)** | object | Selector which allows to get any amount of these resources based on labels | false |
 
 
 ### TenantResource.spec.resources[index].namespacedItems[index].selector
 
 
 
-Label selector used to select the given resources in the given Namespace.
+Selector which allows to get any amount of these resources based on labels
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -1036,6 +2361,44 @@ relates the key and values.
 | **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
+### TenantResource.spec.settings
+
+
+
+Provide additional settings
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **adopt** | boolean | Enabling this allows TenanResources to interact with objects which were not created by a TenantResource. In this case on prune no deletion of the entire object is made.<br/>*Default*: false<br/> | false |
+| **force** | boolean | Force indicates that in case of conflicts with server-side apply, the client should acquire ownership of the conflicting field.<br>You may create collisions with this.<br/>*Default*: false<br/> | false |
+
+
+### TenantResource.spec.dependsOn[index]
+
+
+
+LocalObjectReference contains enough information to locate the referenced Kubernetes resource object.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name of the referent. | true |
+
+
+### TenantResource.spec.serviceAccount
+
+
+
+Local ServiceAccount which will perform all the actions defined in the TenantResource
+You must provide permissions accordingly to that ServiceAccount
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name of the referent. | true |
+
+
 ### TenantResource.status
 
 
@@ -1045,10 +2408,49 @@ TenantResourceStatus defines the observed state of TenantResource.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[processedItems](#tenantresourcestatusprocesseditemsindex)** | []object | List of the replicated resources for the given TenantResource. | true |
+| **size** | integer | How many items are being replicated by the TenantResource. | true |
+| **[conditions](#tenantresourcestatusconditionsindex)** | []object | Condition of the GlobalTenantResource. | false |
+| **[processedItems](#tenantresourcestatusprocesseditemsindex)** | []object | List of the replicated resources for the given TenantResource. | false |
+| **[serviceAccount](#tenantresourcestatusserviceaccount)** | object | Serviceaccount used for impersonation | false |
+
+
+### TenantResource.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
 
 
 ### TenantResource.status.processedItems[index]
+
+
+
+Advanced Status Item for pin pointing items in tenants/namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **group** | string |  | false |
+| **kind** | string |  | false |
+| **name** | string |  | false |
+| **namespace** | string |  | false |
+| **origin** | string |  | false |
+| **[status](#tenantresourcestatusprocesseditemsindexstatus)** | object |  | false |
+| **tenant** | string |  | false |
+| **version** | string |  | false |
+
+
+### TenantResource.status.processedItems[index].status
 
 
 
@@ -1057,10 +2459,24 @@ TenantResourceStatus defines the observed state of TenantResource.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
-| **name** | string | Name of the referent.<br>More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names | true |
-| **namespace** | string | Namespace of the referent.<br>More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/ | true |
-| **apiVersion** | string | API version of the referent. | false |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **created** | boolean | Indicates wether the resource was created or adopted | false |
+| **lastApply** | string | An opaque value that represents the internal version of this object that can<br>be used by clients to determine when objects have changed. May be used for optimistic<br>concurrency, change detection, and the watch operation on a resource or set of resources.<br>Clients must treat these values as opaque and passed unmodified back to the server.<br>They may only be valid for a particular resource or set of resources.<br><br>Populated by the system.<br>Read-only.<br>Value must be treated as opaque by clients and .<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency<br/>*Format*: date-time<br/> | false |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | false |
+
+
+### TenantResource.status.serviceAccount
+
+
+
+Serviceaccount used for impersonation
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name of the referent. | true |
+| **namespace** | string | Namespace of the referent. | true |
 
 ## Tenant
 
@@ -1093,6 +2509,7 @@ TenantSpec defines the desired state of Tenant.
 | **[additionalRoleBindings](#tenantspecadditionalrolebindingsindex-1)** | []object | Specifies additional RoleBindings assigned to the Tenant. Capsule will ensure that all namespaces in the Tenant always contain the RoleBinding for the given ClusterRole. Optional. | false |
 | **[containerRegistries](#tenantspeccontainerregistries-1)** | object | <span style="color:red;font-weight:bold">Deprecated: Use Enforcement.Registries instead<br><br>Specifies the trusted Image Registries assigned to the Tenant. Capsule assures that all Pods resources created in the Tenant can use only one of the allowed trusted registries. Optional.</span> | false |
 | **cordoned** | boolean | Toggling the Tenant resources cordoning, when enable resources cannot be deleted.<br/>*Default*: false<br/> | false |
+| **data** | JSON | Specify additional data relating to the tenant.<br>Mainly useable in templating and more accessible than labels/annotations. | false |
 | **[deviceClasses](#tenantspecdeviceclasses)** | object | Specifies options for the DeviceClass resources. | false |
 | **forceTenantPrefix** | boolean | Use this if you want to disable/enable the Tenant name prefix to specific Tenants, overriding global forceTenantPrefix in CapsuleConfiguration.<br>When set to 'true', it enforces Namespaces created for this Tenant to be named with the Tenant name prefix,<br>separated by a dash (i.e. for Tenant 'foo', namespace names must be prefixed with 'foo-'),<br>this is useful to avoid Namespace name collision.<br>When set to 'false', it allows Namespaces created for this Tenant to be named anything.<br>Overrides CapsuleConfiguration global forceTenantPrefix for the Tenant only.<br>If unset, Tenant uses CapsuleConfiguration's forceTenantPrefix<br>Optional | false |
 | **[gatewayOptions](#tenantspecgatewayoptions)** | object | Specifies options for the GatewayClass resources. | false |
@@ -1802,6 +3219,7 @@ Specify Permissions for the Tenant.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **allowOwnerPromotion** | boolean | ClusterRoles granted to the promoted ServiceAccounts across the Tenant<br/>*Default*: true<br/> | false |
 | **[matchOwners](#tenantspecpermissionsmatchownersindex)** | []object | Matches TenantOwner objects which are promoted to owners of this tenant<br>The elements are OR operations and independent. You can see the resulting Tenant Owners<br>in the Status.Owners specification of the Tenant. | false |
 
 
@@ -1954,20 +3372,21 @@ that relates the scope name and values.
 
 
 
-
+Rules Distributed via Tenants
 
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[enforce](#tenantspecrulesindexenforce)** | object | Enforcement Rules applied | false |
-| **[namespaceSelector](#tenantspecrulesindexnamespaceselector)** | object | Select namespaces which are going to usese | false |
+| **[enforce](#tenantspecrulesindexenforce)** | object | Enforcement for given rule | false |
+| **[namespaceSelector](#tenantspecrulesindexnamespaceselector)** | object | Select namespaces which are going to be targeted with this rule | false |
+| **[permissions](#tenantspecrulesindexpermissions)** | object | Permissions for given rule | false |
 
 
 ### Tenant.spec.rules[index].enforce
 
 
 
-Enforcement Rules applied
+Enforcement for given rule
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -1993,7 +3412,7 @@ Enforcement Rules applied
 
 
 
-Select namespaces which are going to usese
+Select namespaces which are going to be targeted with this rule
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -2003,6 +3422,60 @@ Select namespaces which are going to usese
 
 
 ### Tenant.spec.rules[index].namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### Tenant.spec.rules[index].permissions
+
+
+
+Permissions for given rule
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[rules](#tenantspecrulesindexpermissionsrulesindex)** | []object | Define Promotion Rules which distributed additional ClusterRoles across the Tenant<br>for promoted ServiceAccounts. | false |
+
+
+### Tenant.spec.rules[index].permissions.rules[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **clusterRoles** | []string | ClusterRoles granted to the promoted ServiceAccounts across the Tenant<br>kubebuilder:validation:Minimum=1 | false |
+| **[selector](#tenantspecrulesindexpermissionsrulesindexselector)** | object | Match ServiceAccounts which are promoted which are granted these additional ClusterRoles<br>across the Tenant | false |
+
+
+### Tenant.spec.rules[index].permissions.rules[index].selector
+
+
+
+Match ServiceAccounts which are promoted which are granted these additional ClusterRoles
+across the Tenant
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecrulesindexpermissionsrulesindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].permissions.rules[index].selector.matchExpressions[index]
 
 
 
@@ -2176,10 +3649,11 @@ Returns the observed state of the Tenant.
 | :---- | :---- | :----------- | :-------- |
 | **[conditions](#tenantstatusconditionsindex)** | []object | Tenant Condition | true |
 | **size** | integer | How many namespaces are assigned to the Tenant. | true |
-| **state** | enum | The operational state of the Tenant. Possible values are "Active", "Cordoned".<br/>*Enum*: Cordoned, Active<br/>*Default*: Active<br/> | true |
+| **state** | enum | The operational state of the Tenant. Possible values are "Active", "Cordoned" or "Terminating".<br/>*Enum*: Cordoned, Active, Terminating<br/>*Default*: Active<br/> | true |
 | **[classes](#tenantstatusclasses)** | object | Available Class Types within Tenant | false |
 | **namespaces** | []string | <span style="color:red;font-weight:bold">List of namespaces assigned to the Tenant. (Deprecated)</span> | false |
 | **[owners](#tenantstatusownersindex)** | []object | Collected owners for this tenant | false |
+| **[promotions](#tenantstatuspromotionsindex)** | []object | Promoted ServiceAccounts across the Tenant | false |
 | **[spaces](#tenantstatusspacesindex)** | []object | Tracks state for the namespaces associated with this tenant | false |
 
 
@@ -2228,6 +3702,21 @@ Available Class Types within Tenant
 | **kind** | enum | Kind of entity. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
 | **name** | string | Name of the entity. | true |
 | **clusterRoles** | []string | Defines additional cluster-roles for the specific Owner.<br/>*Default*: [admin capsule-namespace-deleter]<br/> | false |
+
+
+### Tenant.status.promotions[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | Kind of entity. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
+| **name** | string | Name of the entity. | true |
+| **clusterRoles** | []string | Defines additional cluster-roles for the specific Owner.<br/>*Default*: [admin capsule-namespace-deleter]<br/> | false |
+| **targets** | []string | Defines additional cluster-roles for the specific Owner. | false |
 
 
 ### Tenant.status.spaces[index]

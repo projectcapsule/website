@@ -1449,6 +1449,17 @@ namespace:
         phase: Active
 ```
 
+### Monitoring
+
+Currently mainly the conditions of `GlobalTenantResources` are exposed as metrics:
+
+```
+# HELP capsule_global_resource_condition The current condition status of a global tenant resource.
+# TYPE capsule_global_resource_condition gauge
+capsule_global_resource_condition{condition="Cordoned",name="templated-forbidden-namespace"} 0
+capsule_global_resource_condition{condition="Ready",name="templated-forbidden-namespace"} 1
+```
+
 ## Examples
 
 Different use cases for `GlobalTenantResource` objects.
