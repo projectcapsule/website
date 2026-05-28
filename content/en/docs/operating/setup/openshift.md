@@ -12,9 +12,9 @@ Capsule is a Kubernetes multi-tenancy operator that enables secure namespace-as-
 This guide demonstrates how to deploy Capsule and Capsule Proxy on OpenShift using the `nonroot-v2` and `restricted-v2` [SecurityContextConstraint (SCC)](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/authentication_and_authorization/managing-pod-security-policies), ensuring tenant owners operate within OpenShift's security boundaries.
 
 ## Why Capsule on OpenShift
-While OpenShift can be already configured to be quite multi-tenant (together with for example Kyverno), Capsule takes it a step further and easier to manage.
+While OpenShift can already be configured for multi-tenancy (for example with Kyverno), Capsule takes it a step further and makes it easier to manage.
 
-When people say a multitenant kubernetes cluster, they often think they will get one or two namespaces inside a cluster, with not that much privileges. But: Capsule is different. As a tenant owner, you can create as many namespaces as you want. RBAC is much easier, since Capsule is handling it, making it less error-prone. And resource quota is not set per namespace, but it's spread across a whole tenant, making management easy. Not to mention RBAC issues while listing clusterwide resources that are solved by the Capsule Proxy. Also, even some operators are able to be installed inside a tenant because of the [Capsule Proxy](/docs/proxy/). Add the service account as a tenant owner, and set the env variable `KUBERNETES_SERVICE_HOST` of the operator deployment to the capsule proxy url. Now your operator thinks it is admin, but it lives completely inside the tenant.
+When people think of a multi-tenant Kubernetes cluster, they often expect one or two namespaces with few privileges. Capsule, however, is different. As a tenant owner, you can create as many namespaces as you want. RBAC is much easier because Capsule handles it, making it less error-prone. Resource quotas are not set per namespace but are spread across the whole tenant, simplifying management. Capsule Proxy also solves RBAC issues when listing cluster-wide resources. Furthermore, some operators can be installed inside a tenant by using the [Capsule Proxy](/docs/proxy/): add the service account as a tenant owner and set the `KUBERNETES_SERVICE_HOST` environment variable of the operator deployment to the Capsule Proxy URL. The operator then behaves as if it has cluster-admin access, while remaining fully confined to the tenant.
 
 ## Prerequisites
 Before starting, ensure you have:
@@ -24,26 +24,27 @@ Before starting, ensure you have:
 - cert-manager installed
 
 ## Limitations
-There are a few limitations that are currently known of using OpenShift with Capsule:
-- A tenant owner can not create a namespace/project in the OpenShift GUI. This must be done with `kubectl`.
-- When copying the `login token` from the OpenShift GUI, there will always be the server address of the kubernetes api instead of the Capsule Proxy. There is a RFE created at Red Hat to make this url configurable ([RFE-7592](https://issues.redhat.com/browse/RFE-7592)). If you have a support contract at Red Hat, it would be great to create a SR and ask that you would also like to have this feature to be implemented. The more requests there are, the more likely it will be implemented.
+The following limitations are known when using OpenShift with Capsule:
+- A tenant owner cannot create a namespace/project in the OpenShift GUI. This must be done with `kubectl`.
+- When copying the `login token` from the OpenShift GUI, the server address will always point to the Kubernetes API instead of the Capsule Proxy. An RFE has been filed with Red Hat to make this URL configurable ([RFE-7592](https://issues.redhat.com/browse/RFE-7592)). If you have a support contract with Red Hat, consider opening a support request (SR) asking for this feature. The more requests there are, the higher the priority.
 
 ## Capsule Installation
-### Remove selfprovisioners rolebinding
-By default, OpenShift comes with a selfprovisioner role and rolebinding.  This role lets all users always create namespaces. For the use case of Capsule, this should be removed. The [Red Hat documentation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.16/html/building_applications/projects#disabling-project-self-provisioning_configuring-project-creation) can be found here.
-Remove the subjects from the rolebinding:
+### Remove the self-provisioners ClusterRoleBinding
+By default, OpenShift includes a self-provisioner role and ClusterRoleBinding that allows all users to create namespaces. Capsule requires this to be removed. See the [Red Hat documentation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.16/html/building_applications/projects#disabling-project-self-provisioning_configuring-project-creation) for details.
+
+Remove the subjects from the ClusterRoleBinding:
 ```shell
 kubectl patch clusterrolebinding.rbac self-provisioners -p '{"subjects": null}'
 ```
-Also set the `autoupdate` to false, so the rolebinding doesn't get reverted by Openshift.
+Also set `autoupdate` to false so the ClusterRoleBinding is not reverted by OpenShift.
 ```shell
 kubectl patch clusterrolebinding.rbac self-provisioners -p '{ "metadata": { "annotations": { "rbac.authorization.kubernetes.io/autoupdate": "false" } } }'
 ```
 
 ### Extend the admin role
-In this example, we will add the default kubernetes `admin` role to the tenant owner, so it gets admin privileges on the namespaces that are in their tenant. This role should be extended.
-- Add the finalizers so users can create/edit resources that are managed by capsule
-- Add the SCC's that tenant owners can use. In this example, it is will be `restricted-v2` and `nonroot-v2`.
+This example extends the default Kubernetes `admin` role so tenant owners gain admin privileges on all namespaces within their tenant. The extension adds:
+- The finalizers required to create/edit resources managed by Capsule
+- The SCCs that tenant owners can use — in this example, `restricted-v2` and `nonroot-v2`
 
 ```yaml
 kind: ClusterRole
@@ -70,8 +71,8 @@ rules:
       - 'use'
 ```
 
-### Helm Chart values
-The jobs that Capsule uses can be runned with the `restricted-v2` SCC. For this, the securityContext and podSecurityContexts of the job must be disabled. For Capsule it self, we leave it to enabled. This is because capsule runs as `nonroot-v2`, which is still a very secure SCC. Also, always add the `pullPolicy: Always` on a multitenant cluster, to make sure you are working with the correct images you intended to.
+### Helm Chart Values
+The jobs that Capsule uses can be run with the `restricted-v2` SCC, so their `securityContext` and `podSecurityContext` must be disabled. For Capsule itself, they are left enabled because Capsule runs as `nonroot-v2`, which is still a very secure SCC. Always set `pullPolicy: Always` on a multi-tenant cluster to ensure the intended images are used.
 The following chart values can be used:
 ```yaml
   podSecurityContext:
@@ -91,8 +92,10 @@ The following chart values can be used:
 ```
 Deploy the Capsule Helm chart with (at least) these values.
 
-### Example tenant
-A minimal example tenant can look as the following:
+### Example Tenant and TenantOwners
+
+A minimal example tenant looks like the following:
+
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
 kind: Tenant
@@ -101,39 +104,53 @@ metadata:
 spec:
   imagePullPolicies:
     - Always
-  owners:
-    - clusterRoles:
-        - admin
-        - capsule-namespace-deleter
-      kind: Group
-      name: sun-admin-group
+  permissions:
+    matchOwners:
+      - matchLabels:
+          team: devops
   priorityClasses:
     allowed:
       - openshift-user-critical
 ```
 
-## Capsule Proxy
-The same principles for Capsule are also for Capsule Proxy. That means, that all (pod)SecurityContexts should be disabled for the job.
-In this example we enable the `ProxyAllNamespaced` feature, because that is one of the things where the Proxy really shines in its power.
-The following helm values can be used as a template:
+Combined with a `TenantOwner` resource to grant access to the tenant:
+
 ```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: TenantOwner
+metadata:
+  labels:
+    team: devops
+  name: devops
+spec:
+  kind: Group
+  name: "oidc:org:devops:a"
+```
+
+More information about tenants and tenant owners can be found in the chapter [Tenants](/docs/tenants/).
+
+## Capsule Proxy
+For Capsule Proxy, all (pod)SecurityContexts can be disabled. By disabling these, the proxy and its jobs run under the `nonroot-v2` SCC.
+This example also enables the `ProxyAllNamespaced` feature, which is one of the Proxy's most powerful capabilities.
+The following helm values can be used as a template:
+
+```yaml
+  global:
+    jobs:
+      kubectl:
+        securityContext:
+          enabled: false
   securityContext:
-    enabled: true
+    enabled: false
   podSecurityContext:
-    enabled: true
+    enabled: false
   options:
     generateCertificates: false #set to false, since we are using cert-manager in .Values.certManager.generateCertificates
     enableSSL: true
     extraArgs:
       - '--feature-gates=ProxyAllNamespaced=true'
-      - '--feature-gates=ProxyClusterScoped=false'
   image:
     pullPolicy: Always
-  global:
-    jobs:
-      kubectl:
-        securityContext:
-          enabled: true
   webhooks:
     enabled: true
   certManager:
@@ -144,10 +161,10 @@ The following helm values can be used as a template:
       route.openshift.io/termination: "reencrypt"
       route.openshift.io/destination-ca-certificate-secret: capsule-proxy-root-secret
     hosts:
-    - host: "capsule-proxy.example.com"
-      paths: ["/"]
+      - host: "capsule-proxy.example.com"
+        paths: ["/"]
 ```
-That is basically all the configuration needed for the Capsule Proxy.
+That is all the configuration needed for Capsule Proxy.
 
 ## Console Customization
 The OpenShift console can be customized. For example, the capsule-proxy can be added as a shortcut on the top right application menu with the `ConsoleLink` CR:
@@ -160,7 +177,7 @@ spec:
   applicationMenu:
     imageURL: 'https://github.com/projectcapsule/capsule/raw/main/assets/logo/capsule.svg'
     section: 'Capsule'
-  href: 'capsule-proxy.example.com'
+  href: 'https://capsule-proxy.example.com'
   location: ApplicationMenu
   text: 'Capsule Proxy Kubernetes API'
 ```
@@ -202,4 +219,4 @@ spec:
 ```
 
 # Conclusion
-After this section, you have a ready to go Capsule and Capsule-Proxy setup configured on OpenShift with some nice customizations in the OpenShift console. All ready to go and to ship to the development teams!
+You now have a fully configured Capsule and Capsule Proxy installation on OpenShift, including console customizations, and the environment is ready to hand off to development teams.
