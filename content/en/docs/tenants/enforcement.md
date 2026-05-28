@@ -516,7 +516,7 @@ With the above configuration, any attempt of Alice to create a `Service` of type
 
 > Note: This feature is offered only by API type `GatewayClass` in group `gateway.networking.k8s.io` version `v1`.
 
-[GatewayClass](https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1.GatewayClass) is cluster-scoped resource defined by the infrastructure provider. This resource represents a class of `Gateways` that can be instantiated. [Read More](https://gateway-api.sigs.k8s.io/api-types/gatewayclass/)
+[GatewayClass](https://gateway-api.sigs.k8s.io/docs/concepts/api-overview/#gatewayclass) is cluster-scoped resource defined by the infrastructure provider. This resource represents a class of `Gateways` that can be instantiated. [Read More](https://gateway-api.sigs.k8s.io/docs/concepts/api-overview/#gatewayclass)
 
 Bill can assign a set of dedicated `GatewayClasses` to the `solar` `Tenant` to force the applications in the `solar` `Tenant` to be published only by the assigned Gateway Controller:
 
@@ -535,7 +535,7 @@ spec:
         env: "production"
 ```
 
-With the said Tenant specification, Alice can create a [Gateway](https://gateway-api.sigs.k8s.io/api-types/gateway/) resource if `spec.gatewayClassName` equals to:
+With the said Tenant specification, Alice can create a [Gateway](https://gateway-api.sigs.k8s.io/docs/concepts/api-overview/#gateway) resource if `spec.gatewayClassName` equals to:
 
 * Any `GatewayClass` which has the label `env` with the value `production`
 
@@ -563,7 +563,7 @@ Any attempt of Alice to use a non-valid `GatewayClass`, or missing it, is denied
 
 > Note: The Default `GatewayClass` must have a label which is allowed within the tenant. This behavior is only implemented this way for the `GatewayClass` default.
 
-This feature allows specifying a custom default value on a `Tenant` basis. Currently there is no global default feature for a `GatewayClass`. Each [Gateway](https://gateway-api.sigs.k8s.io/api-types/gateway/) must have a `spec.gatewayClassName` set.
+This feature allows specifying a custom default value on a `Tenant` basis. Currently there is no global default feature for a `GatewayClass`. Each [Gateway](https://gateway-api.sigs.k8s.io/docs/concepts/api-overview/#gateway) must have a `spec.gatewayClassName` set.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
