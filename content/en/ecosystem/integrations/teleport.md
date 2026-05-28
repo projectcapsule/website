@@ -15,7 +15,7 @@ If you want to pass requests from teleport users through the capsule-proxy for u
 
 ## Prerequisites
 
-1. [Capsule](/docs/operating/setup/installation/)
+1. [Capsule](/docs/proxy/setup/installation/)
 2. [Capsule Proxy](/docs/proxy/)
 3. [Teleport Cluster](https://goteleport.com/)
 4. [teleport-kube-agent](https://goteleport.com/docs/enroll-resources/kubernetes-access/getting-started/)
@@ -64,8 +64,7 @@ If you want to test this integration locally, follow these steps.
 ### References
 
 - <https://goteleport.com/docs/linux-demo/>
-- <https://projectcapsule.dev/docs/operating/setup/installation/>
-- <https://projectcapsule.dev/docs/proxy/installation/>
+- [Proxy Installation](/docs/proxy/setup/installation/)
 
 ### Tools
 
