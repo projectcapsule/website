@@ -9,7 +9,7 @@ description: >
 
 Capsule is a Kubernetes multi-tenancy operator that enables secure namespace-as-a-service in Kubernetes clusters. When combined with OpenShift's robust security model, it provides an excellent platform for multi-tenant environments.
 
-This guide demonstrates how to deploy Capsule and Capsule Proxy on OpenShift using the `nonroot-v2` and `restricted-v2` [SecurityContextConstraint (SCC)](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/authentication_and_authorization/managing-pod-security-policies), ensuring tenant owners operate within OpenShift's security boundaries.
+This guide demonstrates how to deploy Capsule and Capsule Proxy on OpenShift using the `nonroot-v2` and `restricted-v2` [SecurityContextConstraint (SCC)](https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/authentication_and_authorization/managing-pod-security-policies), ensuring tenant owners operate within OpenShift's security boundaries.
 
 ## Why Capsule on OpenShift
 While OpenShift can already be configured for multi-tenancy (for example with Kyverno), Capsule takes it a step further and makes it easier to manage.
@@ -30,7 +30,7 @@ The following limitations are known when using OpenShift with Capsule:
 
 ## Capsule Installation
 ### Remove the self-provisioners ClusterRoleBinding
-By default, OpenShift includes a self-provisioner role and ClusterRoleBinding that allows all users to create namespaces. Capsule requires this to be removed. See the [Red Hat documentation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.16/html/building_applications/projects#disabling-project-self-provisioning_configuring-project-creation) for details.
+By default, OpenShift includes a self-provisioner role and ClusterRoleBinding that allows all users to create namespaces. Capsule requires this to be removed. See the [Red Hat documentation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/building_applications/projects#disabling-project-self-provisioning_configuring-project-creation) for details.
 
 Remove the subjects from the ClusterRoleBinding:
 ```shell
