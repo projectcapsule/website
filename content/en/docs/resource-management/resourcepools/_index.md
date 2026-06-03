@@ -760,7 +760,7 @@ status:
 **Do not apply the resourcepools yet, this may lead to workloads not being able to schedule!**
 {{% /alert %}}
 
-We are now abstracting . For each item, we are creating a `ResourcePool` with the same values. The `ResourcePool` will be scoped to the `Tenant` and will be used for all namespaces in the tenant. Let's first migrate the first item:
+We are now abstracting. For each item, we are creating a `ResourcePool` with the same values. The `ResourcePool` will be scoped to the `Tenant` and will be used for all namespaces in the tenant. Let's first migrate the first item:
 
 ```yaml
 ---
@@ -929,9 +929,9 @@ Success 🍀
 
 This part should provide you with a little bit of back story, as to why this implementation was done the way it currently is. Let's start.
 
-Since the begining of capsule we are struggeling with a concurrency probelm regarding `ResourcesQuotas`, this was already early detected in [Issue 49](https://github.com/projectcapsule/capsule/issues/49). Let's quickly recap what really the problem is with the current `ResourceQuota` centric approach.
+Since the beginning of capsule we are struggling with a concurrency problem regarding `ResourcesQuotas`, this was already early detected in [Issue 49](https://github.com/projectcapsule/capsule/issues/49). Let's quickly recap what really the problem is with the current `ResourceQuota` centric approach.
 
-With the current `ResourceQuota` with `Scope: Tenant` we encounter the problem, that resourcequotas spread across multiple namespaces refering to one tenant quota can be overprovisioned, if an operation is executed in parallel (eg. total is `services/count: 3`, in each namespace you could then create 3 services, leading to a possible overprovision of hard `* amount-namespaces`). The Problem in this approach is, that we are not doing anything with Webhooks, therefor we rely on the speed of the controller, where this entire construct becomes a matter of luck and racing conditions.
+With the current `ResourceQuota` with `Scope: Tenant` we encounter the problem, that resourcequotas spread across multiple namespaces referring to one tenant quota can be overprovisioned, if an operation is executed in parallel (eg. total is `services/count: 3`, in each namespace you could then create 3 services, leading to a possible overprovision of hard `* amount-namespaces`). The Problem in this approach is, that we are not doing anything with Webhooks, therefore we rely on the speed of the controller, where this entire construct becomes a matter of luck and racing conditions.
 
 So, there needs to be change. But times have also changed and we have listened to our users, so the new approach to `ResourceQuotas` should:
 
@@ -960,7 +960,7 @@ Here we have the problem, that even if we would block resourcequota status updat
 
 This way it's only possible to scheduled "ordered". In conclusion this would also downscale the resourcequota when the resources are no longer needed. This is how `ResourceQuotas` from the Kubernetes Core-API reject workload, when you try to allocate a Quantity in a namespaces, but the `ResourceQuota` does not have enough space.
 
-But there's some problems with this approach as well:
+But there are some problems with this approach as well:
 
   * if you eg. schedule a pod and the quota is `count/0` there's no admission call on the resourcequota, which would be the easiest. So we would need to find a way to know, there's something new requesting resources. For example [Rancher](https://ranchermanager.docs.rancher.com/how-to-guides/new-user-guides/manage-clusters/projects-and-namespaces#4-optional-add-resource-quotas) works around this problem with namespaced `DefaultLimits`. But this is not the agile approach we would like to offer.
   * The only indication that I know of is that we get an Event, which we can intercept with admission (`ResourceQuota Denied`), regarding quotaoverprovision.

@@ -3,9 +3,9 @@ title: Namespace Migration Across Tenants
 weight: 2
 description: "A Step-by-Step Guide to Namespace Migration"
 ---
-Capsule relays on two components to associate given namespace with tenant.
-- Namespace's OwnerReference.name pointing to the Tenant defintion
-- Namespace's OwnerReference.uid pointing to the Tenant defintion
+Capsule relies on two components to associate given namespace with tenant.
+- Namespace's OwnerReference.name pointing to the Tenant definition
+- Namespace's OwnerReference.uid pointing to the Tenant definition
 
 If a cluster administrator changes the Namespace by matching the other Tenant with the proper UID and name, the Namespace can be easily transferred.
 
@@ -26,7 +26,7 @@ kubectl get tnt wind -o jsonpath='{.metadata.uid}'
 ```
 While altering ownerReferences name is sufficient on its own, it's highly recommended to edit the UID to match the output of the previous commands.
 ```bash
-kubectl edit ns ns-foo 
+kubectl edit ns ns-foo
 ```
 If everything is set correctly, the namespace will be correctly recognized as part of the new tenant.
 ```bash

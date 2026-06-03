@@ -68,7 +68,7 @@ spec:
 
 ### Deny Namespace Metadata
 
-In the above example we allow traffic from namespaces with the label `company.com/system: "true"`. This is meant for Kubernetes Operators to eg. scrape the workloads within a tenant. However without further enforcement any namespace can set this label and therefor gain access to any tenant namespace. To prevent this, we must restrict, who can declare this label on namespaces.
+In the above example we allow traffic from namespaces with the label `company.com/system: "true"`. This is meant for Kubernetes Operators to eg. scrape the workloads within a tenant. However without further enforcement any namespace can set this label and therefore gain access to any tenant namespace. To prevent this, we must restrict, who can declare this label on namespaces.
 
 We can deny such labels on tenant basis. So in this scenario every tenant should disallow the use of these labels on namespaces:
 

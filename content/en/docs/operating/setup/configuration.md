@@ -5,11 +5,11 @@ description: >
   Understand the Capsule configuration options and how to use them.
 ---
 
-The configuration for the capsule controller is done via it's dedicated configration Custom Resource. You can explain the configuration options and how to use them:
+The configuration for the capsule controller is done via its dedicated configuration Custom Resource. You can explain the configuration options and how to use them:
 
 ## CapsuleConfiguration
 
-The configuration for Capsule is done via it's dedicated configration Custom Resource. You can explain the configuration options and how to use them:
+The configuration for Capsule is done via its dedicated configuration Custom Resource. You can explain the configuration options and how to use them:
 
 ```shell
 kubectl explain capsuleConfiguration.spec
@@ -17,7 +17,7 @@ kubectl explain capsuleConfiguration.spec
 
 ### `administrators`
 
-These entities are automatically owners for all existing tenants. Meaning they can add namespaces to any tenant. However they must be specific by using the capsule label for interacting with namespaces. Because if that label is not defined, it's assumed that namespace interaction was not targeted towards a tenant and will therefor be ignored by capsule. May also be handy in GitOps scenarios where certain service accounts need to be able to manage namespaces for all tenants.
+These entities are automatically owners for all existing tenants. Meaning they can add namespaces to any tenant. However they must be specific by using the capsule label for interacting with namespaces. Because if that label is not defined, it's assumed that namespace interaction was not targeted towards a tenant and will therefore be ignored by capsule. May also be handy in GitOps scenarios where certain service accounts need to be able to manage namespaces for all tenants.
 
 [Read More](/docs/operating/architecture/#capsule-administrators)
 
@@ -31,7 +31,7 @@ manager:
 
 ### `users`
 
-These entities are automatically owners for all existing tenants. Meaning they can add namespaces to any tenant. However they must be specific by using the capsule label for interacting with namespaces. Because if that label is not defined, it's assumed that namespace interaction was not targeted towards a tenant and will therefor be ignored by capsule. May also be handy in GitOps scenarios where certain service accounts need to be able to manage namespaces for all tenants.
+These entities are automatically owners for all existing tenants. Meaning they can add namespaces to any tenant. However they must be specific by using the capsule label for interacting with namespaces. Because if that label is not defined, it's assumed that namespace interaction was not targeted towards a tenant and will therefore be ignored by capsule. May also be handy in GitOps scenarios where certain service accounts need to be able to manage namespaces for all tenants.
 
 [Read More](/docs/operating/architecture/#capsule-users)
 
@@ -137,7 +137,7 @@ manager:
   options:
     rbac:
       # -- The ClusterRoles applied for Administrators
-      adminitrationClusterRoles: 
+      administrationClusterRoles:
         - capsule-namespace-deleter
 
       # -- The ClusterRoles applied for ServiceAccounts which had owner Promotion
@@ -160,33 +160,33 @@ For Replications by default the controller ServiceAccount is used to perform the
 manager:
   options:
     impersonation:
-      # Kubernetes API Endpoint to use for the operations 
+      # Kubernetes API Endpoint to use for the operations
       endpoint: "https://capsule-proxy.capsule-system.svc:8081"
-    
+
       # Toggles if TLS verification for the endpoint is performed or not
       skipTlsVerify: false
-    
+
       # Key in the secret that holds the CA certificate (e.g., "ca.crt")
       caSecretKey: "ca.crt"
-    
+
       # Name of the secret containing the CA certificate
       caSecretName: "capsule-proxy-tls"
-    
+
       # Namespace where the CA certificate secret is located
       caSecretNamespace: "capsule-system"
-  
+
       # Default ServiceAccount for global resources (GlobalTenantResource) [Cluster Scope]
       # When defined, users are required to use this ServiceAccount anywhere in the cluster
-      # unless they explicitly provide their own. Once this is set, Capsule will add this ServiceAccount 
+      # unless they explicitly provide their own. Once this is set, Capsule will add this ServiceAccount
       # for all GlobalTenantResources, if they don't already have a ServiceAccount defined.
       globalDefaultServiceAccount: "capsule-global-sa"
-  
+
       # Namespace of the for the ServiceAccount provided by the globalDefaultServiceAccount property
       globalDefaultServiceAccountNamespace: "tenant-system"
-  
+
       # Default ServiceAccount for tenant resources (TenantResource) [Namespaced Scope]
       # When defined, users are required to use this ServiceAccount anywhere in the cluster
-      # unless they explicitly provide their own. Once this is set, Capsule will add this ServiceAccount 
+      # unless they explicitly provide their own. Once this is set, Capsule will add this ServiceAccount
       # for all GlobalTenantResources, if they don't already have a ServiceAccount defined.
       tenantDefaultServiceAccount: "default"
 ```

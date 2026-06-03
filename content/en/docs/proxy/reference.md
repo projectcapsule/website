@@ -35,6 +35,7 @@ GlobalProxySettings is the Schema for the globalproxysettings API.
 | **kind** | string | GlobalProxySettings | true |
 | **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
 | **[spec](#globalproxysettingsspec)** | object | GlobalProxySettingsSpec defines the desired state of GlobalProxySettings. | false |
+| **[status](#globalproxysettingsstatus)** | object | GlobalProxySettingsStatus defines the observed state of GlobalProxySettings. | false |
 
 
 ### GlobalProxySettings.spec
@@ -118,6 +119,36 @@ relates the key and values.
 | **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
 | **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
+
+### GlobalProxySettings.status
+
+
+
+GlobalProxySettingsStatus defines the observed state of GlobalProxySettings.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[conditions](#globalproxysettingsstatusconditionsindex)** | []object | Conditions contains the reconciliation conditions for this GlobalProxySettings. | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation observed by the controller.<br/>*Format*: int64<br/> | false |
+
+
+### GlobalProxySettings.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
+
 ## ProxySetting
 
 
@@ -134,6 +165,7 @@ ProxySetting is the Schema for the proxysettings API.
 | **kind** | string | ProxySetting | true |
 | **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
 | **[spec](#proxysettingspec)** | object | ProxySettingSpec defines the additional Capsule Proxy settings for additional users of the Tenant.<br>Resource is Namespace-scoped and applies the settings to the belonged Tenant. | false |
+| **[status](#proxysettingstatus)** | object | ProxySettingStatus defines the observed state of ProxySetting. | false |
 
 
 ### ProxySetting.spec
@@ -219,4 +251,34 @@ relates the key and values.
 | :---- | :---- | :----------- | :-------- |
 | **kind** | enum | <br/>*Enum*: Nodes, StorageClasses, IngressClasses, PriorityClasses, RuntimeClasses, PersistentVolumes<br/> | true |
 | **operations** | []enum | <br/>*Enum*: List, Update, Delete<br/> | true |
+
+
+### ProxySetting.status
+
+
+
+ProxySettingStatus defines the observed state of ProxySetting.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[conditions](#proxysettingstatusconditionsindex)** | []object | Conditions contains the reconciliation conditions for this ProxySetting. | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation observed by the controller.<br/>*Format*: int64<br/> | false |
+
+
+### ProxySetting.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
 

@@ -47,7 +47,7 @@ To explain these entries, let's inspect one of them:
 
 * `kind`: It can be [User](#users), [Group](#groups) or [ServiceAccount](#serviceaccounts)
 * `name`: Is the reference name of the user, group or serviceaccount we want to bind
-* `clusterRoles`: ClusterRoles which are bound for each namespace of teh tenant to the owner. By default, Capsule assigns `admin` and `capsule-namespace-deleter` roles to each owner, but you can customize them as explained in [Owner Roles](#owner-roles) section.
+* `clusterRoles`: ClusterRoles which are bound for each namespace of the tenant to the owner. By default, Capsule assigns `admin` and `capsule-namespace-deleter` roles to each owner, but you can customize them as explained in [Owner Roles](#owner-roles) section.
 
 With this information available you
 
@@ -180,7 +180,7 @@ status:
     name: alice
 ```
 
-We. can see that the `system:serviceaccount:capsule:controller` ServiceAccount now has additional `mega-admin` and `controller` roles assigned.
+We can see that the `system:serviceaccount:capsule:controller` ServiceAccount now has additional `mega-admin` and `controller` roles assigned.
 
 #### Implicit Tenant Assignment
 
@@ -347,7 +347,7 @@ kubectl auth can-i create namespaces
 yes
 ```
 
-All the groups you want to promot to `TenantOwners` must be part of the Group Scope. You have to add `solar-users` to the CapsuleConfiguration [Group Scope](#group-scope) to make it work.
+All the groups you want to promote to `TenantOwners` must be part of the Group Scope. You have to add `solar-users` to the CapsuleConfiguration [Group Scope](#group-scope) to make it work.
 
 ### ServiceAccounts
 

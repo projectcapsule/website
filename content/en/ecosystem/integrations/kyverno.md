@@ -1,6 +1,6 @@
 ---
 title: Kyverno
-describtion: Capsule interation with Kyverno
+description: Capsule integration with Kyverno
 logo: "https://github.com/cncf/artwork/raw/refs/heads/main/projects/kyverno/icon/color/kyverno-icon-color.svg"
 type: single
 display: true
@@ -140,7 +140,7 @@ spec:
 ### Using Global Configuration
 
 
-When creating a a lot of policies, you might want to abstract your configuration into a global configuration. This is a good practice to avoid duplication and to have a single source of truth. Also if we introduce breaking changes (like changing the label name), we only have to change it in one place. Here is an example of a global configuration:
+When creating a lot of policies, you might want to abstract your configuration into a global configuration. This is a good practice to avoid duplication and to have a single source of truth. Also if we introduce breaking changes (like changing the label name), we only have to change it in one place. Here is an example of a global configuration:
 
 ```yaml
 apiVersion: v1
@@ -171,7 +171,7 @@ spec:
     - name: Validate HelmRelease/Kustomization Target Namespace
       context:
 
-        # Load Gloabl Configuration
+        # Load Global Configuration
         - name: global
           configMap:
             name: kyverno-global-config

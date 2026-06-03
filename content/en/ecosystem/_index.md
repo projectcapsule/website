@@ -14,6 +14,6 @@ Capsule works well with other [CNCF](https://landscape.cncf.io/) kubernetes base
 
 ## Addons
 
-Addons are seperate projects which interact with the core Capsule Project. Since [our commitment](/project/commitment) is, to have a stable core API we decided to push towards an addon based ecosystem. If you have a new addon, which interacts with the capsule core project, consider [adding the addon](/project/contributions/addons/).
+Addons are separate projects which interact with the core Capsule Project. Since [our commitment](/project/commitment) is, to have a stable core API we decided to push towards an addon based ecosystem. If you have a new addon, which interacts with the capsule core project, consider [adding the addon](/project/contributions/addons/).
 
 {{< addons >}}

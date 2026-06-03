@@ -1,6 +1,6 @@
 ---
 title: Monitoring
-describtion: Capsule interation with Monitoring Solutions
+description: Capsule integration with Monitoring Solutions
 display: false
 ---
 

@@ -14,7 +14,7 @@ Bill needs to cordon a `Tenant` and its `Namespaces` for several reasons:
   * During incidents or outages
   * During planned maintenance of a dedicated nodes pool in a BYOD scenario
 
-With the default installation of Capsule all `CREATE`, `UPDATE` and `DELETE` operations performed by **[Capsule Users](/docs/operating/architecture/#capsule-users)** are droped. Any Updates to Subresources (i.e. `status` updates) and events are allowed to proceed as usual. If you wish to allow specific Operations, you can change the values for the Cordoning Admission via Values (eg. allow `Pod/DELETE` operations):
+With the default installation of Capsule all `CREATE`, `UPDATE` and `DELETE` operations performed by **[Capsule Users](/docs/operating/architecture/#capsule-users)** are dropped. Any Updates to Subresources (i.e. `status` updates) and events are allowed to proceed as usual. If you wish to allow specific Operations, you can change the values for the Cordoning Admission via Values (eg. allow `Pod/DELETE` operations):
 
 ```yaml
 webhooks:
