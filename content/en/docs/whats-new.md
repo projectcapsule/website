@@ -66,7 +66,7 @@ Newly added documentation to integrate Capsule with other applications:
 
 * [CoreDNS Plugin](https://github.com/CorentinPtrl/capsule_coredns) (Community Contribution)
 * [Argo CD](/ecosystem/integrations/argocd/)
-* [Flux CD](/ecosystem/integrations/fluxcd/)
+* [Flux CD](/docs/guides/use-fluxcd.md)
 
 ## Project Updates 💫
 
