@@ -69,7 +69,7 @@ CapsuleConfigurationSpec defines the Capsule configuration.
 | **cacheInvalidation** | string | Define the period of time upon a cache invalidation is executed for all caches.<br/>*Default*: 24h<br/> | true |
 | **enableTLSReconciler** | boolean | Toggles the TLS reconciler, the controller that is able to generate CA and certificates for the webhooks<br>when not using an already provided CA and certificate, or when these are managed externally with Vault, or cert-manager.<br/>*Default*: false<br/> | true |
 | **[rbac](#capsuleconfigurationspecrbac)** | object | Define Properties for managed ClusterRoles by Capsule<br/>*Default*: map[]<br/> | true |
-| **[administrators](#capsuleconfigurationspecadministratorsindex)** | []object | Define entities which can act as Administrators in the capsule construct<br>These entities are automatically owners for all existing tenants. Meaning they can add namespaces to any tenant. However they must be specific by using the capsule label<br>for interacting with namespaces. Because if that label is not defined, it's assumed that namespace interaction was not targeted towards a tenant and will therefor<br>be ignored by capsule. | false |
+| **[administrators](#capsuleconfigurationspecadministratorsindex)** | []object | Define entities which can act as Administrators in the capsule construct<br>These entities are automatically owners for all existing tenants. Meaning they can add namespaces to any tenant. However they must be specific by using the capsule label<br>for interacting with namespaces. Because if that label is not defined, it's assumed that namespace interaction was not targeted towards a tenant and will therefore<br>be ignored by capsule. | false |
 | **[admission](#capsuleconfigurationspecadmission)** | object | Configuration for dynamic Validating and Mutating Admission webhooks managed by Capsule. | false |
 | **allowServiceAccountPromotion** | boolean | ServiceAccounts within tenant namespaces can be promoted to owners of the given tenant<br>this can be achieved by labeling the serviceaccount and then they are considered owners. This can only be done by other owners of the tenant.<br>However ServiceAccounts which have been promoted to owner can not promote further serviceAccounts.<br/>*Default*: false<br/> | false |
 | **forceTenantPrefix** | boolean | Enforces the Tenant owner, during Namespace creation, to name it using the selected Tenant name as prefix,<br>separated by a dash. This is useful to avoid Namespace name collision in a public CaaS environment.<br/>*Default*: false<br/> | false |
@@ -666,7 +666,27 @@ CapsuleConfigurationStatus defines the Capsule configuration status.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[conditions](#capsuleconfigurationstatusconditionsindex)** | []object | Conditions holds the reconciliation conditions for this CapsuleConfiguration.<br>Includes a Ready condition indicating whether the configuration was<br>successfully validated and applied. | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
+| **tenants** | []string | Tenants is the sorted list of Tenant names currently present in the cluster.<br>The total count is available via len(Tenants). | false |
 | **[users](#capsuleconfigurationstatususersindex)** | []object | Users which are considered Capsule Users and are bound to the Capsule Tenant construct. | false |
+
+
+### CapsuleConfiguration.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
 
 
 ### CapsuleConfiguration.status.users[index]
@@ -814,6 +834,7 @@ CustomQuotaStatus defines the observed state of GlobalResourceQuota.
 | **[conditions](#customquotastatusconditionsindex)** | []object | Conditions | true |
 | **[targets](#customquotastatustargetsindex)** | []object | Targeting GVK | true |
 | **[claims](#customquotastatusclaimsindex)** | []object | Objects regarding this policy | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 | **[usage](#customquotastatususage)** | object | Usage measurements | false |
 
 
@@ -1074,6 +1095,7 @@ CustomQuotaStatus defines the observed state of GlobalResourceQuota.
 | **[targets](#globalcustomquotastatustargetsindex)** | []object | Targeting GVK | true |
 | **[claims](#globalcustomquotastatusclaimsindex)** | []object | Objects regarding this policy | false |
 | **namespaces** | []string | Observed Namespaces | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 | **[usage](#globalcustomquotastatususage)** | object | Usage measurements | false |
 
 
@@ -1465,6 +1487,7 @@ GlobalTenantResourceStatus defines the observed state of GlobalTenantResource.
 | :---- | :---- | :----------- | :-------- |
 | **size** | integer | How many items are being replicated by the TenantResource. | true |
 | **[conditions](#globaltenantresourcestatusconditionsindex)** | []object | Condition of the GlobalTenantResource. | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 | **[processedItems](#globaltenantresourcestatusprocesseditemsindex)** | []object | List of the replicated resources for the given TenantResource. | false |
 | **selectedTenants** | []string | List of Tenants addressed by the GlobalTenantResource. | false |
 | **[serviceAccount](#globaltenantresourcestatusserviceaccount)** | object | Serviceaccount used for impersonation | false |
@@ -1726,6 +1749,7 @@ ResourceQuotaClaimStatus defines the observed state of ResourceQuotaClaim.
 | **[conditions](#resourcepoolclaimstatusconditionsindex)** | []object | Conditions for the resource claim | true |
 | **[allocation](#resourcepoolclaimstatusallocation)** | object | Tracks the Usage from Claimed from this claim and available resources | false |
 | **[condition](#resourcepoolclaimstatuscondition)** | object | <span style="color:red;font-weight:bold">Deprecated: Use Conditions</span> | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 | **[pool](#resourcepoolclaimstatuspool)** | object | Reference to the GlobalQuota being claimed from | false |
 
 
@@ -1928,6 +1952,7 @@ GlobalResourceQuotaStatus defines the observed state of GlobalResourceQuota.
 | **[exhaustions](#resourcepoolstatusexhaustionskey)** | map[string]object | Exhaustions from claims associated with the pool | false |
 | **namespaceCount** | integer | How many namespaces are considered<br/>*Default*: 0<br/> | false |
 | **namespaces** | []string | Namespaces which are considered for claims | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 
 
 ### ResourcePool.status.conditions[index]
@@ -2011,7 +2036,7 @@ ResourceQuotaClaimStatus defines the observed state of ResourceQuotaClaim.
 
 
 
-For future inmplementatiosn where users might manage RuleStatus CRs tehmselves
+For future implementation where users might manage RuleStatus CRs themselves
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -2055,6 +2080,7 @@ RuleStatus contains the accumulated rules applying to namespace it's deployed in
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **[conditions](#rulestatusstatusconditionsindex)** | []object | Conditions | true |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 | **[rule](#rulestatusstatusrule)** | object | Managed Enforcement properties per Namespace (aggregated from rules) | false |
 
 
@@ -2128,7 +2154,7 @@ TenantOwner is the Schema for the tenantowners API.
 | **kind** | string | TenantOwner | true |
 | **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
 | **[spec](#tenantownerspec)** | object | spec defines the desired state of TenantOwner. | true |
-| **status** | object | status defines the observed state of TenantOwner. | false |
+| **[status](#tenantownerstatus)** | object | status defines the observed state of TenantOwner. | false |
 
 
 ### TenantOwner.spec
@@ -2144,6 +2170,37 @@ spec defines the desired state of TenantOwner.
 | **kind** | enum | Kind of entity. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
 | **name** | string | Name of the entity. | true |
 | **clusterRoles** | []string | Defines additional cluster-roles for the specific Owner.<br/>*Default*: [admin capsule-namespace-deleter]<br/> | false |
+
+
+### TenantOwner.status
+
+
+
+status defines the observed state of TenantOwner.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[conditions](#tenantownerstatusconditionsindex)** | []object | Conditions contains the reconciliation conditions for this TenantOwner. | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
+| **tenants** | []string | Tenants lists the names of all Tenants that this TenantOwner is currently matched to<br>via the Tenant's spec.permissions.matchOwners selectors. | false |
+
+
+### TenantOwner.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
 
 ## TenantResource
 
@@ -2410,6 +2467,7 @@ TenantResourceStatus defines the observed state of TenantResource.
 | :---- | :---- | :----------- | :-------- |
 | **size** | integer | How many items are being replicated by the TenantResource. | true |
 | **[conditions](#tenantresourcestatusconditionsindex)** | []object | Condition of the GlobalTenantResource. | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 | **[processedItems](#tenantresourcestatusprocesseditemsindex)** | []object | List of the replicated resources for the given TenantResource. | false |
 | **[serviceAccount](#tenantresourcestatusserviceaccount)** | object | Serviceaccount used for impersonation | false |
 
@@ -3652,6 +3710,7 @@ Returns the observed state of the Tenant.
 | **state** | enum | The operational state of the Tenant. Possible values are "Active", "Cordoned" or "Terminating".<br/>*Enum*: Cordoned, Active, Terminating<br/>*Default*: Active<br/> | true |
 | **[classes](#tenantstatusclasses)** | object | Available Class Types within Tenant | false |
 | **namespaces** | []string | <span style="color:red;font-weight:bold">List of namespaces assigned to the Tenant. (Deprecated)</span> | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 | **[owners](#tenantstatusownersindex)** | []object | Collected owners for this tenant | false |
 | **[promotions](#tenantstatuspromotionsindex)** | []object | Promoted ServiceAccounts across the Tenant | false |
 | **[spaces](#tenantstatusspacesindex)** | []object | Tracks state for the namespaces associated with this tenant | false |

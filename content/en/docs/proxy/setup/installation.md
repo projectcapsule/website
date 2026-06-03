@@ -66,7 +66,7 @@ spec:
   project: system
   source:
     repoURL: ghcr.io/projectcapsule/charts
-    targetRevision: {{< capsule_chart_version >}} 
+    targetRevision: {{< capsule_chart_version >}}
     chart: capsule
     helm:
       valuesObject:
@@ -177,7 +177,7 @@ spec:
 
 ## Considerations
 
-Consdierations when deploying capsule-proxy
+Considerations when deploying capsule-proxy
 
 ### Exposure
 
@@ -377,7 +377,7 @@ By default, Capsule delegates its certificate management to cert-manager. This i
 options:
   generateCertificates: true
 certManager:
-  generateCertificates: false  
+  generateCertificates: false
 ```
 
 #### Distribute CA within the Cluster
@@ -402,7 +402,7 @@ How to distribute the CA certificate using External Secrets Operator (ESO). In t
 
 First allow ServiceAccount `headlamp` to read the Secret `capsule-proxy` in the `capsule-system` namespace:
 
-```yaml 
+```yaml
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role

@@ -44,7 +44,7 @@ metadata:
     policies.kyverno.io/subject: Pod,User Namespace
     kyverno.io/kubernetes-version: "1.31"
     policies.kyverno.io/description: >-
-      Do not use the host's user namespace. A new userns is created for the pod. 
+      Do not use the host's user namespace. A new userns is created for the pod.
       Setting false is useful for mitigating container breakout vulnerabilities even allowing users to run their containers as root
       without actually having root privileges on the host. This field is
       alpha-level and is only honored by servers that enable the
@@ -80,7 +80,7 @@ In Kubernetes, by default, workloads run with administrative access, which might
 
 Many of these concerns were addressed initially by [PodSecurityPolicies](https://kubernetes.io/docs/concepts/security/pod-security-policy) which have been present in the Kubernetes APIs since the very early days.
 
-The Pod Security Policies are deprecated in Kubernetes 1.21 and removed entirely in 1.25. As replacement, the [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/) and [Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/) has been introduced. Capsule support the new standard for tenants under its control as well as the oldest approach.
+The Pod Security Policies are deprecated in Kubernetes 1.21 and removed entirely in 1.25. As replacement, the [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/) and [Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/) has been introduced. Capsule supports the new standard for tenants under its control as well as the oldest approach.
 
 
 One of the issues with Pod Security Policies is that it is difficult to apply restrictive permissions on a granular level, increasing security risk. Also the Pod Security Policies get applied when the request is submitted and there is no way of applying them to pods that are already running. For these, and other reasons, the Kubernetes community decided to deprecate the Pod Security Policies.
@@ -167,7 +167,7 @@ spec:
 
 ```
 
-All namespaces created by the tenant owner, will inherit the Pod Security labels: 
+All namespaces created by the tenant owner, will inherit the Pod Security labels:
 
 ```yaml
 apiVersion: v1
@@ -217,7 +217,7 @@ pods "nginx" is forbidden: violates PodSecurity "baseline:latest": privileged
 (container "nginx" must not set securityContext.privileged=true)
 ```
 
-If the tenant owner tries to change o delete the above labels, Capsule will reconcile them to the original tenant manifest set by the cluster admin.
+If the tenant owner tries to change or delete the above labels, Capsule will reconcile them to the original tenant manifest set by the cluster admin.
 
 As additional security measure, the cluster admin can also prevent the tenant owner to make an improper usage of the above labels:
 

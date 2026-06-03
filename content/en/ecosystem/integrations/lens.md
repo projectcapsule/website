@@ -1,6 +1,6 @@
 ---
 title: Lens
-describtion: Capsule extension for Lens
+description: Capsule extension for Lens
 type: single
 ---
 
@@ -13,5 +13,5 @@ Capsule extension for Lens provides these capabilities:
 * List all tenants
 * See tenant details and change through the embedded Lens editor
 * Check Resources Quota and Budget at both the tenant and namespace level
-  
+
 Please, see the [README](https://github.com/clastix/capsule-lens-extension) for details about the installation of the Capsule Lens Extension.

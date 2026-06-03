@@ -155,7 +155,7 @@ User "alice" cannot list resource "pods" in API group "" in the namespace "kube-
 
 As Cluster Administrator we want to avoid that tenants can communicate between each other. To achieve that, we can use [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/) to isolate the namespaces created by different tenants.
 
-Let's ensure for any `Tenant` and any of it's future namespaces, that each gits a [NetworkPolicy](https://kubernetes.io/docs/concepts/services-networking/network-policies/), which does not allow ingress/egress traffic to/from other tenants.
+Let's ensure for any `Tenant` and any of its future namespaces, that each gets a [NetworkPolicy](https://kubernetes.io/docs/concepts/services-networking/network-policies/), which does not allow ingress/egress traffic to/from other tenants.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2

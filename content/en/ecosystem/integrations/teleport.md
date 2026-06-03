@@ -1,6 +1,6 @@
 ---
 title: Teleport
-describtion: Capsule Proxy interation with Teleport
+description: Capsule Proxy integration with Teleport
 logo: https://avatars.githubusercontent.com/u/10781132?s=200&v=4
 type: single
 display: true
