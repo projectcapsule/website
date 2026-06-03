@@ -60,7 +60,7 @@ spec:
           - key: env
             operator: In
             values: ["prod"]
-      enforce:    
+      enforce:
         registries:
          -  url: "harbor/v2/prod-registry/.*"
             policy: [ "ifNotPresent" ]

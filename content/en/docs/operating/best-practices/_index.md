@@ -33,4 +33,3 @@ If no external secret store is available, there should at least be a secure way 
 In our ecosystem, we provide a solution based on SOPS (Secrets OPerationS) for this use case; called the [sops-operator](https://github.com/peak-scale/sops-operator).
 
 [👉 Demonstration](https://killercoda.com/peakscale/course/playgrounds/sops-secrets)
-

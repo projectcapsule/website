@@ -118,7 +118,7 @@ spec:
               - fromNamespaces:
                   - matchLabels:
                       company.com/system: "true"  # System namespaces (monitoring, ingress, etc.)
-          
+
             egress:
               - toCIDR:
                   - 10.96.0.10/32  # kube-dns IP
@@ -128,11 +128,8 @@ spec:
                         protocol: UDP
                       - port: "53"
                         protocol: TCP
-          
+
               - toNamespaces:
                   - matchLabels:
                       capsule.clastix.io/tenant: "{{tenant.name}}"  # Egress to all tenant namespaces
 ```
-
-
-
