@@ -41,7 +41,7 @@ $ curl -k -s https://${OIDC_ISSUER}/protocol/openid-connect/token \
 The result will include an `ACCESS_TOKEN`, a `REFRESH_TOKEN`, and an `ID_TOKEN`. The access-token can generally be disregarded for Kubernetes. It would be used if the identity provider was managing roles and permissions for the users but that is done in Kubernetes itself with RBAC. The id-token is short lived while the refresh-token has longer expiration. The refresh-token is used to fetch a new id-token when the id-token expires.
 
 ```json
-{  
+{
    "access_token":"ACCESS_TOKEN",
    "refresh_token":"REFRESH_TOKEN",
    "id_token": "ID_TOKEN",
@@ -85,7 +85,7 @@ Configuring Kubernetes for OIDC Authentication requires adding several parameter
 
 #### Authentication Configuration (Recommended)
 
-The configuration file approach allows you to configure multiple JWT authenticators, each with a unique issuer.url and issuer.discoveryURL. The configuration file even allows you to specify CEL expressions to map claims to user attributes, and to validate claims and user information. 
+The configuration file approach allows you to configure multiple JWT authenticators, each with a unique issuer.url and issuer.discoveryURL. The configuration file even allows you to specify CEL expressions to map claims to user attributes, and to validate claims and user information.
 
 ```yaml
 apiVersion: apiserver.config.k8s.io/v1beta1
@@ -168,7 +168,7 @@ There are two options to use kubectl with OIDC:
 
 **Plugin**
 
-One way to use OIDC authentication is the use of a kubectl plugin. The [Kubelogin Plugin](https://github.com/int128/kubelogin) for kubectl simplifies the process of obtaining an OIDC token and configuring kubectl to use it. Follow the link to obtain installation instructions. 
+One way to use OIDC authentication is the use of a kubectl plugin. The [Kubelogin Plugin](https://github.com/int128/kubelogin) for kubectl simplifies the process of obtaining an OIDC token and configuring kubectl to use it. Follow the link to obtain installation instructions.
 
 ```shell
 kubectl oidc-login setup \
@@ -203,7 +203,7 @@ Point the kubectl to the URL where the Kubernetes APIs Server is reachable:
 
 ```shell
 $ kubectl config set-cluster mycluster \
-    --server=https://kube.projectcapulse.io:6443 \
+    --server=https://kube.projectcapsule.io:6443 \
     --certificate-authority=~/.kube/ca.crt
 ```
 

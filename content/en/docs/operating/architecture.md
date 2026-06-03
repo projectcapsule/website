@@ -12,16 +12,16 @@ Introducing a new separation of duties can lead to a significant paradigm shift.
 
 The answer to this question may be influenced by the following aspects:
 
-* **Are the Cluster Adminsitrators willing to grant permissions to Tenant Owners**? 
-  * _You might have a problem with know-how and probably your organisation is not yet pushing Kubernetes itself enough as a key strategic plattform. The key here is enabling Plattform Users through good UX and know-how transfers_
+* **Are the Cluster Administrators willing to grant permissions to Tenant Owners?**
+  * _You might have a problem with know-how and probably your organisation is not yet pushing Kubernetes itself enough as a key strategic platform. The key here is enabling Platform Users through good UX and know-how transfers_
 
-* **Who is responsible for the deployed workloads within the Tenants?**? 
+* **Who is responsible for the deployed workloads within the Tenants?**
   * _If Platform Administrators are still handling this, a true “shift left” has not yet been achieved._
 
-* **Who gets paged during a production outage within a Tenant’s application?**?
+* **Who gets paged during a production outage within a Tenant’s application?**
   * _You’ll need robust monitoring that enables Tenant Owners to clearly understand and manage what’s happening inside their own tenant._
 
-* **Are your customers technically capable of working directly with the Kubernetes API?**? 
+* **Are your customers technically capable of working directly with the Kubernetes API?**
   * _If not, you may need to build a more user-friendly platform with better UX — for example, a multi-tenant ArgoCD setup, or UI layers like Headlamp._
 
 ## Personas
@@ -93,11 +93,11 @@ Capsule provides robust tools to strictly enforce tenant boundaries, ensuring th
 
 ## Layouts
 
-Let's dicuss different Tenant Layouts which could be used . These are just approaches we have seen, however you might also find a combination of these which fits your use-case.
+Let's discuss different Tenant Layouts which could be used . These are just approaches we have seen, however you might also find a combination of these which fits your use-case.
 
 ### Tenant As A Service
 
-With this approach you essentially just provide your Customers with the Tenant on your cluster. The rest is their responsability. This concludes to a shared responsibility model. This can be achieved when also the Tenant Owners are responsible for everything they are provisiong within their Tenant's namespaces.
+With this approach you essentially just provide your Customers with the Tenant on your cluster. The rest is their responsibility. This concludes to a shared responsibility model. This can be achieved when also the Tenant Owners are responsible for everything they are provisiong within their Tenant's namespaces.
 
 ![Resourcepool Dashboard](/images/content/architecture/layout-taas.drawio.png)
 
@@ -119,15 +119,15 @@ Strong tenant isolation, ensuring that any noisy neighbor effects remain confine
 
 ### Shared
 
-With this approach you share the nodes amongst all Tenants, therefor giving you more potential for optimizing resources on a node level. It's a common pattern to separate the controllers needed to power your Distribution (operators) form the actual workload. This ensures smooth operations for the cluster
+With this approach you share the nodes amongst all Tenants, therefore giving you more potential for optimizing resources on a node level. It's a common pattern to separate the controllers needed to power your Distribution (operators) from the actual workload. This ensures smooth operations for the cluster
 
 **Overview**:
 
 - ✅ Designed for cost efficiency .
-- ✅ Suitable for applications that typically experience low resource fluctuations and run with multiple replicas. 
+- ✅ Suitable for applications that typically experience low resource fluctuations and run with multiple replicas.
 - ❌ Not ideal for applications that are not cloud-native ready, as they may adversely affect the operation of other applications or the maintenance of node pools.
 - ❌ Not ideal if strong isolation is required
-  
+
 ![Shared Nodepool](/images/content/scheduling-shared.drawio.png)
 
 

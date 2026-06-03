@@ -10,7 +10,7 @@ When coming to backup and restore in Kubernetes, we have two main requirements:
 
 * Configurations backup
 * Data backup
-  
+
 The first requirement aims to backup all the resources stored into etcd database, for example: namespaces, pods, services, deployments, etc. The second is about how to backup stateful application data as volumes.
 
 The main limitation of Velero is the multi tenancy. Currently, Velero does not support multi tenancy meaning it can be only used from admin users and so it cannot provided "as a service" to the users. This means that the cluster admin needs to take care of users' backup.
@@ -73,7 +73,7 @@ velero create backup solar-namespaces \
     --include-namespaces solar-production,solar-development,solar-marketing
 ```
 
-resulting to the following Velero object:
+resulting in the following Velero object:
 
 ```yaml
 apiVersion: velero.io/v1
@@ -93,7 +93,7 @@ spec:
   ttl: 720h0m0s
 ```
 
-> Velero requires an Object Storage backend where to store backups, you should take care of this requirement before to use Velero.
+> Velero requires an Object Storage backend where to store backups, you should take care of this requirement before using Velero.
 
 ## Restore a tenant from the backup
 
