@@ -1294,5 +1294,3 @@ Currently mainly the conditions of `TenantResources` are exposed as metrics:
 capsule_resource_condition{condition="Cordoned",name="templated-forbidden-namespace",target_namespace="e2e-tenantresource-ssa-system"} 0
 capsule_resource_condition{condition="Ready",name="templated-forbidden-namespace",target_namespace="e2e-tenantresource-ssa-system"} 1
 ```
-
-

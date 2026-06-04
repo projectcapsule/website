@@ -49,7 +49,7 @@ resource.customizations.actions.Namespace: |
       return false
     end
     if not has_managed_ownerref() then
-      return {} 
+      return {}
     end
     local labels = {}
     if obj.metadata ~= nil and obj.metadata.labels ~= nil then
@@ -173,7 +173,7 @@ resource.customizations.health.capsule.clastix.io_Tenant: |
       end
     end
   end
-  
+
   hs.status = "Progressing"
   hs.message = "Waiting for Status"
   return hs

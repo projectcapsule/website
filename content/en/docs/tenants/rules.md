@@ -32,7 +32,7 @@ spec:
           - key: env
             operator: In
             values: ["prod"]
-      enforce:    
+      enforce:
         registries:
          -  url: "harbor/v2/prod-registry/.*"
             policy: [ "ifNotPresent" ]
@@ -57,17 +57,17 @@ apiVersion: capsule.clastix.io/v1beta2
 kind: Tenant
 metadata:
   name: solar
-spec:  
+spec:
   ...
   rules:
     - permissions:
         promotions:
           # With this rule every promoted ServiceAccount get's the ClusterRole "tenant-replicator" in all Namespaces of the Tenant solar
-          - clusterRoles: 
+          - clusterRoles:
               - "configmap-replicator"
-  
+
           # With this rule every promoted ServiceAccount with the matching labels get's the ClusterRole "tenant-replicator" in all Namespaces of the Tenant solar
-          - clusterRoles: 
+          - clusterRoles:
               - "secret-replicator"
             selector:
               matchLabels:
@@ -81,7 +81,7 @@ spec:
       permissions:
         promotions:
           # With this rule every promoted ServiceAccount with the matching labels get's the ClusterRole "tenant-replicator" in namespaces of the Tenant solar matching the selector (env=prod)
-          - clusterRoles: 
+          - clusterRoles:
               - "secret-replicator:prod"
 ```
 

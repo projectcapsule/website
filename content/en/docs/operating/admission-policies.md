@@ -1062,5 +1062,3 @@ spec:
                 operator: NotEquals
                 value: "{{clusterIssuerManagedBy}}"{{< /tab >}}
 {{% /tabpane %}}
-
-
