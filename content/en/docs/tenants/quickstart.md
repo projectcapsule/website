@@ -40,7 +40,7 @@ metadata:
   name: platform-team
   labels:
     team: platform
-    
+
 spec:
   kind: Group
   name: "oidc:kubernetes:admin"
@@ -137,7 +137,7 @@ kubectl --as alice --as-group projectcapsule.dev create namespace solar-developm
 And operate with fully admin permissions:
 
 ```bash
-kubectl -n solar-development run nginx --image=docker.io/nginx 
+kubectl -n solar-development run nginx --image=docker.io/nginx
 kubectl -n solar-development get pods
 ```
 
@@ -210,8 +210,3 @@ spec:
                       matchLabels:
                         capsule.clastix.io/tenant: "{{tenant.name}}"
 ```
-
-
-
-
-

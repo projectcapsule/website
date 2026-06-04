@@ -37,4 +37,3 @@ NAME    STATE    NAMESPACE QUOTA   NAMESPACE COUNT   NODE SELECTOR   AGE
 solar   Active                     0                                 2m22s
 wind    Active                     2                                 2m15s
 ```
-

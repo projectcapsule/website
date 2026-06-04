@@ -503,5 +503,3 @@ capsule_proxy_requests_total counts the global requests that Capsule Proxy is pa
 
 path: the HTTP path of every single request that Capsule Proxy passes to the upstream
 status: the HTTP status code of the request
-
-

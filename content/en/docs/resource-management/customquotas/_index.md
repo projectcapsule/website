@@ -43,7 +43,7 @@ For each matching quota it:
 
 This makes quota enforcement safe even during bursts of concurrent requests.
 
-> **Without the Admission Webhook enabled, CustomQuotas are observational only.**  
+> **Without the Admission Webhook enabled, CustomQuotas are observational only.**
 > The controllers still rebuild and report usage, but requests are not denied.
 
 By default, no objects are sent to this webhook. You must explicitly enable it and configure matching rules.
@@ -103,7 +103,7 @@ webhooks:
           expression: '!has(request.subResource) || request.subResource == ""'
         - name: ignore-events
           expression: 'request.resource.resource != "events"'
-  
+
         # Execlude Entities which never count towards quotas to avoid performance issues and disruptions in case of issues with the webhook (Example).
         - name: 'exclude-kubelet-requests'
           expression: '!("system:nodes" in request.userInfo.groups)'
@@ -122,9 +122,9 @@ The following constraints apply to the JSONPath:
   * Expressions must start with a dot (`.`) and use standard JSONPath syntax. (valid `.spec.storage.usage`).
   * Paths can not be empty.
   * The maximum length of the path is `1024` characters.
-  * Expressions can not contain any of the following characters: 
+  * Expressions can not contain any of the following characters:
     * `\n` (newline)
-    * `\r` (carriage return) 
+    * `\r` (carriage return)
     * `\t` (tab)
   * Values can resolve to array results, which are then summed up. (For example, `.spec.containers[*].resources.limits.cpu` would sum the CPU limits of all containers in a Pod.)
   * Missing fields are resulting in an error, as it's assumed that if a path requires calculation it should force the targeted sources to define these paths. Meaning if you eg define this JP `.spec.initContainers[*].resources.limits.cpu` on a Pod that has no initContainers, it will error. If you want to only calculate the path if it exists, you can use a [fielselector](#fieldselectors) to only match objects where the path exists, for example with `.spec.initContainers` as fieldSelector.

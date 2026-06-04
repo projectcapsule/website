@@ -131,7 +131,7 @@ With this approach you share the nodes amongst all Tenants, therefore giving you
 ![Shared Nodepool](/images/content/scheduling-shared.drawio.png)
 
 
-We provide the concept of [ResourcePools](/docs/resourcepools/) to manage resources cross namespaces. There's some further aspects you must think about with shared approaches:
+We provide the concept of [ResourcePools](/docs/resource-management/resourcepools/) or [CustomQuotas](/docs/resource-management/customquotas/) to manage resources cross namespaces. There's some further aspects you must think about with shared approaches:
 
   * [PriorityClasses](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/)
   * [ResourceQuotas](https://kubernetes.io/docs/concepts/policy/resource-quotas/)

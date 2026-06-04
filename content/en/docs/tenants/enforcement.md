@@ -279,10 +279,10 @@ kubectl apply -f - << EOF
 apiVersion: node.k8s.io/v1
 kind: RuntimeClass
 metadata:
-  name: tenant-default 
+  name: tenant-default
   labels:
     env: "production"
-handler: myconfiguration 
+handler: myconfiguration
 EOF
 ```
 
