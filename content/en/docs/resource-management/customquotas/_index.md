@@ -614,7 +614,7 @@ spec:
       op: count
       selectors:
         - fieldSelectors:
-            - '.spec.type[?(@=="LoadBalancer")]'
+            - '.spec.type=="LoadBalancer"'
 ```
 
 #### Aggregate ephemeral and persistent storage
@@ -901,7 +901,7 @@ spec:
       op: count
       selectors:
         - fieldSelectors:
-            - '.spec.type[?(@=="LoadBalancer")]'
+            - '.spec.type=="LoadBalancer"'
 ```
 
 #### Limit total memory requests of Pods in one namespace
