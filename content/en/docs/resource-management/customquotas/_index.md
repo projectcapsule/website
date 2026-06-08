@@ -131,7 +131,7 @@ The following constraints apply to the JSONPath:
 
 #### Matching Strategies
 
-Implemententations how JSONPath expressions are evaluated and how their results are interpreted for conditional matching.
+This section describes how JSONPath expressions are evaluated and how their results are interpreted for conditional matching.
 
 #### Truthy
 
