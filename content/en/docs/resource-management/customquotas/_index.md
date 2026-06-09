@@ -245,10 +245,9 @@ spec:
   - matchLabels:
       capsule.clastix.io/tenant: solar
   sources:
-  - group: ""
+  - apiVersion: v1
     kind: Pod
     op: count
-    version: v1
 ---
 apiVersion: capsule.clastix.io/v1beta2
 kind: CustomQuota
@@ -258,10 +257,9 @@ metadata:
 spec:
   limit: 3
   sources:
-  - group: ""
+  - apiVersion: v1
     kind: Pod
     op: count
-    version: v1
 ```
 
 When we now try to create 6 `Pods` in the namespace `solar-test`, we can observe that the `GlobalCustomQuota` allows only 6 Pods in total across all namespaces of the tenant, while the `CustomQuota` allows only 3 Pods in the `solar-test` namespace:
@@ -293,7 +291,7 @@ We can see that requests are blocked because of the limits by the `CustomQuota` 
 
 A quota may define one or many sources. Each source describes:
 
-  * which objects are candidates (`group`, `version`, `kind`)
+  * which objects are candidates (`apiVersion`, `kind`)
   * what value is extracted from them ([`path`](#path), if applicable)
   * how that value contributes to usage ([`op`](#operations))
   * optional additional source-level selectors
@@ -306,11 +304,10 @@ Sources are evaluated independently and then aggregated into one total.
 
 ### GVK
 
-Each source must identify a Kubernetes resource type by Group / Version / Kind. Example for a core Kubernetes Pod:
+Each source must identify a Kubernetes resource type by apiVersion / Kind. Example for a core Kubernetes Pod:
 
 ```yaml
-group: ""
-version: v1
+apiVersion: v1
 kind: Pod
 ```
 
@@ -710,7 +707,7 @@ spec:
       op: count
       selectors:
         - fieldSelectors:
-            - '.spec.type[?(@=="LoadBalancer")]'
+            - '.spec.type=="LoadBalancer"'
 ```
 
 #### Aggregate ephemeral and persistent storage
@@ -997,7 +994,7 @@ spec:
       op: count
       selectors:
         - fieldSelectors:
-            - '.spec.type[?(@=="LoadBalancer")]'
+            - '.spec.type=="LoadBalancer"'
 ```
 
 #### Limit total memory requests of Pods in one namespace
