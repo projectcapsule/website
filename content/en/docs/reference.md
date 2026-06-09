@@ -2053,10 +2053,25 @@ Enforcement for given rule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[registries](#rulestatusspecindexenforceregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[workloads](#rulestatusspecindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
 
 
-### RuleStatus.spec[index].enforce.registries[index]
+### RuleStatus.spec[index].enforce.workloads
+
+
+
+Enforcement for Workloads (Pods)
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
+| **[registries](#rulestatusspecindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.registries[index]
 
 
 
@@ -2065,9 +2080,9 @@ Enforcement for given rule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **url** | string | OCI Registry endpoint, is treated as regular expression. | true |
+| **exp** | string | Expression used to evaluate regex | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
-| **validation** | []enum | Requesting Resources<br/>*Enum*: pod/images, pod/volumes<br/>*Default*: [pod/images pod/volumes]<br/> | false |
 
 
 ### RuleStatus.status
@@ -2081,7 +2096,8 @@ RuleStatus contains the accumulated rules applying to namespace it's deployed in
 | :---- | :---- | :----------- | :-------- |
 | **[conditions](#rulestatusstatusconditionsindex)** | []object | Conditions | true |
 | **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
-| **[rule](#rulestatusstatusrule)** | object | Managed Enforcement properties per Namespace (aggregated from rules) | false |
+| **[rule](#rulestatusstatusrule)** | object | <span style="color:red;font-weight:bold">Deprecated: use Rules.<br>Rule contains a legacy flattened view and cannot fully represent action-aware rules.</span> | false |
+| **[rules](#rulestatusstatusrulesindex)** | []object | Rules contains the effective namespace rules after tenant rule selection.<br>Order is preserved from the originating Tenant rules. | false |
 
 
 ### RuleStatus.status.conditions[index]
@@ -2105,7 +2121,8 @@ Condition contains details for one aspect of the current state of this API Resou
 
 
 
-Managed Enforcement properties per Namespace (aggregated from rules)
+Deprecated: use Rules.
+Rule contains a legacy flattened view and cannot fully represent action-aware rules.
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -2122,10 +2139,25 @@ Enforcement for given rule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[registries](#rulestatusstatusruleenforceregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[workloads](#rulestatusstatusruleenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
 
 
-### RuleStatus.status.rule.enforce.registries[index]
+### RuleStatus.status.rule.enforce.workloads
+
+
+
+Enforcement for Workloads (Pods)
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
+| **[registries](#rulestatusstatusruleenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.registries[index]
 
 
 
@@ -2134,9 +2166,62 @@ Enforcement for given rule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **url** | string | OCI Registry endpoint, is treated as regular expression. | true |
+| **exp** | string | Expression used to evaluate regex | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
-| **validation** | []enum | Requesting Resources<br/>*Enum*: pod/images, pod/volumes<br/>*Default*: [pod/images pod/volumes]<br/> | false |
+
+
+### RuleStatus.status.rules[index]
+
+
+
+For future implementation where users might manage RuleStatus CRs themselves
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[enforce](#rulestatusstatusrulesindexenforce)** | object | Enforcement for given rule | false |
+
+
+### RuleStatus.status.rules[index].enforce
+
+
+
+Enforcement for given rule
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[workloads](#rulestatusstatusrulesindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads
+
+
+
+Enforcement for Workloads (Pods)
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
+| **[registries](#rulestatusstatusrulesindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.registries[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exp** | string | Expression used to evaluate regex | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
 
 ## TenantOwner
 
@@ -3449,10 +3534,25 @@ Enforcement for given rule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[registries](#tenantspecrulesindexenforceregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[workloads](#tenantspecrulesindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
 
 
-### Tenant.spec.rules[index].enforce.registries[index]
+### Tenant.spec.rules[index].enforce.workloads
+
+
+
+Enforcement for Workloads (Pods)
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
+| **[registries](#tenantspecrulesindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.registries[index]
 
 
 
@@ -3461,9 +3561,9 @@ Enforcement for given rule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **url** | string | OCI Registry endpoint, is treated as regular expression. | true |
+| **exp** | string | Expression used to evaluate regex | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
-| **validation** | []enum | Requesting Resources<br/>*Enum*: pod/images, pod/volumes<br/>*Default*: [pod/images pod/volumes]<br/> | false |
 
 
 ### Tenant.spec.rules[index].namespaceSelector
@@ -3503,10 +3603,10 @@ Permissions for given rule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[rules](#tenantspecrulesindexpermissionsrulesindex)** | []object | Define Promotion Rules which distributed additional ClusterRoles across the Tenant<br>for promoted ServiceAccounts. | false |
+| **[promotions](#tenantspecrulesindexpermissionspromotionsindex)** | []object | Define Promotion Rules which distributed additional ClusterRoles across the Tenant<br>for promoted ServiceAccounts. | false |
 
 
-### Tenant.spec.rules[index].permissions.rules[index]
+### Tenant.spec.rules[index].permissions.promotions[index]
 
 
 
@@ -3516,10 +3616,10 @@ Permissions for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **clusterRoles** | []string | ClusterRoles granted to the promoted ServiceAccounts across the Tenant<br>kubebuilder:validation:Minimum=1 | false |
-| **[selector](#tenantspecrulesindexpermissionsrulesindexselector)** | object | Match ServiceAccounts which are promoted which are granted these additional ClusterRoles<br>across the Tenant | false |
+| **[selector](#tenantspecrulesindexpermissionspromotionsindexselector)** | object | Match ServiceAccounts which are promoted which are granted these additional ClusterRoles<br>across the Tenant | false |
 
 
-### Tenant.spec.rules[index].permissions.rules[index].selector
+### Tenant.spec.rules[index].permissions.promotions[index].selector
 
 
 
@@ -3529,11 +3629,11 @@ across the Tenant
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[matchExpressions](#tenantspecrulesindexpermissionsrulesindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **[matchExpressions](#tenantspecrulesindexpermissionspromotionsindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
 | **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
 
 
-### Tenant.spec.rules[index].permissions.rules[index].selector.matchExpressions[index]
+### Tenant.spec.rules[index].permissions.promotions[index].selector.matchExpressions[index]
 
 
 
@@ -3832,9 +3932,9 @@ Managed Metadata
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **url** | string | OCI Registry endpoint, is treated as regular expression. | true |
+| **exp** | string | Expression used to evaluate regex | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
-| **validation** | []enum | Requesting Resources<br/>*Enum*: pod/images, pod/volumes<br/>*Default*: [pod/images pod/volumes]<br/> | false |
 
 
 ### Tenant.status.spaces[index].metadata
