@@ -129,6 +129,104 @@ The following constraints apply to the JSONPath:
   * Values can resolve to array results, which are then summed up. (For example, `.spec.containers[*].resources.limits.cpu` would sum the CPU limits of all containers in a Pod.)
   * Missing fields are resulting in an error, as it's assumed that if a path requires calculation it should force the targeted sources to define these paths. Meaning if you eg define this JP `.spec.initContainers[*].resources.limits.cpu` on a Pod that has no initContainers, it will error. If you want to only calculate the path if it exists, you can use a [fielselector](#fieldselectors) to only match objects where the path exists, for example with `.spec.initContainers` as fieldSelector.
 
+#### Matching Strategies
+
+This section describes how JSONPath expressions are evaluated and how their results are interpreted for conditional matching.
+
+#### Truthy
+
+When a `fieldSelectors` entry does not contain a top-level `=` or `==`, Capsule treats it as a JSONPath expression.
+
+The selector matches when the JSONPath result is truthy.
+
+Truthy evaluation rules:
+
+* empty result: false
+* `false`, case-insensitive: false
+* `0`: false
+* any other non-empty result: true
+
+Example:
+
+```yaml
+spec:
+  sources:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      op: add
+      path: .spec.resources.requests.storage
+      selectors:
+        - fieldSelectors:
+            - '.spec.accessModes[?(@=="ReadWriteOnce")]'
+            - '.status.phase'
+```
+
+This selector matches only if:
+
+* `.spec.accessModes[?(@=="ReadWriteOnce")]` returns a non-empty result
+* `.status.phase returns a non-empty result`
+
+For example, this matches a PVC with:
+
+```yaml
+spec:
+  accessModes:
+    - ReadWriteOnce
+status:
+  phase: Bound
+```
+
+#### Equality
+
+When an entry contains a top-level `=` or `==` (not nested JP expressions), Capsule treats it as an equality comparison. The left side is evaluated as a JSONPath expression. The right side is compared as a **string**.
+
+```yaml
+spec:
+  sources:
+    - apiVersion: v1
+      kind: Service
+      op: count
+      selectors:
+        - fieldSelectors:
+            - '.spec.type=ClusterIP'
+```
+
+The following forms are equivalent:
+
+```yaml
+fieldSelectors:
+  - '.spec.type=ClusterIP'
+  - '.spec.type==ClusterIP'
+  - '.spec.type=="ClusterIP"'
+  - ".spec.type=='ClusterIP'"
+```
+
+A `==` inside a JSONPath filter is still treated as part of the JSONPath expression, not as Capsule equals matching.
+
+For example:
+
+```yaml
+fieldSelectors:
+  - '.spec.accessModes[?(@=="ReadWriteOnce")]'
+```
+
+This is interpreted as a truthy JSONPath selector, not as an equals selector. 
+
+
+**Use JSONPath filters for arrays:**
+
+```yaml
+fieldSelectors:
+  - '.spec.accessModes[?(@=="ReadWriteOnce")]'
+```
+
+**Use equals matching for scalar fields:**
+
+```yaml
+fieldSelectors:
+  - '.spec.type=ClusterIP'
+```
+
 ### Quota Matches
 
 As it's the case with native [ResourceQuotas](https://kubernetes.io/docs/concepts/policy/resource-quotas/#how-resource-quota-works), when a request is made, Capsule evaluates all existing CustomQuotas and GlobalCustomQuotas to determine which ones match the request. Always the smallest quantity of quotas is enforced, meaning that if multiple quotas match a request, the one with the least available capacity will be the one that determines whether the request is allowed or denied.
@@ -363,12 +461,7 @@ spec:
 
 fieldSelectors are additional per-source filters. Each entry is a JSONPath expression evaluated against the candidate object.
 
-A selector entry matches when its JSONPath result is truthy:
-
-  * empty result, `false` or `0`: false
-  * any other non-empty result: true
-
-Given:
+[View the available matching semantics](#matching-strategies) for fieldSelectors.
 
 ```yaml
 spec:

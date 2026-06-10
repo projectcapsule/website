@@ -98,6 +98,19 @@ rules:
 ...
 ```
 
+Alternatively you can directly grant more permissions via Helm values:
+
+```yaml
+manager:
+  rbac:
+    strict: true
+    clusterRole:
+      extraResources: 
+        - apiGroups: ["storage.k8s.io"]
+          resources: ["storageclasses"]
+          verbs: ["get", "list", "watch", "update", "patch"]
+```
+
 If you are missing permissions you will see an error status for the respective tenants reflecting
 
 ```bash
