@@ -663,6 +663,41 @@ capsule_global_custom_quota_resource_item_usage{custom_quota="cpu-limits",group=
 
 Feel free to contribute examples if you have found interesting use cases!
 
+
+#### Calculate total requested CPU across tenant namespaces (Running Pods)
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: ClusterCustomQuota
+metadata:
+  name: tenant-cpu-limits-quota
+spec:
+  limit: "15"
+  sources:
+  - apiVersion: v1
+      kind: Pod
+      op: add
+      path: .spec.containers[*].resources.limits.cpu
+      selectors:
+        - fieldSelectors:
+            - '.[?(@.status.phase!="Succeeded")]'
+            - '.[?(@.status.phase!="Failed")]'
+            - '.[?(@.status.phase!="Unknown")]'
+    - apiVersion: v1
+      kind: Pod
+      op: add
+      path: .spec.initContainers[*].resources.limits.cpu
+      selectors:
+        - fieldSelectors:
+            - '.[?(@.status.phase!="Succeeded")]'
+            - '.[?(@.status.phase!="Failed")]'
+            - '.[?(@.status.phase!="Unknown")]'
+
+  selectors:
+    - matchLabels:
+        capsule.clastix.io/tenant: solar
+```
+
 #### Limit total max storage across bucket claims for selected namespaces
 
 This enforces a 500Gi cap on max storage requested by `ObjectBucketClaims` in all namespaces labeled with `capsule.clastix.io/tenant=solar`, but only counting those claims with the storage class label `objectbucket.io/storage-class=gold`.
@@ -782,6 +817,10 @@ spec:
     kind: Pod
     op: add
     path: .spec.containers[*].resources.limits.cpu
+    selectors:
+      - fieldSelectors:
+          - '.status.phase[?(@!="Succeeded" && @!="Failed" && @!="Unknown")]'
+
   - apiVersion: v1
     kind: Pod
     op: add
