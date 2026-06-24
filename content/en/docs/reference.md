@@ -72,6 +72,7 @@ CapsuleConfigurationSpec defines the Capsule configuration.
 | **[administrators](#capsuleconfigurationspecadministratorsindex)** | []object | Define entities which can act as Administrators in the capsule construct<br>These entities are automatically owners for all existing tenants. Meaning they can add namespaces to any tenant. However they must be specific by using the capsule label<br>for interacting with namespaces. Because if that label is not defined, it's assumed that namespace interaction was not targeted towards a tenant and will therefore<br>be ignored by capsule. | false |
 | **[admission](#capsuleconfigurationspecadmission)** | object | Configuration for dynamic Validating and Mutating Admission webhooks managed by Capsule. | false |
 | **allowServiceAccountPromotion** | boolean | ServiceAccounts within tenant namespaces can be promoted to owners of the given tenant<br>this can be achieved by labeling the serviceaccount and then they are considered owners. This can only be done by other owners of the tenant.<br>However ServiceAccounts which have been promoted to owner can not promote further serviceAccounts.<br/>*Default*: false<br/> | false |
+| **[events](#capsuleconfigurationspecevents)** | object | Event (Audit) Configuration<br/>*Default*: map[namespace:default]<br/> | false |
 | **forceTenantPrefix** | boolean | Enforces the Tenant owner, during Namespace creation, to name it using the selected Tenant name as prefix,<br>separated by a dash. This is useful to avoid Namespace name collision in a public CaaS environment.<br/>*Default*: false<br/> | false |
 | **ignoreUserWithGroups** | []string | Define groups which when found in the request of a user will be ignored by the Capsule<br>this might be useful if you have one group where all the users are in, but you want to separate administrators from normal users with additional groups. | false |
 | **[impersonation](#capsuleconfigurationspecimpersonation)** | object | Service Account Client configuration for impersonation properties | false |
@@ -568,6 +569,18 @@ sure that all the tuple expansions are valid.
 | **operations** | []string | Operations is the operations the admission hook cares about - CREATE, UPDATE, DELETE, CONNECT or *<br>for all of those operations and any future admission operations that are added.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
 | **resources** | []string | Resources is a list of resources this rule applies to.<br><br>For example:<br>'pods' means pods.<br>'pods/log' means the log subresource of pods.<br>'*' means all resources, but not subresources.<br>'pods/*' means all subresources of pods.<br>'*/scale' means all scale subresources.<br>'*/*' means all resources and their subresources.<br><br>If wildcard is present, the validation rule will ensure resources do not<br>overlap with each other.<br><br>Depending on the enclosing object, subresources might not be allowed.<br>Required. | false |
 | **scope** | string | scope specifies the scope of this rule.<br>Valid values are "Cluster", "Namespaced", and "*"<br>"Cluster" means that only cluster-scoped resources will match this rule.<br>Namespace API objects are cluster-scoped.<br>"Namespaced" means that only namespaced resources will match this rule.<br>"*" means that there are no scope restrictions.<br>Subresources match the scope of their parent resource.<br>Default is "*". | false |
+
+
+### CapsuleConfiguration.spec.events
+
+
+
+Event (Audit) Configuration
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **namespace** | string | Namespace where the events are logged for cluster scoped resources or deny events (default namespace)<br/>*Default*: default<br/> | false |
 
 
 ### CapsuleConfiguration.spec.impersonation
@@ -2054,7 +2067,87 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[services](#rulestatusspecindexenforceservices)** | object | Enforcement for Services. | false |
 | **[workloads](#rulestatusspecindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+
+
+### RuleStatus.spec[index].enforce.services
+
+
+
+Enforcement for Services.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[externalNames](#rulestatusspecindexenforceservicesexternalnames)** | object | ExternalNames defines additional constraints for Services of type ExternalName. | false |
+| **[loadBalancers](#rulestatusspecindexenforceservicesloadbalancers)** | object | LoadBalancers defines additional constraints for Services of type LoadBalancer. | false |
+| **[nodePorts](#rulestatusspecindexenforceservicesnodeports)** | object | NodePorts defines additional constraints for nodePort values. | false |
+| **types** | []enum | Types defines the Service types matched by this rule.<br><br>Supported values:<br>- ClusterIP<br>- NodePort<br>- LoadBalancer<br>- ExternalName<br/>*Enum*: ClusterIP, NodePort, LoadBalancer, ExternalName<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.services.externalNames
+
+
+
+ExternalNames defines additional constraints for Services of type ExternalName.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[hostnames](#rulestatusspecindexenforceservicesexternalnameshostnamesindex)** | []object | Hostnames restricts spec.externalName.<br>Empty means no additional hostname restriction once ExternalName is allowed by types. | false |
+
+
+### RuleStatus.spec[index].enforce.services.externalNames.hostnames[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.services.loadBalancers
+
+
+
+LoadBalancers defines additional constraints for Services of type LoadBalancer.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs restricts spec.loadBalancerIP and spec.loadBalancerSourceRanges.<br>Empty means no additional CIDR restriction once LoadBalancer is allowed by types. | false |
+
+
+### RuleStatus.spec[index].enforce.services.nodePorts
+
+
+
+NodePorts defines additional constraints for nodePort values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[ports](#rulestatusspecindexenforceservicesnodeportsportsindex)** | []object | Ports restricts explicitly requested nodePort values.<br>Empty means no additional port restriction once NodePort is allowed by types. | false |
+
+
+### RuleStatus.spec[index].enforce.services.nodePorts.ports[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **from** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
+| **to** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
 
 
 ### RuleStatus.spec[index].enforce.workloads
@@ -2068,6 +2161,7 @@ Enforcement for Workloads (Pods)
 | :---- | :---- | :----------- | :-------- |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
 | **[registries](#rulestatusspecindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **[schedulers](#rulestatusspecindexenforceworkloadsschedulersindex)** | []object | Schedulers defines schedulerName matchers for Pod admission.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
 | **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
 
 
@@ -2080,9 +2174,25 @@ Enforcement for Workloads (Pods)
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **exp** | string | Expression used to evaluate regex | false |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.schedulers[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
 ### RuleStatus.status
@@ -2140,7 +2250,87 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[services](#rulestatusstatusruleenforceservices)** | object | Enforcement for Services. | false |
 | **[workloads](#rulestatusstatusruleenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+
+
+### RuleStatus.status.rule.enforce.services
+
+
+
+Enforcement for Services.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[externalNames](#rulestatusstatusruleenforceservicesexternalnames)** | object | ExternalNames defines additional constraints for Services of type ExternalName. | false |
+| **[loadBalancers](#rulestatusstatusruleenforceservicesloadbalancers)** | object | LoadBalancers defines additional constraints for Services of type LoadBalancer. | false |
+| **[nodePorts](#rulestatusstatusruleenforceservicesnodeports)** | object | NodePorts defines additional constraints for nodePort values. | false |
+| **types** | []enum | Types defines the Service types matched by this rule.<br><br>Supported values:<br>- ClusterIP<br>- NodePort<br>- LoadBalancer<br>- ExternalName<br/>*Enum*: ClusterIP, NodePort, LoadBalancer, ExternalName<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.services.externalNames
+
+
+
+ExternalNames defines additional constraints for Services of type ExternalName.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[hostnames](#rulestatusstatusruleenforceservicesexternalnameshostnamesindex)** | []object | Hostnames restricts spec.externalName.<br>Empty means no additional hostname restriction once ExternalName is allowed by types. | false |
+
+
+### RuleStatus.status.rule.enforce.services.externalNames.hostnames[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.services.loadBalancers
+
+
+
+LoadBalancers defines additional constraints for Services of type LoadBalancer.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs restricts spec.loadBalancerIP and spec.loadBalancerSourceRanges.<br>Empty means no additional CIDR restriction once LoadBalancer is allowed by types. | false |
+
+
+### RuleStatus.status.rule.enforce.services.nodePorts
+
+
+
+NodePorts defines additional constraints for nodePort values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[ports](#rulestatusstatusruleenforceservicesnodeportsportsindex)** | []object | Ports restricts explicitly requested nodePort values.<br>Empty means no additional port restriction once NodePort is allowed by types. | false |
+
+
+### RuleStatus.status.rule.enforce.services.nodePorts.ports[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **from** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
+| **to** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
 
 
 ### RuleStatus.status.rule.enforce.workloads
@@ -2154,6 +2344,7 @@ Enforcement for Workloads (Pods)
 | :---- | :---- | :----------- | :-------- |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
 | **[registries](#rulestatusstatusruleenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **[schedulers](#rulestatusstatusruleenforceworkloadsschedulersindex)** | []object | Schedulers defines schedulerName matchers for Pod admission.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
 | **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
 
 
@@ -2166,9 +2357,25 @@ Enforcement for Workloads (Pods)
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **exp** | string | Expression used to evaluate regex | false |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.schedulers[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
 ### RuleStatus.status.rules[index]
@@ -2193,7 +2400,87 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[services](#rulestatusstatusrulesindexenforceservices)** | object | Enforcement for Services. | false |
 | **[workloads](#rulestatusstatusrulesindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+
+
+### RuleStatus.status.rules[index].enforce.services
+
+
+
+Enforcement for Services.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[externalNames](#rulestatusstatusrulesindexenforceservicesexternalnames)** | object | ExternalNames defines additional constraints for Services of type ExternalName. | false |
+| **[loadBalancers](#rulestatusstatusrulesindexenforceservicesloadbalancers)** | object | LoadBalancers defines additional constraints for Services of type LoadBalancer. | false |
+| **[nodePorts](#rulestatusstatusrulesindexenforceservicesnodeports)** | object | NodePorts defines additional constraints for nodePort values. | false |
+| **types** | []enum | Types defines the Service types matched by this rule.<br><br>Supported values:<br>- ClusterIP<br>- NodePort<br>- LoadBalancer<br>- ExternalName<br/>*Enum*: ClusterIP, NodePort, LoadBalancer, ExternalName<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.services.externalNames
+
+
+
+ExternalNames defines additional constraints for Services of type ExternalName.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[hostnames](#rulestatusstatusrulesindexenforceservicesexternalnameshostnamesindex)** | []object | Hostnames restricts spec.externalName.<br>Empty means no additional hostname restriction once ExternalName is allowed by types. | false |
+
+
+### RuleStatus.status.rules[index].enforce.services.externalNames.hostnames[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.services.loadBalancers
+
+
+
+LoadBalancers defines additional constraints for Services of type LoadBalancer.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs restricts spec.loadBalancerIP and spec.loadBalancerSourceRanges.<br>Empty means no additional CIDR restriction once LoadBalancer is allowed by types. | false |
+
+
+### RuleStatus.status.rules[index].enforce.services.nodePorts
+
+
+
+NodePorts defines additional constraints for nodePort values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[ports](#rulestatusstatusrulesindexenforceservicesnodeportsportsindex)** | []object | Ports restricts explicitly requested nodePort values.<br>Empty means no additional port restriction once NodePort is allowed by types. | false |
+
+
+### RuleStatus.status.rules[index].enforce.services.nodePorts.ports[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **from** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
+| **to** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads
@@ -2207,6 +2494,7 @@ Enforcement for Workloads (Pods)
 | :---- | :---- | :----------- | :-------- |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
 | **[registries](#rulestatusstatusrulesindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **[schedulers](#rulestatusstatusrulesindexenforceworkloadsschedulersindex)** | []object | Schedulers defines schedulerName matchers for Pod admission.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
 | **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
 
 
@@ -2219,9 +2507,25 @@ Enforcement for Workloads (Pods)
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **exp** | string | Expression used to evaluate regex | false |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.schedulers[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 ## TenantOwner
 
@@ -3535,7 +3839,87 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[services](#tenantspecrulesindexenforceservices)** | object | Enforcement for Services. | false |
 | **[workloads](#tenantspecrulesindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+
+
+### Tenant.spec.rules[index].enforce.services
+
+
+
+Enforcement for Services.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[externalNames](#tenantspecrulesindexenforceservicesexternalnames)** | object | ExternalNames defines additional constraints for Services of type ExternalName. | false |
+| **[loadBalancers](#tenantspecrulesindexenforceservicesloadbalancers)** | object | LoadBalancers defines additional constraints for Services of type LoadBalancer. | false |
+| **[nodePorts](#tenantspecrulesindexenforceservicesnodeports)** | object | NodePorts defines additional constraints for nodePort values. | false |
+| **types** | []enum | Types defines the Service types matched by this rule.<br><br>Supported values:<br>- ClusterIP<br>- NodePort<br>- LoadBalancer<br>- ExternalName<br/>*Enum*: ClusterIP, NodePort, LoadBalancer, ExternalName<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.services.externalNames
+
+
+
+ExternalNames defines additional constraints for Services of type ExternalName.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[hostnames](#tenantspecrulesindexenforceservicesexternalnameshostnamesindex)** | []object | Hostnames restricts spec.externalName.<br>Empty means no additional hostname restriction once ExternalName is allowed by types. | false |
+
+
+### Tenant.spec.rules[index].enforce.services.externalNames.hostnames[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.services.loadBalancers
+
+
+
+LoadBalancers defines additional constraints for Services of type LoadBalancer.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs restricts spec.loadBalancerIP and spec.loadBalancerSourceRanges.<br>Empty means no additional CIDR restriction once LoadBalancer is allowed by types. | false |
+
+
+### Tenant.spec.rules[index].enforce.services.nodePorts
+
+
+
+NodePorts defines additional constraints for nodePort values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[ports](#tenantspecrulesindexenforceservicesnodeportsportsindex)** | []object | Ports restricts explicitly requested nodePort values.<br>Empty means no additional port restriction once NodePort is allowed by types. | false |
+
+
+### Tenant.spec.rules[index].enforce.services.nodePorts.ports[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **from** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
+| **to** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
 
 
 ### Tenant.spec.rules[index].enforce.workloads
@@ -3549,6 +3933,7 @@ Enforcement for Workloads (Pods)
 | :---- | :---- | :----------- | :-------- |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
 | **[registries](#tenantspecrulesindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **[schedulers](#tenantspecrulesindexenforceworkloadsschedulersindex)** | []object | Schedulers defines schedulerName matchers for Pod admission.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
 | **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
 
 
@@ -3561,9 +3946,25 @@ Enforcement for Workloads (Pods)
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **exp** | string | Expression used to evaluate regex | false |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.schedulers[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
 ### Tenant.spec.rules[index].namespaceSelector
@@ -3932,7 +4333,8 @@ Managed Metadata
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **exp** | string | Expression used to evaluate regex | false |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
 
