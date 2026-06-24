@@ -216,8 +216,8 @@ manager:
 Depending on the version of the Capsule Controller, the configuration options may vary. You can view the options for the latest version of the Capsule Controller or by executing the controller locally:
 
 ```bash
-$ go run ./cmd/. --zap-log-level 7 -h
-
+$ go run ./cmd/controller/ --zap-log-level 7 -h
+      --cache-sync-timeout duration       The timeout used when waiting for controller cache synchronization. If unset or 0, the controller-runtime default is used.
       --client-connection-burst int32     Burst to use for interacting with kubernetes apiserver. (default 30)
       --client-connection-qps float32     QPS to use for interacting with kubernetes apiserver. (default 20)
       --configuration-name string         The CapsuleConfiguration resource name to use (default "default")
