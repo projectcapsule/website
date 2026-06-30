@@ -1,4 +1,6 @@
-# Sample workflow for building and deploying a Hugo site to GitHub Pages
+# Builds every released version (apex + /vX.Y/ subpaths) from the release/*
+# branches and deploys them to GitHub Pages. Run manually, or dispatched by
+# deploy-trigger.yml (which lives on the release/* branches) on each release push.
 name: Deploy Hugo site to Pages
 
 on:
@@ -32,30 +34,27 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+      - name: Fetch release branches
+        run: git fetch --no-tags origin '+refs/heads/release/*:refs/remotes/origin/release/*'
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@75d2e84710de30f6ff7268e08f310b60ef14033f # v3.0.0
         with:
-          hugo-version: '0.147.7'
+          hugo-version: '0.122.0' # version every release site was built with; .Err needs < 0.141
           extended: true
       - name: Install Dart Sass
         run: sudo snap install dart-sass
+      - name: Install yq
+        run: sudo snap install yq
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
-      - name: Install Node.js dependencies
-        run: " npm install --save-dev autoprefixer postcss-cli && npm ci || true"
-      - name: Update Hugo Modules
-        run: hugo mod get -u ./...
-      - name: Build with Hugo
+      - name: Build all versions
         env:
           # For maximum backward compatibility with Hugo modules
           HUGO_ENVIRONMENT: production
           HUGO_ENV: production
-        run: |
-          hugo \
-            --gc \
-            --minify \
-            --baseURL "${{ steps.pages.outputs.base_url }}/"          
+          BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: bash scripts/build-site.sh
       - name: Upload artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:

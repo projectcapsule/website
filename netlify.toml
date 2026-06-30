@@ -13,3 +13,27 @@ HUGO_ENV = "production"
 HUGO_ENABLEGITINFO = "true"
 GO_VERSION = "1.24.1"
 NODE_VERSION = "23.6.0"
+
+# Versioned docs now build on GitHub Pages at /vX.Y/ subpaths. Redirect the
+# legacy per-version subdomains there; add each release-0-XX.projectcapsule.dev
+# as a domain alias of this site so the host-based matches fire.
+[[redirects]]
+  from = "https://release-0-10.projectcapsule.dev/*"
+  to = "https://projectcapsule.dev/v0.10/:splat"
+  status = 301
+  force = true
+[[redirects]]
+  from = "https://release-0-11.projectcapsule.dev/*"
+  to = "https://projectcapsule.dev/v0.11/:splat"
+  status = 301
+  force = true
+[[redirects]]
+  from = "https://release-0-12.projectcapsule.dev/*"
+  to = "https://projectcapsule.dev/v0.12/:splat"
+  status = 301
+  force = true
+[[redirects]]
+  from = "https://release-0-13.projectcapsule.dev/*"
+  to = "https://projectcapsule.dev/v0.13/:splat"
+  status = 301
+  force = true

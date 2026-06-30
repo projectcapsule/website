@@ -1,0 +1,25 @@
+# Lives on the release/* branches. A push to a release branch cannot run main's
+# deploy workflow directly (push-triggered workflows run from the pushed branch),
+# so this dispatches the deploy workflow (hugo.yaml) on main, which rebuilds
+# every version and deploys to GitHub Pages.
+#
+# It also sits on main (harmless — main never matches release/**) so that future
+# release branches cut from main inherit it automatically.
+name: Trigger docs deploy
+
+on:
+  push:
+    branches:
+      - 'release/**'
+
+permissions:
+  actions: write
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch deploy on main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run hugo.yaml --repo "${{ github.repository }}" --ref main
