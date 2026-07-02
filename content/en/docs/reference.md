@@ -769,8 +769,8 @@ Additional Options for the CustomQuotaSpecification
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **apiVersion** | string | API version of the referent. | true |
-| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
+| **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
+| **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
 | **op** | enum | Operation used to evaluate usage.<br/>*Enum*: add, sub, count<br/>*Default*: add<br/> | false |
 | **path** | string | Path on GVK where usage is evaluated.<br>Must be empty when op is "count".<br>Required and non-empty for all other operations. | false |
 | **[selectors](#customquotaspecsourcesindexselectorsindex)** | []object | Provide more granular selectors for these sources<br>The ScopeSelector and NamespaceSelector are always applied<br>Allowing these selectors to make further selecting on the resulting subset. | false |
@@ -1001,8 +1001,8 @@ Additional Options for the CustomQuotaSpecification
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **apiVersion** | string | API version of the referent. | true |
-| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
+| **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
+| **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
 | **op** | enum | Operation used to evaluate usage.<br/>*Enum*: add, sub, count<br/>*Default*: add<br/> | false |
 | **path** | string | Path on GVK where usage is evaluated.<br>Must be empty when op is "count".<br>Required and non-empty for all other operations. | false |
 | **[selectors](#globalcustomquotaspecsourcesindexselectorsindex)** | []object | Provide more granular selectors for these sources<br>The ScopeSelector and NamespaceSelector are always applied<br>Allowing these selectors to make further selecting on the resulting subset. | false |
@@ -1298,8 +1298,8 @@ the declared items for the replication
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **apiVersion** | string | API version of the referent. | true |
-| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
+| **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
+| **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
 | **index** | string | Index to mount the resource in the template context | false |
 | **name** | string | Name of the values referent. This is useful<br>when you traying to get a specific resource | false |
 | **namespace** | string | Namespace of the values referent. | false |
@@ -1386,8 +1386,8 @@ Reference
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **apiVersion** | string | API version of the referent. | true |
-| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
+| **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
+| **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
 | **name** | string | Name of the values referent. This is useful<br>when you traying to get a specific resource | false |
 | **namespace** | string | Namespace of the values referent. | false |
 | **optional** | boolean | Only relevant if name is set. If an item is not optional, there will be an error thrown when it does not exist<br/>*Default*: true<br/> | false |
@@ -2067,8 +2067,80 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[metadata](#rulestatusspecindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
 | **[services](#rulestatusspecindexenforceservices)** | object | Enforcement for Services. | false |
 | **[workloads](#rulestatusspecindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+
+
+### RuleStatus.spec[index].enforce.metadata[index]
+
+
+
+MetadataRule defines metadata constraints for namespaced resources.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kinds** | []string | Kinds of the referents.<br><br>Use "*" to match all kinds. | true |
+| **[annotations](#rulestatusspecindexenforcemetadataindexannotationskey)** | map[string]object | Annotations defines metadata policies by annotation key. | false |
+| **apiGroups** | []string | API groups or API group/version selectors of the referents.<br><br>Empty or omitted APIGroups means the core Kubernetes API version "v1".<br>Use "*" to match all API groups and versions.<br><br>Examples:<br>- [] or [""] means core "v1".<br>- ["v1"] means core "v1".<br>- ["apps"] means any version in the "apps" API group.<br>- ["apps/v1"] means only "apps/v1".<br>- ["apps", "batch/v1"] means any "apps" version and "batch/v1".<br>- ["*"] means all API groups and versions. | false |
+| **[labels](#rulestatusspecindexenforcemetadataindexlabelskey)** | map[string]object | Labels defines metadata policies by label key. | false |
+
+
+### RuleStatus.spec[index].enforce.metadata[index].annotations[key]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusspecindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+
+
+### RuleStatus.spec[index].enforce.metadata[index].annotations[key].values[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.metadata[index].labels[key]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusspecindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+
+
+### RuleStatus.spec[index].enforce.metadata[index].labels[key].values[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
 ### RuleStatus.spec[index].enforce.services
@@ -2250,8 +2322,80 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[metadata](#rulestatusstatusruleenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
 | **[services](#rulestatusstatusruleenforceservices)** | object | Enforcement for Services. | false |
 | **[workloads](#rulestatusstatusruleenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+
+
+### RuleStatus.status.rule.enforce.metadata[index]
+
+
+
+MetadataRule defines metadata constraints for namespaced resources.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kinds** | []string | Kinds of the referents.<br><br>Use "*" to match all kinds. | true |
+| **[annotations](#rulestatusstatusruleenforcemetadataindexannotationskey)** | map[string]object | Annotations defines metadata policies by annotation key. | false |
+| **apiGroups** | []string | API groups or API group/version selectors of the referents.<br><br>Empty or omitted APIGroups means the core Kubernetes API version "v1".<br>Use "*" to match all API groups and versions.<br><br>Examples:<br>- [] or [""] means core "v1".<br>- ["v1"] means core "v1".<br>- ["apps"] means any version in the "apps" API group.<br>- ["apps/v1"] means only "apps/v1".<br>- ["apps", "batch/v1"] means any "apps" version and "batch/v1".<br>- ["*"] means all API groups and versions. | false |
+| **[labels](#rulestatusstatusruleenforcemetadataindexlabelskey)** | map[string]object | Labels defines metadata policies by label key. | false |
+
+
+### RuleStatus.status.rule.enforce.metadata[index].annotations[key]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusstatusruleenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+
+
+### RuleStatus.status.rule.enforce.metadata[index].annotations[key].values[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.metadata[index].labels[key]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusstatusruleenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+
+
+### RuleStatus.status.rule.enforce.metadata[index].labels[key].values[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
 ### RuleStatus.status.rule.enforce.services
@@ -2400,8 +2544,80 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[metadata](#rulestatusstatusrulesindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
 | **[services](#rulestatusstatusrulesindexenforceservices)** | object | Enforcement for Services. | false |
 | **[workloads](#rulestatusstatusrulesindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+
+
+### RuleStatus.status.rules[index].enforce.metadata[index]
+
+
+
+MetadataRule defines metadata constraints for namespaced resources.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kinds** | []string | Kinds of the referents.<br><br>Use "*" to match all kinds. | true |
+| **[annotations](#rulestatusstatusrulesindexenforcemetadataindexannotationskey)** | map[string]object | Annotations defines metadata policies by annotation key. | false |
+| **apiGroups** | []string | API groups or API group/version selectors of the referents.<br><br>Empty or omitted APIGroups means the core Kubernetes API version "v1".<br>Use "*" to match all API groups and versions.<br><br>Examples:<br>- [] or [""] means core "v1".<br>- ["v1"] means core "v1".<br>- ["apps"] means any version in the "apps" API group.<br>- ["apps/v1"] means only "apps/v1".<br>- ["apps", "batch/v1"] means any "apps" version and "batch/v1".<br>- ["*"] means all API groups and versions. | false |
+| **[labels](#rulestatusstatusrulesindexenforcemetadataindexlabelskey)** | map[string]object | Labels defines metadata policies by label key. | false |
+
+
+### RuleStatus.status.rules[index].enforce.metadata[index].annotations[key]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusstatusrulesindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+
+
+### RuleStatus.status.rules[index].enforce.metadata[index].annotations[key].values[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.metadata[index].labels[key]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusstatusrulesindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+
+
+### RuleStatus.status.rules[index].enforce.metadata[index].labels[key].values[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
 ### RuleStatus.status.rules[index].enforce.services
@@ -2683,8 +2899,8 @@ the declared items for the replication
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **apiVersion** | string | API version of the referent. | true |
-| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
+| **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
+| **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
 | **index** | string | Index to mount the resource in the template context | false |
 | **name** | string | Name of the values referent. This is useful<br>when you traying to get a specific resource | false |
 | **namespace** | string | Namespace of the values referent. | false |
@@ -2771,8 +2987,8 @@ Reference
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **apiVersion** | string | API version of the referent. | true |
-| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
+| **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
+| **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
 | **name** | string | Name of the values referent. This is useful<br>when you traying to get a specific resource | false |
 | **namespace** | string | Namespace of the values referent. | false |
 | **optional** | boolean | Only relevant if name is set. If an item is not optional, there will be an error thrown when it does not exist<br/>*Default*: true<br/> | false |
@@ -3839,8 +4055,80 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[metadata](#tenantspecrulesindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
 | **[services](#tenantspecrulesindexenforceservices)** | object | Enforcement for Services. | false |
 | **[workloads](#tenantspecrulesindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+
+
+### Tenant.spec.rules[index].enforce.metadata[index]
+
+
+
+MetadataRule defines metadata constraints for namespaced resources.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kinds** | []string | Kinds of the referents.<br><br>Use "*" to match all kinds. | true |
+| **[annotations](#tenantspecrulesindexenforcemetadataindexannotationskey)** | map[string]object | Annotations defines metadata policies by annotation key. | false |
+| **apiGroups** | []string | API groups or API group/version selectors of the referents.<br><br>Empty or omitted APIGroups means the core Kubernetes API version "v1".<br>Use "*" to match all API groups and versions.<br><br>Examples:<br>- [] or [""] means core "v1".<br>- ["v1"] means core "v1".<br>- ["apps"] means any version in the "apps" API group.<br>- ["apps/v1"] means only "apps/v1".<br>- ["apps", "batch/v1"] means any "apps" version and "batch/v1".<br>- ["*"] means all API groups and versions. | false |
+| **[labels](#tenantspecrulesindexenforcemetadataindexlabelskey)** | map[string]object | Labels defines metadata policies by label key. | false |
+
+
+### Tenant.spec.rules[index].enforce.metadata[index].annotations[key]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#tenantspecrulesindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+
+
+### Tenant.spec.rules[index].enforce.metadata[index].annotations[key].values[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.metadata[index].labels[key]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#tenantspecrulesindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+
+
+### Tenant.spec.rules[index].enforce.metadata[index].labels[key].values[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
 ### Tenant.spec.rules[index].enforce.services
