@@ -58,8 +58,77 @@ Perform the following steps to install the Capsule operator:
 
 Here are some key considerations to keep in mind when installing Capsule. Also check out the **[Best Practices](/docs/operating/best-practices)** for more information.
 
-### Strict RBAC
+### Scalability
 
+For large clusters you might need to consider adjusting values for the Capsule controller.
+
+#### QPS/Burst
+
+In order to handle a large number of tenants and resources, you may need to increase the QPS and Burst values for the Capsule controller. This avoids the controller being throttled by the Kubernetes API server (Client Rate limited). You can set the following values in the Helm chart:
+
+```yaml
+manager:
+  options:
+    clientConnectionQPS: 400
+    clientConnectionBurst: 200
+```
+
+#### Workers
+
+Define the number of workers for the Capsule controller, which translates into the number of concurrent reconciles:
+
+```yaml
+manager:
+  options:
+    workers: 4
+```
+
+#### Cache Synchronisation
+
+The more resources you have in your cluster, the longer it will take for the Capsule controller to sync its cache. You can adjust the cache sync period to a higher value to reduce the load on the API server:
+
+```yaml
+manager:
+  options:
+    cacheSyncTimeout: "10m"
+```
+
+#### API Priority and Fairness (APF)
+
+With APF enabled, the Capsule controller will be subject to the APF configuration of the cluster. If you are running a large cluster with many tenants, you may need to adjust the APF configuration to ensure that the Capsule controller has sufficient resources to operate effectively. For more information on APF, see [Kubernetes API Priority and Fairness](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/apiserver-aggregation/#api-priority-and-fairness).
+
+We provide a built-in APF configuration for the Capsule controller, which provides API priority for all resources managed by Capsule. This configuration is applied automatically when you install Capsule. To enable the built-in APF configuration, set the following value in the Helm chart:
+
+```yaml
+# Manager Options
+manager:
+  apiPriorityAndFairness:
+    # -- Change to `true` if you want to insulate the API calls made by Capsule admission controller activities.
+    # This will help ensure Capsule stability in busy clusters.
+    # Ref: https://kubernetes.io/docs/concepts/cluster-administration/flow-control/
+    enabled: true
+
+    # -- Only the first matching FlowSchema for a given request matters. If multiple FlowSchemas match a single inbound request, it will be assigned based on the one with the highest matchingPrecedence.
+    # Ref: https://kubernetes.io/docs/concepts/cluster-administration/flow-control/#flowschema
+    matchingPrecedence: 900
+
+    # -- Priority level configuration.
+    # The block is directly forwarded into the priorityLevelConfiguration, so you can use whatever specification you want.
+    # ref: https://kubernetes.io/docs/concepts/cluster-administration/flow-control/#prioritylevelconfiguration
+    priorityLevelConfigurationSpec:
+      type: Limited
+      limited:
+          nominalConcurrencyShares: 100
+          limitResponse:
+            type: Queue
+            queuing:
+              queues: 64
+              handSize: 6
+              queueLengthLimit: 100
+```
+
+
+### Strict RBAC
 
 {{% alert title="Attention" color="warning" %}}
 Ensure to first upgrade to version `0.13.0` of capsule before enabling strict mode. As it requires fields which are newly added with version `0.13.0`.
