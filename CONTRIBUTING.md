@@ -1,28 +1,37 @@
-# How to Contribute
+# Contributing to the Capsule Documentation
 
-We'd love to accept your patches and contributions to this project. There are
-just a few small guidelines you need to follow.
+Thank you for contributing to the Capsule documentation!
 
-## Contributor License Agreement
+## How to Contribute
 
-Contributions to this project must be accompanied by a Contributor License
-Agreement. You (or your employer) retain the copyright to your contribution;
-this simply gives us permission to use and redistribute your contributions as
-part of the project. Head over to <https://cla.developers.google.com/> to see
-your current agreements on file or to sign a new one.
+1. Fork this repository and create a branch for your changes.
+2. Edit or add Markdown files under `content/en/`.
+3. Open a pull request, Netlify will automatically post a **deploy preview** link so you can review the rendered site before it is merged.
+4. Once approved and merged, the site is deployed automatically to [projectcapsule.dev](https://projectcapsule.dev) via CNCF Netlify.
 
-You generally only need to submit a CLA once, so if you've already submitted one
-(even if it was for a different project), you probably don't need to do it
-again.
+No local Hugo setup is needed. All rendering and deployment is handled by Netlify.
 
-## Code reviews
+## Content Guidelines
 
-All submissions, including submissions by project members, require review. We
-use GitHub pull requests for this purpose. Consult
-[GitHub Help](https://help.github.com/articles/about-pull-requests/) for more
-information on using pull requests.
+- All documentation is authored in Markdown.
+- Follow the existing directory and heading structure under `content/en/docs/`.
+- YAML examples in code blocks should be valid and tested where possible.
+- Keep language clear and concise.
 
-## Community Guidelines
+## API Reference
 
-This project follows
-[Google's Open Source Community Guidelines](https://opensource.google.com/conduct/).
+The files `content/en/docs/reference.md` and `content/en/docs/proxy/reference.md` are **generated** from CRD YAML files, do not edit them by hand. To regenerate:
+
+```bash
+make apidocs
+```
+
+The `diff` CI workflow will fail on your PR if the committed reference docs have drifted from the generated output.
+
+## Code Reviews
+
+All submissions require a pull request and at least one review from a maintainer.
+
+## Community
+
+This project follows the [CNCF Code of Conduct](https://github.com/cncf/foundation/blob/main/code-of-conduct.md).

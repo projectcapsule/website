@@ -1553,6 +1553,7 @@ Advanced Status Item for pin pointing items in tenants/namespaces.
 | :---- | :---- | :----------- | :-------- |
 | **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
 | **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **clusterScoped** | boolean | Indicates whether the referenced resource is cluster-scoped. | false |
 | **created** | boolean | Indicates wether the resource was created or adopted | false |
 | **lastApply** | string | An opaque value that represents the internal version of this object that can<br>be used by clients to determine when objects have changed. May be used for optimistic<br>concurrency, change detection, and the watch operation on a resource or set of resources.<br>Clients must treat these values as opaque and passed unmodified back to the server.<br>They may only be valid for a particular resource or set of resources.<br><br>Populated by the system.<br>Read-only.<br>Value must be treated as opaque by clients and .<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency<br/>*Format*: date-time<br/> | false |
 | **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | false |
@@ -3124,6 +3125,7 @@ Advanced Status Item for pin pointing items in tenants/namespaces.
 | :---- | :---- | :----------- | :-------- |
 | **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
 | **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **clusterScoped** | boolean | Indicates whether the referenced resource is cluster-scoped. | false |
 | **created** | boolean | Indicates wether the resource was created or adopted | false |
 | **lastApply** | string | An opaque value that represents the internal version of this object that can<br>be used by clients to determine when objects have changed. May be used for optimistic<br>concurrency, change detection, and the watch operation on a resource or set of resources.<br>Clients must treat these values as opaque and passed unmodified back to the server.<br>They may only be valid for a particular resource or set of resources.<br><br>Populated by the system.<br>Read-only.<br>Value must be treated as opaque by clients and .<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency<br/>*Format*: date-time<br/> | false |
 | **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | false |

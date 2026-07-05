@@ -1,5 +1,4 @@
 baseURL: /
-theme: docsy
 title: Capsule
 contentDir: content/en
 defaultContentLanguage: en
