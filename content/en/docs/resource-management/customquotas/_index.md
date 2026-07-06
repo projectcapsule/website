@@ -210,7 +210,7 @@ fieldSelectors:
   - '.spec.accessModes[?(@=="ReadWriteOnce")]'
 ```
 
-This is interpreted as a truthy JSONPath selector, not as an equals selector. 
+This is interpreted as a truthy JSONPath selector, not as an equals selector.
 
 
 **Use JSONPath filters for arrays:**
@@ -226,6 +226,28 @@ fieldSelectors:
 fieldSelectors:
   - '.spec.type=ClusterIP'
 ```
+
+#### Not-Equals
+
+When an entry contains a top-level `!=`, Capsule treats it as a not-equals comparison. The left side is evaluated as a JSONPath expression. The right side is compared as a **string**. The selector matches when the field value does **not** equal the specified string.
+
+```yaml
+spec:
+  sources:
+    - apiVersion: v1
+      kind: Pod
+      op: add
+      path: .spec.containers[*].resources.limits.cpu
+      selectors:
+        - fieldSelectors:
+            - '.status.phase!=Succeeded'
+            - '.status.phase!=Failed'
+            - '.status.phase!=Unknown'
+```
+
+> **Recommended for CPU and memory resources**
+>
+> Kubernetes built-in [`ResourceQuota`](https://kubernetes.io/docs/concepts/policy/resource-quotas/#compute-resource-quota) excludes terminal Pods (those in `Succeeded`, `Failed`, or `Unknown` phase) from CPU and memory accounting by default, because those Pods no longer hold resources on the kubelet. When defining CustomQuotas or GlobalCustomQuotas for CPU or memory resources, it is strongly recommended to use `!=` field selectors to exclude terminal Pods and match this behavior.
 
 ### Quota Matches
 
@@ -531,6 +553,16 @@ selectors:
 
 This matches if at least one Ready condition exists.
 
+Match objects where a field does not equal a value
+
+```yaml
+selectors:
+  - fieldSelectors:
+      - '.status.phase!=Succeeded'
+```
+
+This excludes objects whose `.status.phase` equals `Succeeded`.
+
 ## GlobalCustomQuota
 
 `GlobalCustomQuota` aggregates usage across multiple namespaces.
@@ -666,36 +698,37 @@ Feel free to contribute examples if you have found interesting use cases!
 
 #### Calculate total requested CPU across tenant namespaces (Running Pods)
 
+This pattern mirrors the default behavior of Kubernetes `ResourceQuota`, which excludes terminal Pods from CPU and memory accounting.
+
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
-kind: ClusterCustomQuota
+kind: GlobalCustomQuota
 metadata:
   name: tenant-cpu-limits-quota
 spec:
   limit: "15"
+  namespaceSelectors:
+    - matchLabels:
+        capsule.clastix.io/tenant: solar
   sources:
-  - apiVersion: v1
+    - apiVersion: v1
       kind: Pod
       op: add
       path: .spec.containers[*].resources.limits.cpu
       selectors:
         - fieldSelectors:
-            - '.[?(@.status.phase!="Succeeded")]'
-            - '.[?(@.status.phase!="Failed")]'
-            - '.[?(@.status.phase!="Unknown")]'
+            - '.status.phase!=Succeeded'
+            - '.status.phase!=Failed'
+            - '.status.phase!=Unknown'
     - apiVersion: v1
       kind: Pod
       op: add
       path: .spec.initContainers[*].resources.limits.cpu
       selectors:
         - fieldSelectors:
-            - '.[?(@.status.phase!="Succeeded")]'
-            - '.[?(@.status.phase!="Failed")]'
-            - '.[?(@.status.phase!="Unknown")]'
-
-  selectors:
-    - matchLabels:
-        capsule.clastix.io/tenant: solar
+            - '.status.phase!=Succeeded'
+            - '.status.phase!=Failed'
+            - '.status.phase!=Unknown'
 ```
 
 #### Limit total max storage across bucket claims for selected namespaces
