@@ -6,7 +6,7 @@ The site is published at **[projectcapsule.dev](https://projectcapsule.dev)** an
 
 ## Contributing
 
-All documentation lives under `content/en/`. Contributions are welcome — open a pull request with your changes.
+All documentation lives under `content/en/`. Contributions are welcome, open a pull request with your changes.
 
 Netlify automatically generates a **deploy preview** for every pull request, so you can review your changes at a live URL before merging. No local Hugo setup is required.
 
@@ -20,7 +20,7 @@ The files `content/en/docs/reference.md` and `content/en/docs/proxy/reference.md
 make apidocs
 ```
 
-These files are checked in CI — the `diff` workflow fails if the generated output has drifted from what is committed.
+These files are checked in CI, the `diff` workflow fails if the generated output has drifted from what is committed.
 
 ## License
 
