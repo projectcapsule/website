@@ -93,6 +93,32 @@ manager:
     cacheSyncTimeout: "10m"
 ```
 
+#### Leader Election Timeout
+
+In high pressure environments leader election may fail due to the default timeout values. You can adjust the leader election timeout values to avoid this issue:
+
+```yaml
+```shell
+E0707 08:38:18.319041       1 leaderelection.go:452] "Error retrieving lease lock"
+  err="Get \"https://10.96.0.1:443/apis/coordination.k8s.io/v1/namespaces/capsule-
+  system/leases/42c733ea.clastix.capsule.io?timeout=5s\": net/http: request canceled
+  (Client.Timeout exceeded while awaiting headers)" lock="capsule-
+  system/42c733ea.clastix.capsule.io"
+  I0707 08:38:18.442700       1 leaderelection.go:299] "Failed to renew lease"
+```
+
+Tune leader election with `manager.options.leaderElectionLeaseDuration`, `manager.options.leaderElectionRenewDeadline`, and `manager.options.leaderElectionRetryPeriod`. Increasing these values makes Capsule more tolerant of slow or overloaded Kubernetes API servers; for example, raising `leaderElectionRenewDeadline` also raises the leader-election client request timeout because controller-runtime uses roughly half of that value. The tradeoff is slower failover: if the active controller really dies, standby replicas will wait longer before taking leadership. Keep the ordering valid: `leaseDuration` should be greater than `renewDeadline`, and `renewDeadline` should be greater than `retryPeriod`.
+
+```yaml
+manager:
+  options:
+    leaderElectionLeaseDuration: "60s"
+    leaderElectionRenewDeadline: "40s"
+    leaderElectionRetryPeriod: "5s"
+```
+
+Worst-case leader failover is slower, around 60s, if the active pod really dies. Keep `manager.options.leaderElectionLeaseDuration` > `manager.options.leaderElectionRenewDeadline` > `manager.options.leaderElectionRetryPeriod`.
+
 #### API Priority and Fairness (APF)
 
 With APF enabled, the Capsule controller will be subject to the APF configuration of the cluster. If you are running a large cluster with many tenants, you may need to adjust the APF configuration to ensure that the Capsule controller has sufficient resources to operate effectively. For more information on APF, see [Kubernetes API Priority and Fairness](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/apiserver-aggregation/#api-priority-and-fairness).
