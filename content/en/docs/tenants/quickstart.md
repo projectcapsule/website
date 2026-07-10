@@ -21,6 +21,7 @@ spec:
   owners:
   - name: alice
     kind: User
+EOF
 ```
 
 You can check the tenant just created
