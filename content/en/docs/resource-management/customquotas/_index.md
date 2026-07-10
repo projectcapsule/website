@@ -5,6 +5,228 @@ description: >
   CustomQuotas let you define and enforce arbitrary, label-scoped limits for any Kubernetes resource kind or CRD, at namespace or cluster scope.
 ---
 
+## Quickstart
+
+If you just want to get common quotas up and running without reading the full model first, this section gives you copy-paste-ready `GlobalCustomQuota` examples for the most common dimensions: CPU, memory, Pod count, and storage. Skip ahead to [Concept](#concept) when you want to understand how sources, selectors, and JSONPath expressions work in depth.
+
+### 1. Enable the Admission Webhook
+
+Without the admission webhook enabled, quotas are **observational only**: usage is calculated and reported in `status`, but requests are never denied. Enable and configure it via Helm values:
+
+```yaml
+webhooks:
+  hooks:
+    calculations:
+      enabled: true
+      namespaceSelector:
+        matchExpressions:
+          - key: capsule.clastix.io/tenant
+            operator: Exists
+      rules:
+        - apiGroups:
+            - ""
+          apiVersions:
+            - "v1"
+          operations:
+            - CREATE
+            - UPDATE
+            - DELETE
+          resources:
+            - "pods"
+            - "pods/status"
+            - "persistentvolumeclaims"
+          scope: Namespaced
+      matchConditions:
+        - name: ignore-subresources-except-pod-status-phase
+          expression: >-
+            !has(request.subResource) || request.subResource == "" ||
+            (request.subResource == "status" && request.resource.resource == "pods" && object.status.phase != oldObject.status.phase)
+```
+
+Including `pods/status` keeps quota usage accurate the moment a Pod's phase changes to `Succeeded` or `Failed`, instead of waiting for another triggering event (e.g. a different Pod being created or deleted) to notice that a Pod no longer counts towards the quota. The `ignore-subresources-except-pod-status-phase` matchCondition combines two things into one expression:
+
+* it excludes all subresource requests by default (matching the intent of `ignore-subresources` in the more advanced example shown later in [Admission](#admission))
+* except for the `pods` `status` subresource, which is only let through when `.status.phase` actually changed, filtering out irrelevant status updates.
+
+### 2. Apply default GlobalCustomQuotas
+
+Adjust `.spec.limit` and the `.spec.namespaceSelectors` matchLabels below to match your own tenant labeling, then apply. The CPU and memory examples cover both `containers` and `initContainers`, and exclude terminal Pods (`Succeeded`/`Failed`/`Unknown`) via `fieldSelectors`, matching the default behavior of native Kubernetes `ResourceQuota` (see [Not-Equals](#not-equals) for details):
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalCustomQuota
+metadata:
+  name: solar-cpu-requests
+spec:
+  namespaceSelectors:
+    - matchLabels:
+        capsule.clastix.io/tenant: solar
+  sources:
+    - apiVersion: v1
+      kind: Pod
+      op: add
+      path: .spec.containers[*].resources.requests.cpu
+      selectors:
+        - fieldSelectors:
+            - '.status.phase!=Succeeded'
+            - '.status.phase!=Failed'
+            - '.status.phase!=Unknown'
+    - apiVersion: v1
+      kind: Pod
+      op: add
+      path: .spec.initContainers[*].resources.requests.cpu
+      selectors:
+        - fieldSelectors:
+            - '.spec.initContainers'
+            - '.status.phase!=Succeeded'
+            - '.status.phase!=Failed'
+            - '.status.phase!=Unknown'
+  limit: "2"
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalCustomQuota
+metadata:
+  name: solar-cpu-limits
+spec:
+  namespaceSelectors:
+    - matchLabels:
+        capsule.clastix.io/tenant: solar
+  sources:
+    - apiVersion: v1
+      kind: Pod
+      op: add
+      path: .spec.containers[*].resources.limits.cpu
+      selectors:
+        - fieldSelectors:
+            - '.status.phase!=Succeeded'
+            - '.status.phase!=Failed'
+            - '.status.phase!=Unknown'
+    - apiVersion: v1
+      kind: Pod
+      op: add
+      path: .spec.initContainers[*].resources.limits.cpu
+      selectors:
+        - fieldSelectors:
+            - '.spec.initContainers'
+            - '.status.phase!=Succeeded'
+            - '.status.phase!=Failed'
+            - '.status.phase!=Unknown'
+  limit: "4"
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalCustomQuota
+metadata:
+  name: solar-memory-requests
+spec:
+  namespaceSelectors:
+    - matchLabels:
+        capsule.clastix.io/tenant: solar
+  sources:
+    - apiVersion: v1
+      kind: Pod
+      op: add
+      path: .spec.containers[*].resources.requests.memory
+      selectors:
+        - fieldSelectors:
+            - '.status.phase!=Succeeded'
+            - '.status.phase!=Failed'
+            - '.status.phase!=Unknown'
+    - apiVersion: v1
+      kind: Pod
+      op: add
+      path: .spec.initContainers[*].resources.requests.memory
+      selectors:
+        - fieldSelectors:
+            - '.spec.initContainers'
+            - '.status.phase!=Succeeded'
+            - '.status.phase!=Failed'
+            - '.status.phase!=Unknown'
+  limit: "32Gi"
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalCustomQuota
+metadata:
+  name: solar-memory-limits
+spec:
+  namespaceSelectors:
+    - matchLabels:
+        capsule.clastix.io/tenant: solar
+  sources:
+    - apiVersion: v1
+      kind: Pod
+      op: add
+      path: .spec.containers[*].resources.limits.memory
+      selectors:
+        - fieldSelectors:
+            - '.status.phase!=Succeeded'
+            - '.status.phase!=Failed'
+            - '.status.phase!=Unknown'
+    - apiVersion: v1
+      kind: Pod
+      op: add
+      path: .spec.initContainers[*].resources.limits.memory
+      selectors:
+        - fieldSelectors:
+            - '.spec.initContainers'
+            - '.status.phase!=Succeeded'
+            - '.status.phase!=Failed'
+            - '.status.phase!=Unknown'
+  limit: "32Gi"
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalCustomQuota
+metadata:
+  name: solar-pod-count
+spec:
+  namespaceSelectors:
+    - matchLabels:
+        capsule.clastix.io/tenant: solar
+  sources:
+    - apiVersion: v1
+      kind: Pod
+      op: count
+  limit: 300
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalCustomQuota
+metadata:
+  name: solar-storage
+spec:
+  namespaceSelectors:
+    - matchLabels:
+        capsule.clastix.io/tenant: solar
+  sources:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      op: add
+      path: .spec.resources.requests.storage
+  limit: "50Gi"
+```
+
+### 3. Verify
+
+```bash
+kubectl get globalcustomquota
+```
+
+```bash
+kubectl get globalcustomquota solar-pod-count -o yaml
+```
+
+```yaml
+status:
+  conditions:
+  - reason: Succeeded
+    status: "True"
+    type: Ready
+  namespaces:
+  - solar-test
+  usage:
+    available: "297"
+    used: "3"
+```
+
 ## Concept
 
 CustomQuotas complement Kubernetes `ResourceQuota` by enforcing limits on **custom usage metrics extracted from objects themselves**.
@@ -21,6 +243,10 @@ A quota is defined by:
 - optional selectors to restrict which objects are counted
 
 Each matching object contributes a quantity to the quota. Capsule persists the current aggregate in `status.usage.used` and keeps the list of counted objects in `status.claims`.
+
+### Namespace Scope
+
+ [`GlobalCustomQuota`](#globalcustomquota) and [`CustomQuota`](#customquota) can operate in any namespace and do not have to be part of a Capsule tenant. This means that you can define a `CustomQuota` in any namespace, even if it's not part of a tenant, and it will still be enforced for objects in that namespace. Similarly, you can define a `GlobalCustomQuota` that selects namespaces based on labels, regardless of whether those namespaces are part of a tenant or not.
 
 ## Calculation
 
@@ -98,13 +324,13 @@ webhooks:
             - "pods"
           scope: Namespaced
       matchConditions:
-        # Execlude Event and Subresource requests to avoid performance issues and disruptions in case of issues with the webhook (Example).
+        # Exclude Event and Subresource requests to avoid performance issues and disruptions in case of issues with the webhook (Example).
         - name: ignore-subresources
           expression: '!has(request.subResource) || request.subResource == ""'
         - name: ignore-events
           expression: 'request.resource.resource != "events"'
 
-        # Execlude Entities which never count towards quotas to avoid performance issues and disruptions in case of issues with the webhook (Example).
+        # Exclude Entities which never count towards quotas to avoid performance issues and disruptions in case of issues with the webhook (Example).
         - name: 'exclude-kubelet-requests'
           expression: '!("system:nodes" in request.userInfo.groups)'
         - name: 'exclude-kube-system'
@@ -127,13 +353,13 @@ The following constraints apply to the JSONPath:
     * `\r` (carriage return)
     * `\t` (tab)
   * Values can resolve to array results, which are then summed up. (For example, `.spec.containers[*].resources.limits.cpu` would sum the CPU limits of all containers in a Pod.)
-  * Missing fields are resulting in an error, as it's assumed that if a path requires calculation it should force the targeted sources to define these paths. Meaning if you eg define this JP `.spec.initContainers[*].resources.limits.cpu` on a Pod that has no initContainers, it will error. If you want to only calculate the path if it exists, you can use a [fielselector](#fieldselectors) to only match objects where the path exists, for example with `.spec.initContainers` as fieldSelector.
+  * Missing fields result in an error: when a matched resource (e.g. a Pod or PVC) does not have the field defined in `path`, it is denied by the admission controller (if enabled) and skipped by the reconciler with an error, setting the quota's `Ready` condition to `False`. If you want to add a quota on a non-mandatory field (e.g. `initContainers`), add an existence check to `fieldSelectors` as well (see [FieldSelectors](#fieldselectors)), for example with `.spec.initContainers` as a truthy fieldSelector.
 
 #### Matching Strategies
 
 This section describes how JSONPath expressions are evaluated and how their results are interpreted for conditional matching.
 
-#### Truthy
+##### Truthy
 
 When a `fieldSelectors` entry does not contain a top-level `=` or `==`, Capsule treats it as a JSONPath expression.
 
@@ -164,7 +390,7 @@ spec:
 This selector matches only if:
 
 * `.spec.accessModes[?(@=="ReadWriteOnce")]` returns a non-empty result
-* `.status.phase returns a non-empty result`
+* `.status.phase` returns a non-empty result
 
 For example, this matches a PVC with:
 
@@ -176,7 +402,7 @@ status:
   phase: Bound
 ```
 
-#### Equality
+##### Equality
 
 When an entry contains a top-level `=` or `==` (not nested JP expressions), Capsule treats it as an equality comparison. The left side is evaluated as a JSONPath expression. The right side is compared as a **string**.
 
@@ -212,7 +438,6 @@ fieldSelectors:
 
 This is interpreted as a truthy JSONPath selector, not as an equals selector.
 
-
 **Use JSONPath filters for arrays:**
 
 ```yaml
@@ -227,7 +452,7 @@ fieldSelectors:
   - '.spec.type=ClusterIP'
 ```
 
-#### Not-Equals
+##### Not-Equals
 
 When an entry contains a top-level `!=`, Capsule treats it as a not-equals comparison. The left side is evaluated as a JSONPath expression. The right side is compared as a **string**. The selector matches when the field value does **not** equal the specified string.
 
@@ -255,7 +480,7 @@ As it's the case with native [ResourceQuotas](https://kubernetes.io/docs/concept
 
 Let's look at this example. We have a `GlobalCustomQuota` targeting all namespaces of the tenant `solar` with a limit of 6 Pods, and a `CustomQuota` in the namespace `solar-test` (part of tenant solar) with a limit of 3 Pods:
 
-```
+```yaml
 ---
 apiVersion: capsule.clastix.io/v1beta2
 kind: GlobalCustomQuota
@@ -286,9 +511,11 @@ spec:
 
 When we now try to create 6 `Pods` in the namespace `solar-test`, we can observe that the `GlobalCustomQuota` allows only 6 Pods in total across all namespaces of the tenant, while the `CustomQuota` allows only 3 Pods in the `solar-test` namespace:
 
-```yaml
+```bash
 kubectl get pod -n solar-test
+```
 
+```bash
 NAME                                READY   STATUS    RESTARTS   AGE
 nginx-deployment-6ff89574f8-2jbvp   1/1     Running   0          4m20s
 nginx-deployment-6ff89574f8-sdzvr   1/1     Running   0          4m20s
@@ -297,17 +524,13 @@ nginx-deployment-6ff89574f8-tvk74   1/1     Running   0          4m20s
 
 We can see that requests are blocked because of the limits by the `CustomQuota` first, as it has the least available capacity (3 available vs 6 available in the `GlobalCustomQuota`):
 
-```
+```bash
 115s        Warning   FailedCreate        replicaset/nginx-deployment-6ff89574f8   Error creating: admission webhook "calculation.custom-quotas.projectcapsule.dev" denied the request: creating resource exceeds limit for CustomQuota "pod-count-limit" (requested=1, currentUsed=4, available=0, limit=3, inflightReserved=1)
 ```
 
-### Namespace Scope
-
-[`GlobalCustomQuota`](#globalcustomquota) and [`CustomQuota`](#customquota) can operate in any namespace, they don't have to be part of a capsule tenant. This means that you can define a `CustomQuota` in any namespace, even if it's not part of a tenant, and it will still be enforced for objects in that namespace. Similarly, you can define a `GlobalCustomQuota` that selects namespaces based on labels, regardless of whether those namespaces are part of a tenant or not.
-
 ### Race Conditions
 
-`GlobalCustomQuotas` and `CustomQuotas` are designed are considered when the target GVK has been posted to their status. If you quickly create workloads that match the GVK of a quota before the quota has been fully reconciled and posted to status, there is a possibility that those workloads are not counted towards the quota usage until the next reconciliation loop. This is because the admission webhook relies on the quota status to determine which quotas to enforce, and if the quota has not yet been reconciled and posted to status, it may not be considered during admission.
+`GlobalCustomQuotas` and `CustomQuotas` are only considered for enforcement once the target GVK has been posted to their status. If you quickly create workloads that match the GVK of a quota before the quota has been fully reconciled and posted to status, there is a possibility that those workloads are not counted towards the quota usage until the next reconciliation loop. This is because the admission webhook relies on the quota status to determine which quotas to enforce, and if the quota has not yet been reconciled and posted to status, it may not be considered during admission.
 
 ## Sources
 
@@ -350,7 +573,7 @@ How matching works:
 * only objects whose GVK exactly matches the source are considered
 * for [`CustomQuota`](#customquota), the target resource must be namespaced
 * for [`GlobalCustomQuota`](#globalcustomquota), both namespaced Kubernetes resources and namespaced CRDs are supported across all selected namespaces
-if a source refers to a GVK that is not installed or not discoverable, the controller reports a reconcile failure in the quota condition
+* if a source refers to a GVK that is not installed or not discoverable, the controller reports a reconcile failure in the quota condition
 
 A source does not automatically follow subresources, versions, or related objects. If you want to count two kinds, define two sources.
 
@@ -398,15 +621,15 @@ Important notes:
 
 * the extracted value must be parseable as a Kubernetes Quantity
 * if the expression resolves to multiple values, Capsule sums them
-* missing fields contribute 0
+* if a matched resource has a missing field, it is denied by the admission controller (if enabled) and skipped by the reconciler. If you want to add a quota on a non-mandatory field (like an `initContainer`), add it to the `fieldSelectors` as well (see [JSONPath](#jsonpath) for more information).
 
 ### Operations
 
-Each source has an `op` (operation) field. For every matching object, the controller rebuild determines the effective usage contribution per source:
+Each source has an `op` (operation) field that controls how each matching object contributes to the total usage:
 
-  * `add`: used += value
-  * `sub`: used -= value
-  * `count`: used += 1
+  * `add`: used += extracted value
+  * `sub`: used -= extracted value
+  * `count`: used += 1 per matching object
 
 On updates, usage is recalculated from the current object state and the authoritative quota status is rebuilt from scratch from all matching objects.
 
@@ -500,8 +723,7 @@ spec:
 
 the selector matches only if:
 
-  * the label selector matches, and
-  * `.spec.accessModes[?(@=="ReadWriteMany")]` returns a non-empty result, and
+  * `.spec.accessModes[?(@=="ReadWriteOnce")]` returns a non-empty result, and
   * `.status.phase` returns a non-empty result
 
 Within one `selectors` entry:
@@ -573,11 +795,11 @@ Sources can be distributed across many namespaces. Other than that, they follow 
 
 ### Selectors
 
-Selectors preevaluated items considered for the quota. Only items matching the selectors are counted towards usage. [Selectors from Sources](#selectors) are applied after the source GVK is matched, so they can be used to further filter which objects are counted based on their labels or fields. However they can't select items which are not selected by the selectors on `GlobalCustomQuota` level. This means that if you want to select items across multiple namespaces, you need to use `namespaceSelectors` and not `selectors`.
+Selectors pre-filter which items are considered for the quota. Only items matching the selectors are counted towards usage. [Selectors from Sources](#selectors) are applied after the source GVK is matched, so they can be used to further filter which objects are counted based on their labels or fields. However they can't select items which are not selected by the selectors on `GlobalCustomQuota` level. This means that if you want to select items across multiple namespaces, you need to use `namespaceSelectors` and not `selectors`.
 
 #### NamespaceSelectors
 
-Definition of `spec.namespaceSelectors` determines which namespaces are in scope. Only objects from matching namespaces are considered This enforces a 500Gi cap on ObjectBucketClaim storage in namespaces labeled with `capsule.clastix.io/tenant=solar`:
+Definition of `spec.namespaceSelectors` determines which namespaces are in scope. Only objects from matching namespaces are considered. This enforces a 500Gi cap on ObjectBucketClaim storage in namespaces labeled with `capsule.clastix.io/tenant=solar`:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -598,9 +820,11 @@ spec:
 
 The collected namespaces are also reported in `status.namespaces` and can be used for informational purposes or by external systems to understand which namespaces are contributing to the quota usage.
 
-```yaml
-kubectl get globalcustomquota pod-count-limit -o yaml
+```bash
+kubectl get globalcustomquota object-bucket-claim-storage -o yaml
+```
 
+```yaml
 apiVersion: capsule.clastix.io/v1beta2
 kind: GlobalCustomQuota
 metadata:
@@ -637,7 +861,7 @@ status:
 
 #### ScopeSelectors
 
-Sources can be distributed across multiple namespaces. Other than that follow [#sources](#sources) rules. This enforces a 500Gi cap on ObjectBucketClaim storage in namespaces labeled with `capsule.clastix.io/tenant=solar`, counting only claims labeled with `objectbucket.io/storage-class=gold`:
+Sources can be distributed across multiple namespaces. Other than that, they follow the same [Sources rules](#sources). This enforces a 500Gi cap on ObjectBucketClaim storage in namespaces labeled with `capsule.clastix.io/tenant=solar`, counting only claims labeled with `objectbucket.io/storage-class=gold`:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -665,7 +889,7 @@ Additional options available for `GlobalCustomQuota`.
 
 #### emitMetricPerClaimUsage
 
-Additionaly expose usage metrics for each claim contributing to the quota. This is disabled by default to avoid high cardinality in the metrics, but can be enabled for more granular monitoring and alerting. By default this option is disabled.
+Additionally expose usage metrics for each claim contributing to the quota. This is disabled by default to avoid high cardinality in the metrics, but can be enabled for more granular monitoring and alerting. By default this option is disabled.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -726,6 +950,7 @@ spec:
       path: .spec.initContainers[*].resources.limits.cpu
       selectors:
         - fieldSelectors:
+            - '.spec.initContainers'
             - '.status.phase!=Succeeded'
             - '.status.phase!=Failed'
             - '.status.phase!=Unknown'
@@ -737,22 +962,22 @@ This enforces a 500Gi cap on max storage requested by `ObjectBucketClaims` in al
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
-kind: ClusterCustomQuota
+kind: GlobalCustomQuota
 metadata:
   name: object-bucket-claim-storage
 spec:
   limit: "500Gi"
-  sources:
-    - apiVersion: objectbucket.io/v1alpha1
-      kind: ObjectBucketClaim
-      op: add
-      path: .spec.additionalConfig.maxSize
-  selectors:
+  namespaceSelectors:
     - matchLabels:
         capsule.clastix.io/tenant: solar
   scopeSelectors:
     - matchLabels:
         objectbucket.io/storage-class: gold
+  sources:
+    - apiVersion: objectbucket.io/v1alpha1
+      kind: ObjectBucketClaim
+      op: add
+      path: .spec.additionalConfig.maxSize
 ```
 
 #### Limit the number of LoadBalancer Services across tenant namespaces
@@ -852,12 +1077,19 @@ spec:
     path: .spec.containers[*].resources.limits.cpu
     selectors:
       - fieldSelectors:
-          - '.status.phase[?(@!="Succeeded" && @!="Failed" && @!="Unknown")]'
-
+          - '.status.phase!=Succeeded'
+          - '.status.phase!=Failed'
+          - '.status.phase!=Unknown'
   - apiVersion: v1
     kind: Pod
     op: add
     path: .spec.initContainers[*].resources.limits.cpu
+    selectors:
+      - fieldSelectors:
+          - '.spec.initContainers'
+          - '.status.phase!=Succeeded'
+          - '.status.phase!=Failed'
+          - '.status.phase!=Unknown'
 status:
   claims:
   - group: ""
@@ -971,11 +1203,11 @@ Sources can originate in the same Namespace as the `CustomQuota` is deployed in.
 
 ### Selectors
 
-Selectors preevaluated items considered for the quota. Only items matching the selectors are counted towards usage. [Selectors from Sources](#selectors) are applied after the source GVK is matched, so they can be used to further filter which objects are counted based on their labels or fields. However they can't select items which are not selected by the selectors on `CustomQuota` level.
+Selectors pre-filter which items are considered for the quota. Only items matching the selectors are counted towards usage. [Selectors from Sources](#selectors) are applied after the source GVK is matched, so they can be used to further filter which objects are counted based on their labels or fields. However they can't select items which are not selected by the selectors on `CustomQuota` level.
 
 #### ScopeSelectors
 
-Sources can be distributed across multiple namespaces. Other than that follow [#sources](#sources) rules. This enforces a 500Gi cap on ObjectBucketClaim storage  counting only claims labeled with `objectbucket.io/storage-class=gold`:
+Sources can be distributed across multiple namespaces. Other than that, they follow the same [Sources rules](#sources). This enforces a 500Gi cap on ObjectBucketClaim storage counting only claims labeled with `objectbucket.io/storage-class=gold`:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -1002,7 +1234,7 @@ Additional options available for `CustomQuota`.
 
 #### emitMetricPerClaimUsage
 
-Additionaly expose usage metrics for each claim contributing to the quota. This is disabled by default to avoid high cardinality in the metrics, but can be enabled for more granular monitoring and alerting. By default this option is disabled.
+Additionally expose usage metrics for each claim contributing to the quota. This is disabled by default to avoid high cardinality in the metrics, but can be enabled for more granular monitoring and alerting. By default this option is disabled.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -1088,6 +1320,9 @@ spec:
       kind: Pod
       op: add
       path: .spec.initContainers[*].resources.requests.memory
+      selectors:
+        - fieldSelectors:
+            - '.spec.initContainers'
 ```
 
 #### Count Crossplane SQL instances in one namespace
