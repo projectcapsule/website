@@ -20,7 +20,8 @@ spec:
         team: platform
   owners:
   - name: alice
-    kind: Us
+    kind: User
+```
 
 You can check the tenant just created
 
