@@ -1,4 +1,4 @@
-name: Sync version switcher to release branches
+name: Sync version switcher
 permissions: {}
 
 # Triggered automatically when the `version:` field in params.yaml changes on
@@ -62,16 +62,16 @@ jobs:
           URL: ${{ steps.ver.outputs.url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Sanitize version for use in a branch name (e.g. v0.14 -> 0-14)
           VERSION_SLUG=$(echo "$VERSION" | sed 's/^v//;s/\./-/g')
+          REPO="${GITHUB_REPOSITORY}"
+
+          # Ensure all remote release branches are available locally
+          git fetch --prune origin
 
           # Find all versioned release branches (release/0.x), skip preview branches
           for branch in $(git branch -r | grep -E 'origin/release/[0-9]' | sed 's|.*origin/||'); do
             echo "::group::$branch"
-            git checkout "$branch"
+            git checkout -B "$branch" "origin/$branch"
 
             WORK_BRANCH="chore/add-${VERSION_SLUG}-to-${branch//\//-}"
 
@@ -81,9 +81,6 @@ jobs:
             else
               PR_ACTION="create"
             fi
-
-            # Create or reset the work branch to the current release branch HEAD
-            git checkout -B "$WORK_BRANCH"
 
             python3 - <<'PYEOF'
           import os, re
@@ -122,28 +119,69 @@ jobs:
               f.write(content)
           PYEOF
 
-            git add config/_default/params.yaml
-            if git diff --cached --quiet; then
-              echo "Already in desired state, skipping"
-              git checkout "$branch"
+            # Check if there are actual changes vs the release branch HEAD
+            if git diff --quiet HEAD -- config/_default/params.yaml; then
+              echo "Already in desired state, skipping ${branch}"
+              git restore config/_default/params.yaml
               echo "::endgroup::"
               continue
             fi
 
-            git commit -m "chore: add ${VERSION} to version switcher"
-            git push --force-with-lease origin "$WORK_BRANCH"
+            # Save desired content to a temp file (preserves trailing newline)
+            DESIRED_FILE=$(mktemp)
+            cat config/_default/params.yaml > "$DESIRED_FILE"
+            git restore config/_default/params.yaml
 
-            if [ "$PR_ACTION" = "create" ]; then
+            # --- API-based commit (GitHub auto-verifies; no GPG key needed) ---
+
+            # Get the release branch HEAD and its tree
+            BASE_SHA=$(gh api "repos/${REPO}/branches/${branch}" --jq '.commit.sha')
+            BASE_TREE_SHA=$(gh api "repos/${REPO}/git/commits/${BASE_SHA}" --jq '.tree.sha')
+
+            # Upload the modified file as a blob
+            CONTENT_B64=$(base64 -w 0 < "$DESIRED_FILE")
+            rm -f "$DESIRED_FILE"
+            BLOB_SHA=$(gh api "repos/${REPO}/git/blobs" \
+              -f content="$CONTENT_B64" \
+              -f encoding="base64" \
+              --jq '.sha')
+
+            # Create a new tree with the updated file
+            NEW_TREE_SHA=$(jq -n \
+              --arg base_tree "$BASE_TREE_SHA" \
+              --arg blob "$BLOB_SHA" \
+              '{base_tree:$base_tree,tree:[{path:"config/_default/params.yaml",mode:"100644",type:"blob",sha:$blob}]}' | \
+              gh api "repos/${REPO}/git/trees" --input - --jq '.sha')
+
+            # Build commit message with Signed-off-by for DCO
+            COMMIT_MSG=$(printf 'chore: add %s to version switcher in %s\n\nSigned-off-by: github-actions[bot] <github-actions[bot]@users.noreply.github.com>' \
+              "$VERSION" "$branch")
+
+            # Create the commit (GitHub signs API commits automatically → Verified)
+            NEW_COMMIT_SHA=$(jq -n \
+              --arg msg "$COMMIT_MSG" \
+              --arg tree "$NEW_TREE_SHA" \
+              --arg parent "$BASE_SHA" \
+              '{message:$msg,tree:$tree,parents:[$parent]}' | \
+              gh api "repos/${REPO}/git/commits" --input - --jq '.sha')
+
+            # Create or force-update the work branch ref
+            if [ "$PR_ACTION" = "update" ]; then
+              gh api "repos/${REPO}/git/refs/heads/${WORK_BRANCH}" \
+                -X PATCH -f sha="$NEW_COMMIT_SHA" -F force=true
+              echo "Updated PR branch: ${WORK_BRANCH}"
+            else
+              gh api "repos/${REPO}/git/refs" \
+                -f ref="refs/heads/${WORK_BRANCH}" \
+                -f sha="$NEW_COMMIT_SHA"
               gh pr create \
+                --repo "$REPO" \
                 --base "$branch" \
                 --head "$WORK_BRANCH" \
-                --title "chore: add ${VERSION} to version switcher" \
+                --title "chore: add ${VERSION} to version switcher in ${branch}" \
                 --body "Automated PR: adds \`${VERSION}\` to the version switcher in the \`${branch}\` release docs. Triggered by: ${{ github.event_name }} (${{ github.sha }})"
               echo "Opened PR: ${WORK_BRANCH} -> ${branch}"
-            else
-              echo "Updated PR branch: ${WORK_BRANCH}"
             fi
 
-            git checkout "$branch"
             echo "::endgroup::"
           done
