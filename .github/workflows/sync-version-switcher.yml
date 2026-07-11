@@ -1,0 +1,149 @@
+name: Sync version switcher to release branches
+permissions: {}
+
+# Triggered automatically when the `version:` field in params.yaml changes on
+# main (i.e. a new release is cut), or manually for one-off runs.
+on:
+  push:
+    branches: [main]
+    paths: ['config/_default/params.yaml']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version label to add (e.g. v0.14)'
+        required: true
+      url:
+        description: 'URL for this version'
+        required: true
+        default: 'https://projectcapsule.dev'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    name: Sync version switcher
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Determine version to sync
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+            echo "url=${{ inputs.url }}" >> "$GITHUB_OUTPUT"
+          else
+            # Use github.event.before as the reliable baseline for the push.
+            # HEAD~1 breaks when multiple commits land in a single push.
+            OLD=$(git show "${{ github.event.before }}":config/_default/params.yaml 2>/dev/null \
+              | grep '^version:' | awk '{print $2}' || echo "")
+            NEW=$(grep '^version:' config/_default/params.yaml | awk '{print $2}')
+            if [ "$OLD" = "$NEW" ]; then
+              echo "Version unchanged ($NEW), nothing to sync"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "version=$NEW" >> "$GITHUB_OUTPUT"
+            echo "url=$(grep '^url_latest_version:' config/_default/params.yaml | awk '{print $2}')" \
+              >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open PRs for all release branches
+        if: steps.ver.outputs.skip != 'true'
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          URL: ${{ steps.ver.outputs.url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Sanitize version for use in a branch name (e.g. v0.14 -> 0-14)
+          VERSION_SLUG=$(echo "$VERSION" | sed 's/^v//;s/\./-/g')
+
+          # Find all versioned release branches (release/0.x), skip preview branches
+          for branch in $(git branch -r | grep -E 'origin/release/[0-9]' | sed 's|.*origin/||'); do
+            echo "::group::$branch"
+            git checkout "$branch"
+
+            WORK_BRANCH="chore/add-${VERSION_SLUG}-to-${branch//\//-}"
+
+            # Determine whether to open a new PR or update an existing one
+            if git ls-remote --exit-code origin "refs/heads/${WORK_BRANCH}" > /dev/null 2>&1; then
+              PR_ACTION="update"
+            else
+              PR_ACTION="create"
+            fi
+
+            # Create or reset the work branch to the current release branch HEAD
+            git checkout -B "$WORK_BRANCH"
+
+            python3 - <<'PYEOF'
+          import os, re
+
+          version = os.environ['VERSION']
+          url     = os.environ['URL']
+
+          with open('config/_default/params.yaml') as f:
+              content = f.read()
+
+          # Repoint any version still pointing to projectcapsule.dev to its
+          # frozen release subdomain (it was a previous latest, now archived).
+          def frozen_url(ver):
+              slug = ver.lstrip('v').replace('.', '-')
+              return f"https://release-{slug}.projectcapsule.dev"
+
+          content = re.sub(
+              r'^(- version: (v[\d.]+)\n  url: https://projectcapsule\.dev)$',
+              lambda m: f"- version: {m.group(2)}\n  url: {frozen_url(m.group(2))}",
+              content,
+              flags=re.MULTILINE,
+          )
+
+          # Insert the new version only if not already present (idempotent).
+          if not re.search(r'^- version: ' + re.escape(version) + r'$', content, re.MULTILINE):
+              new_entry = f"- version: {version}\n  url: {url}\n"
+              content = re.sub(
+                  r'(^versions:\n)',
+                  r'\g<1>' + new_entry,
+                  content,
+                  flags=re.MULTILINE,
+                  count=1,
+              )
+
+          with open('config/_default/params.yaml', 'w') as f:
+              f.write(content)
+          PYEOF
+
+            git add config/_default/params.yaml
+            if git diff --cached --quiet; then
+              echo "Already in desired state, skipping"
+              git checkout "$branch"
+              echo "::endgroup::"
+              continue
+            fi
+
+            git commit -m "chore: add ${VERSION} to version switcher"
+            git push --force-with-lease origin "$WORK_BRANCH"
+
+            if [ "$PR_ACTION" = "create" ]; then
+              gh pr create \
+                --base "$branch" \
+                --head "$WORK_BRANCH" \
+                --title "chore: add ${VERSION} to version switcher" \
+                --body "Automated PR: adds \`${VERSION}\` to the version switcher in the \`${branch}\` release docs. Triggered by: ${{ github.event_name }} (${{ github.sha }})"
+              echo "Opened PR: ${WORK_BRANCH} -> ${branch}"
+            else
+              echo "Updated PR branch: ${WORK_BRANCH}"
+            fi
+
+            git checkout "$branch"
+            echo "::endgroup::"
+          done
