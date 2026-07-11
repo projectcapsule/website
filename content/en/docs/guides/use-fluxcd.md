@@ -566,8 +566,6 @@ Now let's go on with the practical part.
 He could try to use privileged `ServiceAccount` by changing ownership of a privileged Namespace so that he could create Reconciliation resource there and using the privileged SA.
 This is not permitted as he can't patch Namespaces which have not been created by him. Capsule request validation would not pass.
 
-For other protections against threats in this multi-tenancy scenario please see the Capsule [Multi-Tenancy Benchmark](/docs/overview/benchmark/).
-
 ## References
 - https://fluxcd.io/docs/installation/#multi-tenancy-lockdown
 - https://fluxcd.io/blog/2022/05/may-2022-security-announcement/

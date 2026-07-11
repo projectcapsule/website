@@ -2,8 +2,12 @@
 title: Benchmark
 weight: 10
 description: Multi-Tenancy Benchmark
+_build:
+  render: never
+  list: never
 ---
 
+## This page has been archived since it's not updated in a long time. Also, the Multi-Tenancy benchmark is in public archive. If you want to unarchive, remove the `_build` section in the header.
 
 The [Multi-Tenancy Benchmark](https://github.com/kubernetes-sigs/multi-tenancy) is a _WG_ (Working Group) committed to achieving multi-tenancy in Kubernetes.
 
