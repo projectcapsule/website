@@ -145,7 +145,7 @@ You may provide [Custom Resource Health](https://argo-cd.readthedocs.io/en/stabl
 
 ![Tenant Resource Actions](/images/ecosystem/argo-tenant-health.png)
 
-Shows `Suspended` when the `Tenant` is cordoned, reflecting that no new workloads can be scheduled in its Namespaces. Reports `Degraded` when the `Ready` condition is `False`, and `Healthy` otherwise.
+Shows `Suspended` when the `Tenant` is cordoned, reflecting that no new workloads can be scheduled in its Namespaces. Reports `Degraded` when the `Ready` condition is `False`, `Healthy` when `Ready` is `True`, and `Progressing` otherwise.
 
 ```yaml
 resource.customizations.health.capsule.clastix.io_Tenant: |
@@ -156,15 +156,14 @@ resource.customizations.health.capsule.clastix.io_Tenant: |
     return hs
   end
 
-  if obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil then
-    if obj.status.observedGeneration < obj.metadata.generation then
-      hs.status = "Progressing"
-      hs.message = "Waiting for reconciliation (generation mismatch)"
-      return hs
-    end
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
   end
 
-  for i, condition in ipairs(obj.status.conditions) do
+  for _, condition in ipairs(obj.status.conditions) do
     if condition.type == "Cordoned" and condition.status == "True" then
       hs.status = "Suspended"
       hs.message = condition.message
@@ -172,7 +171,7 @@ resource.customizations.health.capsule.clastix.io_Tenant: |
     end
   end
 
-  for i, condition in ipairs(obj.status.conditions) do
+  for _, condition in ipairs(obj.status.conditions) do
     if condition.type == "Ready" and condition.status == "False" then
       hs.status = "Degraded"
       hs.message = condition.message
@@ -186,7 +185,7 @@ resource.customizations.health.capsule.clastix.io_Tenant: |
   end
 
   hs.status = "Progressing"
-  hs.message = "Waiting for Status"
+  hs.message = "Waiting for Ready condition"
   return hs
 ```
 
@@ -256,12 +255,11 @@ resource.customizations.health.capsule.clastix.io_CapsuleConfiguration: |
     return hs
   end
 
-  if obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil then
-    if obj.status.observedGeneration < obj.metadata.generation then
-      hs.status = "Progressing"
-      hs.message = "Waiting for reconciliation (generation mismatch)"
-      return hs
-    end
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
   end
 
   for _, condition in ipairs(obj.status.conditions) do
@@ -295,12 +293,11 @@ resource.customizations.health.capsule.clastix.io_TenantOwner: |
     return hs
   end
 
-  if obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil then
-    if obj.status.observedGeneration < obj.metadata.generation then
-      hs.status = "Progressing"
-      hs.message = "Waiting for reconciliation (generation mismatch)"
-      return hs
-    end
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
   end
 
   for _, condition in ipairs(obj.status.conditions) do
@@ -334,12 +331,11 @@ resource.customizations.health.capsule.clastix.io_ResourcePool: |
     return hs
   end
 
-  if obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil then
-    if obj.status.observedGeneration < obj.metadata.generation then
-      hs.status = "Progressing"
-      hs.message = "Waiting for reconciliation (generation mismatch)"
-      return hs
-    end
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
   end
 
   if obj.status.exhaustions ~= nil then
@@ -347,6 +343,7 @@ resource.customizations.health.capsule.clastix.io_ResourcePool: |
     for resource, _ in pairs(obj.status.exhaustions) do
       table.insert(exhausted, resource)
     end
+    table.sort(exhausted)
     if #exhausted > 0 then
       hs.status = "Degraded"
       hs.message = "Pool exhausted for: " .. table.concat(exhausted, ", ")
@@ -385,12 +382,11 @@ resource.customizations.health.capsule.clastix.io_ResourcePoolClaim: |
     return hs
   end
 
-  if obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil then
-    if obj.status.observedGeneration < obj.metadata.generation then
-      hs.status = "Progressing"
-      hs.message = "Waiting for reconciliation (generation mismatch)"
-      return hs
-    end
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
   end
 
   for _, condition in ipairs(obj.status.conditions) do
@@ -432,12 +428,11 @@ resource.customizations.health.capsule.clastix.io_CustomQuota: |
     return hs
   end
 
-  if obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil then
-    if obj.status.observedGeneration < obj.metadata.generation then
-      hs.status = "Progressing"
-      hs.message = "Waiting for reconciliation (generation mismatch)"
-      return hs
-    end
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
   end
 
   for _, condition in ipairs(obj.status.conditions) do
@@ -471,12 +466,11 @@ resource.customizations.health.capsule.clastix.io_GlobalCustomQuota: |
     return hs
   end
 
-  if obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil then
-    if obj.status.observedGeneration < obj.metadata.generation then
-      hs.status = "Progressing"
-      hs.message = "Waiting for reconciliation (generation mismatch)"
-      return hs
-    end
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
   end
 
   for _, condition in ipairs(obj.status.conditions) do
@@ -510,12 +504,11 @@ resource.customizations.health.capsule.clastix.io_TenantResource: |
     return hs
   end
 
-  if obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil then
-    if obj.status.observedGeneration < obj.metadata.generation then
-      hs.status = "Progressing"
-      hs.message = "Waiting for reconciliation (generation mismatch)"
-      return hs
-    end
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
   end
 
   for _, condition in ipairs(obj.status.conditions) do
@@ -549,12 +542,11 @@ resource.customizations.health.capsule.clastix.io_GlobalTenantResource: |
     return hs
   end
 
-  if obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil then
-    if obj.status.observedGeneration < obj.metadata.generation then
-      hs.status = "Progressing"
-      hs.message = "Waiting for reconciliation (generation mismatch)"
-      return hs
-    end
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
   end
 
   for _, condition in ipairs(obj.status.conditions) do
@@ -592,12 +584,11 @@ resource.customizations.health.capsule.clastix.io_ProxySetting: |
     return hs
   end
 
-  if obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil then
-    if obj.status.observedGeneration < obj.metadata.generation then
-      hs.status = "Progressing"
-      hs.message = "Waiting for reconciliation (generation mismatch)"
-      return hs
-    end
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
   end
 
   for _, condition in ipairs(obj.status.conditions) do
@@ -631,12 +622,11 @@ resource.customizations.health.capsule.clastix.io_GlobalProxySettings: |
     return hs
   end
 
-  if obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil then
-    if obj.status.observedGeneration < obj.metadata.generation then
-      hs.status = "Progressing"
-      hs.message = "Waiting for reconciliation (generation mismatch)"
-      return hs
-    end
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
   end
 
   for _, condition in ipairs(obj.status.conditions) do
