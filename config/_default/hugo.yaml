@@ -168,3 +168,12 @@ menu:
       url: /project/
       pre: <i class='fas fa-flask'></i>
       weight: 17
+
+
+# Disable the file-system cache for remote resources (resources.GetRemote).
+# Hugo's default is maxAge: -1 (never expire), which causes stale Helm index
+# responses to persist across Netlify builds. Setting maxAge to 0 forces a
+# fresh fetch on every build so chart versions are always current.
+caches:
+  getresource:
+    maxAge: 0
