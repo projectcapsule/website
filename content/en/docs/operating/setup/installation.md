@@ -107,17 +107,18 @@ E0707 08:38:18.319041       1 leaderelection.go:452] "Error retrieving lease loc
   I0707 08:38:18.442700       1 leaderelection.go:299] "Failed to renew lease"
 ```
 
-Tune leader election with `manager.options.leaderElectionLeaseDuration`, `manager.options.leaderElectionRenewDeadline`, and `manager.options.leaderElectionRetryPeriod`. Increasing these values makes Capsule more tolerant of slow or overloaded Kubernetes API servers; for example, raising `leaderElectionRenewDeadline` also raises the leader-election client request timeout because controller-runtime uses roughly half of that value. The tradeoff is slower failover: if the active controller really dies, standby replicas will wait longer before taking leadership. Keep the ordering valid: `leaseDuration` should be greater than `renewDeadline`, and `renewDeadline` should be greater than `retryPeriod`.
+Tune leader election with `manager.options.leaderElection.leaseDuration`, `manager.options.leaderElection.renewDeadline`, and `manager.options.leaderElection.retryPeriod`. Increasing these values makes Capsule more tolerant of slow or overloaded Kubernetes API servers; for example, raising `leaderElectionRenewDeadline` also raises the leader-election client request timeout because controller-runtime uses roughly half of that value. The tradeoff is slower failover: if the active controller really dies, standby replicas will wait longer before taking leadership. Keep the ordering valid: `leaseDuration` should be greater than `renewDeadline`, and `renewDeadline` should be greater than `retryPeriod`.
 
 ```yaml
 manager:
   options:
-    leaderElectionLeaseDuration: "60s"
-    leaderElectionRenewDeadline: "40s"
-    leaderElectionRetryPeriod: "5s"
+    leaderElection:
+      leaseDuration: "60s"
+      renewDeadline: "40s"
+      retryPeriod: "5s"
 ```
 
-Worst-case leader failover is slower, around 60s, if the active pod really dies. Keep `manager.options.leaderElectionLeaseDuration` > `manager.options.leaderElectionRenewDeadline` > `manager.options.leaderElectionRetryPeriod`.
+Worst-case leader failover is slower, around 60s, if the active pod really dies. Keep `manager.options.leaderElection.leaseDuration` > `manager.options.leaderElection.renewDeadline` > `manager.options.leaderElection.retryPeriod`.
 
 #### API Priority and Fairness (APF)
 
