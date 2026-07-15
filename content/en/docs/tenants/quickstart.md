@@ -29,10 +29,10 @@ You can check the tenant just created
 ```bash
 $ kubectl get tenants
 NAME   STATE    NAMESPACE QUOTA   NAMESPACE COUNT   NODE SELECTOR   READY   STATUS       AGE
-oil    Active                     0                                 True    reconciled   13s
+solar  Active                     0                                 True    reconciled   13s
 ```
 
-We create dedicated `TenantOwners` who represent cluster administrators. They are matched by labels defined in the `permissions.matchOwners` section of the `Tenant` spec. In our case, any user or group with the label `team: platform` is considered a `TenantOwner` for the `oil` tenant.
+We create dedicated `TenantOwners` who represent cluster administrators. They are matched by labels defined in the `permissions.matchOwners` section of the `Tenant` spec. In our case, any user or group with the label `team: platform` is considered a `TenantOwner` for the `solar` tenant.
 
 ```bash
 kubectl create -f - << EOF
@@ -49,10 +49,10 @@ spec:
 EOF
 ```
 
-We can now verify all owners of the `oil` tenant:
+We can now verify all owners of the `solar` tenant:
 
 ```bash
-kubectl get tenant oil -o jsonpath='{.status.owners}'
+kubectl get tenant solar -o jsonpath='{.status.owners}'
 ```
 
 The result should be similar to:
