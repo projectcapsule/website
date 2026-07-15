@@ -9,7 +9,7 @@ Declare permission distribution rules for the selected namespaces.
 
 ## Bindings
 
-With `Tenant` rolebindings you can distribute namespaced rolebindings to all namespaces which are assigned to a namespace. Essentially it is then ensured the defined rolebindings are present and reconciled in all namespaces of the `Tenant`. This is useful if users should have more insights on `Tenant` basis. Let's look at an example
+With `Tenant` RoleBindings you can distribute namespaced RoleBindings to all namespaces which are assigned to a `Tenant`. This ensures the defined RoleBindings are present and reconciled in all namespaces of the `Tenant`. This is useful if users should have more insights on a `Tenant` basis. Let's look at an example.
 
 Assuming a cluster-administrator creates the following clusterRole:
 
@@ -26,7 +26,7 @@ rules:
 EOF
 ```
 
-Now the cluster-administrator creates wants to bind this clusterRole in each namespace of the solar `Tenant`. He creates a tenantRoleBinding:
+ Now the cluster administrator wants to bind this ClusterRole in each namespace of the solar `Tenant`. They can configure this with a `Tenant` manifest:
 
 ```yaml
 kubectl apply -f - << EOF
@@ -52,7 +52,7 @@ spec:
 EOF
 ```
 
-As you can see the subjects is a classic [rolebinding subject](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#referring-to-subjects). This way you grant permissions to the subject user **Joe**, who only can list and watch servicemonitors in the solar tenant namespaces, but has no other permissions.
+ As you can see, `subjects` uses the standard [RoleBinding subject](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#referring-to-subjects) format. This grants permissions to the subject user **alice**, who can get, list, and watch ServiceMonitors in the solar Tenant namespaces, but has no other permissions.
 
 ### Strict
 
@@ -78,7 +78,7 @@ rules:
 
 ### Distribution
 
-You may have the use-case where you want to distribute different ClusterRoles to different namespaces of the same `Tenant`. For example, you want to give `view` permissions to a operational group in all namespaces of the solar `Tenant` with `environment=production` label, but you want to give `edit` permissions to the operations group inall other namespaces. You can achieve this by leveraging [GlobalTenantResources](/docs/replications/global/):
+ You may have the use-case where you want to distribute different ClusterRoles to different namespaces of the same `Tenant`. For example, you want to give `view` permissions to an operational group in all namespaces of the solar `Tenant` with `environment=prod` label, but you want to give `edit` permissions to the operations group in all other namespaces. You can achieve this by leveraging [GlobalTenantResources](/docs/replications/global/):
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2

@@ -227,7 +227,7 @@ apiPriorityAndFairness:
 
 #### Ignore Groups
 
-When tokens have a lot of groups, you can try to exclude groups which may never be used for authorization. This can be done by setting the `ignoreGroups` option in the Helm chart:
+ When tokens have a lot of groups, you can try to exclude groups which may never be used for authorization. This can be done by setting `options.impersonationGroupRegexp` and `options.ignoredImpersonationGroups` in the Helm chart:
 
 ```yaml
 options:

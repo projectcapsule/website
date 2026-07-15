@@ -1,7 +1,7 @@
 ---
 title: Reflection
 description: >
-  Leverage the RoleBinding Reflector to grant LIST capabilities to non owners and across 
+   Leverage the RoleBinding Reflector to grant LIST capabilities to non-owners across namespaces.
 date: 2024-02-20
 weight: 3
 ---
@@ -66,8 +66,7 @@ The RoleBinding does not require a special label for Namespace reflection. All R
 
 ### GlobalProxySettings
 
-The same behavior can be achieved by using [`GlobalProxySettings`](docs/proxy/proxysettings/#globalproxysettings) to enable further listing of `Namespace` resources. Note that this must use the label `"kubernetes.io/metadata.name"`. This provides the user alice the ability to list the `Namespaces` `green-test` and `green-prod` without being [Tenant Owner](/docs/operating/architecture/#tenant-owners) or having any other permissions on the `Tenant`:
-
+ The same behavior can be achieved by using [`GlobalProxySettings`](/docs/proxy/proxysettings/#globalproxysettings) to enable further listing of `Namespace` resources. Note that this must use the label `"kubernetes.io/metadata.name"`. This provides the user alice the ability to list the `Namespaces` `green-test` and `green-prod` without being [Tenant Owner](/docs/operating/architecture/#tenant-owners) or having any other permissions on the `Tenant`:
 ```yaml
 apiVersion: capsule.clastix.io/v1beta1
 kind: GlobalProxySettings
@@ -94,8 +93,9 @@ spec:
 
 ## Namespaced Items
 
-For all namespaced items it's possible to grant users `LIST` permissions within any `Tenant's` namespace. They don't have to be owner or anything. This is useful for example for operators, where they might also want to see all pods but are not directly owner on any `Tenant`. Reflection is resolved based on **`Rolebindings`** and the associated `Roles` and `ClusterRoles` (Recommended). 
-The `Role` or `ClusterRole` must provide `LIST` permissions to the allowed resource(s). The `Rolebindings` considered for reflection must always use the label `reflection.proxy.projectcapsule.dev/enabled: "true"` to be considered for reflection. The following example shows how to grant a user `LIST` permissions on all pods within any `Tenant's` namespace:
+For all namespaced items it's possible to grant users `LIST` permissions within any `Tenant` namespace. They don't have to be a [Tenant Owner](/docs/operating/architecture/#tenant-owners) or anything. This is useful for example for operators, where they might also want to see all pods but are not directly owner on any `Tenant`. Reflection is resolved based on **`RoleBindings`** and the associated `Roles` and `ClusterRoles` (recommended).
+
+The `Role` or `ClusterRole` must provide `LIST` permissions to the allowed resource(s). The `RoleBindings` considered for reflection must always use the label `reflection.proxy.projectcapsule.dev/enabled: "true"` to be considered for reflection. The following example shows how to grant a user `LIST` permissions on all pods within any `Tenant` namespace:
 
 ```yaml
 ---
@@ -159,8 +159,7 @@ subjects:
 
 ### Provision RoleBindings
 
-Provisioning the `Rolebindings` via [Tenant Rules](docs/tenants/rules/permissions/#bindings) is the best way to ensure that the `RoleBindings` are created in all namespaces of a `Tenant` and also in any new namespace created within the `Tenant`.  The following example shows how to provision a `RoleBinding` for the user `joe` in all namespaces of the `solar` tenant:
-
+ Provisioning the `RoleBindings` via [Tenant Rules](/docs/tenants/rules/permissions/#bindings) is the best way to ensure that the `RoleBindings` are created in all namespaces of a `Tenant` and also in any new namespace created within the `Tenant`. The following example shows how to provision a `RoleBinding` for the user `joe` in all namespaces of the `solar` tenant:
 ```yaml
 ---
 apiVersion: capsule.clastix.io/v1beta2
@@ -180,8 +179,7 @@ spec:
               reflection.proxy.projectcapsule.dev/enabled: "true"
 ```
 
-By default any user can add further `Rolebindings` with `reflection.proxy.projectcapsule.dev/enabled: "true"` label to any `RoleBinding`. To prevent that, you can deny that with another [Enforcement rule](/docs/tenants/rules/enforcement/#metadata):
-
+ By default, any user can add further `RoleBindings` with the `reflection.proxy.projectcapsule.dev/enabled: "true"` label to any `RoleBinding`. To prevent that, you can deny it with another [Enforcement rule](/docs/tenants/rules/enforcement/#metadata):
 ```yaml
 ---
 apiVersion: capsule.clastix.io/v1beta2
