@@ -646,3 +646,142 @@ resource.customizations.health.capsule.clastix.io_GlobalProxySettings: |
   hs.message = "Waiting for Ready condition"
   return hs
 ```
+
+## SOPS Operator
+
+The following health checks apply to [SOPS Operator](https://github.com/peak-scale/sops-operator) CRDs (`addons.projectcapsule.dev`), which is a Capsule Addon.
+
+### SopsSecret Resource Health
+
+Reports `Degraded` when decryption or secret replication failed, and `Healthy` when all managed secrets have been successfully decrypted and replicated.
+
+```yaml
+resource.customizations.health.addons.projectcapsule.dev_SopsSecret: |
+  local hs = {}
+  if obj.status == nil or obj.status.conditions == nil then
+    hs.status = "Progressing"
+    hs.message = "Waiting for status"
+    return hs
+  end
+
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Ready" then
+      if condition.status == "True" then
+        hs.status = "Healthy"
+        hs.message = condition.message
+        return hs
+      end
+      if condition.status == "False" then
+        hs.status = "Degraded"
+        hs.message = condition.message
+        return hs
+      end
+      if condition.status == "Unknown" then
+        hs.status = "Progressing"
+        hs.message = condition.message
+        return hs
+      end
+    end
+  end
+
+  hs.status = "Progressing"
+  hs.message = "Waiting for Ready condition"
+  return hs
+```
+
+### SopsProvider Resource Health
+
+Reports `Degraded` when one or more decryption providers failed to load or validate, and `Healthy` when all configured providers are available.
+
+```yaml
+resource.customizations.health.addons.projectcapsule.dev_SopsProvider: |
+  local hs = {}
+  if obj.status == nil or obj.status.conditions == nil then
+    hs.status = "Progressing"
+    hs.message = "Waiting for status"
+    return hs
+  end
+
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Ready" then
+      if condition.status == "True" then
+        hs.status = "Healthy"
+        hs.message = condition.message
+        return hs
+      end
+      if condition.status == "False" then
+        hs.status = "Degraded"
+        hs.message = condition.message
+        return hs
+      end
+      if condition.status == "Unknown" then
+        hs.status = "Progressing"
+        hs.message = condition.message
+        return hs
+      end
+    end
+  end
+
+  hs.status = "Progressing"
+  hs.message = "Waiting for Ready condition"
+  return hs
+```
+
+### GlobalSopsSecret Resource Health
+
+Reports `Degraded` when decryption or cross-namespace secret replication failed, and `Healthy` when all managed secrets have been successfully decrypted and replicated into their target namespaces.
+
+```yaml
+resource.customizations.health.addons.projectcapsule.dev_GlobalSopsSecret: |
+  local hs = {}
+  if obj.status == nil or obj.status.conditions == nil then
+    hs.status = "Progressing"
+    hs.message = "Waiting for status"
+    return hs
+  end
+
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Ready" then
+      if condition.status == "True" then
+        hs.status = "Healthy"
+        hs.message = condition.message
+        return hs
+      end
+      if condition.status == "False" then
+        hs.status = "Degraded"
+        hs.message = condition.message
+        return hs
+      end
+      if condition.status == "Unknown" then
+        hs.status = "Progressing"
+        hs.message = condition.message
+        return hs
+      end
+    end
+  end
+
+  hs.status = "Progressing"
+  hs.message = "Waiting for Ready condition"
+  return hs
+```

@@ -20,7 +20,7 @@ kubectl -n solar-development run nginx --image=docker.io/nginx
 kubectl -n solar-development get pods
 ```
 
-Every `Namespaces` assigned to a `Tenant` has an [owner reference](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/) pointing to the `Tenant` object itself. In Addition each `Namespaces` has a label `capsule.clastix.io/tenant=<tenant_name>` identifying the `Tenant` it belongs to ([Read More](#label)).
+Every `Namespaces` assigned to a `Tenant` has an [owner reference](https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents) pointing to the `Tenant` object itself. In Addition each `Namespaces` has a label `capsule.clastix.io/tenant=<tenant_name>` identifying the `Tenant` it belongs to ([Read More](#label)).
 
 The `Namespaces` are tracked as part of the `Tenant` status:
 

@@ -1,3 +1,8 @@
+# Hand-edit this file on main only. When it changes on main,
+# .github/workflows/sync-version-switcher.yml opens a PR against every
+# release/<x.y> branch, copying the file with the branch's own `version`,
+# `version_menu` and `archived_version` stamped in.
+
 # Menu title if your navbar has a versions selector to access old versions of your site.
 # This menu appears only if you have at least one [params.versions] set.
 version_menu: "Releases"
