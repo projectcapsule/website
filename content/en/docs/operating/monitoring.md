@@ -6,8 +6,7 @@ description: "Monitoring Capsule Items and Tenants"
 
 The Capsule dashboard allows you to track the health and performance of Capsule manager and tenants, with particular attention to resources saturation, server responses, and latencies. Prometheus and Grafana are requirements for monitoring Capsule.
 
-
-## OTEL Tracing
+## OpenTelemetry Tracing
 
 Capsule can export OpenTelemetry traces for admission webhook requests through the OTLP gRPC exporter. Enable tracing with `manager.options.tracing.enabled=true` and set `manager.options.tracing.endpoint` to your collector or tracing backend, for example `tempo.monitoring-system.svc:4317`. The exporter supports insecure transport for local clusters, TLS server name overrides, gzip compression, export timeouts, custom OTLP headers, and basic authentication. For production, prefer `manager.options.tracing.basicAuth.existingSecret` so credentials are loaded from a Kubernetes Secret instead of being rendered into controller arguments. Use `manager.options.tracing.sampleRatio` to control trace volume.
 

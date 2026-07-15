@@ -97,7 +97,6 @@ manager:
 
 In high pressure environments leader election may fail due to the default timeout values. You can adjust the leader election timeout values to avoid this issue:
 
-```yaml
 ```shell
 E0707 08:38:18.319041       1 leaderelection.go:452] "Error retrieving lease lock"
   err="Get \"https://10.96.0.1:443/apis/coordination.k8s.io/v1/namespaces/capsule-
@@ -107,7 +106,7 @@ E0707 08:38:18.319041       1 leaderelection.go:452] "Error retrieving lease loc
   I0707 08:38:18.442700       1 leaderelection.go:299] "Failed to renew lease"
 ```
 
-Tune leader election with `manager.options.leaderElection.leaseDuration`, `manager.options.leaderElection.renewDeadline`, and `manager.options.leaderElection.retryPeriod`. Increasing these values makes Capsule more tolerant of slow or overloaded Kubernetes API servers; for example, raising `leaderElectionRenewDeadline` also raises the leader-election client request timeout because controller-runtime uses roughly half of that value. The tradeoff is slower failover: if the active controller really dies, standby replicas will wait longer before taking leadership. Keep the ordering valid: `leaseDuration` should be greater than `renewDeadline`, and `renewDeadline` should be greater than `retryPeriod`.
+Tune leader election with `manager.options.leaderElection.leaseDuration`, `manager.options.leaderElection.renewDeadline`, and `manager.options.leaderElection.retryPeriod`. Increasing these values makes Capsule more tolerant of slow or overloaded Kubernetes API servers; for example, raising `renewDeadline` also raises the leader-election client request timeout because controller-runtime uses roughly half of that value. The tradeoff is slower failover: if the active controller really dies, standby replicas will wait longer before taking leadership. Keep the ordering valid: `leaseDuration` should be greater than `renewDeadline`, and `renewDeadline` should be greater than `retryPeriod`.
 
 ```yaml
 manager:
