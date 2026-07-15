@@ -225,6 +225,21 @@ apiPriorityAndFairness:
             queueLengthLimit: 100
 ```
 
+#### Ignore Groups
+
+When tokens have a lot of groups, you can try to exclude groups which may never be used for authorization. This can be done by setting the `ignoreGroups` option in the Helm chart:
+
+```yaml
+options:
+    # -- Regular expression to match the groups which are considered for impersonation
+  impersonationGroupRegexp: "kubernetes:.*"
+  # --  Names of the groups which are not used for impersonation (considered after impersonation-group-regexp)
+  ignoredImpersonationGroups:
+    - "specific:ignored"
+```
+
+This results in less SSAR requests to the Kubernetes API server and less memory usage for the Capsule-Proxy. This is especially useful when using OIDC providers which provide a lot of groups, but only a few are used for authorization.
+
 ### Exposure
 
 Depending on your environment, you can expose the capsule-proxy by:
@@ -410,9 +425,9 @@ CIDR ranges of trusted proxies allowed to send forwarded client certificate head
 
 ```yaml
 options:
-  extraArgs:
-    - "--trusted-proxy-cidrs=10.0.0.0/8"
-    - "--trusted-proxy-cidrs=127.0.0.1/32"
+  trustedProxyCidrs:
+    - "10.0.0.0/8"
+    - "127.0.0.1/32"
 ```
 
 ### Certificate Management
