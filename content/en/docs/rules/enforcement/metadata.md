@@ -65,8 +65,7 @@ Capsule-managed labels include labels used to track Tenant ownership, resource p
 
 Because these keys are owned by Capsule, metadata rules that reference them are ignored by default. Use application-specific labels and annotations for Tenant policy enforcement.
 
-
-### Target resources
+## Target resources
 
 Each metadata rule defines which resource kinds it applies to:
 
@@ -122,7 +121,7 @@ metadata:
 This can match resources such as `apps/v1` `ReplicaSet` and `apps/v1` `StatefulSet`.
 
 
-#### Namespace
+### Namespace
 
 `Namespace` is the only cluster-scoped resource supported by metadata rules. It
 is deliberately opt-in: the `kinds` list must contain the literal,
@@ -184,7 +183,7 @@ metadata:
 In short, both conditions must be true: `apiGroups` must match core `v1`, and
 `kinds` must contain a dedicated `Namespace` entry.
 
-#### Important `apiGroups` behavior
+### Important `apiGroups` behavior
 
 Omitted or empty `apiGroups` does **not** mean all API groups and versions. It
 means the core Kubernetes API version `v1`.
@@ -220,7 +219,7 @@ metadata:
       - Deployment
 ```
 
-### Label rules
+## Label rules
 
 Label rules are configured under `metadata[].labels`. Each map key is the label key to validate.
 
@@ -285,7 +284,7 @@ Example rejection:
 Error from server (Forbidden): error when creating "configmap.yaml": admission webhook "rules.generic.projectcapsule.dev" denied the request: metadata label "env" is required at metadata.labels["env"]
 ```
 
-### Annotation rules
+## Annotation rules
 
 Annotation rules are configured under `metadata[].annotations`. Each map key is the annotation key to validate.
 
@@ -312,10 +311,8 @@ rules:
               required: false
               values:
                 - exp: "^INV-[0-9]{4}$"
-              # If user / annotation is missing, use this as default value, only at admission mutation
-              default: "II-1"
               # Overwrites anything, even if the user has set a value, Should be applied using SSA by the rulestatus controller, if removed also removes (one fieldmanager per rulestatus which controlles all managed metadata). Also enforce at admission
-              managed: "II-10"
+              managed: "INV-10"
             example.corp/cost-center-2:
               values:
                 - exp: "II-10"
@@ -361,7 +358,49 @@ data:
   key: value
 ```
 
-### Required metadata
+## Default
+
+The `default` field provides a value for coressponding field should no value be provided by the user. This is only applied at admission time and does not enforce the value to be present in the object.
+
+`default` is meaningful for `action: allow`. `deny` and `audit` rules are value matchers; they do not require missing metadata to exist.
+
+```yaml
+rules:
+  - enforce:
+      action: allow
+      metadata:
+        - kinds:
+            - ConfigMap
+          labels:
+           cost-center:
+              default: "internal"
+```
+
+Default values still validate against the configured `values` matchers. If the default value does not match any allow or deny rule, the request is denied.
+
+## Managed
+
+Providing managed values ensures the metadata is always set to the provided value. This is applied at admission time and also enforced by the `RuleStatus` controller. Meaning it's also applied to already existing objects and also enforced at admission time. This is useful for enforcing certain metadata to be present and also to ensure the value is always set to a specific value.
+
+```yaml
+rules:
+  - enforce:
+      action: allow
+      metadata:
+        - apiGroups:
+            - "v1"
+          kinds:
+            - Namespace
+          annotations:
+            example.corp/cost-center:
+              required: false
+              values:
+                - exp: "^INV-[0-9]{4}$"
+              # Overwrites anything, even if the user has set a value, Should be applied using SSA by the rulestatus controller, if removed also removes (one fieldmanager per rulestatus which controlles all managed metadata). Also enforce at admission
+              managed: "INV-10"
+```
+
+## Required
 
 The `required` field controls whether the metadata key must be present.
 
@@ -401,7 +440,7 @@ data:
 
 If the label is missing, the request is denied.
 
-### Metadata values
+## Validation
 
 The `values` field uses the common match expression structure with `exact`, `exp`, and optional `negate`.
 
@@ -451,9 +490,9 @@ With this rule:
 
 If an allow-list also exists for the same metadata key, values excluded from a negated deny rule still need a matching allow rule.
 
-### Advanced
+## Advanced
 
-#### Allow-list behavior for metadata
+### Allow-list behavior for metadata
 
 An `allow` rule creates an allow-list for the specific metadata key it controls.
 
@@ -535,7 +574,7 @@ rules:
 
 The object must contain both `env=prod` and `team=platform`.
 
-#### Deny metadata values
+### Deny metadata values
 
 Use `action: deny` to reject specific metadata values.
 
@@ -599,7 +638,7 @@ rules:
 
 In namespaces labeled `allow-deprecated=true`, `environment=deprecated` is admitted because the later namespace-specific allow rule matches.
 
-#### Audit metadata values
+### Audit metadata values
 
 Use `action: audit` to observe metadata usage without blocking the request.
 
@@ -623,7 +662,7 @@ A matching object is admitted in this audit-only example, but Capsule emits an a
 
 If an allow-list also exists for the same metadata key, audit does not satisfy that allow-list. The metadata value must still match an `allow` rule.
 
-#### Multiple resource kinds
+### Multiple resource kinds
 
 A single metadata rule can target multiple kinds:
 
@@ -648,7 +687,7 @@ rules:
 
 With this rule, both matching `ConfigMap` and `Service` objects must contain `corp.com/tenant=prod` or `corp.com/tenant=test`.
 
-#### Namespace-specific metadata rules
+### Namespace-specific metadata rules
 
 Metadata enforcement supports `namespaceSelector` like other namespace rules.
 
@@ -672,7 +711,7 @@ rules:
 
 This rule only applies to namespaces labeled `environment=prod`. In those namespaces, matching `ConfigMap` objects must contain `example.corp/approval=approved`.
 
-#### Complete metadata enforcement example
+### Complete metadata enforcement example
 
 The following example combines required labels, optional annotations, multiple kinds, audit rules, deny rules, and namespace-specific exceptions:
 
