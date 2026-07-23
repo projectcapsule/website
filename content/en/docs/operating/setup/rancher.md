@@ -47,9 +47,9 @@ It then explains how for the tenant user, the access to Kubernetes resources is 
 
 #### Configure an identity provider for Kubernetes
 
-You can follow [this general guide](/docs/operating/authentication/) to configure an OIDC authentication for Kubernetes.
+You can follow [this general guide](/docs/operating/setup/authentication/) to configure an OIDC authentication for Kubernetes.
 
-For a Keycloak specific setup yon can check [this resources list](/docs/operating/authentication/#oidc).
+For a Keycloak specific setup yon can check [this resources list](/docs/operating/setup/authentication/#oidc).
 
 #### Known issues
 
@@ -99,7 +99,7 @@ When onboarding tenants, the administrator needs to create the following, in ord
   ```
 
   More on declarative `Project`s [here](https://github.com/rancher/rancher/issues/35631).
-- In the identity provider, create a user with [correct OIDC claim](/docs/operating/authentication/#oidc) of the Tenant.
+- In the identity provider, create a user with [correct OIDC claim](/docs/operating/setup/authentication/#oidc) of the Tenant.
 - In Rancher, add the new user to the `Project` with the *Read-only* `Role`.
 - In Rancher, add the new user to the `Cluster` with the *Tenant Member* `Cluster Role`.
 
@@ -170,28 +170,28 @@ That Project monitoring `Namespace` will be named as `cattle-project-<PROJECT_ID
 
 For example, if the `NetworkPolicy` is configured to allow all ingress traffic from `Namespace` with label `capsule.clastix.io/tenant=foo`, this label is to be applied to the Project monitoring `Namespace` too.
 
-Then, a `NetworkPolicy` can be applied at `Tenant`-level with Capsule `GlobalTenantResource`s. For example it can be applied a minimal policy for the *oil* `Tenant`:
+Then, a `NetworkPolicy` can be applied at `Tenant`-level with Capsule `GlobalTenantResource`s. For example it can be applied a minimal policy for the *wind* `Tenant`:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
 kind: GlobalTenantResource
 metadata:
-  name: oil-networkpolicies
+  name: wind-networkpolicies
 spec:
   tenantSelector:
     matchLabels:
-      capsule.clastix.io/tenant: oil
+      capsule.clastix.io/tenant: wind
   resyncPeriod: 360s
   pruningOnDelete: true
   resources:
     - namespaceSelector:
         matchLabels:
-          capsule.clastix.io/tenant: oil
+          capsule.clastix.io/tenant: wind
       rawItems:
       - apiVersion: networking.k8s.io/v1
         kind: NetworkPolicy
         metadata:
-          name: oil-minimal
+          name: wind-minimal
         spec:
           podSelector: {}
           policyTypes:
@@ -202,7 +202,7 @@ spec:
             - from:
               - namespaceSelector:
                   matchLabels:
-                    capsule.clastix.io/tenant: oil
+                    capsule.clastix.io/tenant: wind
             # Rancher Project Monitor stack
             - from:
               - namespaceSelector:
@@ -226,7 +226,7 @@ spec:
             - to:
               - namespaceSelector:
                   matchLabels:
-                    capsule.clastix.io/tenant: oil
+                    capsule.clastix.io/tenant: wind
             # Kubernetes API server
             - to:
               - ipBlock:
@@ -306,7 +306,7 @@ In order to allow tenant users to list cluster-scope resources, like `Node`s, Te
 apiVersion: capsule.clastix.io/v1beta2
 kind: Tenant
 metadata:
-  name: oil
+  name: wind
 spec:
   owners:
   - kind: User
@@ -321,7 +321,7 @@ spec:
 Also, in order to assign or filter nodes per Tenant, it's needed labels on node in order to be selected:
 
 ```shell
-kubectl label node worker-01 capsule.clastix.io/tenant=oil
+kubectl label node worker-01 capsule.clastix.io/tenant=wind
 ```
 
  and a node selector at Tenant level:
@@ -330,10 +330,10 @@ kubectl label node worker-01 capsule.clastix.io/tenant=oil
 apiVersion: capsule.clastix.io/v1beta2
 kind: Tenant
 metadata:
-  name: oil
+  name: wind
 spec:
   nodeSelector:
-    capsule.clastix.io/tenant: oil
+    capsule.clastix.io/tenant: wind
 [...]
 ```
 
@@ -343,7 +343,7 @@ The final manifest is:
 apiVersion: capsule.clastix.io/v1beta2
 kind: Tenant
 metadata:
-  name: oil
+  name: wind
 spec:
   owners:
   - kind: User
@@ -353,7 +353,7 @@ spec:
       operations:
       - List
   nodeSelector:
-    capsule.clastix.io/tenant: oil
+    capsule.clastix.io/tenant: wind
 ```
 
 The same appplies for:
@@ -382,7 +382,7 @@ These instructions is specific to a setup made with Keycloak as an OIDC identity
 - Add to userinfo Audience type, claim name `client audience`
 - Add to userinfo, full group path, Group Membership type, claim name `full_group_path`
 
-More on this on the [official guide](/docs/operating/authentication/#oidc).
+More on this on the [official guide](/docs/operating/setup/authentication/#oidc).
 
 ### Rancher OIDC authentication provider
 

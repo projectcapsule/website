@@ -12,7 +12,7 @@ Capsule can export OpenTelemetry traces for admission webhook requests through t
 
 ## Tenants
 
-Instrumentation for [Tenants](../tenants/).
+Instrumentation for [Tenants](/docs/tenants/).
 
 ### Metrics
 

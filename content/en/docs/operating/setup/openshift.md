@@ -44,7 +44,7 @@ kubectl patch clusterrolebinding.rbac self-provisioners -p '{ "metadata": { "ann
 ### Extend the admin role
 This example extends the default Kubernetes `admin` role so tenant owners gain admin privileges on all namespaces within their tenant. The extension adds:
 - The finalizers required to create/edit resources managed by Capsule
-- The SCCs that tenant owners can use — in this example, `restricted-v2` and `nonroot-v2`
+- The SCCs that tenant owners can use (in this example, `restricted-v2` and `nonroot-v2`)
 
 ```yaml
 kind: ClusterRole

@@ -27,7 +27,7 @@ admissionController:
 
 Not all relevant settings are covered by Capsule. We recommend to use Kyverno to enforce additional policies, as their policy implementation is of a very high standard. Here are some policies you might want to consider in multi-tenant environments:
 
-[Moved to new page](/docs/operating/architecture.md)
+[Moved to new page](/docs/operating/concepts/architecture/)
 
 ## References
 

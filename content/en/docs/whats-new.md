@@ -24,11 +24,11 @@ weight: 1
 * Introducing new rule approach for tenant enforcement [Read More](/docs/tenants/rules/).
 * Added `RequiredMetadata` for `Namespaces` created in a `Tenant` [Read More](/docs/tenants/metadata/#requiredmetadata).
 * [Additional Metadata](/docs/tenants/metadata/#additionalmetadata) is now validated at admission.
-* Introducing new OCI Registry enforcement [Read More](/docs/tenants/rules/enforcement/#oci-registries)
-* Added rule-based promotions for `ServiceAccounts` in `Tenants` [Read More](/docs/tenants/rules/permissions/).
+* Introducing new OCI Registry enforcement [Read More](/docs/rules/enforcement/workloads#oci-registries)
+* Added rule-based promotions for `ServiceAccounts` in `Tenants` [Read More](/docs/tenants/rules/permissions#promotions).
 * Added Implicit Assignment of `TenantOwner` [Read More](/docs/tenants/permissions/#implicit-tenant-assignment).
 * Added Aggregation of `TenantOwner` [Read More](/docs/tenants/permissions/#aggregation).
-* Introducing `data` field for `Tenants` [Read More](/docs/operating/templating/#data).
+* Introducing `data` field for `Tenants` [Read More](/docs/operating/concepts/templating/#data).
 * Added new label `projectcapsule.dev/tenant` which is added for all namespaced resources belonging to a `Tenant` [Read More](/docs/tenants/metadata/#managed).
 * Resources labeled with `projectcapsule.dev/managed-by=controller` can only be created, updated or deleted by the Capsule controller and [administrators](/docs/tenants/permissions/#administrators), and are rejected for all other operations. This prevents deletion of managed resources by users, which are not identified as capsule users (current behavior).
 * Added configuration options for managed RBAC [Read More](/docs/operating/setup/configuration/#rbac)
@@ -42,8 +42,8 @@ weight: 1
 
 ### Bugfix Releases
 
-* Added rule-based QOS enforcement [Read More](/docs/tenants/rules/enforcement/#qos-classes).
-* Added rule-based Scheduler enforcement [Read More](/docs/tenants/rules/enforcement/#scheduler-names).
+* Added rule-based QOS enforcement [Read More](/docs/rules/enforcement/workloads#qos-classes).
+* Added rule-based Scheduler enforcement [Read More](/docs/rules/enforcement/workloads#scheduler-names).
 
 ## Fixes 🐛
 
@@ -71,7 +71,6 @@ Newly added documentation to integrate Capsule with other applications:
 
 * [CoreDNS Plugin](https://github.com/CorentinPtrl/capsule_coredns) (Community Contribution)
 * [Argo CD](/ecosystem/integrations/argocd/)
-* [Flux CD](/docs/guides/use-fluxcd.md)
 
 ## Project Updates 💫
 
