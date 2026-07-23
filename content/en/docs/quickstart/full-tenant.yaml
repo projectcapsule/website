@@ -1,0 +1,83 @@
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  permissions:
+    matchOwners:
+    - matchLabels:
+        team: platform
+  owners:
+  - name: alice
+    kind: User
+  namespaceOptions:
+    quota: 3
+  forceTenantPrefix: true
+  rules:
+    - audience:
+        - kind: Custom
+          name: "CapsuleUser"
+      enforce:
+        action: deny
+        metadata:
+          - apiGroups: 
+              - "v1"
+            kinds:
+              - "Namespace"
+            labels:
+              "openshift.io/.*":
+                required: false
+                values:
+                  - exp: ".*"
+    - enforce:
+        action: allow
+        metadata:
+          - apiGroups: 
+              - "v1"
+            kinds:
+              - "Namespace"
+            labels:
+              environment:
+                required: true
+                default: "dev"
+                values:
+                  - exact:
+                      - dev
+                      - test
+                      - prod
+    - namespaceSelector:
+        matchExpressions:
+        - key: environment
+          operator: NotIn
+          values:
+          - prod
+      enforce:
+        action: allow
+        metadata:
+          - apiGroups: 
+              - "v1"
+            kinds:
+              - "Namespace"
+            labels:
+              pod-security.kubernetes.io/enforce:
+                required: true
+                default: "restricted"
+                values:
+                  - exact:
+                      - restricted
+                      - baseline
+    - namespaceSelector:
+        matchLabels:
+          environment: prod
+      enforce:
+        action: allow
+        metadata:
+          - apiGroups: 
+              - "v1"
+            kinds:
+              - "Namespace"
+            labels:
+              pod-security.kubernetes.io/enforce:
+                required: true
+                managed: "restricted"

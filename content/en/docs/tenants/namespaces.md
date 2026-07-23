@@ -5,6 +5,8 @@ description: >
   Namespace to Tenant relation
 ---
 
+## Assignment
+
 Alice, once logged with her credentials, can create a new `Namespace` in her `Tenant`, as simply issuing:
 
 ```bash
@@ -94,8 +96,7 @@ If you feel like these rules are too restrictive, you must implement your own cu
 
 **If namespaces are not correctly assigned to tenants, make sure to evaluate your [Capsule Users Configuration](/docs/operating/architecture/#capsule-users).**
 
-
-## Multiple Tenants
+### Multiple Tenants
 
 A single team is likely responsible for multiple lines of business. For example, in our sample organization Acme Corp., Alice is responsible for both the Solar and Green lines of business. It's more likely that Alice requires two different `Tenants`, for example, solar and green to keep things isolated.
 
@@ -146,7 +147,7 @@ The two tenants remain isolated from each other in terms of resources assignment
 
 When Alice logs in, she has access to all namespaces belonging to both the solar and green `Tenants`.
 
-### Tenant Prefix
+#### Tenant Prefix
 
 > We recommend to use the [forceTenantPrefix](/docs/tenants/administration/#force-tenant-prefix) for production environments.
 
@@ -193,6 +194,76 @@ If not specified, Capsule will deny with the following message: Unable to assign
 ```bash
 $ kubectl create ns solar-production
 Error from server (Forbidden): admission webhook "owner.namespace.capsule.clastix.io" denied the request: Please use capsule.clastix.io/tenant label when creating a namespace
+```
+
+## Administration
+
+Administration of `Namespaces` is done by the [Administrators](/docs/operating/setup/configuration/#administrators), who can assign `Namespaces` to `Tenants`, Migrate `Namespaces` between `Tenants` and remove `Namespaces` from `Tenants`.
+
+
+### Adding Namespace to a Tenant
+
+When you want to join existing `Namespace` to a `Tenant`, you can use the following command to set the `OwnerReference` of the `Namespace` to point to the `Tenant` definition. This is mainly intended to join existing `Namespaces` to a `Tenant` that were created before the `Tenant` itself.
+
+
+```shell
+export TARGET_TENANT_NAME=green
+export TARGET_NAMESPACE=green
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: $TARGET_NAMESPACE
+  labels:
+    capsule.clastix.io/tenant: $TARGET_TENANT_NAME
+  ownerReferences:
+  - apiVersion: capsule.clastix.io/v1beta2
+    kind: Tenant
+    name: $TARGET_TENANT_NAME
+    uid: $(kubectl get tnt/$TARGET_TENANT_NAME -o jsonpath='{.metadata.uid}')
+EOF
+```
+
+### Migrate Namespace between Tenants
+
+When you want to migrate existing `Namespace` from a `Tenant` to another `Tenant`, you can use the following command to set the `OwnerReference` of the `Namespace` to point to the new `Tenant` definition.
+
+```shell
+export TARGET_TENANT_NAME=wind
+export TARGET_NAMESPACE=green
+kubectl patch namespace "$TARGET_NAMESPACE" \
+  --type=merge \
+  --patch "$(cat <<EOF
+{
+  "metadata": {
+    "labels": {
+      "capsule.clastix.io/tenant": "$TARGET_TENANT_NAME"
+    },
+    "ownerReferences": [
+      {
+        "apiVersion": "capsule.clastix.io/v1beta2",
+        "kind": "Tenant",
+        "name": "$TARGET_TENANT_NAME",
+        "uid": "$(kubectl get tenant "$TARGET_TENANT_NAME" -o jsonpath='{.metadata.uid}')",
+        "controller": true,
+        "blockOwnerDeletion": true
+      }
+    ]
+  }
+}
+EOF
+)"
+```
+
+### Remove Namespace from a Tenant
+
+When you want to remove existing `Namespace` from a `Tenant`, you can use the following command to remove the `OwnerReference` of the `Namespace` to point to the `Tenant` definition. Removing a `Namespace` from a `Tenant` will not delete the ``Namespace`` itself, but it will remove the `Tenant`'s control over it and other artifacts like `LimitRange`, `ResourceQuota`, `NetworkPolicy`, `RuleStatus` etc. will not be applied anymore. 
+
+```shell
+export TARGET_NAMESPACE=green
+kubectl patch namespace "$TARGET_NAMESPACE" \
+  --type=merge \
+  --patch '{"metadata":{"labels":{"capsule.clastix.io/tenant":null},"ownerReferences":[]}}'
 ```
 
 ## Termination

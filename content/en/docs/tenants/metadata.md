@@ -16,6 +16,21 @@ The labels are used by Capsule to identify resources belonging to a specific ten
 ## Namespaces
 
 
+### ManagedMetadataOnly
+
+Disallows any further metadata to be added to the `Namespaces` created by the tenant owners.
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  namespaceOptions:
+    managedMetadataOnly: true
+```
+
 ### RequiredMetadata
 
 The cluster admin can enforce tenant owners to add specific metadata as `Labels` and `Annotations` to the `Namespaces` they create. This is a useful feature to enforce a set of [Rules](/docs/tenants/rules/) based on `Labels`.

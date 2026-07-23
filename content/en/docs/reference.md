@@ -2055,7 +2055,21 @@ For future implementation where users might manage RuleStatus CRs themselves
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[audience](#rulestatusspecindexaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#rulestatusspecindexenforce)** | object | Enforcement for given rule | false |
+
+
+### RuleStatus.spec[index].audience[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | <br/>*Enum*: User, Group, ServiceAccount, Custom<br/> | true |
+| **name** | string |  | true |
 
 
 ### RuleStatus.spec[index].enforce
@@ -2068,9 +2082,38 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[ingress](#rulestatusspecindexenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
 | **[metadata](#rulestatusspecindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
 | **[services](#rulestatusspecindexenforceservices)** | object | Enforcement for Services. | false |
 | **[workloads](#rulestatusspecindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+
+
+### RuleStatus.spec[index].enforce.ingress
+
+
+
+Enforcement for Ingress and Gateway API resource hostnames.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[hostnames](#rulestatusspecindexenforceingresshostnamesindex)** | []object | Hostnames defines allowed, denied, or audited hostname expressions.<br>A resource targeted by an allow or deny rule must declare non-empty values<br>in all hostname fields. Audit-only rules record missing hostnames without<br>denying them. | false |
+| **types** | []enum | Types defines the resource kinds to which hostname enforcement applies.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.ingress.hostnames[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
 ### RuleStatus.spec[index].enforce.metadata[index]
@@ -2097,6 +2140,8 @@ MetadataRule defines metadata constraints for namespaced resources.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
 | **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
 | **[values](#rulestatusspecindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
 
@@ -2125,6 +2170,8 @@ Both may be set together.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
 | **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
 | **[values](#rulestatusspecindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
 
@@ -2310,7 +2357,21 @@ Rule contains a legacy flattened view and cannot fully represent action-aware ru
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[audience](#rulestatusstatusruleaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#rulestatusstatusruleenforce)** | object | Enforcement for given rule | false |
+
+
+### RuleStatus.status.rule.audience[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | <br/>*Enum*: User, Group, ServiceAccount, Custom<br/> | true |
+| **name** | string |  | true |
 
 
 ### RuleStatus.status.rule.enforce
@@ -2323,9 +2384,38 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[ingress](#rulestatusstatusruleenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
 | **[metadata](#rulestatusstatusruleenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
 | **[services](#rulestatusstatusruleenforceservices)** | object | Enforcement for Services. | false |
 | **[workloads](#rulestatusstatusruleenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+
+
+### RuleStatus.status.rule.enforce.ingress
+
+
+
+Enforcement for Ingress and Gateway API resource hostnames.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[hostnames](#rulestatusstatusruleenforceingresshostnamesindex)** | []object | Hostnames defines allowed, denied, or audited hostname expressions.<br>A resource targeted by an allow or deny rule must declare non-empty values<br>in all hostname fields. Audit-only rules record missing hostnames without<br>denying them. | false |
+| **types** | []enum | Types defines the resource kinds to which hostname enforcement applies.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.ingress.hostnames[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
 ### RuleStatus.status.rule.enforce.metadata[index]
@@ -2352,6 +2442,8 @@ MetadataRule defines metadata constraints for namespaced resources.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
 | **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
 | **[values](#rulestatusstatusruleenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
 
@@ -2380,6 +2472,8 @@ Both may be set together.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
 | **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
 | **[values](#rulestatusstatusruleenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
 
@@ -2532,7 +2626,21 @@ For future implementation where users might manage RuleStatus CRs themselves
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[audience](#rulestatusstatusrulesindexaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#rulestatusstatusrulesindexenforce)** | object | Enforcement for given rule | false |
+
+
+### RuleStatus.status.rules[index].audience[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | <br/>*Enum*: User, Group, ServiceAccount, Custom<br/> | true |
+| **name** | string |  | true |
 
 
 ### RuleStatus.status.rules[index].enforce
@@ -2545,9 +2653,38 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[ingress](#rulestatusstatusrulesindexenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
 | **[metadata](#rulestatusstatusrulesindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
 | **[services](#rulestatusstatusrulesindexenforceservices)** | object | Enforcement for Services. | false |
 | **[workloads](#rulestatusstatusrulesindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+
+
+### RuleStatus.status.rules[index].enforce.ingress
+
+
+
+Enforcement for Ingress and Gateway API resource hostnames.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[hostnames](#rulestatusstatusrulesindexenforceingresshostnamesindex)** | []object | Hostnames defines allowed, denied, or audited hostname expressions.<br>A resource targeted by an allow or deny rule must declare non-empty values<br>in all hostname fields. Audit-only rules record missing hostnames without<br>denying them. | false |
+| **types** | []enum | Types defines the resource kinds to which hostname enforcement applies.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.ingress.hostnames[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
 ### RuleStatus.status.rules[index].enforce.metadata[index]
@@ -2574,6 +2711,8 @@ MetadataRule defines metadata constraints for namespaced resources.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
 | **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
 | **[values](#rulestatusstatusrulesindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
 
@@ -2602,6 +2741,8 @@ Both may be set together.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
 | **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
 | **[values](#rulestatusstatusrulesindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
 
@@ -2772,9 +2913,9 @@ spec defines the desired state of TenantOwner.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **aggregate** | boolean | Adds the given subject as capsule user. When enabled this subject does not have to be<br>mentioned in the CapsuleConfiguration as Capsule User. In almost all scenarios Tenant Owners<br>must be Capsule Users.<br/>*Default*: true<br/> | true |
 | **kind** | enum | Kind of entity. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
 | **name** | string | Name of the entity. | true |
+| **aggregate** | boolean | Adds the given subject as capsule user. When enabled this subject does not have to be<br>mentioned in the CapsuleConfiguration as Capsule User. In almost all scenarios Tenant Owners<br>must be Capsule Users.<br/>*Default*: true<br/> | false |
 | **clusterRoles** | []string | Defines additional cluster-roles for the specific Owner.<br/>*Default*: [admin capsule-namespace-deleter]<br/> | false |
 
 
@@ -3206,7 +3347,7 @@ TenantSpec defines the desired state of Tenant.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **clusterRoleName** | string |  | true |
-| **[subjects](#tenantspecadditionalrolebindingsindexsubjectsindex-1)** | []object | kubebuilder:validation:Minimum=1 | true |
+| **[subjects](#tenantspecadditionalrolebindingsindexsubjectsindex-1)** | []object |  | true |
 | **annotations** | map[string]string | Additional Annotations for the synchronized rolebindings | false |
 | **labels** | map[string]string | Additional Labels for the synchronized rolebindings | false |
 
@@ -4042,9 +4183,23 @@ Rules Distributed via Tenants
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[audience](#tenantspecrulesindexaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#tenantspecrulesindexenforce)** | object | Enforcement for given rule | false |
 | **[namespaceSelector](#tenantspecrulesindexnamespaceselector)** | object | Select namespaces which are going to be targeted with this rule | false |
 | **[permissions](#tenantspecrulesindexpermissions)** | object | Permissions for given rule | false |
+
+
+### Tenant.spec.rules[index].audience[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | <br/>*Enum*: User, Group, ServiceAccount, Custom<br/> | true |
+| **name** | string |  | true |
 
 
 ### Tenant.spec.rules[index].enforce
@@ -4057,9 +4212,38 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[ingress](#tenantspecrulesindexenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
 | **[metadata](#tenantspecrulesindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
 | **[services](#tenantspecrulesindexenforceservices)** | object | Enforcement for Services. | false |
 | **[workloads](#tenantspecrulesindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+
+
+### Tenant.spec.rules[index].enforce.ingress
+
+
+
+Enforcement for Ingress and Gateway API resource hostnames.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[hostnames](#tenantspecrulesindexenforceingresshostnamesindex)** | []object | Hostnames defines allowed, denied, or audited hostname expressions.<br>A resource targeted by an allow or deny rule must declare non-empty values<br>in all hostname fields. Audit-only rules record missing hostnames without<br>denying them. | false |
+| **types** | []enum | Types defines the resource kinds to which hostname enforcement applies.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.ingress.hostnames[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
 ### Tenant.spec.rules[index].enforce.metadata[index]
@@ -4086,6 +4270,8 @@ MetadataRule defines metadata constraints for namespaced resources.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
 | **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
 | **[values](#tenantspecrulesindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
 
@@ -4114,6 +4300,8 @@ Both may be set together.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
 | **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
 | **[values](#tenantspecrulesindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
 
@@ -4294,7 +4482,39 @@ Permissions for given rule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[bindings](#tenantspecrulesindexpermissionsbindingsindex)** | []object | Bindings defines additional RoleBindings for namespaces selected by this rule. | false |
 | **[promotions](#tenantspecrulesindexpermissionspromotionsindex)** | []object | Define Promotion Rules which distributed additional ClusterRoles across the Tenant<br>for promoted ServiceAccounts. | false |
+
+
+### Tenant.spec.rules[index].permissions.bindings[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **clusterRoleName** | string |  | true |
+| **[subjects](#tenantspecrulesindexpermissionsbindingsindexsubjectsindex)** | []object |  | true |
+| **annotations** | map[string]string | Additional Annotations for the synchronized rolebindings | false |
+| **labels** | map[string]string | Additional Labels for the synchronized rolebindings | false |
+
+
+### Tenant.spec.rules[index].permissions.bindings[index].subjects[index]
+
+
+
+Subject contains a reference to the object or user identities a role binding applies to.  This can either hold a direct API object reference,
+or a value for non-objects such as user and group names.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | string | Kind of object being referenced. Values defined by this API group are "User", "Group", and "ServiceAccount".<br>If the Authorizer does not recognized the kind value, the Authorizer should report an error. | true |
+| **name** | string | Name of the object being referenced. | true |
+| **apiGroup** | string | APIGroup holds the API group of the referenced subject.<br>Defaults to "" for ServiceAccount subjects.<br>Defaults to "rbac.authorization.k8s.io" for User and Group subjects. | false |
+| **namespace** | string | Namespace of the referenced object.  If the object kind is non-namespace, such as "User" or "Group", and this value is not empty<br>the Authorizer should report an error. | false |
 
 
 ### Tenant.spec.rules[index].permissions.promotions[index]
@@ -4730,7 +4950,7 @@ TenantSpec defines the desired state of Tenant.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **clusterRoleName** | string |  | true |
-| **[subjects](#tenantspecadditionalrolebindingsindexsubjectsindex)** | []object | kubebuilder:validation:Minimum=1 | true |
+| **[subjects](#tenantspecadditionalrolebindingsindexsubjectsindex)** | []object |  | true |
 | **annotations** | map[string]string | Additional Annotations for the synchronized rolebindings | false |
 | **labels** | map[string]string | Additional Labels for the synchronized rolebindings | false |
 
