@@ -26,7 +26,7 @@ nodes:
 Create dedicated `kind` cluster with the following command:
 
 ```bash
-kind create cluster --name capsule --config kind.yaml --wait=120s 
+kind create cluster --name capsule --config kind.yaml --wait=120s
 ```
 
 We are using a custom port-mapping for the [Capsule Proxy](/docs/proxy/). After the cluster is up and running, install Capsule with the following command:
@@ -123,7 +123,7 @@ spec:
 We can always verify all [**Capsule User**](/docs/operating/architecture/#capsule-users) via the `status` of the used [`CapsuleConfiguration`](/docs/operating/setup/configuration/) resource:
 
 ```bash
-kubectl get capsuleconfiguration capsule -o jsonpath='{.status.users}'
+kubectl get capsuleconfiguration default -o jsonpath='{.status.users}'
 ```
 
 If a user or any of their groups is not listed in the `status.users` section of the `CapsuleConfiguration` resource, they will not be able to access any tenant or namespace managed by Capsule.
@@ -191,7 +191,7 @@ The result should be similar to:
 
 ### Namespaces
 
-From the perspective of the Cluster Administrator, we want to mainly control the format on how namespaces are created. The actual management of the namespaces is delegated to the [`TenantOwner`s](#tenant-owners). We can define a set of rules to control how namespaces are created within a `Tenant`. 
+From the perspective of the Cluster Administrator, we want to mainly control the format on how namespaces are created. The actual management of the namespaces is delegated to the [`TenantOwner`s](#tenant-owners). We can define a set of rules to control how namespaces are created within a `Tenant`.
 
 #### Size Quota
 
@@ -273,7 +273,7 @@ spec:
     - enforce:
         action: allow
         metadata:
-          - apiGroups: 
+          - apiGroups:
               - "v1"
             kinds:
               - "Namespace"
@@ -288,7 +288,7 @@ spec:
                       - prod
 ```
 
-We may wan't to enforce a set of metadata to be applied to all namespaces created within a `Tenant`. This can be done with [namespace metadata](/docs/tenants/metadata/#additionalmetadatalist). This ensures these labels are always present in the namespaces created within the `Tenant` and can't be removed or modified.
+We may want to enforce a set of metadata to be applied to all namespaces created within a `Tenant`. This can be done with [namespace metadata](/docs/tenants/metadata/#additionalmetadatalist). This ensures these labels are always present in the namespaces created within the `Tenant` and can't be removed or modified.
 
 ```yaml
 ---
@@ -311,7 +311,7 @@ spec:
     - enforce:
         action: allow
         metadata:
-          - apiGroups: 
+          - apiGroups:
               - "v1"
             kinds:
               - "Namespace"
@@ -327,7 +327,7 @@ spec:
     - enforce:
         action: allow
         metadata:
-          - apiGroups: 
+          - apiGroups:
               - "v1"
             kinds:
               - "Namespace"
@@ -347,7 +347,7 @@ spec:
       enforce:
         action: allow
         metadata:
-          - apiGroups: 
+          - apiGroups:
               - "v1"
             kinds:
               - "Namespace"
@@ -364,7 +364,7 @@ spec:
           environment: prod
       enforce:
         metadata:
-          - apiGroups: 
+          - apiGroups:
               - "v1"
             kinds:
               - "Namespace"
@@ -400,7 +400,7 @@ spec:
       enforce:
         action: deny
         metadata:
-          - apiGroups: 
+          - apiGroups:
               - "v1"
             kinds:
               - "Namespace"
@@ -412,7 +412,7 @@ spec:
     - enforce:
         action: allow
         metadata:
-          - apiGroups: 
+          - apiGroups:
               - "v1"
             kinds:
               - "Namespace"
@@ -434,7 +434,7 @@ spec:
       enforce:
         action: allow
         metadata:
-          - apiGroups: 
+          - apiGroups:
               - "v1"
             kinds:
               - "Namespace"
@@ -452,7 +452,7 @@ spec:
       enforce:
         action: allow
         metadata:
-          - apiGroups: 
+          - apiGroups:
               - "v1"
             kinds:
               - "Namespace"
@@ -664,7 +664,7 @@ spec:
 
 [Read More](/docs/tenants/quotas/)
 
-Another improtant aspect of the `Tenant` is the ability to define a set of [`ResourceQuotas`](https://kubernetes.io/docs/concepts/policy/resource-quotas/) for the entire `Tenant`. This allows the Cluster Administrator to control the amount of resources that can be used by the `Tenant` and its namespaces. For example, we can define a resource quota for the entire `Tenant`:
+Another important aspect of the `Tenant` is the ability to define a set of [`ResourceQuotas`](https://kubernetes.io/docs/concepts/policy/resource-quotas/) for the entire `Tenant`. This allows the Cluster Administrator to control the amount of resources that can be used by the `Tenant` and its namespaces. For example, we can define a resource quota for the entire `Tenant`:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -737,7 +737,7 @@ spec:
       enforce:
         action: deny
         metadata:
-          - apiGroups: 
+          - apiGroups:
               - "v1"
             kinds:
               - "Namespace"
@@ -749,7 +749,7 @@ spec:
     - enforce:
         action: allow
         metadata:
-          - apiGroups: 
+          - apiGroups:
               - "v1"
             kinds:
               - "Namespace"
@@ -788,7 +788,7 @@ spec:
             - Guaranteed
             - BestEffort
         metadata:
-          - apiGroups: 
+          - apiGroups:
               - "v1"
             kinds:
               - "Namespace"
@@ -815,7 +815,7 @@ spec:
           qosClasses:
             - Guaranteed
         metadata:
-          - apiGroups: 
+          - apiGroups:
               - "v1"
             kinds:
               - "Namespace"
@@ -933,7 +933,7 @@ spec:
                   cpu: 0
                   memory: "0"
                 type: Container
-  
+
     - namespaceSelector:
         matchLabels:
           environment: test
@@ -950,7 +950,7 @@ spec:
                   cpu: 128m
                   memory: "256Mi"
                 type: Container
-  
+
     - namespaceSelector:
         matchLabels:
           environment: prod
@@ -1038,7 +1038,7 @@ Error from server (Forbidden): namespaces "solar-development" is forbidden: User
 As `TenantOwner` (`alice`), we attempt to create a namespace within the `solar` tenant. The `TenantOwner` can create namespaces within the tenant they own. Let's attempt to create a `Namespace` called `development`:
 
 ```bash
-kubectl projectcapsule.dev create namespace development
+kubectl create namespace development
 ```
 
 You will be denied with the following error:
@@ -1174,7 +1174,7 @@ solar-development   default-policy   <none>         4m34s
 solar-production    default-policy   <none>         59s
 ```
 
-Alice is also unable to delete these policies, eventough she has full permissions to manage `Networkpolicies`. This allows here to do here own firewalling (maybe among her `Tenants`/`Namespaces`) but enforces strictness by the platform to ensure that all `Namespaces` of the `Tenant` have a default deny policy in place:
+Alice is also unable to delete these policies, even though she has full permissions to manage `Networkpolicies`. This allows her to do her own firewalling (maybe among her `Tenants`/`Namespaces`) but enforces strictness by the platform to ensure that all `Namespaces` of the `Tenant` have a default deny policy in place:
 
 ```bash
  kubectl delete netpol -n solar-development --all
