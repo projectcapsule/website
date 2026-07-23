@@ -73,7 +73,9 @@ Perspective of the Cluster Administrator, who is responsible for creating and ma
 
 In Capsule, a Tenant is an abstraction to group multiple namespaces in a single entity within a set of boundaries defined by the Cluster Administrator.
 
-#### [Ownership](/docs/tenants/permissions/#ownership)
+#### Ownership
+
+[Read More](/docs/tenants/permissions/#ownership)
 
 The tenant is then assigned to a user or group of users who is called [`TenantOwner`](/docs/operating/architecture/#tenant-owners). Capsule defines a Tenant as Custom Resource with cluster scope. Create the tenant as cluster admin:
 
@@ -213,7 +215,9 @@ spec:
     quota: 2
 ```
 
-#### [Prefix](/docs/tenants/administration/#force-tenant-prefix)
+#### Prefix
+
+[Read More](/docs/tenants/administration/#force-tenant-prefix)
 
 We are enforcing the `Namespaces` of the `Tenant` to be prefixed with the `Tenant` name. This keeps the sorting of `Namespaces` clean and directly tells us which `Tenant` a `Namespace` belongs to. This is done with the `forceTenantPrefix` option in the `Tenant` spec:
 
@@ -236,11 +240,15 @@ spec:
   forceTenantPrefix: true
 ```
 
-### [Rules](/docs/tenants/rules/)
+### Rules
+
+[Read More](/docs/tenants/rules/)
 
 With [Rules](/docs/tenants/rules/) we can apply different policies within a `Tenant` based on their metadata. As previously seen they can also be used to enforce metadata for `Namespaces`. This comes in handy when we have different applications environment in the same `Tenant` and we want to apply different policies to them. For example, we can have a `Tenant` with two namespaces: `solar-production` (`environment=prod`) and `solar-development` (`environment=dev`) . We can apply different rules to each namespace based on their metadata.
 
-#### [Metadata](/docs/rules/enforcement/metadata/)
+#### Metadata
+
+[Read More](/docs/rules/enforcement/metadata/)
 
 Since the `Namespaces` are managed by the `TenantOwners`, we may want to require certain metadata to be present in the namespaces created within a `Tenant`. For this case we want to force the [`TenantOwners`](#tenant-owners) to provide the label `environment` with a value of either `prod`, `test` or `dev` when creating a namespace within the `solar` tenant. This can be done with [namespace metadata](/docs/tenants/metadata/#requiredmetadata):
 
@@ -454,7 +462,9 @@ spec:
                 managed: "restricted"
 ```
 
-#### [Permissions](/docs/tenants/rules/permissions/)
+#### Permissions
+
+[Read More](/docs/tenants/rules/permissions/)
 
 Often you may have other users with different permissions. These are not [Tenant Owners](/docs/operating/architecture/#tenant-owners) but might be other parties that may interact with the `Tenant` and its `Namespaces`. For example, we may have a group of users that are responsible for monitoring the `Tenant` and its `Namespaces`. We can create a set of rules to allow them to view the `Tenant` and its `Namespaces` but not modify them. This can be done with [permissions rules](/docs/tenants/rules/permissions/):
 
@@ -499,7 +509,9 @@ spec:
                 name: tenant:{{ .tenant.metadata.name }}:operators
 ```
 
-#### [Workloads](/docs/rules/enforcement/workloads/)
+#### Workloads
+
+[Read More](/docs/rules/enforcement/workloads/)
 
 There might also be different requirements for the priority of workloads running in different namespaces. For example, we may want to allow `BestEffort` Pods in the `solar-development` namespace but not in the `solar-production` namespace. This can be done with [Workload Rules](/docs/rules/enforcement/workloads/#best-effort):
 
@@ -586,7 +598,9 @@ spec:
       env: "production"
 ```
 
-#### [Services](/docs/rules/enforcement/services/)
+#### Services
+
+[Read More](/docs/rules/enforcement/services/)
 
 Often from a platform perspective, we want to control the type of services that can be created within a `Tenant`. It is possible to restrict the type of services that can be created within a `Tenant` with [Service Rules](/docs/rules/enforcement/services/#service-types). For example, we can allow only `ClusterIP` services:
 
@@ -646,7 +660,9 @@ spec:
             - exp: ".*\\.{{ .tenant.metadata.name }}\\.svc\\.company\\.com"
 ```
 
-### [Resource Quota](/docs/tenants/quotas/)
+### Resource Quota
+
+[Read More](/docs/tenants/quotas/)
 
 Another improtant aspect of the `Tenant` is the ability to define a set of [`ResourceQuotas`](https://kubernetes.io/docs/concepts/policy/resource-quotas/) for the entire `Tenant`. This allows the Cluster Administrator to control the amount of resources that can be used by the `Tenant` and its namespaces. For example, we can define a resource quota for the entire `Tenant`:
 
@@ -818,14 +834,15 @@ NAME    STATE    NAMESPACE QUOTA   NAMESPACE COUNT   NODE SELECTOR   READY   STA
 solar   Active   2                 0                                 True    reconciled   35s
 ```
 
-### [Replications](/docs/replications/)
+### Replications
+
+[Read More](/docs/replications/)
 
 From a platform perspective, we may want to enforce certain objects per `Namespace` of `Tenant's`. With Replications we can enforce certain objects to be present in all `Namespaces` of a `Tenant`. See the following examples for common use cases of [replications](/docs/replications/).
 
 #### Example: Networkpolicies
 
 Distribute a [`NetworkPolicy`](https://kubernetes.io/docs/concepts/services-networking/network-policies/) to all `Namespaces` of a `Tenant` to enforce a certain network policy for all workloads within the `Tenant`/`Namespace`. The following `NetworkPolicy` is an attempt to achieve a default deny policy for all `Namespaces` of the `Tenant` but allow intra-namespace communication and allow communication between all `Namespaces` of the same `Tenant`. It also allows communication to system namespaces (eg. monitoring, ingress, etc.). [Read More](https://kubernetes.io/docs/concepts/security/multi-tenancy/#network-isolation)
-
 
 [Get Here](/docs/quickstart/gtr-netpol.yaml)
 
