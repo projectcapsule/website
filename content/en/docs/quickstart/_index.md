@@ -970,6 +970,65 @@ spec:
                 type: Container
 ```
 
+#### Showcase: Tenant Scope
+
+[Explore](/docs/replications/global/#examples)
+
+They key difference in the example is, that we use `scope: Tenant` instead of `scope: Namespace`. This creates Items for each `Tenant`, not for each `Namespace` of a `Tenant`. This allows us to create a single SopsProvider for the entire Tenant and distribute secrets across all namespaces of the Tenant. In this example we will showcase how to use the [Sops Operator](https://github.com/peak-scale/sops-operator) to distribute secrets across all namespaces of a tenant and for each `Tenant` we provide [`GlobalProxySettings`](/docs/proxy/proxysettings/#globalproxysettings). It also showcases more advanced templating machinsms to generate resources based on the `Tenant` metadata and status. The `GlobalTenantResource` is a powerful tool to manage resources across all namespaces of a tenant.
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalTenantResource
+metadata:
+  name: tenant-sops-providers
+spec:
+  resyncPeriod: 600s
+  scope: Tenant
+  resources:
+    - generators:
+        - missingKey: zero
+          template: |
+            ---
+            apiVersion: capsule.clastix.io/v1beta1
+            kind: GlobalProxySettings
+            metadata:
+              name: {{ $.tenant.metadata.name }}-proxy-settings
+            spec:
+              rules:
+              - subjects:
+                {{- range $.tenant.status.owners }}
+                - kind: {{ .kind }}
+                  name: {{ .name }}
+                {{- end }}
+                clusterResources:
+                - apiGroups:
+                  - "capsule.clastix.io"
+                  resources:
+                  - "globalcustomquotas"
+                  operations:
+                  - List
+                  selector:
+                    matchLabels:
+                      company.com/tenant: {{ $.tenant.metadata.name }}
+    - rawItems:
+        - apiVersion: addons.projectcapsule.dev/v1alpha1
+          kind: SopsProvider
+          metadata:
+            name: "{{tenant.name}}"
+          spec:
+            keys:
+            - namespaceSelector:
+                matchLabels:
+                  capsule.clastix.io/tenant: "{{tenant.name}}"
+            sops:
+            - namespaceSelector:
+                matchLabels:
+                  capsule.clastix.io/tenant: "{{tenant.name}}"
+```
+
+
+
 ## Tenant Owners
 
 Each tenant comes with a delegated user or group of users acting as the tenant admin. In the Capsule jargon, this is called the [`TenantOwner`s](/docs/operating/architecture/#tenant-owners). Other users can operate inside a tenant with different levels of permissions and authorizations assigned directly by the `TenantOwner`.
