@@ -32,7 +32,7 @@ kind create cluster --name capsule --config kind.yaml --wait=120s
 We are using a custom port-mapping for the [Capsule Proxy](/docs/proxy/). After the cluster is up and running, install Capsule with the following command:
 
 ```bash
-helm upgrade --install capsule oci://ghcr.io/projectcapsule/charts/capsule --debug --create-namespace -n capsule-system --version 0.13.10 \
+helm upgrade --install capsule oci://ghcr.io/projectcapsule/charts/capsule --debug --create-namespace -n capsule-system --version {{< capsule_chart_version >}} \
 		--set 'proxy.enabled=true' \
 		--set 'proxy.certManager.generateCertificates=false' \
 		--set 'proxy.options.additionalSANs={localhost}' \
