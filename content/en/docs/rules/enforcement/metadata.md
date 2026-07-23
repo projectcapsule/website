@@ -297,7 +297,11 @@ rules:
         - kind: "Group"
           name: "system:authenticated"
         - kind: "Custom"
-          name: "CapsuleUser|Administrator|TenantOwner"
+          name: "CapsuleUser"
+        - kind: "Custom"
+          name: "Administrator"
+        - kind: "Custom"
+          name: "TenantOwner"
       metadata:
         - apiGroups:
             - "v1"
@@ -316,14 +320,6 @@ rules:
               values:
                 - exp: "II-10"
               default: "{{$.tenant.spec.data.costCenter}}"
-
-# Controller - APPLY
-serviceOptions:
-  labels:
-    test: 2e2e
-
-
-
 ```
 
 With this rule, the annotation is optional. If the object does not contain `metadata.annotations["example.corp/cost-center"]`, Capsule ignores the rule. If the annotation is present, its value must match the configured expression.
@@ -370,7 +366,7 @@ data:
 The `required` field controls whether the metadata key must be present.
 
 | `required` | Behavior |
-|---|---|
+|:---|:---|
 | `true` | For `action: allow`, the key must be present on matching objects. |
 | `false` | The key is optional. If it is missing, Capsule ignores it. If it is present, configured values are evaluated. |
 

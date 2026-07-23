@@ -257,7 +257,7 @@ EOF
 
 ### Remove Namespace from a Tenant
 
-When you want to remove existing `Namespace` from a `Tenant`, you can use the following command to remove the `OwnerReference` of the `Namespace` to point to the `Tenant` definition. Removing a `Namespace` from a `Tenant` will not delete the ``Namespace`` itself, but it will remove the `Tenant`'s control over it and other artifacts like `LimitRange`, `ResourceQuota`, `NetworkPolicy`, `RuleStatus` etc. will not be applied anymore. 
+When you want to remove existing `Namespace` from a `Tenant`, you can use the following command to remove the `OwnerReference` of the `Namespace` to point to the `Tenant` definition. Removing a `Namespace` from a `Tenant` will not delete the `Namespace` itself, but it will remove the `Tenant`'s control over it and other artifacts like `LimitRange`, `ResourceQuota`, `NetworkPolicy`, `RuleStatus` etc. will not be applied anymore.
 
 ```shell
 export TARGET_NAMESPACE=green

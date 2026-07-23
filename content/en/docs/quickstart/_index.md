@@ -8,8 +8,9 @@ The following quickstart guide will help you to create your first Capsule Tenant
 
 ## Installation
 
-Start a local Kubernetes cluster with [kind](https://kind.sigs.k8s.io/) use the following configuration:
+Start a local Kubernetes cluster with [KinD](https://kind.sigs.k8s.io/) use the following configuration:
 
+[Get Here](/docs/quickstart/kind.yaml)
 ```yaml
 # kind.yaml
 apiVersion: kind.x-k8s.io/v1alpha4
@@ -21,8 +22,6 @@ nodes:
       - hostPort: 9001
         containerPort: 9001
 ```
-[Get Here](/docs/quickstart/kind.yaml)
-
 
 Create dedicated `kind` cluster with the following command:
 
@@ -74,7 +73,7 @@ Perspective of the Cluster Administrator, who is responsible for creating and ma
 
 In Capsule, a Tenant is an abstraction to group multiple namespaces in a single entity within a set of boundaries defined by the Cluster Administrator.
 
-#### Ownership
+#### [Ownership](/docs/tenants/permissions/#ownership)
 
 The tenant is then assigned to a user or group of users who is called [`TenantOwner`](/docs/operating/architecture/#tenant-owners). Capsule defines a Tenant as Custom Resource with cluster scope. Create the tenant as cluster admin:
 
@@ -104,7 +103,7 @@ manager:
         name: projectcapsule.dev
 ```
 
-The more modern approach would be creating a dedicated [`TenantOwner`](/docs/tenants/permissions/#tenant-owners) resource for `alice`. This makes the step of adding the subject to the [`CapsuleConfiguration`](/docs/operating/setup/configuration/) obsolete, as this is done trough [**aggregation**](/docs/tenants/permissions/#aggregation). With using the label `projectcapsule.dev/tenant: "solar"` we can leverage [implicit assignment to the tenant solar](docs/tenants/permissions/#implicit-tenant-assignment). Let's create a `TenantOwner` resource for `joe`:
+The more modern approach would be creating a dedicated [`TenantOwner`](/docs/tenants/permissions/#tenant-owners) resource for `alice`. This makes the step of adding the subject to the [`CapsuleConfiguration`](/docs/operating/setup/configuration/) obsolete, as this is done trough [**aggregation**](/docs/tenants/permissions/#aggregation). With using the label `projectcapsule.dev/tenant: "solar"` we can leverage [implicit assignment](/docs/tenants/permissions/#implicit-tenant-assignment) to the `Tenant` solar. Let's create a `TenantOwner` resource for `joe`:
 
 ```yaml
 ---
@@ -211,7 +210,7 @@ spec:
   - name: alice
     kind: User
   namespaceOptions:
-    quota: 3
+    quota: 2
 ```
 
 #### [Prefix](/docs/tenants/administration/#force-tenant-prefix)
@@ -233,17 +232,17 @@ spec:
   - name: alice
     kind: User
   namespaceOptions:
-    quota: 3
+    quota: 2
   forceTenantPrefix: true
 ```
 
-### Rules
+### [Rules](/docs/tenants/rules/)
 
 With [Rules](/docs/tenants/rules/) we can apply different policies within a `Tenant` based on their metadata. As previously seen they can also be used to enforce metadata for `Namespaces`. This comes in handy when we have different applications environment in the same `Tenant` and we want to apply different policies to them. For example, we can have a `Tenant` with two namespaces: `solar-production` (`environment=prod`) and `solar-development` (`environment=dev`) . We can apply different rules to each namespace based on their metadata.
 
-#### Metadata
+#### [Metadata](/docs/rules/enforcement/metadata/)
 
-Since the `Namespaces` are managed by the ``TenantOwner`s`, we may want to require certain metadata to be present in the namespaces created within a `Tenant`. For this case we want to force the [``TenantOwner`s`](#tenant-owners) to provide the label `environment` with a value of either `prod`, `test` or `dev` when creating a namespace within the `solar` tenant. This can be done with [namespace metadata](/docs/tenants/metadata/#requiredmetadata):
+Since the `Namespaces` are managed by the `TenantOwners`, we may want to require certain metadata to be present in the namespaces created within a `Tenant`. For this case we want to force the [`TenantOwners`](#tenant-owners) to provide the label `environment` with a value of either `prod`, `test` or `dev` when creating a namespace within the `solar` tenant. This can be done with [namespace metadata](/docs/tenants/metadata/#requiredmetadata):
 
 ```yaml
 ---
@@ -260,7 +259,7 @@ spec:
   - name: alice
     kind: User
   namespaceOptions:
-    quota: 3
+    quota: 2
   forceTenantPrefix: true
   rules:
     - enforce:
@@ -298,7 +297,7 @@ spec:
   - name: alice
     kind: User
   namespaceOptions:
-    quota: 3
+    quota: 2
   forceTenantPrefix: true
   rules:
     - enforce:
@@ -384,7 +383,7 @@ spec:
   - name: alice
     kind: User
   namespaceOptions:
-    quota: 3
+    quota: 2
   forceTenantPrefix: true
   rules:
     - audience:
@@ -455,9 +454,9 @@ spec:
                 managed: "restricted"
 ```
 
-#### Permissions
+#### [Permissions](/docs/tenants/rules/permissions/)
 
-Often you may have other users with different permissions. These are not [Tenant Owners]() but might be other parties that may interact with the `Tenant` and its `Namespaces`. For example, we may have a group of users that are responsible for monitoring the `Tenant` and its `Namespaces`. We can create a set of rules to allow them to view the `Tenant` and its `Namespaces` but not modify them. This can be done with [permissions rules](/docs/tenants/rules/#permissions):
+Often you may have other users with different permissions. These are not [Tenant Owners](/docs/operating/architecture/#tenant-owners) but might be other parties that may interact with the `Tenant` and its `Namespaces`. For example, we may have a group of users that are responsible for monitoring the `Tenant` and its `Namespaces`. We can create a set of rules to allow them to view the `Tenant` and its `Namespaces` but not modify them. This can be done with [permissions rules](/docs/tenants/rules/permissions/):
 
 ```yaml
 ---
@@ -474,7 +473,7 @@ spec:
   - name: alice
     kind: User
   namespaceOptions:
-    quota: 3
+    quota: 2
   forceTenantPrefix: true
   rules:
     - namespaceSelector:
@@ -500,9 +499,9 @@ spec:
                 name: tenant:{{ .tenant.metadata.name }}:operators
 ```
 
-#### Workloads
+#### [Workloads](/docs/rules/enforcement/workloads/)
 
-There might also be different requirements for the priority of workloads running in different namespaces. For example, we may want to allow `BestEffort` Pods in the `solar-development` namespace but not in the `solar-production` namespace. This can be done with [workload rules](/docs/rules/enforcement/workloads/#best-effort):
+There might also be different requirements for the priority of workloads running in different namespaces. For example, we may want to allow `BestEffort` Pods in the `solar-development` namespace but not in the `solar-production` namespace. This can be done with [Workload Rules](/docs/rules/enforcement/workloads/#best-effort):
 
 ```yaml
 ---
@@ -519,7 +518,7 @@ spec:
   - name: alice
     kind: User
   namespaceOptions:
-    quota: 3
+    quota: 2
   forceTenantPrefix: true
   rules:
     - namespaceSelector:
@@ -560,7 +559,7 @@ spec:
   - name: alice
     kind: User
   namespaceOptions:
-    quota: 3
+    quota: 2
   forceTenantPrefix: true
   rules:
     - namespaceSelector:
@@ -587,9 +586,9 @@ spec:
       env: "production"
 ```
 
-#### Services
+#### [Services](/docs/rules/enforcement/services/)
 
-Often from a plattorm perspective, we want to control the type of services that can be created within a `Tenant`. It is possible to restrict the type of services that can be created within a `Tenant` with [service rules](/docs/rules/enforcement/services/#service-types). For exmample, we can allow only `ClusterIP` services:
+Often from a platform perspective, we want to control the type of services that can be created within a `Tenant`. It is possible to restrict the type of services that can be created within a `Tenant` with [Service Rules](/docs/rules/enforcement/services/#service-types). For example, we can allow only `ClusterIP` services:
 
 ```yaml
 ---
@@ -606,7 +605,7 @@ spec:
   - name: alice
     kind: User
   namespaceOptions:
-    quota: 3
+    quota: 2
   forceTenantPrefix: true
   rules:
   - enforce:
@@ -615,7 +614,6 @@ spec:
         types:
           - ClusterIP
 ```
-
 
 You may also allow other `Service` types but be more strict in their configuration. For example, we can allow `ExternalName` services but only if they match a certain hostname pattern (forced to tenant subdomain):
 
@@ -634,7 +632,7 @@ spec:
   - name: alice
     kind: User
   namespaceOptions:
-    quota: 3
+    quota: 2
   forceTenantPrefix: true
   rules:
   - enforce:
@@ -648,40 +646,7 @@ spec:
             - exp: ".*\\.{{ .tenant.metadata.name }}\\.svc\\.company\\.com"
 ```
 
-#### [Storage](/docs/tenants/enforcement/#storage)
-
-Similar as with PriorityClasses, we can also provide a subset of StorageClasses for the Tenant to use in their workloads. This is currently only possible for the entire Tenant but will be ported to the rules in the future. For now, we can define a set of allowed StorageClasses for the entire Tenant:
-
-```yaml
----
-apiVersion: capsule.clastix.io/v1beta2
-kind: Tenant
-metadata:
-  name: solar
-spec:
-  permissions:
-    matchOwners:
-    - matchLabels:
-        team: platform
-  owners:
-  - name: alice
-    kind: User
-  namespaceOptions:
-    quota: 3
-  forceTenantPrefix: true
-  rules:
-  - enforce:
-      action: allow
-      services:
-        types:
-          - ClusterIP
-          - ExternalName
-        externalNames:
-          hostnames:
-            - exp: ".*\\.{{ .tenant.metadata.name }}\\.svc\\.company\\.com"
-```
-
-### Resource Quota
+### [Resource Quota](/docs/tenants/quotas/)
 
 Another improtant aspect of the `Tenant` is the ability to define a set of [`ResourceQuotas`](https://kubernetes.io/docs/concepts/policy/resource-quotas/) for the entire `Tenant`. This allows the Cluster Administrator to control the amount of resources that can be used by the `Tenant` and its namespaces. For example, we can define a resource quota for the entire `Tenant`:
 
@@ -699,7 +664,7 @@ spec:
   - name: alice
     kind: User
   namespaceOptions:
-    quota: 3
+    quota: 2
   forceTenantPrefix: true
   resourceQuotas:
     scope: Tenant
@@ -719,6 +684,8 @@ We also provide other mechanisms to control the amount of resources that can be 
 
 Here we have two `Tenants` with different rules and permissions. The `solar` tenant is a production tenant with multiple application stages with strict rules and permissions, while the `lunar` tenant is a development tenant with more relaxed rules and permissions.
 
+[Get Here](/docs/quickstart/full-tenant.yaml)
+
 ```yaml
 # solar.yaml
 ---
@@ -737,7 +704,7 @@ spec:
   - name: bob
     kind: User
   namespaceOptions:
-    quota: 3
+    quota: 2
   forceTenantPrefix: true
   resourceQuotas:
     scope: Tenant
@@ -841,8 +808,6 @@ spec:
                 required: true
                 managed: "restricted"
 ```
-[Get Here](/docs/quickstart/full-tenant.yaml)
-
 
 Once applied we can verify the `Tenant` with the following command:
 
@@ -850,17 +815,19 @@ Once applied we can verify the `Tenant` with the following command:
 kubectl get tnt solar
 
 NAME    STATE    NAMESPACE QUOTA   NAMESPACE COUNT   NODE SELECTOR   READY   STATUS       AGE
-solar   Active   3                 0                                 True    reconciled   35s
+solar   Active   2                 0                                 True    reconciled   35s
 ```
 
-### Replications
+### [Replications](/docs/replications/)
 
-From a platform perspective, we may want to enforce certain objects per `Namespace` of `Tenant's`. With Replications we can enforce certain objects to be present in all `Namespaces` of a `Tenant`. See the following examples for common use cases of [replications](https://projectcapsule.dev/docs/replications/).
+From a platform perspective, we may want to enforce certain objects per `Namespace` of `Tenant's`. With Replications we can enforce certain objects to be present in all `Namespaces` of a `Tenant`. See the following examples for common use cases of [replications](/docs/replications/).
 
 #### Example: Networkpolicies
 
 Distribute a [`NetworkPolicy`](https://kubernetes.io/docs/concepts/services-networking/network-policies/) to all `Namespaces` of a `Tenant` to enforce a certain network policy for all workloads within the `Tenant`/`Namespace`. The following `NetworkPolicy` is an attempt to achieve a default deny policy for all `Namespaces` of the `Tenant` but allow intra-namespace communication and allow communication between all `Namespaces` of the same `Tenant`. It also allows communication to system namespaces (eg. monitoring, ingress, etc.). [Read More](https://kubernetes.io/docs/concepts/security/multi-tenancy/#network-isolation)
 
+
+[Get Here](/docs/quickstart/gtr-netpol.yaml)
 
 ```yaml
 ---
@@ -920,6 +887,8 @@ spec:
 #### Example: LimitRanges
 
 [LimitRanges](https://kubernetes.io/docs/concepts/policy/limit-range/) can be used to enforce resource limits and requests for containers in a namespace. The following example enforces different `LimitRanges` for different environments (dev, test, prod) within the same `Tenant`. This ensures that workloads in each environment adhere to the specified resource constraints.
+
+[Get Here](/docs/quickstart/gtr-limitranges.yaml)
 
 ```yaml
 ---
@@ -1026,7 +995,7 @@ Alice can now always `LIST` their `Tenants`:
 kubectl get tnt
 
 NAME    STATE    NAMESPACE QUOTA   NAMESPACE COUNT   NODE SELECTOR   READY   STATUS       AGE
-solar   Active   3                 2                                 True    reconciled   37m
+solar   Active   2                 0                                 True    reconciled   37m
 ```
 
 In production environments this process can be automated with [Gangplank](/docs/proxy/gangplank/)
@@ -1052,7 +1021,7 @@ Error from server (Forbidden): namespaces "solar-development" is forbidden: User
 As `TenantOwner` (`alice`), we attempt to create a namespace within the `solar` tenant. The `TenantOwner` can create namespaces within the tenant they own. Let's attempt to create a `Namespace` called `development`:
 
 ```bash
-kubectl --as alice --as-group projectcapsule.dev create namespace development
+kubectl projectcapsule.dev create namespace development
 ```
 
 You will be denied with the following error:
@@ -1066,7 +1035,7 @@ Since we have enabled the `forceTenantPrefix` option in the `Tenant` spec, we mu
 Let's try again with the name `solar-development`:
 
 ```bash
-kubectl --as alice --as-group projectcapsule.dev create namespace solar-development -o yaml
+kubectl create namespace solar-development -o yaml
 ```
 
 This has worked, we can also observe that based on the rules defined in the `Tenant`, the namespace has been automatically labeled with `environment=dev` and the pod security labels have been applied:
@@ -1094,7 +1063,7 @@ metadata:
 Maybe `pod-security.kubernetes.io/enforce=restricted` is a bit too strict for a development environment, so let's change it's value to `baseline`:
 
 ```bash
-kubectl --as alice --as-group projectcapsule.dev label namespace solar-development pod-security.kubernetes.io/enforce=baseline --overwrite -o yaml
+kubectl label namespace solar-development pod-security.kubernetes.io/enforce=baseline --overwrite -o yaml
 ```
 
 This is allowed by the rules defined in the `Tenant` since the namespace is labeled with `environment=dev` and the rule allows `pod-security.kubernetes.io/enforce` to be set to either `restricted` or `baseline`. If we try to set it to `privileged` we will be denied:
@@ -1152,6 +1121,14 @@ metadata:
   uid: 1bd9a36c-230d-4606-84cc-eb92a7b87d63
 ```
 
+Attempting to create a third namespace will be denied since the `Tenant` has a quota of 2 namespaces:
+
+```bash
+kubectl create namespace solar-test -o yaml
+
+Error from server (Forbidden): admission webhook "namespaces.validating.projectcapsule.dev" denied the request: Cannot exceed Namespace quota: please, reach out to the system administrators
+```
+
 ### Events
 
 Alice can also view `Events`, not only in their `Namespace` but also across all `Namespaces` of the `Tenant`:
@@ -1160,6 +1137,7 @@ Alice can also view `Events`, not only in their `Namespace` but also across all 
 kubectl get event -A
 
 NAMESPACE   LAST SEEN   TYPE      REASON              OBJECT                        MESSAGE
+default     31s         Warning   Overprovisioned   namespace/solar-test   namespace cannot be attached, quota exceeded for the elected tenant
 default     36m         Warning   ForbiddenMetadata   namespace/solar-development   metadata label "privileged" at metadata.labels["pod-security.kubernetes.io/enforce"] is not allowed by namespace rule: value did not match any allowed rule. Allowed metadata values: exact: restricted, baseline
 default     38m         Normal    TenantAssigned      namespace/solar-development   namespace has been assigned to the desired tenant solar
 default     32m         Normal    TenantAssigned      namespace/solar-production    namespace has been assigned to the desired tenant solar
