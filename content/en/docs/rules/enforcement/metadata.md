@@ -311,10 +311,8 @@ rules:
               required: false
               values:
                 - exp: "^INV-[0-9]{4}$"
-              # If user / annotation is missing, use this as default value, only at admission mutation
-              default: "II-1"
               # Overwrites anything, even if the user has set a value, Should be applied using SSA by the rulestatus controller, if removed also removes (one fieldmanager per rulestatus which controlles all managed metadata). Also enforce at admission
-              managed: "II-10"
+              managed: "INV-10"
             example.corp/cost-center-2:
               values:
                 - exp: "II-10"
