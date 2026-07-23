@@ -4,7 +4,7 @@ weight: 6
 description: >
   Administrative controls on tenants
 ---
-
+ 
 ## Cordoning
 
 Bill needs to cordon a `Tenant` and its `Namespaces` for several reasons:
