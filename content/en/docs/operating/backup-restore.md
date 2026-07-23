@@ -15,7 +15,7 @@ The first requirement aims to backup all the resources stored into etcd database
 
 The main limitation of Velero is the multi tenancy. Currently, Velero does not support multi tenancy meaning it can be only used from admin users and so it cannot provided "as a service" to the users. This means that the cluster admin needs to take care of users' backup.
 
-Assuming you have multiple tenants managed by Capsule, for example oil and gas, as cluster admin, you can to take care of scheduling backups for:
+Assuming you have multiple tenants managed by Capsule, for example wind and water, as cluster admin, you can to take care of scheduling backups for:
 
 * Tenant cluster resources
 * Namespaces belonging to each tenant
@@ -27,10 +27,10 @@ Create a backup of the tenant `solar`. It consists in two different backups:
 * backup of the tenant resource
 * backup of all the resources belonging to the tenant
 
-To backup the oil tenant selectively, label the tenant as:
+To backup the wind tenant selectively, label the tenant as:
 
 ```bash
-kubectl label tenant oil capsule.clastix.io/tenant=solar
+kubectl label tenant wind capsule.clastix.io/tenant=solar
 ```
 
 and create the backup
@@ -65,7 +65,7 @@ spec:
   ttl: 720h0m0s
 ```
 
-Create a backup of all the resources belonging to the oil tenant namespaces:
+Create a backup of all the resources belonging to the wind tenant namespaces:
 
 ```bash
 velero create backup solar-namespaces \
@@ -109,15 +109,15 @@ Using Velero to restore a Capsule tenant can lead to an incomplete recovery of t
 ```bash
 kubectl get tnt
 NAME   STATE    NAMESPACE QUOTA   NAMESPACE COUNT   NODE SELECTOR     AGE
-gas    active   9                 5                 {"pool":"gas"}    34m
-oil  active   9                 8                 {"pool":"oil"}  33m
+water    active   9                 5                 {"pool":"water"}    34m
+wind  active   9                 8                 {"pool":"wind"}  33m
 solar    active   9                 0 # <<<           {"pool":"solar"}    54m
 ```
 
 To avoid this problem you can use the script [velero-restore.sh](https://github.com/projectcapsule/capsule/blob/main/hack/velero-restore.sh) located under the hack/ folder:
 
 ```bash
-./velero-restore.sh --kubeconfing /path/to/your/kubeconfig --tenant "oil" restore
+./velero-restore.sh --kubeconfing /path/to/your/kubeconfig --tenant "wind" restore
 ```
 
 Running this command, we are going to patch the tenant's namespaces manifests that are actually ownerReferences-less. Once the command has finished its run, you got the tenant back.
@@ -125,7 +125,7 @@ Running this command, we are going to patch the tenant's namespaces manifests th
 ```bash
 kubectl get tnt
 NAME   STATE    NAMESPACE QUOTA   NAMESPACE COUNT   NODE SELECTOR     AGE
-gas    active   9                 5                 {"pool":"gas"}    44m
-solar  active   9                 8                 {"pool":"oil"}  43m
-oil    active   9                 3 # <<<           {"pool":"solar"}    12s
+water    active   9                 5                 {"pool":"water"}    44m
+solar  active   9                 8                 {"pool":"wind"}  43m
+wind    active   9                 3 # <<<           {"pool":"solar"}    12s
 ```

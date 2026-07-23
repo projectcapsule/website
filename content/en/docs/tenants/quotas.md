@@ -58,7 +58,7 @@ spec:
 kind: ResourceQuota
 apiVersion: v1
 metadata:
-  name: capsule-oil-1
+  name: capsule-wind-1
   namespace: solar-production
   labels:
     tenant: solar
@@ -287,5 +287,5 @@ spec:
 
 ## Node Pools
 
-Bill, the cluster admin, can dedicate a pool of worker nodes to the oil `Tenant`, to isolate the `Tenant` applications from other noisy neighbors. To achieve this approach use [NodeSelectors](/docs/tenants/enforcement#node-selectors).
+Bill, the cluster admin, can dedicate a pool of worker nodes to the wind `Tenant`, to isolate the `Tenant` applications from other noisy neighbors. To achieve this approach use [NodeSelectors](/docs/tenants/enforcement#node-selectors).
 ```yaml

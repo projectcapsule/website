@@ -51,7 +51,7 @@ This shift-left model means Tenant Owners handle day-to-day namespace operations
 
 The Capsule controller is a Kubernetes operator that continuously watches Tenant resources and reconciles the desired state across all namespaces that belong to a tenant. When a Tenant is created or updated, the controller automatically propagates the configured policies to every namespace in that tenant.
 
-When a Tenant Owner creates a new namespace, the controller detects it and immediately applies all inherited policies. This means tenants are always in a consistent, compliant state — even as they grow.
+When a Tenant Owner creates a new namespace, the controller detects it and immediately applies all inherited policies. This means tenants are always in a consistent, compliant state, even as they grow.
 
 ![capsule-operator](/images/content/capsule-operator.png)
 

@@ -22,7 +22,7 @@ description: >
 
 It is then up to the group of users within those namespaces to manage the resources they consume per namespace. Each ResourcePool provisions a ResourceQuota into all the selected namespaces. Essentially, when `ResourcePoolClaims` are assigned to a ResourcePool, they stack additional resources on top of that `ResourceQuota`, based on the namespace from which the `ResourcePoolClaim` was created.
 
-You can create any number of `ResourcePools` for any kind of namespace — they do not need to be part of a Tenant. Note that the usual ResourceQuota mechanisms apply when, for example, the same resources are defined in multiple `ResourcePools` for the same namespaces (e.g., the lowest defined quota for a resource is always considered).
+You can create any number of `ResourcePools` for any kind of namespace; they do not need to be part of a Tenant. Note that the usual ResourceQuota mechanisms apply when, for example, the same resources are defined in multiple `ResourcePools` for the same namespaces (e.g., the lowest defined quota for a resource is always considered).
 
 
 
@@ -238,9 +238,9 @@ Options that can be defined on a per-`ResourcePool` basis and influence the gene
 
 #### OrderedQueue
 
-When `ResourecePoolClaims` are allocated to a pool, they are placed in a queue. The pool attempts to allocate claims in the order of their [creation timestamps](#priority). However, even if a claim was created earlier, if it requests more resources than are currently available, it will remain in the queue. Meanwhile, a lower-priority claim that fits within the available resources may still be allocated—despite its lower priority.
+When `ResourecePoolClaims` are allocated to a pool, they are placed in a queue. The pool attempts to allocate claims in the order of their [creation timestamps](#priority). However, even if a claim was created earlier, if it requests more resources than are currently available, it will remain in the queue. Meanwhile, a lower-priority claim that fits within the available resources may still be allocated, despite its lower priority.
 
-Enabling this option enforces strict ordering: claims cannot be skipped, even if they block other claims from being fulfilled due to resource exhaustion. The `CreationTimestamp` is strictly respected, meaning that once a claim is queued, no subsequent claim can bypass it—even if it requires fewer resources.
+Enabling this option enforces strict ordering: claims cannot be skipped, even if they block other claims from being fulfilled due to resource exhaustion. The `CreationTimestamp` is strictly respected, meaning that once a claim is queued, no subsequent claim can bypass it, even if it requires fewer resources.
 
 **Default**: `false`
 
@@ -252,7 +252,7 @@ Sets the [default values](#defaults) for the `ResourceQuota` created for the `Re
 
 #### DeleteBoundResources
 
-By default, when a `ResourcePool` is deleted, any `ResourcePoolClaims` bound to it are only disassociated—not deleted. Enabling this option ensures that all `ResourcePoolClaims` in a bound state are deleted when the corresponding `ResourcePool` is deleted.
+By default, when a `ResourcePool` is deleted, any `ResourcePoolClaims` bound to it are only disassociated, not deleted. Enabling this option ensures that all `ResourcePoolClaims` in a bound state are deleted when the corresponding `ResourcePool` is deleted.
 
 **Default**: `false`
 

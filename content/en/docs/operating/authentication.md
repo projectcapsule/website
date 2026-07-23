@@ -220,9 +220,9 @@ $ kubectl config set-context alice-oidc@mycluster \
 As user alice, you should be able to use kubectl to create some namespaces:
 
 ```shell
-$ kubectl --context alice-oidc@mycluster create namespace oil-production
-$ kubectl --context alice-oidc@mycluster create namespace oil-development
-$ kubectl --context alice-oidc@mycluster create namespace gas-marketing
+$ kubectl --context alice-oidc@mycluster create namespace wind-production
+$ kubectl --context alice-oidc@mycluster create namespace wind-development
+$ kubectl --context alice-oidc@mycluster create namespace water-marketing
 ```
 
 **Warning**: once your `ID_TOKEN` expires, the kubectl OIDC Authenticator will attempt to refresh automatically your `ID_TOKEN` using the `REFRESH_TOKEN`. In case the OIDC uses a self signed CA certificate, make sure to specify it with the idp-certificate-authority option in your kubeconfig file, otherwise you'll not able to refresh the tokens.
