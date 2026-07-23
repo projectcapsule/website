@@ -1,9 +1,13 @@
 ---
 title: Quotas
-weight: 4
+weight: 999
 description: >
   Strategies on granting quotas on tenant-basis
 ---
+
+{{% alert title="Deprecated" color="warning" %}}
+This page covers the legacy quota approach. It will be removed in a future release. Use [Resource Pools](/docs/resource-management/resourcepools/) or [Custom Quotas](/docs/resource-management/customquotas/) instead.
+{{% /alert %}}
 
 With help of Capsule, Bill, the cluster admin, can set and enforce resources quota and limits for Alice's `Tenant`.
 
