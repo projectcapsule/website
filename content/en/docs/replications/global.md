@@ -83,7 +83,7 @@ The `namespaceSelector` field restricts replication to Namespaces matching a lab
 
 #### AdditionalMetadata
 
-Use `additionalMetadata` to attach extra `labels` and `annotations` to every generated object. [Fast Template values](/docs/operating/templating/#fast-templates) are supported:
+Use `additionalMetadata` to attach extra `labels` and `annotations` to every generated object. [Fast Template values](/docs/operating/concepts/templating/#fast-templates) are supported:
 
 ```yaml
 ---
@@ -244,7 +244,7 @@ spec:
             projectcapsule.dev/replicate: "true"
 ```
 
-[Fast Templates](/docs/operating/templating/#fast-templates) are supported for `namespace`:
+[Fast Templates](/docs/operating/concepts/templating/#fast-templates) are supported for `namespace`:
 
 ```yaml
 ---
@@ -320,7 +320,7 @@ metadata:
   uid: 5f10a3f3-863e-4f45-9454-cff8f5bce86a
 ```
 
-[Fast Templates](/docs/operating/templating/#fast-templates) are supported for `selector`:
+[Fast Templates](/docs/operating/concepts/templating/#fast-templates) are supported for `selector`:
 
 ```yaml
 ---
@@ -342,7 +342,7 @@ spec:
 
 #### Raw
 
-Raw items let you define resources inline as standard Kubernetes manifests. Use this when the resource does not yet exist in the cluster, or when you want to define it directly in the spec. [Fast Templates](/docs/operating/templating/#fast-templates) are supported.
+Raw items let you define resources inline as standard Kubernetes manifests. Use this when the resource does not yet exist in the cluster, or when you want to define it directly in the spec. [Fast Templates](/docs/operating/concepts/templating/#fast-templates) are supported.
 
 ```yaml
 ---
@@ -405,7 +405,7 @@ For more advanced templating, consider [Generators](#generators).
 
 #### Generators
 
-Generators render one or more Kubernetes objects from a Go template string. The template content must be valid YAML; multi-document output separated by `---` is supported. The template engine is based on [go-sprout](https://github.com/go-sprout/sprout) - see [available functions](/docs/operating/templating/#sprout-templating).
+Generators render one or more Kubernetes objects from a Go template string. The template content must be valid YAML; multi-document output separated by `---` is supported. The template engine is based on [go-sprout](https://github.com/go-sprout/sprout) - see [available functions](/docs/operating/concepts/templating/#sprout-templating).
 
 A simple example that creates a `ClusterRole` per Tenant:
 
@@ -1528,7 +1528,7 @@ spec:
 
 ### Collect HTTPRoutes within per Tenant and aggregate to managed gateway
 
-The following example solves a common problem with Gateway-API and Certificate management. Assume you have a managed gateway with a managed cluster-issuer. In this case we can load all the HTTPRoutes and template the corresponding tenant. The following example also allows to modify the EnvoyProxy instance with [Tenant Data](/docs/operating/templating/#data)
+The following example solves a common problem with Gateway-API and Certificate management. Assume you have a managed gateway with a managed cluster-issuer. In this case we can load all the HTTPRoutes and template the corresponding tenant. The following example also allows to modify the EnvoyProxy instance with [Tenant Data](/docs/operating/concepts/templating/#data)
 
 ```yaml
 ---

@@ -12,7 +12,7 @@ Administrators are users that have full control over all `Tenants` and their nam
 
 ## Ownership
 
-Capsule introduces the principal, that tenants must have owners ([Tenant Owners](/docs/operating/architecture/#tenant-owners)). The owner of a tenant is a user or a group of users that have the right to create, delete, and manage the [tenant's namespaces](/docs/tenants/namespaces) and other tenant resources. However an owner does not have the permissions to manage the tenants they are owner of. This is still done by cluster-administrators.
+Capsule introduces the principal, that tenants must have owners ([Tenant Owners](/docs/operating/concepts/architecture/#tenant-owners)). The owner of a tenant is a user or a group of users that have the right to create, delete, and manage the [tenant's namespaces](/docs/tenants/namespaces) and other tenant resources. However an owner does not have the permissions to manage the tenants they are owner of. This is still done by cluster-administrators.
 
 At any time you are able to verify which users or groups are owners of a tenant by checking the `owners` field of the Tenant status subresource:
 
@@ -232,7 +232,7 @@ status:
 
 #### Aggregation
 
-All subjects defined in `TenantOwner` resources are automatically considered [Capsule Users](/docs/operating/architecture/#capsule-users) and don't need to mentioned further in the CapsuleConfiguration [User Scope](/docs/operating/setup/configuration/#users). If you don't want this behavior, you can disable it by setting `aggregate: false` in the `TenantOwner` spec:
+All subjects defined in `TenantOwner` resources are automatically considered [Capsule Users](/docs/operating/concepts/architecture/#capsule-users) and don't need to mentioned further in the CapsuleConfiguration [User Scope](/docs/operating/setup/configuration/#users). If you don't want this behavior, you can disable it by setting `aggregate: false` in the `TenantOwner` spec:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -327,7 +327,7 @@ spec:
     kind: User
 ```
 
-However, it's more likely that Bill assigns the ownership of the solar `Tenant` to a group of users instead of a single one, especially if you use [OIDC Authentication](/docs/operating/authentication/#oidc). Bill creates a new group account solar-users in the Acme Corp. identity management system and then he assigns Alice and Bob identities to the solar-users group.
+However, it's more likely that Bill assigns the ownership of the solar `Tenant` to a group of users instead of a single one, especially if you use [OIDC Authentication](/docs/operating/setup/authentication/#oidc). Bill creates a new group account solar-users in the Acme Corp. identity management system and then he assigns Alice and Bob identities to the solar-users group.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2

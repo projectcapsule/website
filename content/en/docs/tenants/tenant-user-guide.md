@@ -163,4 +163,4 @@ Error from server (Forbidden): admission webhook "pods.validating.projectcapsule
 | Cannot access your namespace at all | Cluster administrator |
 | Namespace quota is too low | Tenant Owner or cluster administrator |
 | A rule is too strict for your use case | Tenant Owner (they can adjust Tenant rules or request a change from the cluster admin) |
-| Unexpected webhook denial you cannot explain | Tenant Owner, or check [Troubleshooting](/docs/operating/troubleshoting/) |
+| Unexpected webhook denial you cannot explain | Tenant Owner, or check [Troubleshooting](/docs/operating/operations/troubleshoting/) |

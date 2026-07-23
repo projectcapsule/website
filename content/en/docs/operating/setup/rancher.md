@@ -47,9 +47,9 @@ It then explains how for the tenant user, the access to Kubernetes resources is 
 
 #### Configure an identity provider for Kubernetes
 
-You can follow [this general guide](/docs/operating/authentication/) to configure an OIDC authentication for Kubernetes.
+You can follow [this general guide](/docs/operating/setup/authentication/) to configure an OIDC authentication for Kubernetes.
 
-For a Keycloak specific setup yon can check [this resources list](/docs/operating/authentication/#oidc).
+For a Keycloak specific setup yon can check [this resources list](/docs/operating/setup/authentication/#oidc).
 
 #### Known issues
 
@@ -99,7 +99,7 @@ When onboarding tenants, the administrator needs to create the following, in ord
   ```
 
   More on declarative `Project`s [here](https://github.com/rancher/rancher/issues/35631).
-- In the identity provider, create a user with [correct OIDC claim](/docs/operating/authentication/#oidc) of the Tenant.
+- In the identity provider, create a user with [correct OIDC claim](/docs/operating/setup/authentication/#oidc) of the Tenant.
 - In Rancher, add the new user to the `Project` with the *Read-only* `Role`.
 - In Rancher, add the new user to the `Cluster` with the *Tenant Member* `Cluster Role`.
 
@@ -382,7 +382,7 @@ These instructions is specific to a setup made with Keycloak as an OIDC identity
 - Add to userinfo Audience type, claim name `client audience`
 - Add to userinfo, full group path, Group Membership type, claim name `full_group_path`
 
-More on this on the [official guide](/docs/operating/authentication/#oidc).
+More on this on the [official guide](/docs/operating/setup/authentication/#oidc).
 
 ### Rancher OIDC authentication provider
 

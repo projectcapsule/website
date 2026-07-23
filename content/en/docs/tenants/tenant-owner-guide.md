@@ -207,4 +207,4 @@ default     10m         Warning   Overprovisioned     namespace/solar-test      
 
 Each admission webhook error message names the exact label, value, or rule that caused the rejection. If the error message references a `managed` label or a rule you cannot change, contact your cluster administrator to adjust the Tenant configuration.
 
-For more common issues and their solutions, see the [Troubleshooting guide](/docs/operating/troubleshoting/).
+For more common issues and their solutions, see the [Troubleshooting guide](/docs/operating/operations/troubleshoting/).

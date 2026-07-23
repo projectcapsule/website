@@ -29,7 +29,7 @@ jwt:
       prefix: ""
 ```
 
-[Read More](/docs/operating/authentication/#configuring-kubernetes-api-server)
+[Read More](/docs/operating/setup/authentication/#configuring-kubernetes-api-server)
 
 ## Integration
 

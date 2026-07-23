@@ -77,7 +77,7 @@ In Capsule, a Tenant is an abstraction to group multiple namespaces in a single 
 
 [Read More](/docs/tenants/permissions/#ownership)
 
-The tenant is then assigned to a user or group of users who is called [`TenantOwner`](/docs/operating/architecture/#tenant-owners). Capsule defines a Tenant as Custom Resource with cluster scope. Create the tenant as cluster admin:
+The tenant is then assigned to a user or group of users who is called [`TenantOwner`](/docs/operating/concepts/architecture/#tenant-owners). Capsule defines a Tenant as Custom Resource with cluster scope. Create the tenant as cluster admin:
 
 ```yaml
 ---
@@ -95,7 +95,7 @@ spec:
     kind: User
 ```
 
-Here we mention the user `alice`, as of now `alice` is not considered a [**Capsule User**](/docs/operating/architecture/#capsule-users) because she was not defined [**as such in the `CapsuleConfiguration`**](/docs/operating/setup/configuration/#users). We must either define her in the configuration or create a [`TenantOwner`](/docs/tenants/permissions/#tenant-owners) resource for her or any of the groups she may belong to. In this example, we will assume that every user carries the group `projectcapsule.dev` (default setting), so we don't have to configure each user manually. Therefore the configuration should look like this:
+Here we mention the user `alice`, as of now `alice` is not considered a [**Capsule User**](/docs/operating/concepts/architecture/#capsule-users) because she was not defined [**as such in the `CapsuleConfiguration`**](/docs/operating/setup/configuration/#users). We must either define her in the configuration or create a [`TenantOwner`](/docs/tenants/permissions/#tenant-owners) resource for her or any of the groups she may belong to. In this example, we will assume that every user carries the group `projectcapsule.dev` (default setting), so we don't have to configure each user manually. Therefore the configuration should look like this:
 
 ```yaml
 manager:
@@ -120,7 +120,7 @@ spec:
   name: "joe"
 ```
 
-We can always verify all [**Capsule User**](/docs/operating/architecture/#capsule-users) via the `status` of the used [`CapsuleConfiguration`](/docs/operating/setup/configuration/) resource:
+We can always verify all [**Capsule User**](/docs/operating/concepts/architecture/#capsule-users) via the `status` of the used [`CapsuleConfiguration`](/docs/operating/setup/configuration/) resource:
 
 ```bash
 kubectl get capsuleconfiguration default -o jsonpath='{.status.users}'
@@ -374,7 +374,7 @@ spec:
                 managed: "restricted"
 ```
 
-We can also enforce that certain labels (also via regexp) can be enforced to only a subset of users. For example we may have labels (`"openshift.io/.*"`) which should be able to be modified by anyone else but [Capsule Users](/docs/operating/architecture/#capsule-users)
+We can also enforce that certain labels (also via regexp) can be enforced to only a subset of users. For example we may have labels (`"openshift.io/.*"`) which should be able to be modified by anyone else but [Capsule Users](/docs/operating/concepts/architecture/#capsule-users)
 
 ```yaml
 ---
@@ -466,7 +466,7 @@ spec:
 
 [Read More](/docs/tenants/rules/permissions/)
 
-Often you may have other users with different permissions. These are not [Tenant Owners](/docs/operating/architecture/#tenant-owners) but might be other parties that may interact with the `Tenant` and its `Namespaces`. For example, we may have a group of users that are responsible for monitoring the `Tenant` and its `Namespaces`. We can create a set of rules to allow them to view the `Tenant` and its `Namespaces` but not modify them. This can be done with [permissions rules](/docs/tenants/rules/permissions/):
+Often you may have other users with different permissions. These are not [Tenant Owners](/docs/operating/concepts/architecture/#tenant-owners) but might be other parties that may interact with the `Tenant` and its `Namespaces`. For example, we may have a group of users that are responsible for monitoring the `Tenant` and its `Namespaces`. We can create a set of rules to allow them to view the `Tenant` and its `Namespaces` but not modify them. This can be done with [permissions rules](/docs/tenants/rules/permissions/):
 
 ```yaml
 ---
@@ -972,7 +972,7 @@ spec:
 
 ## Tenant Owners
 
-Each tenant comes with a delegated user or group of users acting as the tenant admin. In the Capsule jargon, this is called the [`TenantOwner`s](/docs/operating/architecture/#tenant-owners). Other users can operate inside a tenant with different levels of permissions and authorizations assigned directly by the `TenantOwner`.
+Each tenant comes with a delegated user or group of users acting as the tenant admin. In the Capsule jargon, this is called the [`TenantOwner`s](/docs/operating/concepts/architecture/#tenant-owners). Other users can operate inside a tenant with different levels of permissions and authorizations assigned directly by the `TenantOwner`.
 
 Capsule does not care about the authentication strategy used in the cluster and all the Kubernetes methods of authentication are supported. The only requirement to use Capsule is to assign tenant users to the group defined by --capsule-user-group option, which defaults to `capsule.clastix.io`.
 

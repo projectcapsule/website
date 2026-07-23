@@ -12,7 +12,7 @@ This is general advice you should consider before making Kubernetes Distribution
 User authentication for the platform should be handled via a central OIDC-compatible identity provider system (e.g., Keycloak, Azure AD, Okta, or any other OIDC-compliant provider).
 The rationale is that other central platform components, such as ArgoCD, Grafana, Headlamp, or Harbor, should also integrate with the same authentication mechanism. This enables a unified login experience and reduces administrative complexity in managing users and permissions.
 
-[Capsule relies on native Kubernetes RBAC](/docs/operating/authentication/), so it's important to consider how the Kubernetes API handles user authentication.
+[Capsule relies on native Kubernetes RBAC](/docs/operating/setup/authentication/), so it's important to consider how the Kubernetes API handles user authentication.
 
 ### OCI Pull-Cache
 
