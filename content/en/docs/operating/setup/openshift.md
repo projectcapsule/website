@@ -94,7 +94,7 @@ Deploy the Capsule Helm chart with (at least) these values.
 
 ### etcd Encryption
 
-If etcd encryption is enabled on your OpenShift cluster and you are using `TenantResource` or `GlobalTenantResource` to replicate `ConfigMap`s or `Secret`s, the Capsule replication webhook must be configured to skip requests from OpenShift's storage version migrator. Without this exclusion, the migrator — which iterates over all Secrets and ConfigMaps to rotate the encryption key — will be blocked or cause reconciliation errors, because the webhook intercepts its requests.
+If etcd encryption is enabled on your OpenShift cluster and you are using `TenantResource` or `GlobalTenantResource` to replicate `ConfigMap`s or `Secret`s, the Capsule replication webhook must be configured to skip requests from OpenShift's storage version migrator. Without this exclusion, the migrator, which iterates over all Secrets and ConfigMaps to rotate the encryption key, will be blocked or cause reconciliation errors, because the webhook intercepts its requests.
 
 Add the following `matchCondition` to the replication webhook via the Helm chart values:
 

@@ -2,7 +2,7 @@
 title: Quickstart 🚀
 type: docs
 weight: 2
-description: "Create your first Capsule Tenant"
+description: "Create your first Capsule Tenant and start using it"
 ---
 
 This guide gets you from zero to a working multi-tenant cluster in minutes. You will install Capsule, create a Tenant as a cluster administrator, and then immediately switch to the tenant owner's perspective to see what Capsule actually does.
@@ -128,7 +128,7 @@ What this configures:
 - **`namespaceOptions.quota: 2`**: alice can create at most 2 namespaces. [Read more](/docs/tenants/namespaces/#namespace-quota)
 - **`forceTenantPrefix: true`**: every namespace must start with `solar-`. [Read more](/docs/tenants/administration/#force-tenant-prefix)
 - **`rules`**: the `environment` label is required on every namespace, with `dev` as the default. Capsule enforces this at admission time. [Read more](/docs/rules/enforcement/metadata/)
-- **QoS rules**: production namespaces (labeled `environment=prod`) only accept `Guaranteed` pods. Development and test namespaces accept any QoS class. [Read more](/docs/rules/enforcement/workloads/)
+- **`QoS rules`**: production namespaces (labeled `environment=prod`) only accept `Guaranteed` pods. Development and test namespaces accept any QoS class. [Read more](/docs/rules/enforcement/workloads/)
 
 For `alice` to be recognized as a [Capsule User](/docs/operating/concepts/architecture/#capsule-users), create a `TenantOwner` resource for her. The label `projectcapsule.dev/tenant: "solar"` binds it to the tenant automatically:
 

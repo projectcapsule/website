@@ -9,4 +9,3 @@ weight: 20
 |---|---|
 | **Cluster Administrator** | [Installation](/docs/operating/setup/installation/) then [Quickstart](/docs/quickstart/) |
 | **Tenant Owner** | [Quickstart - Tenant Owners section](/docs/quickstart/#tenant-owners) |
-| **Developer on a Tenant** | [Tenant User Guide](/docs/tenants/tenant-user-guide/) |

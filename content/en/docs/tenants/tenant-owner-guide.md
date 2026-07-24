@@ -170,6 +170,36 @@ spec:
 
 See [TenantResources](/docs/replications/tenant/) for full documentation.
 
+### Service Account promotion
+
+As a Tenant Owner you can promote a ServiceAccount within your Tenant so it automatically receives the ClusterRoles your cluster administrator has defined in the Tenant's promotion rules. This gives the ServiceAccount consistent permissions across all Tenant namespaces. A common use case is referencing the promoted ServiceAccount in `spec.serviceAccount.name` of a `TenantResource`, so replication operations run under a scoped identity rather than the Capsule controller.
+
+Label the ServiceAccount to promote it:
+
+```bash
+kubectl label sa gitops-reconciler -n solar-development projectcapsule.dev/promote=true
+```
+
+This feature must be enabled by your cluster administrator. If it is not, the webhook will reject the label and return:
+
+```
+Error from server (Forbidden): admission webhook "serviceaccounts.projectcapsule.dev" denied the request: service account promotion is disabled. Contact cluster administrators
+```
+
+Once promoted, verify that the expected RoleBindings have been distributed across your namespaces:
+
+```bash
+kubectl get tnt solar -o jsonpath='{.status.promotions}' | jq
+```
+
+To revoke the promotion, remove the label:
+
+```bash
+kubectl label sa gitops-reconciler -n solar-development projectcapsule.dev/promote-
+```
+
+See [Promotions](/docs/rules/permissions/#promotions) for full details.
+
 ## The Proxy and kubectl
 
 When using the [Capsule Proxy](/docs/proxy/), your `kubectl` commands are filtered to show only resources that belong to your Tenant.
