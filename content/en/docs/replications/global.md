@@ -13,6 +13,10 @@ The diagram below shows that an Administrator can create a `GlobalTenantResource
 
 ![Global Tenant Resource Replication overview](/images/content/replication-globaltenantresource.png)
 
+{{% alert title="OpenShift: etcd Encryption" color="warning" %}}
+If you are running on OpenShift with etcd encryption enabled and replicating `ConfigMap`s or `Secret`s, you must exclude the OpenShift storage version migrator from the replication webhook. Without this, the migrator cannot rotate encryption keys. See the [OpenShift installation guide](/docs/operating/setup/openshift/#etcd-encryption) for the required configuration.
+{{% /alert %}}
+
 A common use case is distributing image pull secrets to all Tenants that must use a specific container registry. In the following example, Bill labels two Tenants and then creates a `GlobalTenantResource` to push the corresponding pull secret into each of their Namespaces automatically.
 
 ```bash

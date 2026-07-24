@@ -13,6 +13,10 @@ The diagram below shows that an Administrator or a Tenant Owner can create a `Te
 
 ![Tenant Resource Replication overview](/images/content/replication-tenantresource.png)
 
+{{% alert title="OpenShift: etcd Encryption" color="warning" %}}
+If you are running on OpenShift with etcd encryption enabled and replicating `ConfigMap`s or `Secret`s, you must exclude the OpenShift storage version migrator from the replication webhook. Without this, the migrator cannot rotate encryption keys. See the [OpenShift installation guide](/docs/operating/setup/openshift/#etcd-encryption) for the required configuration.
+{{% /alert %}}
+
 ## Prerequisites
 
 Tenant owners must have RBAC permission to create, update, and delete `TenantResource` objects. The following `ClusterRole` aggregates to the `admin` role, granting all holders permission to manage `TenantResource` instances:

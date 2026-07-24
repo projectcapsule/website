@@ -93,7 +93,7 @@ kubectl label namespace solar-development pod-security.kubernetes.io/enforce=bas
 
 ## Cannot list namespaces or cluster-scoped resources
 
-**Symptom**: `kubectl get namespaces` returns an empty list, or `kubectl get namespaces -A` returns `Forbidden`.
+**Symptom**: `kubectl get namespaces` returns an error such as `Error from server (Forbidden): namespaces is forbidden: User "alice" cannot list resource "namespaces" in API group "" at the cluster scope`.
 
 **Cause**: The Capsule Proxy is not in use. Without the proxy, Kubernetes RBAC prevents non-admin users from listing cluster-scoped resources. The proxy intercepts those requests and filters results to show only resources belonging to the user's tenants.
 
@@ -132,3 +132,41 @@ kubectl get tenant solar -o jsonpath='{.status.owners}' | jq
 ```bash
 kubectl get tenantowner platform-team --show-labels
 ```
+
+## Capsule Proxy is being throttled by the API server
+
+**Symptom**: Clients talking through the Capsule Proxy receive connection errors such as:
+
+```
+net/http: abort Handler
+```
+
+or requests hang and are dropped without a response.
+
+**Cause**: The Capsule Proxy is sending more requests to the Kubernetes API server than its configured QPS and burst limits allow. Because the proxy sits between clients and the API server, the client is the first to see the resulting aborted connections.
+
+**Resolution**: Increase the `clientConnectionQPS` and `clientConnectionBurst` values for the Capsule Proxy. See the [Proxy production installation guide](/docs/proxy/setup/installation/#qpsburst) for the recommended Helm values:
+
+```yaml
+options:
+  clientConnectionQPS: 200
+  clientConnectionBurst: 400
+```
+
+## Capsule controller fails to start due to timeouts
+
+**Symptom**: The Capsule controller pod restarts repeatedly or never reaches `Running`. Logs contain errors such as:
+
+```
+E0707 08:38:18.319041  1 leaderelection.go:452] "Error retrieving lease lock"
+  err="...net/http: request canceled (Client.Timeout exceeded while awaiting headers)"
+```
+
+or the controller stalls silently during startup on clusters with many resources.
+
+**Cause**: Two common sources of startup timeouts:
+
+- **Cache sync timeout** — On large clusters the controller's informer cache takes longer to populate than the default timeout allows, causing the controller to give up before it is ready to serve.
+- **Leader election timeout** — In high-pressure environments the controller cannot renew its leader lease within the default deadline, triggering repeated leader-election failures.
+
+**Resolution**: Adjust the `cacheSyncTimeout` and `leaderElection` values for the Capsule controller. See the [Production installation guide](/docs/operating/setup/installation/#cache-synchronisation) for the recommended Helm values.
