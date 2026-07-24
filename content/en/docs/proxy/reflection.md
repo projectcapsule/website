@@ -27,7 +27,7 @@ The functionality of allowing access to other `Namespaces` is achieved by enabli
 For example, the following Role and RoleBinding allow alice to list Pods in the green-test Namespace. Because alice is referenced by the RoleBinding, Namespace reflection also allows her to see green-test when listing Namespaces through Capsule Proxy:
 
 ```yaml
----  
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -179,7 +179,7 @@ spec:
               reflection.proxy.projectcapsule.dev/enabled: "true"
 ```
 
- By default, any user can add further `RoleBindings` with the `reflection.proxy.projectcapsule.dev/enabled: "true"` label to any `RoleBinding`. To prevent that, you can deny it with another [Enforcement rule](/docs/tenants/rules/enforcement/#metadata):
+ By default, any user can add further `RoleBindings` with the `reflection.proxy.projectcapsule.dev/enabled: "true"` label to any `RoleBinding`. To prevent that, you can deny it with another [Enforcement rule](/docs/rules/enforcement/metadata):
 ```yaml
 ---
 apiVersion: capsule.clastix.io/v1beta2
