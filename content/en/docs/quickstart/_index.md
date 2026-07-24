@@ -130,7 +130,9 @@ What this configures:
 - **`rules`**: the `environment` label is required on every namespace, with `dev` as the default. Capsule enforces this at admission time. [Read more](/docs/rules/enforcement/metadata/)
 - **`QoS rules`**: production namespaces (labeled `environment=prod`) only accept `Guaranteed` pods. Development and test namespaces accept any QoS class. [Read more](/docs/rules/enforcement/workloads/)
 
-For `alice` to be recognized as a [Capsule User](/docs/operating/concepts/architecture/#capsule-users), create a `TenantOwner` resource for her. The label `projectcapsule.dev/tenant: "solar"` binds it to the tenant automatically:
+### Tenant Owners
+
+Capsule only acts on requests from subjects it recognises as **Capsule Users**. The recommended way to register a user is to create a `TenantOwner` resource. The label `projectcapsule.dev/tenant: "solar"` binds it to the tenant automatically via [aggregation](/docs/tenants/permissions/#aggregation):
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -144,13 +146,25 @@ spec:
   name: "alice"
 ```
 
-Verify the Tenant is active:
+Capsule matches users by the groups they carry on every request. Creating a `TenantOwner` registers the subject automatically - no manual configuration needed. You can verify who is recognised at any time:
+
+```bash
+kubectl get capsuleconfiguration default -o jsonpath='{.status.users}' | jq
+```
+
+For the quickstart we use impersonation (`--as-group projectcapsule.dev`) which bypasses the need for a real certificate or token. In production, authentication depends on your cluster setup (X.509 certificates, OIDC tokens, etc.), use the [Gangplank](/docs/proxy/gangplank/) workflow to issue real kubeconfigs.
+
+Verify the Tenant is active and alice is listed as an owner:
 
 ```bash
 kubectl get tnt solar
 
 NAME    STATE    NAMESPACE QUOTA   NAMESPACE COUNT   NODE SELECTOR   READY   STATUS       AGE
 solar   Active   2                 0                                 True    reconciled   10s
+```
+
+```bash
+kubectl get tenant solar -o jsonpath='{.status.owners}' | jq
 ```
 
 ## As a Tenant Owner
@@ -257,15 +271,22 @@ solar-production    Active   2m
 
 In production, automate kubeconfig distribution with [Gangplank](/docs/proxy/gangplank/).
 
+## Going Further
+
+Want to see more of what Capsule can do? The [Going Further](/docs/quickstart/extended/) guide builds directly on this quickstart and covers Pod Security Standards enforcement, service type restrictions, permission bindings per environment, and automatic LimitRange distribution with `GlobalTenantResource`. None of it is required for a working setup, but it shows the full power of the platform.
+
 ## Next Steps
 
 You have seen the core of Capsule: a cluster administrator defines constraints, and tenant owners work freely within them without cluster-admin rights.
 
-| Topic | Guide |
+| Topic | Link |
 |---|---|
-| Managing your tenant as an owner | [Tenant Owner Guide](/docs/tenants/tenant-owner-guide/) |
-| Namespace rules: labels, workloads, ingress, services | [Rules](/docs/rules/) |
-| Auto-replicating objects across Tenant namespaces | [Replications](/docs/replications/) |
-| CPU / memory budgets shared across Tenants and namespaces | [Resource Management](/docs/resource-management/) |
-| Proxy setup in production | [Capsule Proxy](/docs/proxy/) |
-| Monitoring and backup | [Day-2 Operations](/docs/operating/operations/) |
+| Installation guide | [Installation](/docs/operating/setup/installation/) |
+| Tenant Owner Guide | [Tenant Owner Guide](/docs/tenants/tenant-owner-guide/) |
+| Rules | [Rules](/docs/rules/) |
+| Tenant resource replication | [TenantResources](/docs/replications/tenant/) |
+| Cross-tenant replication | [GlobalTenantResources](/docs/replications/global/) |
+| Resource Pools | [Resource Pools](/docs/resource-management/resourcepools/) |
+| Custom Quotas | [Custom Quotas](/docs/resource-management/customquotas/) |
+| Capsule Proxy | [Capsule Proxy](/docs/proxy/) |
+| Day-2 Operations | [Day-2 Operations](/docs/operating/operations/) |
