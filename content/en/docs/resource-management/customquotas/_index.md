@@ -1,6 +1,6 @@
 ---
 title: Custom Quotas
-weight: 6
+weight: 3
 description: >
   CustomQuotas let you define and enforce arbitrary, label-scoped limits for any Kubernetes resource kind or CRD, at namespace or cluster scope.
 ---

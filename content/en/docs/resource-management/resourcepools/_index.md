@@ -1,6 +1,6 @@
 ---
 title: Resource Pools
-weight: 5
+weight: 2
 description: >
   Resource Pools are our answer to manage resources in a multi-tenant Kubernetes cluster.
   Strategies on granting quotas on tenant-basis
