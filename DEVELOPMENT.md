@@ -1,5 +1,11 @@
 # Development
 
+## Deployment
+
+The site is deployed automatically via **CNCF Netlify** on every merge to `main`. No local Hugo server is required to contribute.
+
+Every pull request receives an automatic **Netlify deploy preview** at a unique URL, check the PR status checks for the preview link.
+
 ## Pre-commit Hooks
 
 This repository uses [prek](https://prek.j178.dev/) to run pre-commit hooks locally. `prek` is a fast, Rust-native drop-in replacement for [pre-commit](https://pre-commit.com/).

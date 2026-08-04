@@ -22,7 +22,7 @@ The answer to this question may be influenced by the following aspects:
   * _You’ll need robust monitoring that enables Tenant Owners to clearly understand and manage what’s happening inside their own tenant._
 
 * **Are your customers technically capable of working directly with the Kubernetes API?**
-  * _If not, you may need to build a more user-friendly platform with better UX — for example, a multi-tenant ArgoCD setup, or UI layers like Headlamp._
+  * _If not, you may need to build a more user-friendly platform with better UX. For example, a multi-tenant ArgoCD setup, or UI layers like Headlamp._
 
 ## Personas
 
