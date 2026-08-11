@@ -253,7 +253,16 @@ Generally, we recommend using [matchConditions](https://kubernetes.io/docs/refer
 
 [Refer to the webhook values](https://artifacthub.io/packages/helm/projectcapsule/capsule#webhooks-parameters).
 
-**The Webhooks below are the most important ones to consider.**
+#### System-critical Components
+
+It's strongly advised to exclude system-critical components from the Capsule webhooks. This includes components like `kube-system`, `kube-public`, and `kube-node-lease` namespaces, as well as any other namespaces that are critical for the operation of your cluster. You can use [matchConditions](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchconditions) to exclude these namespaces from the Capsule webhooks.
+
+```yaml
+webhooks:
+  matchConditions:
+    - name: exclude-control-plane
+      expression: '!(request.userInfo.username in ["system:apiserver", "system:kube-controller-manager", "system:kube-scheduler"]) && !("system:nodes" in request.userInfo.groups) && !("system:serviceaccounts:kube-system" in request.userInfo.groups)'
+```
 
 #### Nodes
 

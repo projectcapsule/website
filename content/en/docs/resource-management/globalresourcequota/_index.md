@@ -373,12 +373,14 @@ spec:
         matchLabels:
           company.example/tier: application
       quota:
-        - hard:
+        - name: shared-compute
+          hard:
             requests.cpu: "8"
             requests.memory: 16Gi
             limits.cpu: "8"
             limits.memory: 16Gi
-        - hard:
+        - name: object-counts
+          hard:
             services: "20"
             count/horizontalpodautoscalers.autoscaling: "10"
 ```
@@ -390,7 +392,19 @@ Capsule creates one `GlobalResourceQuota` per entry in the rule's `quota` list. 
 
 The Tenant membership requirement prevents a rule from selecting another Tenant's namespaces. Generated quotas are reconciled and pruned with the Tenant rule lifecycle.
 
+Every quota entry requires a DNS label-compatible `name` which must be unique
+across all rules in the Tenant. The name is the durable identity of the
+generated `GlobalResourceQuota`: changing limits, selectors, or rule ordering
+updates the existing object. Renaming or removing the quota entry replaces or
+deletes it.
+
+Generated resource names use `<tenant-name>-<quota-name>`.
+
 Quota accounting is independent of a rule's request audience. An audience can limit other rule behavior but does not partition the shared resource budget.
+
+Quota definitions are not copied into namespace `RuleStatus` objects. They are
+reconciled directly from the Tenant into cluster-scoped `GlobalResourceQuota`
+objects, which remain the authoritative source for admission and accounting.
 
 Existing `Tenant.spec.resourceQuotas` behavior remains available for compatibility. Use rule-generated or directly managed `GlobalResourceQuota` objects when an atomic shared limit across namespaces is required.
 
@@ -447,7 +461,9 @@ kubectl get quantityledgers -n capsule-system \
 
 Managed native ResourceQuota objects and QuantityLedgers are implementation details. Do not edit or delete them directly.
 
-## Updating a quota
+## Operating
+
+### Updating a quota
 
 Hard limits can be increased normally.
 
@@ -457,7 +473,7 @@ When selectors or hard limits change, admission waits for the ledger to observe 
 
 If several `GlobalResourceQuota` objects select the same namespace, all matching quotas apply. A request must satisfy every matching hard limit and scope.
 
-## Monitoring
+### Monitoring
 
 The following Prometheus metrics are exposed:
 
@@ -506,24 +522,12 @@ spec:
               has not been ready for ten minutes.
 ```
 
-## GlobalResourceQuota or ResourcePool?
 
-Both resources are cluster-scoped and select namespaces, but they solve different allocation problems.
+### Migration
 
-| | GlobalResourceQuota | ResourcePool |
-| --- | --- | --- |
-| Main purpose | Enforce one immediate shared ceiling. | Allocate capacity to namespace claims. |
-| Consumer object | None. Namespaced objects consume the budget directly. | `ResourcePoolClaim`. |
-| Admission behavior | Atomically reserves real object usage. | Schedules and binds claims from pool capacity. |
-| Namespace distribution | Dynamic; any selected namespace can consume available capacity. | Explicitly allocated through claims. |
-| Queue | No user-visible queue. Admission succeeds or is denied. | Claims can remain queued until capacity is available. |
-| Typical use | Tenant-wide compute, storage, or object-count limit. | Delegated self-service allocation from a platform-owned pool. |
+### Troubleshooting
 
-Use `GlobalResourceQuota` when namespaces should compete directly for one shared hard limit. Use a `ResourcePool` when users should explicitly claim and release portions of platform capacity.
-
-## Troubleshooting
-
-### `QuantityLedger ... is not initialized`
+#### `QuantityLedger ... is not initialized`
 
 The controller is waiting for every selected native ResourceQuota to report its hard and used status. Check:
 
@@ -538,11 +542,23 @@ kubectl get quantityledgers -n capsule-system \
 
 Also verify that Capsule can list the selected namespaces and reconcile ResourceQuota status.
 
-### `resource exceeds GlobalResourceQuota`
+#### `resource exceeds GlobalResourceQuota`
 
-The denial contains requested, allocated, and hard resource lists. `allocated` includes both observed usage and active admission reservations, so it can temporarily be higher than `status.total.used`.
+The denial lists only the resource limits that the request would exceed. Quantities use the same canonical formatting as Kubernetes, for example:
 
-### `must specify requests.cpu ... for: <container>`
+```text
+resource exceeds GlobalResourceQuota "solar-shared-compute": limits.cpu (requested=1, current=8, projected=9, hard=8, exceededBy=1)
+```
+
+- `requested` is the additional usage introduced by this admission request.
+- `current` is the usage already accounted for, including active admission reservations.
+- `projected` is `current + requested`.
+- `hard` is the configured limit.
+- `exceededBy` is `projected - hard`.
+
+Because `current` includes in-flight reservations, it can temporarily be higher than `status.total.used`.
+
+#### `must specify requests.cpu ... for: <container>`
 
 Kubernetes historically requires every regular and init container to declare CPU or memory resources when those resources are tracked by quota.
 
@@ -555,11 +571,10 @@ kubectl get replicaset -n <namespace> -l app=<label> -o yaml
 
 An older ReplicaSet can continue reporting failed Pod creation events after a Deployment is updated with Pod-level resources. Confirm that the ReplicaSet named in the event actually contains `.spec.template.spec.resources`.
 
-### A deleted object still appears in usage
+#### A deleted object still appears in usage
 
 Deletes release capacity after native ResourceQuota status observes the deletion. The delay is normally short but is eventually consistent.
 
-### A namespace is unexpectedly selected
+#### A namespace is unexpectedly selected
 
 Inspect all entries under `namespaceSelectors`. Entries are ORed, and an empty label selector matches every namespace.
-

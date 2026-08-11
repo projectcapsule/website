@@ -57,5 +57,5 @@ When a Tenant Owner creates a new namespace, the controller detects it and immed
 
 ## Get Started
 
-- [**Quickstart** - create your first Tenant in minutes](/docs/tenants/quickstart/)
+- [**Quickstart** - create your first Tenant in minutes](/docs/quickstart/)
 - [**Tenant Docs** - explore everything Tenants can do](/docs/tenants/)

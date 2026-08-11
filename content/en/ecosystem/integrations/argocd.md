@@ -137,6 +137,77 @@ resource.customizations.actions.capsule.clastix.io_Tenant: |
         return obj
 ```
 
+### TenantResource and GlobalTenantResource Actions
+
+With the following configuration, ArgoCD will show `Cordon`, `Uncordon`, and `Reconcile` actions for `TenantResource` and `GlobalTenantResource`. Cordoning pauses all apply and delete operations. The `Reconcile` action triggers an immediate reconcile by setting the `reconcile.projectcapsule.dev/requestedAt` annotation. Both `Cordon` and `Reconcile` are disabled when the resource is already cordoned, since the controller skips processing in that state.
+
+```yaml
+resource.customizations.actions.capsule.clastix.io_TenantResource: |
+  mergeBuiltinActions: true
+  discovery.lua: |
+    local actions = {}
+    actions["cordon"] = {
+      ["iconClass"] = "fa fa-fw fa-pause",
+      ["disabled"] = true,
+    }
+    actions["uncordon"] = {
+      ["iconClass"] = "fa fa-fw fa-play",
+      ["disabled"] = true,
+    }
+    actions["reconcile"] = {
+      ["iconClass"] = "fa fa-fw fa-rotate-right",
+      ["disabled"] = true,
+    }
+
+    local cordoned = false
+    if obj.spec ~= nil and obj.spec.cordoned ~= nil then
+      cordoned = obj.spec.cordoned
+    end
+
+    if cordoned then
+      actions["uncordon"]["disabled"] = false
+    else
+      actions["cordon"]["disabled"] = false
+      actions["reconcile"]["disabled"] = false
+    end
+
+    return actions
+
+  definitions:
+    - name: cordon
+      action.lua: |
+        if obj.spec == nil then
+          obj.spec = {}
+        end
+        obj.spec.cordoned = true
+        return obj
+
+    - name: uncordon
+      action.lua: |
+        if obj.spec ~= nil and obj.spec.cordoned ~= nil and obj.spec.cordoned then
+          obj.spec.cordoned = false
+        end
+        return obj
+
+    - name: reconcile
+      action.lua: |
+        local os = require("os")
+        if obj.metadata.annotations == nil then
+          obj.metadata.annotations = {}
+        end
+        obj.metadata.annotations["reconcile.projectcapsule.dev/requestedAt"] = os.date("!%Y-%m-%dT%XZ")
+        return obj
+```
+
+Apply the same block for `GlobalTenantResource` by replacing the resource key:
+
+```yaml
+resource.customizations.actions.capsule.clastix.io_GlobalTenantResource: |
+  # same content as above
+```
+
+
+
 ## Resource Health
 
 You may provide [Custom Resource Health](https://argo-cd.readthedocs.io/en/stable/operator-manual/health/) for Capsule specific resources and interactions.
@@ -493,11 +564,17 @@ resource.customizations.health.capsule.clastix.io_GlobalCustomQuota: |
 
 ### TenantResource Resource Health
 
-Reports `Degraded` when the replication of tenant-scoped resources failed, and `Healthy` when all resources have been successfully replicated into the target namespaces.
+Reports `Suspended` when the replication is cordoned (paused for maintenance). Reports `Degraded` when the replication of tenant-scoped resources failed, and `Healthy` when all resources have been successfully replicated into the target namespaces.
 
 ```yaml
 resource.customizations.health.capsule.clastix.io_TenantResource: |
   local hs = {}
+  if obj.spec ~= nil and obj.spec.cordoned ~= nil and obj.spec.cordoned then
+    hs.status = "Suspended"
+    hs.message = "Replication is cordoned"
+    return hs
+  end
+
   if obj.status == nil or obj.status.conditions == nil then
     hs.status = "Progressing"
     hs.message = "Waiting for status"
@@ -531,11 +608,17 @@ resource.customizations.health.capsule.clastix.io_TenantResource: |
 
 ### GlobalTenantResource Resource Health
 
-Reports `Degraded` when the cluster-wide resource replication failed, and `Healthy` when all resources have been successfully replicated across all tenant namespaces.
+Reports `Suspended` when the replication is cordoned (paused for maintenance). Reports `Degraded` when the cluster-wide resource replication failed, and `Healthy` when all resources have been successfully replicated across all tenant namespaces.
 
 ```yaml
 resource.customizations.health.capsule.clastix.io_GlobalTenantResource: |
   local hs = {}
+  if obj.spec ~= nil and obj.spec.cordoned ~= nil and obj.spec.cordoned then
+    hs.status = "Suspended"
+    hs.message = "Replication is cordoned"
+    return hs
+  end
+
   if obj.status == nil or obj.status.conditions == nil then
     hs.status = "Progressing"
     hs.message = "Waiting for status"

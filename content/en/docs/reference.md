@@ -19,6 +19,8 @@ Resource Types:
 
 - [GlobalCustomQuota](#globalcustomquota)
 
+- [GlobalResourceQuota](#globalresourcequota)
+
 - [GlobalTenantResource](#globaltenantresource)
 
 - [QuantityLedger](#quantityledger)
@@ -151,16 +153,16 @@ whats the problem
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **caBundle** | string | `caBundle` is a PEM encoded CA bundle which will be used to validate the webhook's server certificate.<br>If unspecified, system trust roots on the apiserver are used.<br/>*Format*: byte<br/> | false |
-| **[service](#capsuleconfigurationspecadmissionmutatingclientservice)** | object | `service` is a reference to the service for this webhook. Either<br>`service` or `url` must be specified.<br><br>If the webhook is running within the cluster, then you should use `service`. | false |
-| **url** | string | `url` gives the location of the webhook, in standard URL form<br>(`scheme://host:port/path`). Exactly one of `url` or `service`<br>must be specified.<br><br>The `host` should not refer to a service running in the cluster; use<br>the `service` field instead. The host might be resolved via external<br>DNS in some apiservers (e.g., `kube-apiserver` cannot resolve<br>in-cluster DNS as that would be a layering violation). `host` may<br>also be an IP address.<br><br>Please note that using `localhost` or `127.0.0.1` as a `host` is<br>risky unless you take great care to run this webhook on all hosts<br>which run an apiserver which might need to make calls to this<br>webhook. Such installs are likely to be non-portable, i.e., not easy<br>to turn up in a new cluster.<br><br>The scheme must be "https"; the URL must begin with "https://".<br><br>A path is optional, and if present may be any string permissible in<br>a URL. You may use the path to pass an arbitrary string to the<br>webhook, for example, a cluster identifier.<br><br>Attempting to use a user or basic auth e.g. "user:password@" is not<br>allowed. Fragments ("#...") and query parameters ("?...") are not<br>allowed, either. | false |
+| **caBundle** | string | caBundle is a PEM encoded CA bundle which will be used to validate the webhook's server certificate.<br>If unspecified, system trust roots on the apiserver are used.<br/>*Format*: byte<br/> | false |
+| **[service](#capsuleconfigurationspecadmissionmutatingclientservice)** | object | service is a reference to the service for this webhook. Either<br>`service` or `url` must be specified.<br><br>If the webhook is running within the cluster, then you should use `service`. | false |
+| **url** | string | url gives the location of the webhook, in standard URL form<br>(`scheme://host:port/path`). Exactly one of `url` or `service`<br>must be specified.<br><br>The `host` should not refer to a service running in the cluster; use<br>the `service` field instead. The host might be resolved via external<br>DNS in some apiservers (e.g., `kube-apiserver` cannot resolve<br>in-cluster DNS as that would be a layering violation). `host` may<br>also be an IP address.<br><br>Please note that using `localhost` or `127.0.0.1` as a `host` is<br>risky unless you take great care to run this webhook on all hosts<br>which run an apiserver which might need to make calls to this<br>webhook. Such installs are likely to be non-portable, i.e., not easy<br>to turn up in a new cluster.<br><br>The scheme must be "https"; the URL must begin with "https://".<br><br>A path is optional, and if present may be any string permissible in<br>a URL. You may use the path to pass an arbitrary string to the<br>webhook, for example, a cluster identifier.<br><br>Attempting to use a user or basic auth e.g. "user:password@" is not<br>allowed. Fragments ("#...") and query parameters ("?...") are not<br>allowed, either. | false |
 
 
 ### CapsuleConfiguration.spec.admission.mutating.client.service
 
 
 
-`service` is a reference to the service for this webhook. Either
+service is a reference to the service for this webhook. Either
 `service` or `url` must be specified.
 
 If the webhook is running within the cluster, then you should use `service`.
@@ -168,10 +170,10 @@ If the webhook is running within the cluster, then you should use `service`.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **name** | string | `name` is the name of the service.<br>Required | true |
-| **namespace** | string | `namespace` is the namespace of the service.<br>Required | true |
-| **path** | string | `path` is an optional URL path which will be sent in any request to<br>this service. | false |
-| **port** | integer | If specified, the port on the service that hosting webhook.<br>Default to 443 for backward compatibility.<br>`port` should be a valid port number (1-65535, inclusive).<br/>*Format*: int32<br/> | false |
+| **name** | string | name is the name of the service.<br>Required | true |
+| **namespace** | string | namespace is the namespace of the service.<br>Required | true |
+| **path** | string | path is an optional URL path which will be sent in any request to<br>this service. | false |
+| **port** | integer | port is the port on the service that hosts the webhook.<br>Default to 443 for backward compatibility.<br>`port` should be a valid port number (1-65535, inclusive).<br/>*Format*: int32<br/> | false |
 
 
 ### CapsuleConfiguration.spec.admission.mutating.webhooks[index]
@@ -207,8 +209,8 @@ MatchCondition represents a condition which must by fulfilled for a request to b
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **expression** | string | Expression represents the expression which will be evaluated by CEL. Must evaluate to bool.<br>CEL expressions have access to the contents of the AdmissionRequest and Authorizer, organized into CEL variables:<br><br>'object' - The object from the incoming request. The value is null for DELETE requests.<br>'oldObject' - The existing object. The value is null for CREATE requests.<br>'request' - Attributes of the admission request(/pkg/apis/admission/types.go#AdmissionRequest).<br>'authorizer' - A CEL Authorizer. May be used to perform authorization checks for the principal (user or service account) of the request.<br>  See https://pkg.go.dev/k8s.io/apiserver/pkg/cel/library#Authz<br>'authorizer.requestResource' - A CEL ResourceCheck constructed from the 'authorizer' and configured with the<br>  request resource.<br>Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/<br><br>Required. | true |
-| **name** | string | Name is an identifier for this match condition, used for strategic merging of MatchConditions,<br>as well as providing an identifier for logging purposes. A good name should be descriptive of<br>the associated expression.<br>Name must be a qualified name consisting of alphanumeric characters, '-', '_' or '.', and<br>must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or<br>'123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]') with an<br>optional DNS subdomain prefix and '/' (e.g. 'example.com/MyName')<br><br>Required. | true |
+| **expression** | string | expression represents the expression which will be evaluated by CEL. Must evaluate to bool.<br>CEL expressions have access to the contents of the AdmissionRequest and Authorizer, organized into CEL variables:<br><br>'object' - The object from the incoming request. The value is null for DELETE requests.<br>'oldObject' - The existing object. The value is null for CREATE requests.<br>'request' - Attributes of the admission request(/pkg/apis/admission/types.go#AdmissionRequest).<br>'authorizer' - A CEL Authorizer. May be used to perform authorization checks for the principal (user or service account) of the request.<br>  See https://pkg.go.dev/k8s.io/apiserver/pkg/cel/library#Authz<br>'authorizer.requestResource' - A CEL ResourceCheck constructed from the 'authorizer' and configured with the<br>  request resource.<br>Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/<br><br>Required. | true |
+| **name** | string | name is an identifier for this match condition, used for strategic merging of MatchConditions,<br>as well as providing an identifier for logging purposes. A good name should be descriptive of<br>the associated expression.<br>Name must be a qualified name consisting of alphanumeric characters, '-', '_' or '.', and<br>must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or<br>'123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]') with an<br>optional DNS subdomain prefix and '/' (e.g. 'example.com/MyName')<br><br>Required. | true |
 
 
 ### CapsuleConfiguration.spec.admission.mutating.webhooks[index].namespaceSelector
@@ -342,10 +344,10 @@ sure that all the tuple expansions are valid.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **apiGroups** | []string | APIGroups is the API groups the resources belong to. '*' is all groups.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
-| **apiVersions** | []string | APIVersions is the API versions the resources belong to. '*' is all versions.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
-| **operations** | []string | Operations is the operations the admission hook cares about - CREATE, UPDATE, DELETE, CONNECT or *<br>for all of those operations and any future admission operations that are added.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
-| **resources** | []string | Resources is a list of resources this rule applies to.<br><br>For example:<br>'pods' means pods.<br>'pods/log' means the log subresource of pods.<br>'*' means all resources, but not subresources.<br>'pods/*' means all subresources of pods.<br>'*/scale' means all scale subresources.<br>'*/*' means all resources and their subresources.<br><br>If wildcard is present, the validation rule will ensure resources do not<br>overlap with each other.<br><br>Depending on the enclosing object, subresources might not be allowed.<br>Required. | false |
+| **apiGroups** | []string | apiGroups is the API groups the resources belong to. '*' is all groups.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **apiVersions** | []string | apiVersions is the API versions the resources belong to. '*' is all versions.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **operations** | []string | operations is the operations the admission hook cares about - CREATE, UPDATE, DELETE, CONNECT or *<br>for all of those operations and any future admission operations that are added.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **resources** | []string | resources is a list of resources this rule applies to.<br><br>For example:<br>'pods' means pods.<br>'pods/log' means the log subresource of pods.<br>'*' means all resources, but not subresources.<br>'pods/*' means all subresources of pods.<br>'*/scale' means all scale subresources.<br>'*/*' means all resources and their subresources.<br><br>If wildcard is present, the validation rule will ensure resources do not<br>overlap with each other.<br><br>Depending on the enclosing object, subresources might not be allowed.<br>Required. | false |
 | **scope** | string | scope specifies the scope of this rule.<br>Valid values are "Cluster", "Namespaced", and "*"<br>"Cluster" means that only cluster-scoped resources will match this rule.<br>Namespace API objects are cluster-scoped.<br>"Namespaced" means that only namespaced resources will match this rule.<br>"*" means that there are no scope restrictions.<br>Subresources match the scope of their parent resource.<br>Default is "*". | false |
 
 
@@ -374,16 +376,16 @@ whats the problem
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **caBundle** | string | `caBundle` is a PEM encoded CA bundle which will be used to validate the webhook's server certificate.<br>If unspecified, system trust roots on the apiserver are used.<br/>*Format*: byte<br/> | false |
-| **[service](#capsuleconfigurationspecadmissionvalidatingclientservice)** | object | `service` is a reference to the service for this webhook. Either<br>`service` or `url` must be specified.<br><br>If the webhook is running within the cluster, then you should use `service`. | false |
-| **url** | string | `url` gives the location of the webhook, in standard URL form<br>(`scheme://host:port/path`). Exactly one of `url` or `service`<br>must be specified.<br><br>The `host` should not refer to a service running in the cluster; use<br>the `service` field instead. The host might be resolved via external<br>DNS in some apiservers (e.g., `kube-apiserver` cannot resolve<br>in-cluster DNS as that would be a layering violation). `host` may<br>also be an IP address.<br><br>Please note that using `localhost` or `127.0.0.1` as a `host` is<br>risky unless you take great care to run this webhook on all hosts<br>which run an apiserver which might need to make calls to this<br>webhook. Such installs are likely to be non-portable, i.e., not easy<br>to turn up in a new cluster.<br><br>The scheme must be "https"; the URL must begin with "https://".<br><br>A path is optional, and if present may be any string permissible in<br>a URL. You may use the path to pass an arbitrary string to the<br>webhook, for example, a cluster identifier.<br><br>Attempting to use a user or basic auth e.g. "user:password@" is not<br>allowed. Fragments ("#...") and query parameters ("?...") are not<br>allowed, either. | false |
+| **caBundle** | string | caBundle is a PEM encoded CA bundle which will be used to validate the webhook's server certificate.<br>If unspecified, system trust roots on the apiserver are used.<br/>*Format*: byte<br/> | false |
+| **[service](#capsuleconfigurationspecadmissionvalidatingclientservice)** | object | service is a reference to the service for this webhook. Either<br>`service` or `url` must be specified.<br><br>If the webhook is running within the cluster, then you should use `service`. | false |
+| **url** | string | url gives the location of the webhook, in standard URL form<br>(`scheme://host:port/path`). Exactly one of `url` or `service`<br>must be specified.<br><br>The `host` should not refer to a service running in the cluster; use<br>the `service` field instead. The host might be resolved via external<br>DNS in some apiservers (e.g., `kube-apiserver` cannot resolve<br>in-cluster DNS as that would be a layering violation). `host` may<br>also be an IP address.<br><br>Please note that using `localhost` or `127.0.0.1` as a `host` is<br>risky unless you take great care to run this webhook on all hosts<br>which run an apiserver which might need to make calls to this<br>webhook. Such installs are likely to be non-portable, i.e., not easy<br>to turn up in a new cluster.<br><br>The scheme must be "https"; the URL must begin with "https://".<br><br>A path is optional, and if present may be any string permissible in<br>a URL. You may use the path to pass an arbitrary string to the<br>webhook, for example, a cluster identifier.<br><br>Attempting to use a user or basic auth e.g. "user:password@" is not<br>allowed. Fragments ("#...") and query parameters ("?...") are not<br>allowed, either. | false |
 
 
 ### CapsuleConfiguration.spec.admission.validating.client.service
 
 
 
-`service` is a reference to the service for this webhook. Either
+service is a reference to the service for this webhook. Either
 `service` or `url` must be specified.
 
 If the webhook is running within the cluster, then you should use `service`.
@@ -391,10 +393,10 @@ If the webhook is running within the cluster, then you should use `service`.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **name** | string | `name` is the name of the service.<br>Required | true |
-| **namespace** | string | `namespace` is the namespace of the service.<br>Required | true |
-| **path** | string | `path` is an optional URL path which will be sent in any request to<br>this service. | false |
-| **port** | integer | If specified, the port on the service that hosting webhook.<br>Default to 443 for backward compatibility.<br>`port` should be a valid port number (1-65535, inclusive).<br/>*Format*: int32<br/> | false |
+| **name** | string | name is the name of the service.<br>Required | true |
+| **namespace** | string | namespace is the namespace of the service.<br>Required | true |
+| **path** | string | path is an optional URL path which will be sent in any request to<br>this service. | false |
+| **port** | integer | port is the port on the service that hosts the webhook.<br>Default to 443 for backward compatibility.<br>`port` should be a valid port number (1-65535, inclusive).<br/>*Format*: int32<br/> | false |
 
 
 ### CapsuleConfiguration.spec.admission.validating.webhooks[index]
@@ -429,8 +431,8 @@ MatchCondition represents a condition which must by fulfilled for a request to b
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **expression** | string | Expression represents the expression which will be evaluated by CEL. Must evaluate to bool.<br>CEL expressions have access to the contents of the AdmissionRequest and Authorizer, organized into CEL variables:<br><br>'object' - The object from the incoming request. The value is null for DELETE requests.<br>'oldObject' - The existing object. The value is null for CREATE requests.<br>'request' - Attributes of the admission request(/pkg/apis/admission/types.go#AdmissionRequest).<br>'authorizer' - A CEL Authorizer. May be used to perform authorization checks for the principal (user or service account) of the request.<br>  See https://pkg.go.dev/k8s.io/apiserver/pkg/cel/library#Authz<br>'authorizer.requestResource' - A CEL ResourceCheck constructed from the 'authorizer' and configured with the<br>  request resource.<br>Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/<br><br>Required. | true |
-| **name** | string | Name is an identifier for this match condition, used for strategic merging of MatchConditions,<br>as well as providing an identifier for logging purposes. A good name should be descriptive of<br>the associated expression.<br>Name must be a qualified name consisting of alphanumeric characters, '-', '_' or '.', and<br>must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or<br>'123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]') with an<br>optional DNS subdomain prefix and '/' (e.g. 'example.com/MyName')<br><br>Required. | true |
+| **expression** | string | expression represents the expression which will be evaluated by CEL. Must evaluate to bool.<br>CEL expressions have access to the contents of the AdmissionRequest and Authorizer, organized into CEL variables:<br><br>'object' - The object from the incoming request. The value is null for DELETE requests.<br>'oldObject' - The existing object. The value is null for CREATE requests.<br>'request' - Attributes of the admission request(/pkg/apis/admission/types.go#AdmissionRequest).<br>'authorizer' - A CEL Authorizer. May be used to perform authorization checks for the principal (user or service account) of the request.<br>  See https://pkg.go.dev/k8s.io/apiserver/pkg/cel/library#Authz<br>'authorizer.requestResource' - A CEL ResourceCheck constructed from the 'authorizer' and configured with the<br>  request resource.<br>Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/<br><br>Required. | true |
+| **name** | string | name is an identifier for this match condition, used for strategic merging of MatchConditions,<br>as well as providing an identifier for logging purposes. A good name should be descriptive of<br>the associated expression.<br>Name must be a qualified name consisting of alphanumeric characters, '-', '_' or '.', and<br>must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or<br>'123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]') with an<br>optional DNS subdomain prefix and '/' (e.g. 'example.com/MyName')<br><br>Required. | true |
 
 
 ### CapsuleConfiguration.spec.admission.validating.webhooks[index].namespaceSelector
@@ -564,10 +566,10 @@ sure that all the tuple expansions are valid.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **apiGroups** | []string | APIGroups is the API groups the resources belong to. '*' is all groups.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
-| **apiVersions** | []string | APIVersions is the API versions the resources belong to. '*' is all versions.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
-| **operations** | []string | Operations is the operations the admission hook cares about - CREATE, UPDATE, DELETE, CONNECT or *<br>for all of those operations and any future admission operations that are added.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
-| **resources** | []string | Resources is a list of resources this rule applies to.<br><br>For example:<br>'pods' means pods.<br>'pods/log' means the log subresource of pods.<br>'*' means all resources, but not subresources.<br>'pods/*' means all subresources of pods.<br>'*/scale' means all scale subresources.<br>'*/*' means all resources and their subresources.<br><br>If wildcard is present, the validation rule will ensure resources do not<br>overlap with each other.<br><br>Depending on the enclosing object, subresources might not be allowed.<br>Required. | false |
+| **apiGroups** | []string | apiGroups is the API groups the resources belong to. '*' is all groups.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **apiVersions** | []string | apiVersions is the API versions the resources belong to. '*' is all versions.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **operations** | []string | operations is the operations the admission hook cares about - CREATE, UPDATE, DELETE, CONNECT or *<br>for all of those operations and any future admission operations that are added.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **resources** | []string | resources is a list of resources this rule applies to.<br><br>For example:<br>'pods' means pods.<br>'pods/log' means the log subresource of pods.<br>'*' means all resources, but not subresources.<br>'pods/*' means all subresources of pods.<br>'*/scale' means all scale subresources.<br>'*/*' means all resources and their subresources.<br><br>If wildcard is present, the validation rule will ensure resources do not<br>overlap with each other.<br><br>Depending on the enclosing object, subresources might not be allowed.<br>Required. | false |
 | **scope** | string | scope specifies the scope of this rule.<br>Valid values are "Cluster", "Namespaced", and "*"<br>"Cluster" means that only cluster-scoped resources will match this rule.<br>Namespace API objects are cluster-scoped.<br>"Namespaced" means that only namespaced resources will match this rule.<br>"*" means that there are no scope restrictions.<br>Subresources match the scope of their parent resource.<br>Default is "*". | false |
 
 
@@ -771,6 +773,7 @@ Additional Options for the CustomQuotaSpecification
 | :---- | :---- | :----------- | :-------- |
 | **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
 | **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
+| **cel** | string | CEL expression evaluated against the source object.<br>The object is available as "object".<br>Must evaluate to kubernetes.Quantity or list<kubernetes.Quantity>.<br>Mutually exclusive with path and must be empty when op is "count". | false |
 | **op** | enum | Operation used to evaluate usage.<br/>*Enum*: add, sub, count<br/>*Default*: add<br/> | false |
 | **path** | string | Path on GVK where usage is evaluated.<br>Must be empty when op is "count".<br>Required and non-empty for all other operations. | false |
 | **[selectors](#customquotaspecsourcesindexselectorsindex)** | []object | Provide more granular selectors for these sources<br>The ScopeSelector and NamespaceSelector are always applied<br>Allowing these selectors to make further selecting on the resulting subset. | false |
@@ -785,6 +788,7 @@ Additional Options for the CustomQuotaSpecification
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **celExpressions** | []string | Additional CEL expressions evaluated against the selected object.<br>The object is available as "object".<br>All must evaluate to true for this selector to match.<br>CEL expressions and fieldSelectors may be used together. | false |
 | **fieldSelectors** | []string | Additional boolean JSONPath expressions.<br>All must evaluate to true for this selector to match. | false |
 | **[matchExpressions](#customquotaspecsourcesindexselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
 | **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
@@ -880,9 +884,10 @@ Condition contains details for one aspect of the current state of this API Resou
 | **group** | string |  | true |
 | **kind** | string |  | true |
 | **version** | string |  | true |
+| **cel** | string | CEL expression evaluated against the source object.<br>The object is available as "object".<br>Must evaluate to kubernetes.Quantity or list<kubernetes.Quantity>.<br>Mutually exclusive with path and must be empty when op is "count". | false |
 | **op** | enum | Operation used to evaluate usage.<br/>*Enum*: add, sub, count<br/>*Default*: add<br/> | false |
 | **path** | string | Path on GVK where usage is evaluated.<br>Must be empty when op is "count".<br>Required and non-empty for all other operations. | false |
-| **scope** | string | Path on GVK where usage is evaluated | false |
+| **scope** | string | Scope of the GVK where usage is evaluated. | false |
 | **[selectors](#customquotastatustargetsindexselectorsindex)** | []object | Provide more granular selectors for these sources<br>The ScopeSelector and NamespaceSelector are always applied<br>Allowing these selectors to make further selecting on the resulting subset. | false |
 
 
@@ -895,6 +900,7 @@ Condition contains details for one aspect of the current state of this API Resou
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **celExpressions** | []string | Additional CEL expressions evaluated against the selected object.<br>The object is available as "object".<br>All must evaluate to true for this selector to match.<br>CEL expressions and fieldSelectors may be used together. | false |
 | **fieldSelectors** | []string | Additional boolean JSONPath expressions.<br>All must evaluate to true for this selector to match. | false |
 | **[matchExpressions](#customquotastatustargetsindexselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
 | **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
@@ -1003,6 +1009,7 @@ Additional Options for the CustomQuotaSpecification
 | :---- | :---- | :----------- | :-------- |
 | **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
 | **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
+| **cel** | string | CEL expression evaluated against the source object.<br>The object is available as "object".<br>Must evaluate to kubernetes.Quantity or list<kubernetes.Quantity>.<br>Mutually exclusive with path and must be empty when op is "count". | false |
 | **op** | enum | Operation used to evaluate usage.<br/>*Enum*: add, sub, count<br/>*Default*: add<br/> | false |
 | **path** | string | Path on GVK where usage is evaluated.<br>Must be empty when op is "count".<br>Required and non-empty for all other operations. | false |
 | **[selectors](#globalcustomquotaspecsourcesindexselectorsindex)** | []object | Provide more granular selectors for these sources<br>The ScopeSelector and NamespaceSelector are always applied<br>Allowing these selectors to make further selecting on the resulting subset. | false |
@@ -1017,6 +1024,7 @@ Additional Options for the CustomQuotaSpecification
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **celExpressions** | []string | Additional CEL expressions evaluated against the selected object.<br>The object is available as "object".<br>All must evaluate to true for this selector to match.<br>CEL expressions and fieldSelectors may be used together. | false |
 | **fieldSelectors** | []string | Additional boolean JSONPath expressions.<br>All must evaluate to true for this selector to match. | false |
 | **[matchExpressions](#globalcustomquotaspecsourcesindexselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
 | **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
@@ -1141,9 +1149,10 @@ Condition contains details for one aspect of the current state of this API Resou
 | **group** | string |  | true |
 | **kind** | string |  | true |
 | **version** | string |  | true |
+| **cel** | string | CEL expression evaluated against the source object.<br>The object is available as "object".<br>Must evaluate to kubernetes.Quantity or list<kubernetes.Quantity>.<br>Mutually exclusive with path and must be empty when op is "count". | false |
 | **op** | enum | Operation used to evaluate usage.<br/>*Enum*: add, sub, count<br/>*Default*: add<br/> | false |
 | **path** | string | Path on GVK where usage is evaluated.<br>Must be empty when op is "count".<br>Required and non-empty for all other operations. | false |
-| **scope** | string | Path on GVK where usage is evaluated | false |
+| **scope** | string | Scope of the GVK where usage is evaluated. | false |
 | **[selectors](#globalcustomquotastatustargetsindexselectorsindex)** | []object | Provide more granular selectors for these sources<br>The ScopeSelector and NamespaceSelector are always applied<br>Allowing these selectors to make further selecting on the resulting subset. | false |
 
 
@@ -1156,6 +1165,7 @@ Condition contains details for one aspect of the current state of this API Resou
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **celExpressions** | []string | Additional CEL expressions evaluated against the selected object.<br>The object is available as "object".<br>All must evaluate to true for this selector to match.<br>CEL expressions and fieldSelectors may be used together. | false |
 | **fieldSelectors** | []string | Additional boolean JSONPath expressions.<br>All must evaluate to true for this selector to match. | false |
 | **[matchExpressions](#globalcustomquotastatustargetsindexselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
 | **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
@@ -1205,6 +1215,170 @@ Usage measurements
 | :---- | :---- | :----------- | :-------- |
 | **available** | int or string | Used is the current observed total available of the resource (limit - used). | false |
 | **used** | int or string | Used is the current observed total usage of the resource. | false |
+
+## GlobalResourceQuota
+
+
+
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | capsule.clastix.io/v1beta2 | true |
+| **kind** | string | GlobalResourceQuota | true |
+| **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
+| **[spec](#globalresourcequotaspec)** | object | GlobalResourceQuotaSpec defines a native ResourceQuota shared by every<br>namespace matched by any namespace selector. | true |
+| **[status](#globalresourcequotastatus)** | object |  | false |
+
+
+### GlobalResourceQuota.spec
+
+
+
+GlobalResourceQuotaSpec defines a native ResourceQuota shared by every
+namespace matched by any namespace selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[quota](#globalresourcequotaspecquota)** | object | Quota is the native Kubernetes ResourceQuota specification enforced<br>across the selected namespaces. | true |
+| **[namespaceSelectors](#globalresourcequotaspecnamespaceselectorsindex)** | []object | NamespaceSelectors select the namespaces that share this quota.<br>Selectors are ORed; requirements within one selector are ANDed. An empty<br>label selector matches all namespaces. | false |
+
+
+### GlobalResourceQuota.spec.quota
+
+
+
+Quota is the native Kubernetes ResourceQuota specification enforced
+across the selected namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **hard** | map[string]int or string | hard is the set of desired hard limits for each named resource.<br>More info: https://kubernetes.io/docs/concepts/policy/resource-quotas/ | false |
+| **[scopeSelector](#globalresourcequotaspecquotascopeselector)** | object | scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota<br>but expressed using ScopeSelectorOperator in combination with possible values.<br>For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched. | false |
+| **scopes** | []string | A collection of filters that must match each object tracked by a quota.<br>If not specified, the quota matches all objects. | false |
+
+
+### GlobalResourceQuota.spec.quota.scopeSelector
+
+
+
+scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota
+but expressed using ScopeSelectorOperator in combination with possible values.
+For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#globalresourcequotaspecquotascopeselectormatchexpressionsindex)** | []object | A list of scope selector requirements by scope of the resources. | false |
+
+
+### GlobalResourceQuota.spec.quota.scopeSelector.matchExpressions[index]
+
+
+
+A scoped-resource selector requirement is a selector that contains values, a scope name, and an operator
+that relates the scope name and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **operator** | string | Represents a scope's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. | true |
+| **scopeName** | string | The name of the scope that the selector applies to. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### GlobalResourceQuota.spec.namespaceSelectors[index]
+
+
+
+Selector for resources and their labels or selecting origin namespaces
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#globalresourcequotaspecnamespaceselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### GlobalResourceQuota.spec.namespaceSelectors[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### GlobalResourceQuota.status
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[conditions](#globalresourcequotastatusconditionsindex)** | []object | Conditions report reconciliation and admission readiness. | true |
+| **[total](#globalresourcequotastatustotal)** | object | Total contains aggregate quota usage across all selected namespaces. | true |
+| **namespaceCount** | integer | NamespaceSize is the number of selected namespaces.<br/>*Default*: 0<br/> | false |
+| **[namespaceUsage](#globalresourcequotastatusnamespaceusagekey)** | map[string]object | NamespaceUsage contains observed quota usage per selected namespace. | false |
+| **namespaces** | []string | Namespaces is the ordered set of selected namespace names. | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation observed by the controller.<br/>*Format*: int64<br/> | false |
+
+
+### GlobalResourceQuota.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
+
+
+### GlobalResourceQuota.status.total
+
+
+
+Total contains aggregate quota usage across all selected namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **available** | map[string]int or string | Available is max(Hard-Used, 0). | false |
+| **hard** | map[string]int or string | Hard is the configured shared limit. | false |
+| **used** | map[string]int or string | Used is the usage observed across the relevant namespace set. | false |
+
+
+### GlobalResourceQuota.status.namespaceUsage[key]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **used** | map[string]int or string | Used is the usage observed in this namespace. | false |
 
 ## GlobalTenantResource
 
@@ -1633,6 +1807,7 @@ and quota controllers.
 | **[pendingDeletes](#quantityledgerstatuspendingdeletesindex)** | []object | Pending delete hints carried over from admission delete handling. | false |
 | **[reservations](#quantityledgerstatusreservationsindex)** | []object | Active inflight reservations for this quota. | false |
 | **reserved** | int or string | Reserved is the aggregate sum of all active reservations.<br>Controllers/webhooks should treat this as derived data from Reservations. | false |
+| **[resourceQuota](#quantityledgerstatusresourcequota)** | object | ResourceQuota contains coordination state for GlobalResourceQuota.<br>It is unset for CustomQuota and GlobalCustomQuota ledgers. | false |
 
 
 ### QuantityLedger.status.conditions[index]
@@ -1664,6 +1839,7 @@ soon, but may still temporarily appear during rebuild due to propagation delay.
 | :---- | :---- | :----------- | :-------- |
 | **createdAt** | string | <br/>*Format*: date-time<br/> | true |
 | **[objectRef](#quantityledgerstatuspendingdeletesindexobjectref)** | object | QuotaLedgerObjectRef identifies the object for which a reservation exists.<br>UID may be empty for CREATE admission before the object is persisted. | true |
+| **id** | string | ID identifies the admission request that added this hint. It allows a<br>failed multi-quota admission to roll back only its own hint. | false |
 
 
 ### QuantityLedger.status.pendingDeletes[index].objectRef
@@ -1700,10 +1876,66 @@ In practice, admission.Request.UID is a good default.
 | **[objectRef](#quantityledgerstatusreservationsindexobjectref)** | object | Object that this reservation is intended to create/update. | true |
 | **updatedAt** | string | Time the reservation was last refreshed or updated.<br/>*Format*: date-time<br/> | true |
 | **usage** | int or string | Amount reserved for this request. | true |
+| **delta** | int or string | Delta is the additional amount held against the quota while the admitted<br>object is materializing. For creates this is normally equal to Usage. For<br>updates it is max(newUsage-oldUsage, 0), so admission never releases<br>capacity before the API server has persisted the update.<br><br>A nil value is interpreted as Usage for backwards compatibility with<br>ledgers written before this field was introduced. | false |
 | **expiresAt** | string | Time after which the reservation may be considered stale.<br/>*Format*: date-time<br/> | false |
 
 
 ### QuantityLedger.status.reservations[index].objectRef
+
+
+
+Object that this reservation is intended to create/update.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | APIVersion of the tracked object, for example "v1". | true |
+| **kind** | string | Kind of the tracked object, for example "Pod". | true |
+| **apiGroup** | string | APIGroup of the tracked object. | false |
+| **name** | string | Name of the tracked object. | false |
+| **namespace** | string | Namespace of the tracked object. | false |
+| **uid** | string | UID of the tracked object. | false |
+
+
+### QuantityLedger.status.resourceQuota
+
+
+
+ResourceQuota contains coordination state for GlobalResourceQuota.
+It is unset for CustomQuota and GlobalCustomQuota ledgers.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **allocated** | map[string]int or string | Allocated is Used plus all active reservations. | false |
+| **initialized** | boolean | Initialized is true after every selected namespace has reported<br>ResourceQuota status for this quota. | false |
+| **namespaces** | []string | Namespaces is the selected namespace set represented by Used. | false |
+| **observedGeneration** | integer | ObservedGeneration is the GlobalResourceQuota generation represented by<br>this ledger state.<br/>*Format*: int64<br/> | false |
+| **[reservations](#quantityledgerstatusresourcequotareservationsindex)** | []object | Reservations contains inflight admission operations. | false |
+| **reserved** | map[string]int or string | Reserved is derived from Reservations. | false |
+| **used** | map[string]int or string | Used is the usage observed from ResourceQuota status across all selected<br>namespaces. | false |
+
+
+### QuantityLedger.status.resourceQuota.reservations[index]
+
+
+
+QuantityLedgerResourceQuotaReservation is an atomic reservation against all
+resources tracked by a GlobalResourceQuota.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **createdAt** | string | <br/>*Format*: date-time<br/> | true |
+| **id** | string | Unique reservation identifier. | true |
+| **[objectRef](#quantityledgerstatusresourcequotareservationsindexobjectref)** | object | Object that this reservation is intended to create/update. | true |
+| **updatedAt** | string | <br/>*Format*: date-time<br/> | true |
+| **delta** | map[string]int or string | Delta is the positive amount held while ResourceQuota status catches up. | false |
+| **expiresAt** | string | <br/>*Format*: date-time<br/> | false |
+| **usage** | map[string]int or string | Usage is the calculated usage of the admitted object. | false |
+
+
+### QuantityLedger.status.resourceQuota.reservations[index].objectRef
 
 
 
@@ -2057,6 +2289,7 @@ For future implementation where users might manage RuleStatus CRs themselves
 | :---- | :---- | :----------- | :-------- |
 | **[audience](#rulestatusspecindexaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#rulestatusspecindexenforce)** | object | Enforcement for given rule | false |
+| **[quota](#rulestatusspecindexquotaindex)** | []object | Quota contains native Kubernetes ResourceQuota specifications shared by<br>all namespaces selected by this rule. Unlike Enforce, quota accounting is<br>independent of the request audience. | false |
 
 
 ### RuleStatus.spec[index].audience[index]
@@ -2315,6 +2548,52 @@ Both may be set together.
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
+### RuleStatus.spec[index].quota[index]
+
+
+
+ResourceQuotaRule defines a named ResourceQuota specification generated by a
+Tenant rule. Name is the durable identity of the generated
+GlobalResourceQuota and must be unique across all rules of a Tenant.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name is the stable identity of this quota within the Tenant. Changing the<br>name replaces the generated GlobalResourceQuota; changing the quota or its<br>namespace selector updates the existing object. | true |
+| **hard** | map[string]int or string | hard is the set of desired hard limits for each named resource.<br>More info: https://kubernetes.io/docs/concepts/policy/resource-quotas/ | false |
+| **[scopeSelector](#rulestatusspecindexquotaindexscopeselector)** | object | scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota<br>but expressed using ScopeSelectorOperator in combination with possible values.<br>For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched. | false |
+| **scopes** | []string | A collection of filters that must match each object tracked by a quota.<br>If not specified, the quota matches all objects. | false |
+
+
+### RuleStatus.spec[index].quota[index].scopeSelector
+
+
+
+scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota
+but expressed using ScopeSelectorOperator in combination with possible values.
+For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusspecindexquotaindexscopeselectormatchexpressionsindex)** | []object | A list of scope selector requirements by scope of the resources. | false |
+
+
+### RuleStatus.spec[index].quota[index].scopeSelector.matchExpressions[index]
+
+
+
+A scoped-resource selector requirement is a selector that contains values, a scope name, and an operator
+that relates the scope name and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **operator** | string | Represents a scope's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. | true |
+| **scopeName** | string | The name of the scope that the selector applies to. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty.<br>This array is replaced during a strategic merge patch. | false |
+
+
 ### RuleStatus.status
 
 
@@ -2359,6 +2638,7 @@ Rule contains a legacy flattened view and cannot fully represent action-aware ru
 | :---- | :---- | :----------- | :-------- |
 | **[audience](#rulestatusstatusruleaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#rulestatusstatusruleenforce)** | object | Enforcement for given rule | false |
+| **[quota](#rulestatusstatusrulequotaindex)** | []object | Quota contains native Kubernetes ResourceQuota specifications shared by<br>all namespaces selected by this rule. Unlike Enforce, quota accounting is<br>independent of the request audience. | false |
 
 
 ### RuleStatus.status.rule.audience[index]
@@ -2617,6 +2897,52 @@ Both may be set together.
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
+### RuleStatus.status.rule.quota[index]
+
+
+
+ResourceQuotaRule defines a named ResourceQuota specification generated by a
+Tenant rule. Name is the durable identity of the generated
+GlobalResourceQuota and must be unique across all rules of a Tenant.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name is the stable identity of this quota within the Tenant. Changing the<br>name replaces the generated GlobalResourceQuota; changing the quota or its<br>namespace selector updates the existing object. | true |
+| **hard** | map[string]int or string | hard is the set of desired hard limits for each named resource.<br>More info: https://kubernetes.io/docs/concepts/policy/resource-quotas/ | false |
+| **[scopeSelector](#rulestatusstatusrulequotaindexscopeselector)** | object | scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota<br>but expressed using ScopeSelectorOperator in combination with possible values.<br>For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched. | false |
+| **scopes** | []string | A collection of filters that must match each object tracked by a quota.<br>If not specified, the quota matches all objects. | false |
+
+
+### RuleStatus.status.rule.quota[index].scopeSelector
+
+
+
+scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota
+but expressed using ScopeSelectorOperator in combination with possible values.
+For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulequotaindexscopeselectormatchexpressionsindex)** | []object | A list of scope selector requirements by scope of the resources. | false |
+
+
+### RuleStatus.status.rule.quota[index].scopeSelector.matchExpressions[index]
+
+
+
+A scoped-resource selector requirement is a selector that contains values, a scope name, and an operator
+that relates the scope name and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **operator** | string | Represents a scope's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. | true |
+| **scopeName** | string | The name of the scope that the selector applies to. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty.<br>This array is replaced during a strategic merge patch. | false |
+
+
 ### RuleStatus.status.rules[index]
 
 
@@ -2628,6 +2954,7 @@ For future implementation where users might manage RuleStatus CRs themselves
 | :---- | :---- | :----------- | :-------- |
 | **[audience](#rulestatusstatusrulesindexaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#rulestatusstatusrulesindexenforce)** | object | Enforcement for given rule | false |
+| **[quota](#rulestatusstatusrulesindexquotaindex)** | []object | Quota contains native Kubernetes ResourceQuota specifications shared by<br>all namespaces selected by this rule. Unlike Enforce, quota accounting is<br>independent of the request audience. | false |
 
 
 ### RuleStatus.status.rules[index].audience[index]
@@ -2884,6 +3211,52 @@ Both may be set together.
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].quota[index]
+
+
+
+ResourceQuotaRule defines a named ResourceQuota specification generated by a
+Tenant rule. Name is the durable identity of the generated
+GlobalResourceQuota and must be unique across all rules of a Tenant.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name is the stable identity of this quota within the Tenant. Changing the<br>name replaces the generated GlobalResourceQuota; changing the quota or its<br>namespace selector updates the existing object. | true |
+| **hard** | map[string]int or string | hard is the set of desired hard limits for each named resource.<br>More info: https://kubernetes.io/docs/concepts/policy/resource-quotas/ | false |
+| **[scopeSelector](#rulestatusstatusrulesindexquotaindexscopeselector)** | object | scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota<br>but expressed using ScopeSelectorOperator in combination with possible values.<br>For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched. | false |
+| **scopes** | []string | A collection of filters that must match each object tracked by a quota.<br>If not specified, the quota matches all objects. | false |
+
+
+### RuleStatus.status.rules[index].quota[index].scopeSelector
+
+
+
+scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota
+but expressed using ScopeSelectorOperator in combination with possible values.
+For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulesindexquotaindexscopeselectormatchexpressionsindex)** | []object | A list of scope selector requirements by scope of the resources. | false |
+
+
+### RuleStatus.status.rules[index].quota[index].scopeSelector.matchExpressions[index]
+
+
+
+A scoped-resource selector requirement is a selector that contains values, a scope name, and an operator
+that relates the scope name and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **operator** | string | Represents a scope's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. | true |
+| **scopeName** | string | The name of the scope that the selector applies to. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty.<br>This array is replaced during a strategic merge patch. | false |
 
 ## TenantOwner
 
@@ -4187,6 +4560,7 @@ Rules Distributed via Tenants
 | **[enforce](#tenantspecrulesindexenforce)** | object | Enforcement for given rule | false |
 | **[namespaceSelector](#tenantspecrulesindexnamespaceselector)** | object | Select namespaces which are going to be targeted with this rule | false |
 | **[permissions](#tenantspecrulesindexpermissions)** | object | Permissions for given rule | false |
+| **[quota](#tenantspecrulesindexquotaindex)** | []object | Quota contains native Kubernetes ResourceQuota specifications shared by<br>all namespaces selected by this rule. Unlike Enforce, quota accounting is<br>independent of the request audience. | false |
 
 
 ### Tenant.spec.rules[index].audience[index]
@@ -4557,6 +4931,52 @@ relates the key and values.
 | **key** | string | key is the label key that the selector applies to. | true |
 | **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
 | **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### Tenant.spec.rules[index].quota[index]
+
+
+
+ResourceQuotaRule defines a named ResourceQuota specification generated by a
+Tenant rule. Name is the durable identity of the generated
+GlobalResourceQuota and must be unique across all rules of a Tenant.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name is the stable identity of this quota within the Tenant. Changing the<br>name replaces the generated GlobalResourceQuota; changing the quota or its<br>namespace selector updates the existing object. | true |
+| **hard** | map[string]int or string | hard is the set of desired hard limits for each named resource.<br>More info: https://kubernetes.io/docs/concepts/policy/resource-quotas/ | false |
+| **[scopeSelector](#tenantspecrulesindexquotaindexscopeselector)** | object | scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota<br>but expressed using ScopeSelectorOperator in combination with possible values.<br>For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched. | false |
+| **scopes** | []string | A collection of filters that must match each object tracked by a quota.<br>If not specified, the quota matches all objects. | false |
+
+
+### Tenant.spec.rules[index].quota[index].scopeSelector
+
+
+
+scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota
+but expressed using ScopeSelectorOperator in combination with possible values.
+For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecrulesindexquotaindexscopeselectormatchexpressionsindex)** | []object | A list of scope selector requirements by scope of the resources. | false |
+
+
+### Tenant.spec.rules[index].quota[index].scopeSelector.matchExpressions[index]
+
+
+
+A scoped-resource selector requirement is a selector that contains values, a scope name, and an operator
+that relates the scope name and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **operator** | string | Represents a scope's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. | true |
+| **scopeName** | string | The name of the scope that the selector applies to. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty.<br>This array is replaced during a strategic merge patch. | false |
 
 
 ### Tenant.spec.runtimeClasses

@@ -1,13 +1,95 @@
 ---
-title: Permissions
-weight: 5
+title: Rules
+weight: 8
 description: >
-  Configure policies and restrictions on a per-Tenant basis with Rules
+  Configure policies and restrictions on a per-Namespace basis with Rules
 ---
+
+Enforcement rules allow Bill, the cluster administrator, to set policies and restrictions on a per-`Tenant` basis. These rules are enforced by Capsule admission webhooks when Alice, the `TenantOwner`, creates or modifies resources in her `Namespaces`. With the rule construct, namespaces within the same tenant can be profiled differently depending on their metadata.
+
+## Namespace Selector
+
+By default, a rule applies to all namespaces within a `Tenant`. To apply a rule only to a subset of namespaces, use `namespaceSelector`. The selector follows the standard Kubernetes label selector semantics.
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  ...
+  rules:
+    # Matches all Namespaces and enforces the rule for all of them.
+    - enforce:
+        action: allow
+        workloads:
+          registries:
+            - exact:
+                - harbor/v2/customer-registry/debian:latest
+              policy: ["IfNotPresent"]
+
+    # Selects a subset of namespaces (environment=prod) to allow additional registries.
+    - namespaceSelector:
+        matchExpressions:
+          - key: environment
+            operator: In
+            values: ["prod"]
+      enforce:
+        action: allow
+        workloads:
+          registries:
+            - exp: "harbor/v2/prod-registry/.*"
+              policy: ["IfNotPresent"]
+```
+
+Rules are combined together. In this example, all namespaces within the `solar` tenant can use the exact `harbor/v2/customer-registry/debian:latest` image, while namespaces labeled with `environment=prod` can also use images from `harbor/v2/prod-registry/*`.
+
+## Templating
+
+Namespace rule bodies are rendered as Go templates before they are written into the per-namespace `RuleStatus`. This allows administrators to define generic Tenant rules that are rendered differently for each Namespace. Templates can use the `tenant` and `namespace` objects as context, including metadata such as names, labels, and annotations.
+
+For example, the following rule allows an image reference based on the current Tenant and Namespace name:
+
+```yaml
+rules:
+  - enforce:
+      action: allow
+      workloads:
+        registries:
+          - exact:
+              - "{{ .tenant.metadata.name }}/{{ .namespace.metadata.name }}/app:1"
+```
+
+For a Tenant named `solar` and a Namespace named `solar-prod`, this rule is rendered into an exact registry reference of `solar/solar-prod/app:1`.
+
+Labels and annotations can also be used. Because many Kubernetes label and annotation keys contain dashes, dots, or slashes, use the `index` function when accessing them:
+
+```yaml
+rules:
+  - enforce:
+      action: allow
+      workloads:
+        registries:
+          - exact:
+              - "{{ index .namespace.metadata.labels \"registry-prefix\" }}/app:1"
+```
+
+If the Namespace has the label `registry-prefix=harbor/team-a`, the rendered registry rule becomes `harbor/team-a/app:1`.
+
+Templates are rendered after `namespaceSelector` matching and before rule evaluation. This means a selected rule can use the concrete Namespace context while preserving the original rule order. Rule order remains important because the last matching `allow` or `deny` rule wins.
+
+If a template references a missing key, Capsule marks the Tenant as not ready and reports the rendering error in the Tenant status. This prevents partially rendered or ambiguous rules from being applied silently.
+
+
+## Quotas
+
+
+## Permissions
 
 Declare permission distribution rules for the selected namespaces.
 
-## Bindings
+### Bindings
 
 With `Tenant` RoleBindings you can distribute namespaced RoleBindings to all namespaces which are assigned to a `Tenant`. This ensures the defined RoleBindings are present and reconciled in all namespaces of the `Tenant`. This is useful if users should have more insights on a `Tenant` basis. Let's look at an example.
 
@@ -54,7 +136,7 @@ EOF
 
  As you can see, `subjects` uses the standard [RoleBinding subject](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#referring-to-subjects) format. This grants permissions to the subject user **alice**, who can get, list, and watch ServiceMonitors in the solar Tenant namespaces, but has no other permissions.
 
-### Strict
+#### Strict
 
 If you have [strict RBAC enabled for the controller](/docs/operating/setup/installation/#strict-rbac), you need to ensure that the controller ServiceAccount has the permission to create RoleBindings for the specified ClusterRole. The Controller Aggregates ClusterRoles with the labels (OR):
 
@@ -76,7 +158,7 @@ rules:
   verbs: ["get", "list", "watch"]
 ```
 
-### Distribution
+#### Distribution
 
  You may have the use-case where you want to distribute different ClusterRoles to different namespaces of the same `Tenant`. For example, you want to give `view` permissions to an operational group in all namespaces of the solar `Tenant` with `environment=prod` label, but you want to give `edit` permissions to the operations group in all other namespaces. You can achieve this by leveraging [GlobalTenantResources](/docs/replications/global/):
 
@@ -115,7 +197,7 @@ spec:
                 name: tenant:{{ .tenant.metadata.name }}:operators
 ```
 
-### Built-in ClusterRoles
+#### Built-in ClusterRoles
 
 We strongly recommend you use custom ClusterRoles for your `Tenant` rolebindings, but you can also use built-in ClusterRoles (`admin` (default for Tenant Owners), `view` and `edit`). For example, if you want to give the `view` permissions to Joe in all namespaces of the solar `Tenant`, you can use the built-in `view` ClusterRole.
 
@@ -251,7 +333,7 @@ rules:
     verbs: ["get"]
 ```
 
-#### Custom Resources
+##### Custom Resources
 
 Capsule grants admin permissions to the `TenantOwners` but is only limited to their namespaces. To achieve that, it assigns the ClusterRole [admin](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#user-facing-roles) to the `TenantOwner`. This ClusterRole does not permit the installation of custom resources in the namespaces.
 
@@ -329,9 +411,7 @@ With the above example, Capsule is leaving the `TenantOwner` to create namespace
 
 > Take Note: a `TenantOwner` having the admin scope on its namespaces only, does not have the permission to create Custom Resources Definitions (CRDs) because this requires a cluster admin permission level. Only Bill, the cluster admin, can create CRDs. This is a known limitation of any multi-tenancy environment based on a single shared control plane.
 
-
-
-## Promotions
+### Promotions
 
 As an administrator, you can define promotion rules. A promotion rule selects ServiceAccounts within a Tenant based on specified conditions and assigns them predefined ClusterRoles.
 
@@ -461,3 +541,4 @@ To revoke the promotion, Alice can remove the label:
 ```shell
 kubectl label sa gitops-reconcile -n solar-test projectcapsule.dev/promote- --as alice --as-group projectcapsule.dev
 ```
+
