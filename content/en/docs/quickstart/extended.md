@@ -206,7 +206,7 @@ spec:
           - clusterRoleName: 'edit'
             subjects:
               - kind: Group
-                name: "solar:operators"
+                name: "tenant:{{ .tenant.metadata.name }}:operators"
 
     - namespaceSelector:
         matchLabels:
@@ -228,6 +228,8 @@ Capsule creates and maintains the `RoleBindings` automatically. When alice creat
 [Read More](/docs/replications/global/)
 
 `GlobalTenantResource` lets a cluster administrator push resources into every namespace of selected Tenants automatically. A common use case is distributing `LimitRange` objects to cap resource consumption per container.
+
+### LimitRanges
 
 The following example enforces different `LimitRange` defaults per environment:
 
@@ -303,6 +305,67 @@ NAME                 CREATED AT
 service-level-gold   2026-07-24T10:00:00Z
 ```
 
+### Networkpolicies
+
+Distribute a [`NetworkPolicy`](https://kubernetes.io/docs/concepts/services-networking/network-policies/) to all `Namespaces` of a `Tenant` to enforce a certain network policy for all workloads within the `Tenant`/`Namespace`. The following `NetworkPolicy` is an attempt to achieve a default deny policy for all `Namespaces` of the `Tenant` but allow intra-namespace communication and allow communication between all `Namespaces` of the same `Tenant`. It also allows communication to system namespaces (eg. monitoring, ingress, etc.). [Read More](https://kubernetes.io/docs/concepts/security/multi-tenancy/#network-isolation)
+
+[Get Here](/docs/quickstart/gtr-netpol.yaml)
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalTenantResource
+metadata:
+  name: default-networkpolicies
+spec:
+  resyncPeriod: 60s
+  resources:
+    - rawItems:
+        - apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata:
+            name: default-policy
+          spec:
+            # Apply to all pods in this namespace
+            podSelector: {}
+            policyTypes:
+              - Ingress
+              - Egress
+            ingress:
+              # Allow traffic from the same namespace (intra-namespace communication)
+              - from:
+                  - podSelector: {}
+
+              # Allow traffic from all namespaces within the tenant
+              - from:
+                  - namespaceSelector:
+                      matchLabels:
+                        capsule.clastix.io/tenant: "{{tenant.name}}"
+
+              # Allow ingress from other namespaces labeled (System Namespaces, eg. Monitoring, Ingress)
+              - from:
+                  - namespaceSelector:
+                      matchLabels:
+                        company.com/system: "true"
+
+            egress:
+              # Allow DNS to kube-dns service IP (might be different in your setup)
+              - to:
+                  - ipBlock:
+                      cidr: 10.96.0.10/32
+                ports:
+                  - protocol: UDP
+                    port: 53
+                  - protocol: TCP
+                    port: 53
+
+              # Allow traffic to all namespaces within the tenant
+              - to:
+                  - namespaceSelector:
+                      matchLabels:
+                        capsule.clastix.io/tenant: "{{tenant.name}}"
+```
+
 ---
 
 ## Quota Management
@@ -313,6 +376,144 @@ Capsule also provides two dedicated quota mechanisms worth knowing about:
 - **Custom Quotas** - a flexible quota system that sits between classic `ResourceQuota` and Resource Pools, allowing fine-grained per-tenant quota management with custom rules on all types of resources. See [Custom Quotas](/docs/resource-management/customquotas/).
 
 Both are managed by cluster administrators and are independent of the Tenant rules shown on this page.
+
+### Full Tenant
+
+Here we have two `Tenants` with different rules and permissions. The `solar` tenant is a production tenant with multiple application stages with strict rules and permissions, while the `lunar` tenant is a development tenant with more relaxed rules and permissions.
+
+[Get Here](/docs/quickstart/full-tenant.yaml)
+
+```yaml
+# solar.yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  permissions:
+    matchOwners:
+    - matchLabels:
+        team: platform
+  owners:
+  - name: alice
+    kind: User
+  - name: bob
+    kind: User
+  namespaceOptions:
+    quota: 2
+  forceTenantPrefix: true
+  resourceQuotas:
+    scope: Tenant
+    items:
+    - hard:
+        limits.cpu: "8"
+        limits.memory: 16Gi
+        requests.cpu: "8"
+        requests.memory: 16Gi
+  rules:
+    - audience:
+        - kind: Custom
+          name: "CapsuleUser"
+      enforce:
+        action: deny
+        metadata:
+          - apiGroups:
+              - "v1"
+            kinds:
+              - "Namespace"
+            labels:
+              "openshift.io/.*":
+                required: false
+                values:
+                  - exp: ".*"
+    - enforce:
+        action: allow
+        metadata:
+          - apiGroups:
+              - "v1"
+            kinds:
+              - "Namespace"
+            labels:
+              environment:
+                required: true
+                default: "dev"
+                values:
+                  - exact:
+                      - dev
+                      - test
+                      - prod
+        services:
+          types:
+            - ClusterIP
+            - ExternalName
+          externalNames:
+            hostnames:
+              - exp: ".*\\.{{ .tenant.metadata.name }}\\.svc\\.company\\.com"
+    - namespaceSelector:
+        matchExpressions:
+        - key: environment
+          operator: NotIn
+          values:
+          - prod
+      permissions:
+        bindings:
+          - clusterRoleName: 'edit'
+            subjects:
+              - kind: Group
+                name: tenant:{{ .tenant.metadata.name }}:operators
+      enforce:
+        action: allow
+        workloads:
+          qosClasses:
+            - Guaranteed
+            - BestEffort
+        metadata:
+          - apiGroups:
+              - "v1"
+            kinds:
+              - "Namespace"
+            labels:
+              pod-security.kubernetes.io/enforce:
+                required: true
+                default: "restricted"
+                values:
+                  - exact:
+                      - restricted
+                      - baseline
+    - namespaceSelector:
+        matchLabels:
+          environment: prod
+      permissions:
+        bindings:
+          - clusterRoleName: 'view'
+            subjects:
+              - kind: Group
+                name: tenant:{{ .tenant.metadata.name }}:operators
+      enforce:
+        action: allow
+        workloads:
+          qosClasses:
+            - Guaranteed
+        metadata:
+          - apiGroups:
+              - "v1"
+            kinds:
+              - "Namespace"
+            labels:
+              pod-security.kubernetes.io/enforce:
+                required: true
+                managed: "restricted"
+```
+
+Once applied we can verify the `Tenant` with the following command:
+
+```bash
+kubectl get tnt solar
+
+NAME    STATE    NAMESPACE QUOTA   NAMESPACE COUNT   NODE SELECTOR   READY   STATUS       AGE
+solar   Active   2                 0                                 True    reconciled   35s
+```
 
 ---
 
