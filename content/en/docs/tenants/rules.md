@@ -81,8 +81,93 @@ Templates are rendered after `namespaceSelector` matching and before rule evalua
 
 If a template references a missing key, Capsule marks the Tenant as not ready and reports the rendering error in the Tenant status. This prevents partially rendered or ambiguous rules from being applied silently.
 
-
 ## Quotas
+
+Tenant rules can generate `GlobalResourceQuota` objects:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - name: alice
+      kind: User
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          company.example/tier: application
+      quota:
+        - name: shared-compute
+          hard:
+            requests.cpu: "8"
+            requests.memory: 16Gi
+            limits.cpu: "8"
+            limits.memory: 16Gi
+        - name: object-counts
+          hard:
+            services: "20"
+            count/horizontalpodautoscalers.autoscaling: "10"
+```
+
+Capsule creates one `GlobalResourceQuota` per entry in the rule's `quota` list. The generated selector combines:
+
+- The rule's namespace selector.
+- The Tenant membership label.
+
+The Tenant membership requirement prevents a rule from selecting another Tenant's namespaces. Generated quotas are reconciled and pruned with the Tenant rule lifecycle.
+
+Every quota entry requires a DNS label-compatible `name` which must be unique across all rules in the Tenant. The name is the durable identity of the generated `GlobalResourceQuota`: changing limits, selectors, or rule ordering updates the existing object. Renaming or removing the quota entry replaces or deletes it.
+
+Generated resource names use `<tenant-name>-<quota-name>`.
+
+Quota accounting is independent of a rule's request audience. An audience can limit other rule behavior but does not partition the shared resource budget. Quota definitions are not copied into namespace `RuleStatus` objects. They are reconciled directly from the Tenant into cluster-scoped `GlobalResourceQuota` objects, which remain the authoritative source for admission and accounting.
+
+Existing `Tenant.spec.resourceQuotas` behavior remains available for compatibility. Use rule-generated or directly managed `GlobalResourceQuota` objects when an atomic shared limit across namespaces is required.
+
+### GlobalResourceQuotas with Proxy
+
+When you are using the [Capsule-Proxy](/docs/proxy/) you can allow users to list and get the `GlobalResourceQuota` objects in their `Tenant`. Add a [GlobalTenantResource](/docs/replications/global/) to provide the necessary RBAC permissions to the `Tenant` users:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalTenantResource
+metadata:
+  name: capsule-proxy-settings
+spec:
+  scope: Tenant
+  resyncPeriod: 30s
+  resources:
+    - generators:
+        - missingKey: zero
+          template: |
+            ---
+            apiVersion: capsule.clastix.io/v1beta1
+            kind: GlobalProxySettings
+            metadata:
+              name: {{ $.tenant.metadata.name }}-proxy-settings
+            spec:
+              rules:
+              - subjects:
+                {{- range $.tenant.status.owners }}
+                - kind: {{ .kind }}
+                  name: {{ .name }}
+                {{- end }}
+                clusterResources:
+                - apiGroups:
+                  - "capsule.clastix.io"
+                  resources:
+                  - "globalresourcequotas"
+                  operations:
+                  - List
+                  selector:
+                    matchLabels:
+                      projectcapsule.dev/tenant: {{ $.tenant.metadata.name }} 
+```
+
+
+
 
 
 ## Permissions
