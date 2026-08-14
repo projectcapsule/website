@@ -126,6 +126,155 @@ Quota accounting is independent of a rule's request audience. An audience can li
 
 Existing `Tenant.spec.resourceQuotas` behavior remains available for compatibility. Use rule-generated or directly managed `GlobalResourceQuota` objects when an atomic shared limit across namespaces is required.
 
+### Migration
+
+This guide demonstrates how to migrate from [`Tenant.spec.resourceQuotas`](/docs/tenants/quotas/#resource-quota) to rule-generated `GlobalResourceQuota` objects. The example Tenant has two resource quotas defined:
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+  - name: alice
+    kind: User
+  namespaceOptions:
+    quota: 3
+  resourceQuotas:
+    scope: Tenant
+    items:
+    - hard:
+        limits.cpu: "8"
+        limits.memory: 16Gi
+        requests.cpu: "8"
+        requests.memory: 16Gi
+    - hard:
+        pods: "10"
+```
+
+Verify what the current usage is for the Tenant's namespaces (for all namespace of the `Tenant` solar):
+
+```bash
+NAMESPACE    NAME              REQUEST                                                    LIMIT                                                   AGE
+solar-dev    capsule-solar-0   requests.cpu: 0/6800m, requests.memory: 0/15616Mi          limits.cpu: 0/5, limits.memory: 0/14848Mi               87m
+solar-dev    capsule-solar-1   pods: 0/4                                                                                                          87m
+solar-prod   capsule-solar-0   requests.cpu: 600m/7400m, requests.memory: 384Mi/16000Mi   limits.cpu: 1500m/6500m, limits.memory: 768Mi/15616Mi   87m
+solar-prod   capsule-solar-1   pods: 3/7                                                                                                          87m
+solar-test   capsule-solar-0   requests.cpu: 600m/7400m, requests.memory: 384Mi/16000Mi   limits.cpu: 1500m/6500m, limits.memory: 768Mi/15616Mi   87m
+solar-test   capsule-solar-1   pods: 3/7                                                                                                          87m
+```
+
+Now we update the `Tenant` to propagate the same quotas through rules, we are not removing the old `resourceQuotas` yet, to avoid any race conditions with the quota usage. The new `Tenant` spec looks like this:
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+  - name: alice
+    kind: User
+  namespaceOptions:
+    quota: 3
+  resourceQuotas:
+    scope: Tenant
+    items:
+    - hard:
+        limits.cpu: "8"
+        limits.memory: 16Gi
+        requests.cpu: "8"
+        requests.memory: 16Gi
+    - hard:
+        pods: "10"
+  rules:
+    - quota:
+        - name: shared-compute
+          hard:
+            requests.cpu: "8"
+            requests.memory: 16Gi
+            limits.cpu: "8"
+            limits.memory: 16Gi
+        - name: object-counts
+          hard:
+            pods: "10"
+
+```
+
+After applying we can verify that `ResourceQuotas` are created for each rule quota. The important value is the **actual allocation**:
+
+```bash
+NAMESPACE    NAME                                        REQUEST                                                    LIMIT                                                   AGE
+
+# NEW /OLD
+solar-dev    capsule-global-quota-27d5c64b6c978b1b0f9c   pods: 0/4                                                                                                          102m
+solar-dev    capsule-solar-1                             pods: 0/4                                                                                                          3h13m
+
+# NEW /OLD
+solar-dev    capsule-global-quota-cf84f5e52f0542edd93c   requests.cpu: 0/6800m, requests.memory: 0/15616Mi          limits.cpu: 0/5, limits.memory: 0/14848Mi               102m
+solar-dev    capsule-solar-0                             requests.cpu: 0/6800m, requests.memory: 0/15616Mi          limits.cpu: 0/5, limits.memory: 0/14848Mi               3h13m
+
+# NEW /OLD
+solar-prod   capsule-global-quota-27d5c64b6c978b1b0f9c   pods: 3/7                                                                                                          102m
+solar-prod   capsule-solar-1                             pods: 3/7                                                                                                          3h13m
+
+# NEW /OLD
+solar-prod   capsule-global-quota-cf84f5e52f0542edd93c   requests.cpu: 600m/7400m, requests.memory: 384Mi/16000Mi   limits.cpu: 1500m/6500m, limits.memory: 768Mi/15616Mi   102m
+solar-prod   capsule-solar-0                             requests.cpu: 600m/7400m, requests.memory: 384Mi/16000Mi   limits.cpu: 1500m/6500m, limits.memory: 768Mi/15616Mi   3h13m
+
+# NEW /OLD
+solar-test   capsule-global-quota-27d5c64b6c978b1b0f9c   pods: 3/7                                                                                                          102m
+solar-test   capsule-solar-1                             pods: 3/7                                                                                                          3h13m
+
+# NEW /OLD
+solar-test   capsule-global-quota-cf84f5e52f0542edd93c   requests.cpu: 600m/7400m, requests.memory: 384Mi/16000Mi   limits.cpu: 1500m/6500m, limits.memory: 768Mi/15616Mi   102m
+solar-test   capsule-solar-0                             requests.cpu: 600m/7400m, requests.memory: 384Mi/16000Mi   limits.cpu: 1500m/6500m, limits.memory: 768Mi/15616Mi   3h13m
+```
+
+As you can see, the `GlobalResourceQuota` objects are created and the actual usage is preserved. Now we can safely remove the old `resourceQuotas` from the `Tenant` spec, and the new quotas will be enforced by the rules.
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+  - name: alice
+    kind: User
+  namespaceOptions:
+    quota: 3
+  rules:
+    - quota:
+        - name: shared-compute
+          hard:
+            requests.cpu: "8"
+            requests.memory: 16Gi
+            limits.cpu: "8"
+            limits.memory: 16Gi
+        - name: object-counts
+          hard:
+            pods: "10"
+```
+
+After applying we only see the new `GlobalResourceQuota` objects, and the actual usage is preserved:
+
+```bash
+NAMESPACE    NAME                                        REQUEST                                                    LIMIT                                                   AGE
+solar-dev    capsule-global-quota-27d5c64b6c978b1b0f9c   pods: 0/4                                                                                                          121m
+solar-dev    capsule-global-quota-cf84f5e52f0542edd93c   requests.cpu: 0/6800m, requests.memory: 0/15616Mi          limits.cpu: 0/5, limits.memory: 0/14848Mi               121m
+
+solar-prod   capsule-global-quota-27d5c64b6c978b1b0f9c   pods: 3/7                                                                                                          121m
+solar-prod   capsule-global-quota-cf84f5e52f0542edd93c   requests.cpu: 600m/7400m, requests.memory: 384Mi/16000Mi   limits.cpu: 1500m/6500m, limits.memory: 768Mi/15616Mi   121m
+
+solar-test   capsule-global-quota-27d5c64b6c978b1b0f9c   pods: 3/7                                                                                                          121m
+solar-test   capsule-global-quota-cf84f5e52f0542edd93c   requests.cpu: 600m/7400m, requests.memory: 384Mi/16000Mi   limits.cpu: 1500m/6500m, limits.memory: 768Mi/15616Mi   121m
+```
+
 ### GlobalResourceQuotas with Proxy
 
 When you are using the [Capsule-Proxy](/docs/proxy/) you can allow users to list and get the `GlobalResourceQuota` objects in their `Tenant`. Add a [GlobalTenantResource](/docs/replications/global/) to provide the necessary RBAC permissions to the `Tenant` users:

@@ -10,7 +10,7 @@ With help of Capsule, Bill, the cluster admin, can set and enforce resources quo
 ## Resource Quota
 
 {{% alert title="Deprecated" color="warning" %}}
-This feature will be deprecated in a future release of Capsule. Instead use [Rules Quota](/docs/tenants/rules/quotas/).
+This feature will be deprecated in a future release of Capsule. Instead use [Rules Quota](/docs/tenants/rules/quotas/). **[Migration Guide Here](/docs/tenants/rules/#migration)**
 {{% /alert %}}
 
 With help of Capsule, Bill, the cluster admin, can set and enforce resources quota and limits for Alice's `Tenant`. Set resources quota for each `Namespace` in the Alice's `Tenant` by defining them in the `Tenant` spec:
@@ -177,63 +177,11 @@ nginx-55649fd747-tkv7m   1/1     Running   0          22m
 
 ```
 
-### Namespace Scope
-
-By setting enforcement at the `Namespace` level, i.e. `spec.resourceQuotas.scope=Namespace`, Capsule does not aggregate the resources usage and all enforcement is done at the `Namespace` level.
-
-
-## Namespace Quotas
-
-The cluster admin, can control how many `Namespaces` Alice, creates by setting a quota in the `Tenant` manifest `spec.namespaceOptions.quota`:
-
-```yaml
-apiVersion: capsule.clastix.io/v1beta2
-kind: Tenant
-metadata:
-  name: solar
-spec:
-  owners:
-  - name: alice
-    kind: User
-  namespaceOptions:
-    quota: 3
-```
-
-Alice can create additional `Namespaces` according to the quota:
-
-```bash
-kubectl create ns solar-development
-kubectl create ns solar-test
-```
-
-While Alice creates `Namespaces`, the Capsule controller updates the status of the  `Tenant` so Bill, the cluster admin, can check the status:
-
-```bash
-$ kubectl describe tenant solar
-...
-status:
-  Namespaces:
-    solar-development
-    solar-production
-    solar-test
-  Size:   3 # current namespace count
-  State:  Active
-...
-```
-
-Once the  `Namespace` quota assigned to the tenant has been reached, Alice cannot create further `Namespaces`:
-
-```bash
-$ kubectl create ns solar-training
-Error from server (Cannot exceed Namespace quota: please, reach out to the system administrators):
-admission webhook "namespace.capsule.clastix.io" denied the request.
-```
-
-The enforcement on the maximum number of `Namespaces` per `Tenant` is the responsibility of the Capsule controller via its Dynamic Admission Webhook capability.
-
 ## Custom Resources
 
-> This feature is still in an alpha stage and requires a high amount of computing resources due to the dynamic client requests.
+{{% alert title="Deprecated" color="warning" %}}
+This feature will be deprecated in a future release of Capsule. Instead use [Custom Quotas](/docs/resource-management/customquotas/).
+{{% /alert %}}
 
 Kubernetes offers by default `ResourceQuota` resources, aimed to limit the number of basic primitives in a `Namespace`.
 
@@ -284,8 +232,3 @@ spec:
   - name: alice
     kind: User
 ```
-
-## Node Pools
-
-Bill, the cluster admin, can dedicate a pool of worker nodes to the oil `Tenant`, to isolate the `Tenant` applications from other noisy neighbors. To achieve this approach use [NodeSelectors](/docs/tenants/enforcement#node-selectors).
-```yaml

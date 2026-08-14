@@ -266,6 +266,60 @@ kubectl patch namespace "$TARGET_NAMESPACE" \
   --patch '{"metadata":{"labels":{"capsule.clastix.io/tenant":null},"ownerReferences":[]}}'
 ```
 
+### Namespace Scope
+
+By setting enforcement at the `Namespace` level, i.e. `spec.resourceQuotas.scope=Namespace`, Capsule does not aggregate the resources usage and all enforcement is done at the `Namespace` level.
+
+
+## Namespace Quotas
+
+The cluster admin, can control how many `Namespaces` Alice, creates by setting a quota in the `Tenant` manifest `spec.namespaceOptions.quota`:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+  - name: alice
+    kind: User
+  namespaceOptions:
+    quota: 3
+```
+
+Alice can create additional `Namespaces` according to the quota:
+
+```bash
+kubectl create ns solar-development
+kubectl create ns solar-test
+```
+
+While Alice creates `Namespaces`, the Capsule controller updates the status of the  `Tenant` so Bill, the cluster admin, can check the status:
+
+```bash
+$ kubectl describe tenant solar
+...
+status:
+  Namespaces:
+    solar-development
+    solar-production
+    solar-test
+  Size:   3 # current namespace count
+  State:  Active
+...
+```
+
+Once the  `Namespace` quota assigned to the tenant has been reached, Alice cannot create further `Namespaces`:
+
+```bash
+$ kubectl create ns solar-training
+Error from server (Cannot exceed Namespace quota: please, reach out to the system administrators):
+admission webhook "namespace.capsule.clastix.io" denied the request.
+```
+
+The enforcement on the maximum number of `Namespaces` per `Tenant` is the responsibility of the Capsule controller via its Dynamic Admission Webhook capability.
+
 ## Termination
 
 Capsule keeps it's managed resources as long as possible. Meaning even if a `Namespace` is terminated we verify the following things, before any capsule managed resources are finally removed:
