@@ -44,7 +44,7 @@ kubectl patch clusterrolebinding.rbac self-provisioners -p '{ "metadata": { "ann
 ### Extend the admin role
 This example extends the default Kubernetes `admin` role so tenant owners gain admin privileges on all namespaces within their tenant. The extension adds:
 - The finalizers required to create/edit resources managed by Capsule
-- The SCCs that tenant owners can use — in this example, `restricted-v2` and `nonroot-v2`
+- The SCCs that tenant owners can use (in this example, `restricted-v2` and `nonroot-v2`)
 
 ```yaml
 kind: ClusterRole
@@ -92,6 +92,26 @@ The following chart values can be used:
 ```
 Deploy the Capsule Helm chart with (at least) these values.
 
+### etcd Encryption
+
+If etcd encryption is enabled on your OpenShift cluster and you are using `TenantResource` or `GlobalTenantResource` to replicate `ConfigMap`s or `Secret`s, the Capsule replication webhook must be configured to skip requests from OpenShift's storage version migrator. Without this exclusion, the migrator, which iterates over all Secrets and ConfigMaps to rotate the encryption key, will be blocked or cause reconciliation errors, because the webhook intercepts its requests.
+
+Add the following `matchCondition` to the replication webhook via the Helm chart values:
+
+```yaml
+webhooks:
+  hooks:
+    replications:
+      matchConditions:
+        - name: "exclude-privileged-users"
+          expression: >
+            !(
+              request.userInfo.username in [
+                "system:serviceaccount:openshift-kube-storage-version-migrator:kube-storage-version-migrator-sa"
+              ]
+            )
+```
+
 ### Example Tenant and TenantOwners
 
 A minimal example tenant looks like the following:
@@ -100,7 +120,7 @@ A minimal example tenant looks like the following:
 apiVersion: capsule.clastix.io/v1beta2
 kind: Tenant
 metadata:
-  name: sun
+  name: solar
 spec:
   imagePullPolicies:
     - Always
@@ -166,6 +186,32 @@ The following helm values can be used as a template:
 ```
 That is all the configuration needed for Capsule Proxy.
 
+### ProxyClusterScoped and OpenShift Projects
+
+If the `ProxyClusterScoped` feature gate is enabled (not used in the example above, but is is a option to enable), it is recommended to create a `GlobalProxySetting` for `Projects`. OpenShift `Projects` are the equivalent of Kubernetes `Namespaces`, and when `ProxyClusterScoped` is active they can no longer be listed by default.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta1
+kind: GlobalProxySettings
+metadata:
+  name: openshift-projects
+spec:
+  rules:
+  - subjects:
+    - kind: Group
+      name: oidc:org:devops:a
+    clusterResources:
+    - apiGroups:
+      - "project.openshift.io"
+      resources:
+      - "projects"
+      operations:
+      - List
+      selector:
+        matchLabels:
+            capsule.clastix.io/tenant: solar
+```
+
 ## Console Customization
 The OpenShift console can be customized. For example, the capsule-proxy can be added as a shortcut on the top right application menu with the `ConsoleLink` CR:
 ```yaml
@@ -186,10 +232,10 @@ It's also possible to add links specific for certain namespaces, which are shown
 apiVersion: console.openshift.io/v1
 kind: ConsoleLink
 metadata:
-  name: namespaced-consolelink-sun
+  name: namespaced-consolelink-solar
 spec:
-  text: "Sun Docs"
-  href: "https://linktothesundocs.com"
+  text: "solar Docs"
+  href: "https://linktothesolardocs.com"
   location: "NamespaceDashboard"
   namespaceDashboard:
     namespaceSelector:
@@ -197,7 +243,7 @@ spec:
         - key: capsule.clastix.io/tenant
           operator: In
           values:
-            - sun
+            - solar
 ```
 Also a custom logo can be provided, for example by adding the Capsule logo.
 

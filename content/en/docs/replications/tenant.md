@@ -13,6 +13,10 @@ The diagram below shows that an Administrator or a Tenant Owner can create a `Te
 
 ![Tenant Resource Replication overview](/images/content/replication-tenantresource.png)
 
+{{% alert title="OpenShift: etcd Encryption" color="warning" %}}
+If you are running on OpenShift with etcd encryption enabled and replicating `ConfigMap`s or `Secret`s, you must exclude the OpenShift storage version migrator from the replication webhook. Without this, the migrator cannot rotate encryption keys. See the [OpenShift installation guide](/docs/operating/setup/openshift/#etcd-encryption) for the required configuration.
+{{% /alert %}}
+
 ## Prerequisites
 
 Tenant owners must have RBAC permission to create, update, and delete `TenantResource` objects. The following `ClusterRole` aggregates to the `admin` role, granting all holders permission to manage `TenantResource` instances:
@@ -100,7 +104,7 @@ The `namespaceSelector` field restricts replication to Namespaces matching a lab
 
 #### AdditionalMetadata
 
-Use `additionalMetadata` to attach extra `labels` and `annotations` to every generated object. [Fast Template values](/docs/operating/templating/#fast-templates) are supported:
+Use `additionalMetadata` to attach extra `labels` and `annotations` to every generated object. [Fast Template values](/docs/operating/concepts/templating/#fast-templates) are supported:
 
 ```yaml
 ---
@@ -230,7 +234,7 @@ spec:
 
 This distributes the `ConfigMap` named `logging-config` to all other Namespaces of the Tenant that `wind-test` belongs to.
 
-[Fast Templates](/docs/operating/templating/#fast-templates) are supported for `name`, `namespace`, and `selector`.
+[Fast Templates](/docs/operating/concepts/templating/#fast-templates) are supported for `name`, `namespace`, and `selector`.
 
 ##### Namespace
 
@@ -251,7 +255,7 @@ spec:
       optional: true
 ```
 
-[Fast Templates](/docs/operating/templating/#fast-templates) are supported for the `namespace` property:
+[Fast Templates](/docs/operating/concepts/templating/#fast-templates) are supported for the `namespace` property:
 
 ```yaml
 ---
@@ -325,7 +329,7 @@ metadata:
   uid: 5f10a3f3-863e-4f45-9454-cff8f5bce86a
 ```
 
-[Fast Templates](/docs/operating/templating/#fast-templates) are supported for `selector`:
+[Fast Templates](/docs/operating/concepts/templating/#fast-templates) are supported for `selector`:
 
 ```yaml
 ---
@@ -347,7 +351,7 @@ spec:
 
 #### Raw
 
-Raw items let you define resources inline as standard Kubernetes manifests. Use this when the resource does not yet exist in the cluster, or when you want to define it directly in the spec. [Fast Templates](/docs/operating/templating/#fast-templates) are supported.
+Raw items let you define resources inline as standard Kubernetes manifests. Use this when the resource does not yet exist in the cluster, or when you want to define it directly in the spec. [Fast Templates](/docs/operating/concepts/templating/#fast-templates) are supported.
 
 ```yaml
 ---
@@ -410,7 +414,7 @@ For more advanced templating, consider [Generators](#generators).
 
 #### Generators
 
-Generators render one or more Kubernetes objects from a Go template string. The template content must be valid YAML; multi-document output separated by `---` is supported. The template engine is based on [go-sprout](https://github.com/go-sprout/sprout) - see [available functions](/docs/operating/templating/#sprout-templating).
+Generators render one or more Kubernetes objects from a Go template string. The template content must be valid YAML; multi-document output separated by `---` is supported. The template engine is based on [go-sprout](https://github.com/go-sprout/sprout) - see [available functions](/docs/operating/concepts/templating/#sprout-templating).
 
 A simple example that creates a `ClusterRole` per Tenant:
 

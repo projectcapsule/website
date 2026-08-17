@@ -1,9 +1,13 @@
 ---
 title: Enforcement
-weight: 6
+weight: 999
 description: >
   Configure policies and restrictions on tenant-basis
 ---
+
+{{% alert title="Deprecated" color="warning" %}}
+This page covers legacy enforcement configuration. Use [Rules](/docs/rules/) for all current policy and restriction management.
+{{% /alert %}}
 
 
 ## Scheduling

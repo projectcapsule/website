@@ -94,7 +94,7 @@ status:
 
 If you feel like these rules are too restrictive, you must implement your own custom logic to handle these cases, for example, with Finalizers for `Namespaces`.
 
-**If namespaces are not correctly assigned to tenants, make sure to evaluate your [Capsule Users Configuration](/docs/operating/architecture/#capsule-users).**
+**If namespaces are not correctly assigned to tenants, make sure to evaluate your [Capsule Users Configuration](/docs/operating/concepts/architecture/#capsule-users).**
 
 ### Multiple Tenants
 

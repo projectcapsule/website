@@ -28,7 +28,7 @@ weight: 1
 * Added rule-based promotions for `ServiceAccounts` in `Tenants` [Read More](/docs/tenants/rules/permissions#promotions).
 * Added Implicit Assignment of `TenantOwner` [Read More](/docs/tenants/permissions/#implicit-tenant-assignment).
 * Added Aggregation of `TenantOwner` [Read More](/docs/tenants/permissions/#aggregation).
-* Introducing `data` field for `Tenants` [Read More](/docs/operating/templating/#data).
+* Introducing `data` field for `Tenants` [Read More](/docs/operating/concepts/templating/#data).
 * Added new label `projectcapsule.dev/tenant` which is added for all namespaced resources belonging to a `Tenant` [Read More](/docs/tenants/metadata/#managed).
 * Resources labeled with `projectcapsule.dev/managed-by=controller` can only be created, updated or deleted by the Capsule controller and [administrators](/docs/tenants/permissions/#administrators), and are rejected for all other operations. This prevents deletion of managed resources by users, which are not identified as capsule users (current behavior).
 * Added configuration options for managed RBAC [Read More](/docs/operating/setup/configuration/#rbac)

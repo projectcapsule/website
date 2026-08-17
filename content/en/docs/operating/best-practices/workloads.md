@@ -192,7 +192,7 @@ metadata:
 and the regular Pod Security Admission Controller does the magic:
 
 ```yaml
-kubectl --kubeconfig alice-oil.kubeconfig apply -f - << EOF
+kubectl --kubeconfig alice-wind.kubeconfig apply -f - << EOF
 apiVersion: v1
 kind: Pod
 metadata:

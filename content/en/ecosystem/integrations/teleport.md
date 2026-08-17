@@ -153,7 +153,7 @@ capsule-values.yaml:
 ```yaml
 manager:
   options:
-    capsuleUserGroups: ["tenant-oil"]
+    capsuleUserGroups: ["tenant-wind"]
     forceTenantPrefix: true
 ```
 
@@ -163,7 +163,7 @@ tenant.yaml:
 apiVersion: capsule.clastix.io/v1beta2
 kind: Tenant
 metadata:
-  name: oil
+  name: wind
 spec:
   owners:
   - name: alice
@@ -174,7 +174,7 @@ Install `capsule` with `tenant-oil` as a capsule user group via helm chart:
 
 - `helm repo add projectcapsule https://projectcapsule.github.io/charts`
 - `helm upgrade --install capsule -n capsule-system --create-namespace projectcapsule/capsule --version 0.10.9 -f capsule-values.yaml`
-- Create tenant named `oil`: `kubectl apply -f tenant.yaml`
+- Create tenant named `wind`: `kubectl apply -f tenant.yaml`
 
 ### Capsule Proxy
 
@@ -185,7 +185,7 @@ Install default `capsule-proxy` via helm chart:
 
 ### Teleport
 
-Create teleport role for kubernetes cluster access which adds `tenant-oil` group to user auth token.
+Create teleport role for kubernetes cluster access which adds `tenant-wind` group to user auth token.
 
 - `docker exec -it teleport bash`
 
@@ -200,7 +200,7 @@ Create teleport role for kubernetes cluster access which adds `tenant-oil` group
   spec:
     allow:
       kubernetes_groups:
-      - tenant-oil
+      - tenant-wind
       kubernetes_labels:
         capsule: "true"
       kubernetes_resources:
