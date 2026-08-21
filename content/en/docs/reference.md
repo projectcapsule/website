@@ -137,7 +137,7 @@ Configure dynamic Mutating Admission for Capsule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[client](#capsuleconfigurationspecadmissionmutatingclient)** | object | whats the problem | true |
+| **[client](#capsuleconfigurationspecadmissionmutatingclient)** | object | Client defines how the Kubernetes API server reaches the admission webhook.<br>Exactly one of URL or Service must be configured. | true |
 | **annotations** | map[string]string | Annotations added to the Admission Webhook | false |
 | **labels** | map[string]string | Labels added to the Admission Webhook | false |
 | **name** | string | Name the Admission Webhook | false |
@@ -148,7 +148,8 @@ Configure dynamic Mutating Admission for Capsule
 
 
 
-whats the problem
+Client defines how the Kubernetes API server reaches the admission webhook.
+Exactly one of URL or Service must be configured.
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -360,7 +361,7 @@ Configure dynamic Validating Admission for Capsule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[client](#capsuleconfigurationspecadmissionvalidatingclient)** | object | whats the problem | true |
+| **[client](#capsuleconfigurationspecadmissionvalidatingclient)** | object | Client defines how the Kubernetes API server reaches the admission webhook.<br>Exactly one of URL or Service must be configured. | true |
 | **annotations** | map[string]string | Annotations added to the Admission Webhook | false |
 | **labels** | map[string]string | Labels added to the Admission Webhook | false |
 | **name** | string | Name the Admission Webhook | false |
@@ -371,7 +372,8 @@ Configure dynamic Validating Admission for Capsule
 
 
 
-whats the problem
+Client defines how the Kubernetes API server reaches the admission webhook.
+Exactly one of URL or Service must be configured.
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -2514,8 +2516,9 @@ Enforcement for Workloads (Pods)
 | :---- | :---- | :----------- | :-------- |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
 | **[registries](#rulestatusspecindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **[resources](#rulestatusspecindexenforceworkloadsresources)** | object | Resources defines mutation and enforcement policies for Pod and container<br>resource requests and limits. The workload targets select where the<br>policies apply. With no targets, resource policies apply to all compatible<br>locations: Pod-level resources, regular containers, and init containers.<br>Resource names unsupported at Pod level still apply to compatible container<br>locations.<br>Mutation is applied when a Pod is created. Remove and MatchRequest manage<br>explicit values, Default fills an absent value, and Ratio fills an absent<br>limit from its request. An explicit Ratio violation is then handled by the<br>enclosing allow, deny, or audit action. | false |
 | **[schedulers](#rulestatusspecindexenforceworkloadsschedulersindex)** | []object | Schedulers defines schedulerName matchers for Pod admission.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
-| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
+| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod, pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.registries[index]
@@ -2531,6 +2534,54 @@ Enforcement for Workloads (Pods)
 | **exp** | string | Exp matches regular expression. | false |
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.resources
+
+
+
+Resources defines mutation and enforcement policies for Pod and container
+resource requests and limits. The workload targets select where the
+policies apply. With no targets, resource policies apply to all compatible
+locations: Pod-level resources, regular containers, and init containers.
+Resource names unsupported at Pod level still apply to compatible container
+locations.
+Mutation is applied when a Pod is created. Remove and MatchRequest manage
+explicit values, Default fills an absent value, and Ratio fills an absent
+limit from its request. An explicit Ratio violation is then handled by the
+enclosing allow, deny, or audit action.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[limits](#rulestatusspecindexenforceworkloadsresourceslimitskey)** | map[string]object | Limits defines policies for resource limits. | false |
+| **[requests](#rulestatusspecindexenforceworkloadsresourcesrequestskey)** | map[string]object | Requests defines policies for resource requests. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.resources.limits[key]
+
+
+
+WorkloadResourceLimitPolicy defines how a resource limit is mutated and enforced.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **policy** | enum | Policy selects how the limit is handled: Preserve leaves it unchanged,<br>Default fills an absent limit, Remove deletes it, MatchRequest manages it<br>to equal the request, and Ratio defaults an absent limit and enforces the<br>maximum multiplier against explicitly supplied limits.<br/>*Enum*: Preserve, Default, Remove, MatchRequest, Ratio<br/> | true |
+| **value** | int or string | Value is the quantity applied by Default or the maximum limit-to-request<br>multiplier applied by Ratio. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.resources.requests[key]
+
+
+
+WorkloadResourceRequestPolicy defines how a resource request is mutated.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **policy** | enum | Policy selects how the request is handled: Preserve leaves it unchanged,<br>Default fills an absent request, and Remove deletes it.<br/>*Enum*: Preserve, Default, Remove<br/> | true |
+| **value** | int or string | Value is the quantity applied by the Default policy. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.schedulers[index]
@@ -2863,8 +2914,9 @@ Enforcement for Workloads (Pods)
 | :---- | :---- | :----------- | :-------- |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
 | **[registries](#rulestatusstatusruleenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **[resources](#rulestatusstatusruleenforceworkloadsresources)** | object | Resources defines mutation and enforcement policies for Pod and container<br>resource requests and limits. The workload targets select where the<br>policies apply. With no targets, resource policies apply to all compatible<br>locations: Pod-level resources, regular containers, and init containers.<br>Resource names unsupported at Pod level still apply to compatible container<br>locations.<br>Mutation is applied when a Pod is created. Remove and MatchRequest manage<br>explicit values, Default fills an absent value, and Ratio fills an absent<br>limit from its request. An explicit Ratio violation is then handled by the<br>enclosing allow, deny, or audit action. | false |
 | **[schedulers](#rulestatusstatusruleenforceworkloadsschedulersindex)** | []object | Schedulers defines schedulerName matchers for Pod admission.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
-| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
+| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod, pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.registries[index]
@@ -2880,6 +2932,54 @@ Enforcement for Workloads (Pods)
 | **exp** | string | Exp matches regular expression. | false |
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.resources
+
+
+
+Resources defines mutation and enforcement policies for Pod and container
+resource requests and limits. The workload targets select where the
+policies apply. With no targets, resource policies apply to all compatible
+locations: Pod-level resources, regular containers, and init containers.
+Resource names unsupported at Pod level still apply to compatible container
+locations.
+Mutation is applied when a Pod is created. Remove and MatchRequest manage
+explicit values, Default fills an absent value, and Ratio fills an absent
+limit from its request. An explicit Ratio violation is then handled by the
+enclosing allow, deny, or audit action.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[limits](#rulestatusstatusruleenforceworkloadsresourceslimitskey)** | map[string]object | Limits defines policies for resource limits. | false |
+| **[requests](#rulestatusstatusruleenforceworkloadsresourcesrequestskey)** | map[string]object | Requests defines policies for resource requests. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.resources.limits[key]
+
+
+
+WorkloadResourceLimitPolicy defines how a resource limit is mutated and enforced.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **policy** | enum | Policy selects how the limit is handled: Preserve leaves it unchanged,<br>Default fills an absent limit, Remove deletes it, MatchRequest manages it<br>to equal the request, and Ratio defaults an absent limit and enforces the<br>maximum multiplier against explicitly supplied limits.<br/>*Enum*: Preserve, Default, Remove, MatchRequest, Ratio<br/> | true |
+| **value** | int or string | Value is the quantity applied by Default or the maximum limit-to-request<br>multiplier applied by Ratio. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.resources.requests[key]
+
+
+
+WorkloadResourceRequestPolicy defines how a resource request is mutated.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **policy** | enum | Policy selects how the request is handled: Preserve leaves it unchanged,<br>Default fills an absent request, and Remove deletes it.<br/>*Enum*: Preserve, Default, Remove<br/> | true |
+| **value** | int or string | Value is the quantity applied by the Default policy. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.schedulers[index]
@@ -3179,8 +3279,9 @@ Enforcement for Workloads (Pods)
 | :---- | :---- | :----------- | :-------- |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
 | **[registries](#rulestatusstatusrulesindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **[resources](#rulestatusstatusrulesindexenforceworkloadsresources)** | object | Resources defines mutation and enforcement policies for Pod and container<br>resource requests and limits. The workload targets select where the<br>policies apply. With no targets, resource policies apply to all compatible<br>locations: Pod-level resources, regular containers, and init containers.<br>Resource names unsupported at Pod level still apply to compatible container<br>locations.<br>Mutation is applied when a Pod is created. Remove and MatchRequest manage<br>explicit values, Default fills an absent value, and Ratio fills an absent<br>limit from its request. An explicit Ratio violation is then handled by the<br>enclosing allow, deny, or audit action. | false |
 | **[schedulers](#rulestatusstatusrulesindexenforceworkloadsschedulersindex)** | []object | Schedulers defines schedulerName matchers for Pod admission.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
-| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
+| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod, pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.registries[index]
@@ -3196,6 +3297,54 @@ Enforcement for Workloads (Pods)
 | **exp** | string | Exp matches regular expression. | false |
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.resources
+
+
+
+Resources defines mutation and enforcement policies for Pod and container
+resource requests and limits. The workload targets select where the
+policies apply. With no targets, resource policies apply to all compatible
+locations: Pod-level resources, regular containers, and init containers.
+Resource names unsupported at Pod level still apply to compatible container
+locations.
+Mutation is applied when a Pod is created. Remove and MatchRequest manage
+explicit values, Default fills an absent value, and Ratio fills an absent
+limit from its request. An explicit Ratio violation is then handled by the
+enclosing allow, deny, or audit action.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[limits](#rulestatusstatusrulesindexenforceworkloadsresourceslimitskey)** | map[string]object | Limits defines policies for resource limits. | false |
+| **[requests](#rulestatusstatusrulesindexenforceworkloadsresourcesrequestskey)** | map[string]object | Requests defines policies for resource requests. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.resources.limits[key]
+
+
+
+WorkloadResourceLimitPolicy defines how a resource limit is mutated and enforced.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **policy** | enum | Policy selects how the limit is handled: Preserve leaves it unchanged,<br>Default fills an absent limit, Remove deletes it, MatchRequest manages it<br>to equal the request, and Ratio defaults an absent limit and enforces the<br>maximum multiplier against explicitly supplied limits.<br/>*Enum*: Preserve, Default, Remove, MatchRequest, Ratio<br/> | true |
+| **value** | int or string | Value is the quantity applied by Default or the maximum limit-to-request<br>multiplier applied by Ratio. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.resources.requests[key]
+
+
+
+WorkloadResourceRequestPolicy defines how a resource request is mutated.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **policy** | enum | Policy selects how the request is handled: Preserve leaves it unchanged,<br>Default fills an absent request, and Remove deletes it.<br/>*Enum*: Preserve, Default, Remove<br/> | true |
+| **value** | int or string | Value is the quantity applied by the Default policy. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.schedulers[index]
@@ -3700,13 +3849,13 @@ TenantSpec defines the desired state of Tenant.
 | **nodeSelector** | map[string]string | Specifies the label to control the placement of pods on a given pool of worker nodes. All namespaces created within the Tenant will have the node selector annotation. This annotation tells the Kubernetes scheduler to place pods on the nodes having the selector label. Optional. | false |
 | **[owners](#tenantspecownersindex-1)** | []object | Specifies the owners of the Tenant.<br>Optional | false |
 | **[permissions](#tenantspecpermissions)** | object | Specify Permissions for the Tenant. | false |
-| **[podOptions](#tenantspecpodoptions)** | object | Specifies options for the Pods deployed in the Tenant namespaces, such as additional metadata. | false |
+| **[podOptions](#tenantspecpodoptions)** | object | <span style="color:red;font-weight:bold">Deprecated: Use Rules Metadata instead (https://projectcapsule.dev/docs/rules/enforcement/metadata/)<br><br>Specifies options for the Pods deployed in the Tenant namespaces, such as additional metadata.</span> | false |
 | **preventDeletion** | boolean | Prevent accidental deletion of the Tenant.<br>When enabled, the deletion request will be declined.<br/>*Default*: false<br/> | false |
 | **[priorityClasses](#tenantspecpriorityclasses-1)** | object | Specifies the allowed priorityClasses assigned to the Tenant.<br>Capsule assures that all Pods resources created in the Tenant can use only one of the allowed PriorityClasses.<br>A default value can be specified, and all the Pod resources created will inherit the declared class.<br>Optional. | false |
-| **[resourceQuotas](#tenantspecresourcequotas-1)** | object | Specifies a list of ResourceQuota resources assigned to the Tenant. The assigned values are inherited by any namespace created in the Tenant. The Capsule operator aggregates ResourceQuota at Tenant level, so that the hard quota is never crossed for the given Tenant. This permits the Tenant owner to consume resources in the Tenant regardless of the namespace. Optional. | false |
+| **[resourceQuotas](#tenantspecresourcequotas-1)** | object | <span style="color:red;font-weight:bold">Deprecated: Use Rules Quota (https://projectcapsule.dev/docs/tenants/rules/#quotas)<br><br>Specifies a list of ResourceQuota resources assigned to the Tenant. The assigned values are inherited by any namespace created in the Tenant. The Capsule operator aggregates ResourceQuota at Tenant level, so that the hard quota is never crossed for the given Tenant. This permits the Tenant owner to consume resources in the Tenant regardless of the namespace. Optional.</span> | false |
 | **[rules](#tenantspecrulesindex)** | []object | Specify enforcement specifications for the scope of the Tenant.<br> We are moving all configuration enforcement. per namespace into a rule construct.<br> It's currently not final.<br><br>Read More: https://projectcapsule.dev/docs/tenants/rules/ | false |
 | **[runtimeClasses](#tenantspecruntimeclasses)** | object | Specifies the allowed RuntimeClasses assigned to the Tenant.<br>Capsule assures that all Pods resources created in the Tenant can use only one of the allowed RuntimeClasses.<br>Optional. | false |
-| **[serviceOptions](#tenantspecserviceoptions-1)** | object | Specifies options for the Service, such as additional metadata or block of certain type of Services. Optional. | false |
+| **[serviceOptions](#tenantspecserviceoptions-1)** | object | <span style="color:red;font-weight:bold">Deprecated: Use Rules Metadata instead (https://projectcapsule.dev/docs/rules/enforcement/metadata/)<br><br>Specifies options for the Service, such as additional metadata or block of certain type of Services. Optional.</span> | false |
 | **[storageClasses](#tenantspecstorageclasses-1)** | object | Specifies the allowed StorageClasses assigned to the Tenant.<br>Capsule assures that all PersistentVolumeClaim resources created in the Tenant can use only one of the allowed StorageClasses.<br>A default value can be specified, and all the PersistentVolumeClaim resources created will inherit the declared class.<br>Optional. | false |
 
 
@@ -3943,20 +4092,20 @@ Specifies options for the Namespaces, such as additional metadata or maximum num
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[additionalMetadata](#tenantspecnamespaceoptionsadditionalmetadata-1)** | object | <span style="color:red;font-weight:bold">Deprecated: Use additionalMetadataList instead (https://projectcapsule.dev/docs/tenants/metadata/#additionalmetadatalist)<br><br>Specifies additional labels and annotations the Capsule operator places on any Namespace resource in the Tenant. Optional.</span> | false |
-| **[additionalMetadataList](#tenantspecnamespaceoptionsadditionalmetadatalistindex)** | []object | Specifies additional labels and annotations the Capsule operator places on any Namespace resource in the Tenant via a list. Optional. | false |
-| **[forbiddenAnnotations](#tenantspecnamespaceoptionsforbiddenannotations)** | object | Define the annotations that a Tenant Owner cannot set for their Namespace resources. | false |
-| **[forbiddenLabels](#tenantspecnamespaceoptionsforbiddenlabels)** | object | Define the labels that a Tenant Owner cannot set for their Namespace resources. | false |
+| **[additionalMetadata](#tenantspecnamespaceoptionsadditionalmetadata-1)** | object | <span style="color:red;font-weight:bold">Deprecated: Use Rules Metadata instead (https://projectcapsule.dev/docs/rules/enforcement/metadata/#namespace)<br><br>Specifies additional labels and annotations the Capsule operator places on any Namespace resource in the Tenant. Optional.</span> | false |
+| **[additionalMetadataList](#tenantspecnamespaceoptionsadditionalmetadatalistindex)** | []object | <span style="color:red;font-weight:bold">Deprecated: Use Rules Metadata instead (https://projectcapsule.dev/docs/rules/enforcement/metadata/#namespace)<br><br>Specifies additional labels and annotations the Capsule operator places on any Namespace resource in the Tenant via a list. Optional.</span> | false |
+| **[forbiddenAnnotations](#tenantspecnamespaceoptionsforbiddenannotations)** | object | <span style="color:red;font-weight:bold">Deprecated: Use Rules Metadata instead (https://projectcapsule.dev/docs/rules/enforcement/metadata/#namespace)<br><br>Define the annotations that a Tenant Owner cannot set for their Namespace resources.</span> | false |
+| **[forbiddenLabels](#tenantspecnamespaceoptionsforbiddenlabels)** | object | <span style="color:red;font-weight:bold">Deprecated: Use Rules Metadata instead (https://projectcapsule.dev/docs/rules/enforcement/metadata/#namespace)<br><br>Define the labels that a Tenant Owner cannot set for their Namespace resources.</span> | false |
 | **managedMetadataOnly** | boolean | If enabled only metadata from additionalMetadata is reconciled to the namespaces.<br/>*Default*: false<br/> | false |
 | **quota** | integer | Specifies the maximum number of namespaces allowed for that Tenant. Once the namespace quota assigned to the Tenant has been reached, the Tenant owner cannot create further namespaces. Optional.<br/>*Format*: int32<br/>*Minimum*: 1<br/> | false |
-| **[requiredMetadata](#tenantspecnamespaceoptionsrequiredmetadata)** | object | Required Metadata for namespace within this tenant | false |
+| **[requiredMetadata](#tenantspecnamespaceoptionsrequiredmetadata)** | object | <span style="color:red;font-weight:bold">Deprecated: Use Rules Metadata instead (https://projectcapsule.dev/docs/rules/enforcement/metadata/#namespace)<br><br>Required Metadata for namespace within this tenant</span> | false |
 
 
 ### Tenant.spec.namespaceOptions.additionalMetadata
 
 
 
-Deprecated: Use additionalMetadataList instead (https://projectcapsule.dev/docs/tenants/metadata/#additionalmetadatalist)
+Deprecated: Use Rules Metadata instead (https://projectcapsule.dev/docs/rules/enforcement/metadata/#namespace)
 
 Specifies additional labels and annotations the Capsule operator places on any Namespace resource in the Tenant. Optional.
 
@@ -4015,6 +4164,8 @@ relates the key and values.
 
 
 
+Deprecated: Use Rules Metadata instead (https://projectcapsule.dev/docs/rules/enforcement/metadata/#namespace)
+
 Define the annotations that a Tenant Owner cannot set for their Namespace resources.
 
 
@@ -4028,6 +4179,8 @@ Define the annotations that a Tenant Owner cannot set for their Namespace resour
 
 
 
+Deprecated: Use Rules Metadata instead (https://projectcapsule.dev/docs/rules/enforcement/metadata/#namespace)
+
 Define the labels that a Tenant Owner cannot set for their Namespace resources.
 
 
@@ -4040,6 +4193,8 @@ Define the labels that a Tenant Owner cannot set for their Namespace resources.
 ### Tenant.spec.namespaceOptions.requiredMetadata
 
 
+
+Deprecated: Use Rules Metadata instead (https://projectcapsule.dev/docs/rules/enforcement/metadata/#namespace)
 
 Required Metadata for namespace within this tenant
 
@@ -4436,6 +4591,8 @@ relates the key and values.
 
 
 
+Deprecated: Use Rules Metadata instead (https://projectcapsule.dev/docs/rules/enforcement/metadata/)
+
 Specifies options for the Pods deployed in the Tenant namespaces, such as additional metadata.
 
 
@@ -4494,6 +4651,8 @@ relates the key and values.
 ### Tenant.spec.resourceQuotas
 
 
+
+Deprecated: Use Rules Quota (https://projectcapsule.dev/docs/tenants/rules/#quotas)
 
 Specifies a list of ResourceQuota resources assigned to the Tenant. The assigned values are inherited by any namespace created in the Tenant. The Capsule operator aggregates ResourceQuota at Tenant level, so that the hard quota is never crossed for the given Tenant. This permits the Tenant owner to consume resources in the Tenant regardless of the namespace. Optional.
 
@@ -4785,8 +4944,9 @@ Enforcement for Workloads (Pods)
 | :---- | :---- | :----------- | :-------- |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
 | **[registries](#tenantspecrulesindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **[resources](#tenantspecrulesindexenforceworkloadsresources)** | object | Resources defines mutation and enforcement policies for Pod and container<br>resource requests and limits. The workload targets select where the<br>policies apply. With no targets, resource policies apply to all compatible<br>locations: Pod-level resources, regular containers, and init containers.<br>Resource names unsupported at Pod level still apply to compatible container<br>locations.<br>Mutation is applied when a Pod is created. Remove and MatchRequest manage<br>explicit values, Default fills an absent value, and Ratio fills an absent<br>limit from its request. An explicit Ratio violation is then handled by the<br>enclosing allow, deny, or audit action. | false |
 | **[schedulers](#tenantspecrulesindexenforceworkloadsschedulersindex)** | []object | Schedulers defines schedulerName matchers for Pod admission.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
-| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
+| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod, pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.registries[index]
@@ -4802,6 +4962,54 @@ Enforcement for Workloads (Pods)
 | **exp** | string | Exp matches regular expression. | false |
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.resources
+
+
+
+Resources defines mutation and enforcement policies for Pod and container
+resource requests and limits. The workload targets select where the
+policies apply. With no targets, resource policies apply to all compatible
+locations: Pod-level resources, regular containers, and init containers.
+Resource names unsupported at Pod level still apply to compatible container
+locations.
+Mutation is applied when a Pod is created. Remove and MatchRequest manage
+explicit values, Default fills an absent value, and Ratio fills an absent
+limit from its request. An explicit Ratio violation is then handled by the
+enclosing allow, deny, or audit action.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[limits](#tenantspecrulesindexenforceworkloadsresourceslimitskey)** | map[string]object | Limits defines policies for resource limits. | false |
+| **[requests](#tenantspecrulesindexenforceworkloadsresourcesrequestskey)** | map[string]object | Requests defines policies for resource requests. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.resources.limits[key]
+
+
+
+WorkloadResourceLimitPolicy defines how a resource limit is mutated and enforced.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **policy** | enum | Policy selects how the limit is handled: Preserve leaves it unchanged,<br>Default fills an absent limit, Remove deletes it, MatchRequest manages it<br>to equal the request, and Ratio defaults an absent limit and enforces the<br>maximum multiplier against explicitly supplied limits.<br/>*Enum*: Preserve, Default, Remove, MatchRequest, Ratio<br/> | true |
+| **value** | int or string | Value is the quantity applied by Default or the maximum limit-to-request<br>multiplier applied by Ratio. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.resources.requests[key]
+
+
+
+WorkloadResourceRequestPolicy defines how a resource request is mutated.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **policy** | enum | Policy selects how the request is handled: Preserve leaves it unchanged,<br>Default fills an absent request, and Remove deletes it.<br/>*Enum*: Preserve, Default, Remove<br/> | true |
+| **value** | int or string | Value is the quantity applied by the Default policy. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.schedulers[index]
@@ -5015,6 +5223,8 @@ relates the key and values.
 ### Tenant.spec.serviceOptions
 
 
+
+Deprecated: Use Rules Metadata instead (https://projectcapsule.dev/docs/rules/enforcement/metadata/)
 
 Specifies options for the Service, such as additional metadata or block of certain type of Services. Optional.
 

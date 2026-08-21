@@ -1,0 +1,48 @@
+# This is the single source for the event calendar on /docs/whats-new/ and its
+# RSS feed. Dates use ISO 8601 (YYYY-MM-DD); end dates are inclusive.
+events:
+  - id: swiss-cloud-native-day-2026
+    title: Swiss Cloud Native Day
+    start: "2026-09-17"
+    end: "2026-09-17"
+    published: "2026-08-21"
+    flag: 🇨🇭
+    url: https://cloudnativeday.ch/
+    description: >-
+      Meet the Capsule maintainers at Swiss Cloud Native Day 2026. We will be
+      there with a booth sponsored by Peak Scale.
+
+  - id: kcd-sofia-2026
+    title: KCD Sofia 2026
+    start: "2026-09-29"
+    end: "2026-09-29"
+    published: "2026-08-21"
+    flag: 🇧🇬
+    url: https://kcd.bg/agenda/
+    description: >-
+      Hristo Hristov will speak about Capsule and why Namespaces alone do not
+      provide multi-tenancy.
+
+  - id: swiss-dev-confederation-2026
+    title: Swiss Dev Confederation
+    start: "2026-10-27"
+    end: "2026-10-27"
+    published: "2026-08-21"
+    flag: 🇨🇭
+    url: https://reg.experiences.redhat.com/flow/redhat/3624601/redhatfieldeventspreregnoappform/page/landingregistrationpage
+    description: >-
+      Together with a long-term adopter, we will demonstrate how Capsule can
+      enhance the multi-tenancy experience with Red Hat OpenShift.
+
+  - id: kubecon-cloudnativecon-north-america-2026
+    title: KubeCon + CloudNativeCon North America
+    start: "2026-11-09"
+    end: "2026-11-12"
+    published: "2026-08-21"
+    flag: 🇺🇸
+    url: https://events.linuxfoundation.org/kubecon-cloudnativecon-north-america/
+    description: Visit the Project Capsule kiosk in the Solutions Showcase.
+    details:
+      - "Kiosk shift: Thursday, 10:15–11:55"
+      - "Kiosk number: P-4B"
+      - "Location: Level 1, Hall 5"

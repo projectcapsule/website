@@ -1,40 +1,77 @@
-{{ $youtube := .youtube }}
-{{ $youtube_url := print "https://www.youtube.com/watch?v=" $youtube }}
-{{ $thumbnail := "" }}
-{{ if .youtube }}
-{{ $thumbnail = printf "https://i3.ytimg.com/vi/%s/0.jpg" (.youtube) }}
-{{ else }}
-{{ $thumbnail = default "https://github.com/cncf/artwork/raw/refs/heads/main/projects/capsule/stacked/color/capsule-stacked-color.svg" .thumbnail }}
-{{ end }}
+{{- $title := .title | default "Community resource" -}}
+{{- $type := .type | default "resource" | lower -}}
+{{- $url := .url -}}
+{{- if and (not $url) .youtube -}}
+  {{- $url = printf "https://www.youtube.com/watch?v=%s" .youtube -}}
+{{- end -}}
 
-{{ $url := .url | default $youtube_url }}
-{{ $title := .title | default "Video title" }}
+{{- $thumbnail := .thumbnail | default .thumbnail_url -}}
+{{- if .youtube -}}
+  {{- $thumbnail = printf "https://i3.ytimg.com/vi/%s/0.jpg" .youtube -}}
+{{- end -}}
+{{- if not $thumbnail -}}
+  {{- $thumbnail = "https://raw.githubusercontent.com/cncf/artwork/master/projects/capsule/icon/color/capsule-icon-color.svg" -}}
+{{- end -}}
 
-{{ $t := .date }}
-{{ $t = time.AsTime $t }}
-{{ $format := "2 Jan, 2006" }}
-{{ $dateTime := $t.Format $format }} 
+{{- $published := time.AsTime .date -}}
+{{- $year := $published.Format "2006" -}}
+{{- $tags := .tags | default (slice) -}}
+{{- $searchText := printf "%s %s %s %s" $title $type (.description | default "") (delimit $tags " ") | plainify | lower -}}
 
-<div class="col-lg-4 mb-3 mb-lg-0 text-center ">
-  <a href="{{ $url }}"><img class="img-fluid img-thumbnail" alt="{{ $title | markdownify }}" src="{{ $thumbnail }}"></a>
-  
-  <a href="{{ $url }}"><h4>{{ $title | markdownify }}</h4></a>
-  <ul class="taxonomy-terms">
-    <li><a class="taxonomy-term" href="{{ .Permalink }}" data-taxonomy-term="{{ urlize .LinkTitle }}"><span class="taxonomy-label">{{ .type }}</span></a></li>
-  </ul>
-  <label class="date">{{ $dateTime }}</label>
-  {{ if .description }}<h5>{{ .description }}</h5>{{ end }}
+<div
+  class="col resource"
+  data-resource-card
+  data-resource-type="{{ $type }}"
+  data-resource-year="{{ $year }}"
+  data-resource-search="{{ $searchText }}"
+>
+  <article class="card resource-card h-100">
+    <div class="ratio ratio-16x9 resource-card__media">
+      <img
+        src="{{ $thumbnail }}"
+        class="card-img-top"
+        alt=""
+        loading="lazy"
+        width="640"
+        height="360"
+      >
+    </div>
+
+    <div class="card-body d-flex flex-column text-start">
+      <div class="resource-card__meta d-flex align-items-center justify-content-between gap-2 mb-3">
+        <span class="badge resource-card__type">
+          {{- if eq $type "video" -}}
+            <i class="fa-solid fa-circle-play" aria-hidden="true"></i>
+          {{- else if eq $type "article" -}}
+            <i class="fa-solid fa-newspaper" aria-hidden="true"></i>
+          {{- else -}}
+            <i class="fa-solid fa-book-open" aria-hidden="true"></i>
+          {{- end -}}
+          <span>{{ $type | humanize }}</span>
+        </span>
+        <time datetime="{{ $published.Format "2006-01-02" }}">{{ $published.Format "Jan 2, 2006" }}</time>
+      </div>
+
+      <div class="resource-card__copy">
+        <h3 class="h5 card-title mb-0">
+          <a class="stretched-link" href="{{ $url }}" target="_blank" rel="noopener noreferrer">
+            {{ $title | markdownify }}
+            <span class="visually-hidden"> (opens in a new tab)</span>
+          </a>
+        </h3>
+
+        {{- with .description }}
+          <p class="card-text text-body-secondary mt-3 mb-0">{{ . | markdownify }}</p>
+        {{- end }}
+      </div>
+
+      <div class="resource-card__tags d-flex flex-wrap gap-1"{{ if $tags }} aria-label="Topics"{{ else }} aria-hidden="true"{{ end }}>
+        {{- with $tags }}
+          {{- range . }}
+            <span class="badge rounded-pill">{{ . | humanize }}</span>
+          {{- end }}
+        {{- end }}
+      </div>
+    </div>
+  </article>
 </div>
-
-<template id="search-result" hidden>
-<div class="col-lg-4 mb-3 mb-lg-0 text-center col-hidden">
-  <a href="" class="thumbnail-link"><img class="img-fluid img-thumbnail" alt="" src=""></a>
-  <a href="" class="resource-title-link"><h4 class="resource-title-heading"></h4></a>
-  <span class="tag1 tag">
-</span>
-<label class="date"></label>
-
- <h4 class="resource-description"></h4>
-
-</div>
-</template>

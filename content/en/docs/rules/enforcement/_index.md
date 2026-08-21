@@ -62,6 +62,61 @@ rules:
 
 In this example, `harbor/customer/test-image/app:1.0.0` is denied, while `harbor/customer/prod-image/app:1.0.0` is allowed.
 
+### Audit
+
+Use `action: audit` to observe workload usage without directly blocking the request. Audit rules emit Kubernetes events and add warnings to the admission response, but they do not allow or deny the request. If an allow-list is active for the same matcher and no allow rule matches the evaluated value, the request is still denied even when an audit rule matches.
+
+For registry enforcement:
+
+```yaml
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  ...
+  rules:
+    - enforce:
+        action: audit
+        workloads:
+          targets:
+            - pod/containers
+          registries:
+            - exp: "docker.io/.*"
+```
+
+Applying a Pod with `docker.io/library/nginx:latest` succeeds in this audit-only example because no registry allow-list is configured. The API server response contains an admission warning and Capsule emits a related event for the Pod.
+
+For QoS enforcement:
+
+```yaml
+rules:
+  - enforce:
+      action: audit
+      workloads:
+        qosClasses:
+          - Burstable
+```
+
+Applying a `Burstable` Pod succeeds in this audit-only example because no QoS allow-list is configured. Capsule emits an event and returns an admission warning.
+
+For scheduler enforcement:
+
+```yaml
+rules:
+  - enforce:
+      action: audit
+      workloads:
+        schedulers:
+          - exact:
+              - custom-scheduler
+```
+
+Applying a Pod with `spec.schedulerName: custom-scheduler` succeeds in this audit-only example because no scheduler allow-list is configured. Capsule emits an audit event and returns an admission warning.
+
+When audit rules are used together with allow rules, the matching value must still be allowed explicitly. For example, an audited registry reference that does not match any registry `allow` rule is denied by the allow-list, but Capsule still emits the audit event before denying the request.
+
 ## Audience
 
 Use `audience` to restrict a rule to requests made by specific users, groups,
@@ -261,58 +316,3 @@ negate: true
 ```
 
 This matcher succeeds for every value except `registry.local/blocked/app:1.0.0` and values matching `registry.local/deprecated/.*`.
-
-## Audit
-
-Use `action: audit` to observe workload usage without directly blocking the request. Audit rules emit Kubernetes events and add warnings to the admission response, but they do not allow or deny the request. If an allow-list is active for the same matcher and no allow rule matches the evaluated value, the request is still denied even when an audit rule matches.
-
-For registry enforcement:
-
-```yaml
----
-apiVersion: capsule.clastix.io/v1beta2
-kind: Tenant
-metadata:
-  name: solar
-spec:
-  ...
-  rules:
-    - enforce:
-        action: audit
-        workloads:
-          targets:
-            - pod/containers
-          registries:
-            - exp: "docker.io/.*"
-```
-
-Applying a Pod with `docker.io/library/nginx:latest` succeeds in this audit-only example because no registry allow-list is configured. The API server response contains an admission warning and Capsule emits a related event for the Pod.
-
-For QoS enforcement:
-
-```yaml
-rules:
-  - enforce:
-      action: audit
-      workloads:
-        qosClasses:
-          - Burstable
-```
-
-Applying a `Burstable` Pod succeeds in this audit-only example because no QoS allow-list is configured. Capsule emits an event and returns an admission warning.
-
-For scheduler enforcement:
-
-```yaml
-rules:
-  - enforce:
-      action: audit
-      workloads:
-        schedulers:
-          - exact:
-              - custom-scheduler
-```
-
-Applying a Pod with `spec.schedulerName: custom-scheduler` succeeds in this audit-only example because no scheduler allow-list is configured. Capsule emits an audit event and returns an admission warning.
-
-When audit rules are used together with allow rules, the matching value must still be allowed explicitly. For example, an audited registry reference that does not match any registry `allow` rule is denied by the allow-list, but Capsule still emits the audit event before denying the request.

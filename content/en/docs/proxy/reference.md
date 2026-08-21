@@ -88,7 +88,7 @@ ClusterResource Specification
 | **apiGroups** | []string | APIGroups is the name of the APIGroup that contains the resources. If multiple API groups are specified, any action requested against any resource listed will be allowed. '*' represents all resources. Empty string represents v1 api resources. | true |
 | **resources** | []string | Resources is a list of resources this rule applies to. '*' represents all resources. | true |
 | **[selector](#globalproxysettingsspecrulesindexclusterresourcesindexselector)** | object | Select all cluster scoped resources with the given label selector.<br>Defining a selector which does not match any resources is considered not selectable (eg. using operation NotExists). | true |
-| **operations** | []enum | <span style="color:red;font-weight:bold">Deprecated: For all registered Routes only LIST ang GET requests will intercepted<br><br>Operations which can be executed on the selected resources.<br>Other permissions must be implemented via kubernetes native RBAC</span><br/>*Enum*: List, Update, Delete<br/> | false |
+| **operations** | []enum | Operations which can be executed on the selected resources. Only GET and<br>LIST are supported. When omitted, both operations are enabled. LIST also<br>enables GET for backward compatibility with existing v1beta1 rules.<br/>*Enum*: List, Get<br/>*Default*: [List Get]<br/> | false |
 
 
 ### GlobalProxySettings.spec.rules[index].clusterResources[index].selector
@@ -208,7 +208,7 @@ ClusterResource Specification
 | **apiGroups** | []string | APIGroups is the name of the APIGroup that contains the resources. If multiple API groups are specified, any action requested against any resource listed will be allowed. '*' represents all resources. Empty string represents v1 api resources. | true |
 | **resources** | []string | Resources is a list of resources this rule applies to. '*' represents all resources. | true |
 | **[selector](#proxysettingspecsubjectsindexclusterresourcesindexselector)** | object | Select all cluster scoped resources with the given label selector.<br>Defining a selector which does not match any resources is considered not selectable (eg. using operation NotExists). | true |
-| **operations** | []enum | <span style="color:red;font-weight:bold">Deprecated: For all registered Routes only LIST ang GET requests will intercepted<br><br>Operations which can be executed on the selected resources.<br>Other permissions must be implemented via kubernetes native RBAC</span><br/>*Enum*: List, Update, Delete<br/> | false |
+| **operations** | []enum | Operations which can be executed on the selected resources. Only GET and<br>LIST are supported. When omitted, both operations are enabled. LIST also<br>enables GET for backward compatibility with existing v1beta1 rules.<br/>*Enum*: List, Get<br/>*Default*: [List Get]<br/> | false |
 
 
 ### ProxySetting.spec.subjects[index].clusterResources[index].selector

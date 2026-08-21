@@ -1,5 +1,5 @@
 ---
-title: Global Resource Quotas
+title: GlobalResourceQuota
 description: Share one atomic Kubernetes resource budget across multiple namespaces.
 weight: 1
 ---
@@ -92,15 +92,41 @@ Selection behavior:
 - Terminating namespaces are not included.
 - Namespace membership is recalculated when namespace labels or the quota selectors change.
 
-Be careful with an empty selector:
+
+
+
+
+
+### Non-Tenant Namespaces
+
+While you can define `namespaceSelectors` to select any namespace, by default only namespaced resources in `Namespaces` which are part of a `Tenant` are only sent to admission. If you want to use `GlobalResourceQuota` for `Namespaces` that are not part of a `Tenant`, you must mainly change the admission configuration to also sent namespaced resources to the `GlobalResourceQuota` webhook:
+
+```yaml
+webhooks:
+  hooks:
+    globalresourcequotas:
+      enabled: true
+      namespaceSelector:
+        matchExpressions:
+          - key: capsule.clastix.io/tenant
+            operator: Exists
+          - key: kubernetes.io/metadata.name
+            operator: In
+            values:
+              - tenants-shared-system
+```
+
+While this may be cumbersome, it was the best solution to avoid implementing a potential cluster DoS attack vector. Only then calculations are sent to the admission webhook for `Namespaces` that are not part of a `Tenant`.
 
 ```yaml
 spec:
   namespaceSelectors:
-    - {}
+    - matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values:
+            - tenants-shared-system
 ```
-
-This intentionally shares the quota across all active namespaces in the cluster.
 
 ### Selecting Tenant namespaces
 
@@ -314,101 +340,9 @@ spec:
 
 Pod scopes such as `Terminating`, `NotTerminating`, `BestEffort`, `NotBestEffort`, `PriorityClass`, and `CrossNamespacePodAffinity` are evaluated before usage is reserved.
 
-## Atomic admission
+## Operating
 
-Native `ResourceQuota.status.used` is eventually consistent. Reading the status and then allowing a request is insufficient because multiple requests can observe the same available capacity.
-
-Global quota admission uses reservations:
-
-1. The webhook finds every `GlobalResourceQuota` matching the request namespace.
-2. The incoming object is decoded and evaluated once.
-3. Only resources present in each quota's `hard` list are considered.
-4. For updates, only the positive usage delta is reserved.
-5. The webhook atomically adds the delta to the quota's `QuantityLedger` using Kubernetes optimistic concurrency.
-6. Admission is denied if observed usage plus active reservations would exceed any hard limit.
-7. The controller removes reservations as native `ResourceQuota.status.used` catches up.
-
-This process is applied to every matching `GlobalResourceQuota`. If any matching quota rejects the request, admission is denied and reservations already made for that request are rolled back.
-
-Dry-run requests are evaluated but do not persist reservations.
-
-### Readiness and failure behavior
-
-Admission fails closed while a matching quota is not ready. The ledger must:
-
-- Refer to the current `GlobalResourceQuota` UID.
-- Have observed the current quota generation.
-- Contain the request namespace.
-- Be initialized from every selected native ResourceQuota.
-
-The chart enables the webhook with `failurePolicy: Fail` by default:
-
-```yaml
-webhooks:
-  hooks:
-    globalresourcequotas:
-      enabled: true
-      failurePolicy: Fail
-```
-
-The webhook must observe namespaced create and update requests across API groups. Narrowing its webhook rules, namespace selector, object selector, or match conditions can create accounting gaps.
-
-Reservations expire after two minutes if native usage never appears, for example when a later admission plugin rejects the object. A ledger accepts at most 1024 active reservations at one time.
-
-## Tenant rules
-
-Tenant rules can generate `GlobalResourceQuota` objects:
-
-```yaml
-apiVersion: capsule.clastix.io/v1beta2
-kind: Tenant
-metadata:
-  name: solar
-spec:
-  owners:
-    - name: alice
-      kind: User
-  rules:
-    - namespaceSelector:
-        matchLabels:
-          company.example/tier: application
-      quota:
-        - name: shared-compute
-          hard:
-            requests.cpu: "8"
-            requests.memory: 16Gi
-            limits.cpu: "8"
-            limits.memory: 16Gi
-        - name: object-counts
-          hard:
-            services: "20"
-            count/horizontalpodautoscalers.autoscaling: "10"
-```
-
-Capsule creates one `GlobalResourceQuota` per entry in the rule's `quota` list. The generated selector combines:
-
-- The rule's namespace selector.
-- The Tenant membership label.
-
-The Tenant membership requirement prevents a rule from selecting another Tenant's namespaces. Generated quotas are reconciled and pruned with the Tenant rule lifecycle.
-
-Every quota entry requires a DNS label-compatible `name` which must be unique
-across all rules in the Tenant. The name is the durable identity of the
-generated `GlobalResourceQuota`: changing limits, selectors, or rule ordering
-updates the existing object. Renaming or removing the quota entry replaces or
-deletes it.
-
-Generated resource names use `<tenant-name>-<quota-name>`.
-
-Quota accounting is independent of a rule's request audience. An audience can limit other rule behavior but does not partition the shared resource budget.
-
-Quota definitions are not copied into namespace `RuleStatus` objects. They are
-reconciled directly from the Tenant into cluster-scoped `GlobalResourceQuota`
-objects, which remain the authoritative source for admission and accounting.
-
-Existing `Tenant.spec.resourceQuotas` behavior remains available for compatibility. Use rule-generated or directly managed `GlobalResourceQuota` objects when an atomic shared limit across namespaces is required.
-
-## Status
+### Status
 
 The status exposes the selected namespaces and observed usage:
 
@@ -461,7 +395,48 @@ kubectl get quantityledgers -n capsule-system \
 
 Managed native ResourceQuota objects and QuantityLedgers are implementation details. Do not edit or delete them directly.
 
-## Operating
+
+### Atomic admission
+
+Native `ResourceQuota.status.used` is eventually consistent. Reading the status and then allowing a request is insufficient because multiple requests can observe the same available capacity.
+
+Global quota admission uses reservations:
+
+1. The webhook finds every `GlobalResourceQuota` matching the request namespace.
+2. The incoming object is decoded and evaluated once.
+3. Only resources present in each quota's `hard` list are considered.
+4. For updates, only the positive usage delta is reserved.
+5. The webhook atomically adds the delta to the quota's `QuantityLedger` using Kubernetes optimistic concurrency.
+6. Admission is denied if observed usage plus active reservations would exceed any hard limit.
+7. The controller removes reservations as native `ResourceQuota.status.used` catches up.
+
+This process is applied to every matching `GlobalResourceQuota`. If any matching quota rejects the request, admission is denied and reservations already made for that request are rolled back.
+
+Dry-run requests are evaluated but do not persist reservations.
+
+#### Readiness and failure behavior
+
+Admission fails closed while a matching quota is not ready. The ledger must:
+
+- Refer to the current `GlobalResourceQuota` UID.
+- Have observed the current quota generation.
+- Contain the request namespace.
+- Be initialized from every selected native ResourceQuota.
+
+The chart enables the webhook with `failurePolicy: Fail` by default:
+
+```yaml
+webhooks:
+  hooks:
+    globalresourcequotas:
+      enabled: true
+      failurePolicy: Fail
+```
+
+The webhook must observe namespaced create and update requests across API groups. Narrowing its webhook rules, namespace selector, object selector, or match conditions can create accounting gaps.
+
+Reservations expire after two minutes if native usage never appears, for example when a later admission plugin rejects the object. A ledger accepts at most 1024 active reservations at one time.
+
 
 ### Updating a quota
 

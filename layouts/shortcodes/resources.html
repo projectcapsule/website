@@ -1,28 +1,156 @@
-<!-- Resource pane -->
-<a class="td-offset-anchor"></a>
-<div class="page td-content container">
-    {{ $resources := $.Site.Data.resources.resources }}
-    {{ $years := slice }}
-    {{ range $resources }}
-        {{ $years = $years | append (time.Format "2006" .date) }}
-        {{ $years = uniq $years }}
-    {{ end }}
-    {{ range $years }}
-    {{ $year := . }}
-    <div class="mt-100">
-    <h2 id="{{ . }}">{{ . }}</h2>
-    <a id=td-block-0 class=td-offset-anchor></a>
-    <section class="row td-box td-box--white td-box--gradient td-box--height-auto">
-        <div class=col>
-            <div class=row>
-                {{ range $resources }}
-                {{ if eq (time.Format "2006" .date) $year }}
-                    {{ partial "resource.html" . }}
-                {{ end }}
-                {{ end }}
-            </div>
-        </div>
-    </section>
+{{- $resources := sort site.Data.resources.resources "date" "desc" -}}
+{{- $years := slice -}}
+{{- $types := slice -}}
+{{- range $resources -}}
+  {{- $years = $years | append ((time.AsTime .date).Format "2006") -}}
+  {{- $types = $types | append (.type | default "resource" | lower) -}}
+{{- end -}}
+{{- $years = uniq $years -}}
+{{- $types = sort (uniq $types) -}}
+
+<div class="resource-browser" data-resource-browser>
+  <div class="resource-browser__summary d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-2 mb-4">
+    <div>
+      <p class="text-uppercase fw-semibold mb-1">Community library</p>
+      <p class="lead mb-0">Browse talks, articles, demos, and stories from the Capsule community.</p>
     </div>
-    {{ end }}
+    <span class="resource-browser__total text-nowrap" data-resource-count aria-live="polite">{{ len $resources }} resources</span>
+  </div>
+
+  <div class="resource-browser__toolbar mb-5" aria-label="Filter resources">
+    <div class="row g-3 align-items-end">
+      <div class="col-12 col-lg-5">
+        <label class="form-label fw-semibold" for="resource-search">Search</label>
+        <div class="input-group">
+          <span class="input-group-text" aria-hidden="true"><i class="fa-solid fa-magnifying-glass"></i></span>
+          <input
+            id="resource-search"
+            class="form-control"
+            type="search"
+            placeholder="Search by title, topic, or format"
+            autocomplete="off"
+            data-resource-search-input
+          >
+        </div>
+      </div>
+
+      <div class="col-12 col-md-7 col-lg-4">
+        <span class="form-label fw-semibold d-block">Format</span>
+        <div class="btn-group w-100" role="group" aria-label="Resource format">
+          <button class="btn btn-primary" type="button" data-resource-type-filter="all" aria-pressed="true">All</button>
+          {{- range $types }}
+            <button class="btn btn-outline-secondary" type="button" data-resource-type-filter="{{ . }}" aria-pressed="false">{{ . | humanize }}</button>
+          {{- end }}
+        </div>
+      </div>
+
+      <div class="col-8 col-md-3 col-lg-2">
+        <label class="form-label fw-semibold" for="resource-year">Year</label>
+        <select id="resource-year" class="form-select" data-resource-year-filter>
+          <option value="all">All years</option>
+          {{- range $years }}
+            <option value="{{ . }}">{{ . }}</option>
+          {{- end }}
+        </select>
+      </div>
+
+      <div class="col-4 col-md-2 col-lg-1 d-grid">
+        <button class="btn btn-link px-1" type="button" data-resource-reset>Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <div data-resource-results>
+    {{- range $years }}
+      {{- $year := . -}}
+      <section class="resource-browser__year mb-5" data-resource-year-group="{{ $year }}">
+        <div class="resource-browser__year-heading d-flex align-items-center gap-3 mb-3">
+          <h2 class="h3 mb-0">{{ $year }}</h2>
+          <span aria-hidden="true"></span>
+        </div>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+          {{- range $resources }}
+            {{- if eq ((time.AsTime .date).Format "2006") $year }}
+              {{ partial "resource.html" . }}
+            {{- end }}
+          {{- end }}
+        </div>
+      </section>
+    {{- end }}
+  </div>
+
+  <div class="resource-browser__empty text-center d-none" data-resource-empty>
+    <i class="fa-solid fa-binoculars" aria-hidden="true"></i>
+    <h2 class="h4 mt-3">No resources found</h2>
+    <p class="text-body-secondary mb-3">Try another search term or broaden the filters.</p>
+    <button class="btn btn-primary" type="button" data-resource-reset>Clear filters</button>
+  </div>
 </div>
+
+<script>
+  (() => {
+    document.querySelectorAll("[data-resource-browser]:not([data-resource-ready])").forEach((root) => {
+      root.setAttribute("data-resource-ready", "true");
+
+      const cards = Array.from(root.querySelectorAll("[data-resource-card]"));
+      const groups = Array.from(root.querySelectorAll("[data-resource-year-group]"));
+      const typeButtons = Array.from(root.querySelectorAll("[data-resource-type-filter]"));
+      const searchInput = root.querySelector("[data-resource-search-input]");
+      const yearSelect = root.querySelector("[data-resource-year-filter]");
+      const count = root.querySelector("[data-resource-count]");
+      const empty = root.querySelector("[data-resource-empty]");
+      const resetButtons = Array.from(root.querySelectorAll("[data-resource-reset]"));
+      let selectedType = "all";
+
+      const update = () => {
+        const query = searchInput.value.trim().toLocaleLowerCase();
+        const selectedYear = yearSelect.value;
+        let visibleCount = 0;
+
+        cards.forEach((card) => {
+          const matchesSearch = !query || card.dataset.resourceSearch.includes(query);
+          const matchesType = selectedType === "all" || card.dataset.resourceType === selectedType;
+          const matchesYear = selectedYear === "all" || card.dataset.resourceYear === selectedYear;
+          const visible = matchesSearch && matchesType && matchesYear;
+
+          card.classList.toggle("d-none", !visible);
+          if (visible) visibleCount += 1;
+        });
+
+        groups.forEach((group) => {
+          const hasVisibleCard = Array.from(group.querySelectorAll("[data-resource-card]")).some(
+            (card) => !card.classList.contains("d-none")
+          );
+          group.classList.toggle("d-none", !hasVisibleCard);
+        });
+
+        count.textContent = `${visibleCount} ${visibleCount === 1 ? "resource" : "resources"}`;
+        empty.classList.toggle("d-none", visibleCount !== 0);
+      };
+
+      typeButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          selectedType = button.dataset.resourceTypeFilter;
+          typeButtons.forEach((candidate) => {
+            const active = candidate === button;
+            candidate.classList.toggle("btn-primary", active);
+            candidate.classList.toggle("btn-outline-secondary", !active);
+            candidate.setAttribute("aria-pressed", active ? "true" : "false");
+          });
+          update();
+        });
+      });
+
+      searchInput.addEventListener("input", update);
+      yearSelect.addEventListener("change", update);
+      resetButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          searchInput.value = "";
+          yearSelect.value = "all";
+          typeButtons[0].click();
+          searchInput.focus();
+        });
+      });
+    });
+  })();
+</script>

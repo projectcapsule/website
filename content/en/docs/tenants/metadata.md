@@ -33,6 +33,10 @@ spec:
 
 ### RequiredMetadata
 
+{{% alert title="Deprecated" color="warning" %}}
+This feature will be deprecated in a future release of Capsule. Instead use [Metadata Rules](/docs/rules/enforcement/metadata). **[Migration Guide Here](/docs/rules/enforcement/metadata/#migrate-namespace-metadata)**
+{{% /alert %}}
+
 The cluster admin can enforce tenant owners to add specific metadata as `Labels` and `Annotations` to the `Namespaces` they create. This is a useful feature to enforce a set of [Rules](/docs/tenants/rules/) based on `Labels`.
 
 ```yaml
@@ -82,6 +86,11 @@ spec:
 ```
 
 ### AdditionalMetadataList
+
+{{% alert title="Deprecated" color="warning" %}}
+This feature will be deprecated in a future release of Capsule. Instead use [Metadata Rules](/docs/rules/enforcement/metadata). **[Migration Guide Here](/docs/rules/enforcement/metadata/#migrate-namespace-metadata)**
+{{% /alert %}}
+
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -139,9 +148,10 @@ spec:
 
 ### AdditionalMetadata
 
-{{% alert title="Deprecated" color="info" %}}
-This feature is deprecated and  will be removed in a future release of Capsule. Migrate to using [AdditionalMetadataList](#additionalmetadatalist)
+{{% alert title="Deprecated" color="warning" %}}
+This feature will be deprecated in a future release of Capsule. Instead use [Metadata Rules](/docs/rules/enforcement/metadata). **[Migration Guide Here](/docs/rules/enforcement/metadata/#migrate-namespace-metadata)**
 {{% /alert %}}
+
 
 The cluster admin can "taint" the namespaces created by tenant owners with additional metadata as labels and annotations. There is no specific semantic assigned to these labels and annotations: they will be assigned to the namespaces in the tenant as they are created. This can help the cluster admin to implement specific use cases as, for example, leave only a given tenant to be backed up by a backup service.
 
@@ -192,6 +202,11 @@ status:
 ```
 
 ### Deny labels and annotations on Namespaces
+
+{{% alert title="Deprecated" color="warning" %}}
+This feature will be deprecated in a future release of Capsule. Instead use [Metadata Rules](/docs/rules/enforcement/metadata). **[Migration Guide Here](/docs/rules/enforcement/metadata/#migrate-namespace-metadata)**
+{{% /alert %}}
+
 
 By default, capsule allows tenant owners to add and modify any label or annotation on their namespaces.
 
@@ -259,6 +274,10 @@ spec:
 
 ## Services
 
+{{% alert title="Deprecated" color="warning" %}}
+This feature will be deprecated in a future release of Capsule. Instead use [Metadata Rules](/docs/rules/enforcement/metadata). **[Migration Guide Here](/docs/rules/enforcement/metadata/#migrate-service-metadata)**
+{{% /alert %}}
+
 The cluster admin can "taint" the services created by the tenant owners with additional metadata as labels and annotations.
 
 Assigns additional labels and annotations to all services created in the `solar` tenant:
@@ -303,6 +322,10 @@ spec:
 ```
 
 ## Pods
+
+{{% alert title="Deprecated" color="warning" %}}
+This feature will be deprecated in a future release of Capsule. Instead use [Metadata Rules](/docs/rules/enforcement/metadata). **[Migration Guide Here](/docs/rules/enforcement/metadata/#migrate-pod-metadata)**
+{{% /alert %}}
 
 The cluster admin can "taint" the pods created by the tenant owners with additional metadata as labels and annotations.
 

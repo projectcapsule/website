@@ -1,0 +1,67 @@
+{{- $events := site.Data.events.events | default (slice) -}}
+{{- $upcoming := slice -}}
+{{- $past := slice -}}
+{{- $now := now -}}
+
+{{- range sort $events "start" "asc" -}}
+  {{- $endValue := .start -}}
+  {{- with .end }}{{ $endValue = . }}{{ end -}}
+  {{- $endExclusive := (time.AsTime $endValue).AddDate 0 0 1 -}}
+  {{- if ge $endExclusive.Unix $now.Unix -}}
+    {{- $upcoming = $upcoming | append . -}}
+  {{- else -}}
+    {{- $past = $past | append . -}}
+  {{- end -}}
+{{- end -}}
+
+<div class="events-calendar pe-md-3 pe-xl-4">
+  <div class="mb-4">
+    <p>
+      Upcoming opportunities to meet the Project Capsule community. The list
+      is sorted automatically from the shared event data.
+    </p>
+    {{ with .Page.OutputFormats.Get "RSS" }}
+      <a class="btn btn-outline-primary btn-sm"
+         href="{{ .RelPermalink }}"
+         rel="alternate"
+         type="application/rss+xml">
+        <i class="fa-solid fa-rss me-1" aria-hidden="true"></i>
+        Subscribe to event updates
+      </a>
+    {{ end }}
+  </div>
+
+  {{ if $upcoming }}
+    <details class="mb-4" open>
+      <summary class="h4 mb-3">
+        Upcoming events
+        <span class="badge rounded-pill text-bg-light align-middle fs-6">
+          {{ len $upcoming }}
+        </span>
+      </summary>
+      <div>
+        {{ range $upcoming }}
+          {{ partial "events/card.html" . }}
+        {{ end }}
+      </div>
+    </details>
+  {{ else }}
+    <p class="text-muted">No upcoming events are currently scheduled.</p>
+  {{ end }}
+
+  {{ if $past }}
+    <details class="mt-4">
+      <summary class="h4 mb-3">
+        Past events
+        <span class="badge rounded-pill text-bg-light align-middle fs-6">
+          {{ len $past }}
+        </span>
+      </summary>
+      <div>
+        {{ range sort $past "start" "desc" }}
+          {{ partial "events/card.html" . }}
+        {{ end }}
+      </div>
+    </details>
+  {{ end }}
+</div>

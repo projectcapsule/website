@@ -137,4 +137,14 @@ securityContext:
 
 ## Plugins
 
-We are commitet to provide a set of plugins to enhance the user experience with Capsule and Headlamp. Any community contribution is welcome, so feel free to open a PR with your plugin.
+We provide a plugin for Headlamp to enhance the user experience when using Capsule. The plugin is available in the [Headlamp Plugin Repository](https://github.com/projectcapsule/headlamp-plugin).
+
+Offers great UX for both Capsule Admins and Tenant Owners. The plugin provides a dedicated view for Capsule Tenants, allowing users to easily manage their resources and view their usage. It also provides a dedicated view for Capsule Admins, allowing them to easily manage Tenants and view their usage.
+
+![Headlamp Plugin Screenshot](/images/ecosystem/headlamp/headlamp-plugin-1.png)
+
+![Headlamp Plugin Screenshot](/images/ecosystem/headlamp/headlamp-plugin-2.png)
+
+![Headlamp Plugin Screenshot](/images/ecosystem/headlamp/headlamp-plugin-3.png)
+
+![Headlamp Plugin Screenshot](/images/ecosystem/headlamp/headlamp-plugin-4.png)

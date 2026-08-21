@@ -490,6 +490,240 @@ With this rule:
 
 If an allow-list also exists for the same metadata key, values excluded from a negated deny rule still need a matching allow rule.
 
+## Migration
+
+The legacy metadata fields under `Tenant.spec` can be migrated to metadata
+rules. Rules use the same policy structure for Namespaces, Pods, Services, and
+other resources, and allow validation, admission defaults, and reconciled
+managed values to be combined.
+
+Migrate one resource type at a time. When old and new configuration overlap,
+keep their values identical until the rule has been verified.
+
+### Migrate Namespace Metadata
+
+The legacy [Namespace metadata
+options](/docs/tenants/metadata/#namespaces) map to rules as follows:
+
+* `requiredMetadata` becomes an `allow` rule with `required: true` and a
+  `values` expression.
+* `additionalMetadata` and `additionalMetadataList` become `managed` values.
+  Managed values are applied during admission and reconciled on existing
+  Namespaces. Use `default` instead when a value should only be added during
+  admission and remain user-editable afterwards.
+* An `additionalMetadataList[].namespaceSelector` moves to the
+  `rules[].namespaceSelector` at the same rule level. For a Namespace target,
+  the selector is evaluated against that Namespace's labels.
+* Exact entries in `forbiddenLabels.denied` and
+  `forbiddenAnnotations.denied` become `deny` rules that match any value for
+  the concrete metadata key.
+
+`Namespace` must be selected explicitly. Use the concrete core `v1` API and
+the literal `Namespace` kind, especially when the rule contains `managed`
+values:
+
+```yaml
+apiGroups:
+  - "v1"
+kinds:
+  - Namespace
+```
+
+The following rules replace the `requiredMetadata`,
+`additionalMetadataList`, and exact forbidden-key examples from the legacy
+page:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - name: alice
+      kind: User
+  rules:
+    # Require user-provided metadata and manage common metadata on every
+    # Namespace in the Tenant.
+    - enforce:
+        action: allow
+        metadata:
+          - apiGroups:
+              - "v1"
+            kinds:
+              - Namespace
+            labels:
+              env:
+                required: true
+                values:
+                  - exp: "^(prod|test|dev)$"
+              projectcapsule.dev/backup:
+                managed: "true"
+              templated-label:
+                managed: "{{ .namespace.metadata.name }}"
+            annotations:
+              example.corp/cost-center:
+                required: true
+                values:
+                  - exp: "^INV-[0-9]{4}$"
+              storagelocationtype:
+                managed: s3
+              templated-annotation:
+                managed: "{{ .tenant.metadata.name }}"
+
+    # Apply the baseline security profile unless the Namespace explicitly
+    # opts into the low-security profile.
+    - namespaceSelector:
+        matchExpressions:
+          - key: projectcapsule.dev/low_security_profile
+            operator: NotIn
+            values:
+              - "true"
+      enforce:
+        action: allow
+        metadata:
+          - apiGroups:
+              - "v1"
+            kinds:
+              - Namespace
+            labels:
+              pod-security.kubernetes.io/enforce:
+                managed: baseline
+
+    # The selectors are mutually exclusive, so only one rule manages the Pod
+    # Security Admission label for a Namespace.
+    - namespaceSelector:
+        matchExpressions:
+          - key: projectcapsule.dev/low_security_profile
+            operator: In
+            values:
+              - "true"
+      enforce:
+        action: allow
+        metadata:
+          - apiGroups:
+              - "v1"
+            kinds:
+              - Namespace
+            labels:
+              pod-security.kubernetes.io/enforce:
+                managed: privileged
+
+    # Deny the presence of these concrete labels or annotations, regardless
+    # of their values.
+    - enforce:
+        action: deny
+        metadata:
+          - apiGroups:
+              - "v1"
+            kinds:
+              - Namespace
+            labels:
+              foo.acme.net:
+                values:
+                  - exp: ".*"
+              bar.acme.net:
+                values:
+                  - exp: ".*"
+            annotations:
+              foo.acme.net:
+                values:
+                  - exp: ".*"
+              bar.acme.net:
+                values:
+                  - exp: ".*"
+```
+
+With these rules:
+
+* Tenant owners must provide a valid `env` label and cost-center annotation.
+* Common and templated metadata is enforced on new and existing Namespaces.
+* The Pod Security Admission profile follows the Namespace selector.
+* `foo.acme.net` and `bar.acme.net` are denied as both labels and annotations,
+  including when their value is an empty string.
+
+#### Legacy options without a direct equivalent
+
+Metadata rules are keyed by concrete label and annotation names. They do not
+currently provide a direct replacement for these key-wide legacy behaviors:
+
+* `managedMetadataOnly: true`, which rejects all user metadata not managed by
+  Capsule; and
+* `forbiddenLabels.deniedRegex` or
+  `forbiddenAnnotations.deniedRegex`, which match metadata _keys_ by regular
+  expression.
+
+Enumerate known sensitive keys with `deny` rules as shown above. If the policy
+must reject every unlisted key or a changing family of keys, retain the legacy
+option during migration or enforce that part with another admission policy.
+Value regular expressions remain supported through `values[].exp`; the
+limitation only applies to regular expressions over metadata key names.
+
+#### Rollout
+
+1. Add the equivalent rules while the legacy values are still configured.
+   Ensure overlapping `managed` values are identical.
+2. Check the generated `RuleStatus` objects and verify both creation and update
+   admission with a test Namespace.
+3. Confirm that managed metadata has been reconciled onto existing Namespaces.
+4. Remove the migrated `requiredMetadata`, `additionalMetadata`,
+   `additionalMetadataList`, and exact forbidden-key entries.
+5. Keep `managedMetadataOnly` or key-regex restrictions until an alternative
+   policy covers them.
+
+### Migrate Pod Metadata
+
+Use the following rule to migrate the [old
+`spec.podOptions.additionalMetadata` API](/docs/tenants/metadata/#pods) to the
+new `spec.rules[].enforce.metadata` API:
+
+```yaml
+rules:
+  - enforce:
+      action: allow
+      metadata:
+        - kinds:
+            - Pod
+          annotations:
+            storagelocationtype:
+              managed: s3
+          labels:
+            projectcapsule.dev/backup:
+              managed: "true"
+```
+
+### Migrate Service Metadata
+
+Use the following rule to migrate the [old
+`spec.serviceOptions.additionalMetadata` API](/docs/tenants/metadata/#services)
+to the new `spec.rules[].enforce.metadata` API:
+
+```yaml
+rules:
+  - enforce:
+      action: allow
+      metadata:
+        - kinds:
+            - Service
+            - Endpoints
+          annotations:
+            customer.corp/routable:
+              managed: "true"
+          labels:
+            customer.corp/network-tenant:
+              managed: "{{ .tenant.metadata.name }}"
+        - apiGroups:
+            - "discovery.k8s.io/v1"
+          kinds:
+            - EndpointSlice
+          annotations:
+            customer.corp/routable:
+              managed: "true"
+          labels:
+            customer.corp/network-tenant:
+              managed: "{{ .tenant.metadata.name }}"
+```
+
 ## Advanced
 
 ### Allow-list behavior for metadata

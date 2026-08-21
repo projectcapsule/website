@@ -1,4 +1,10 @@
 resources:
+  - title: "ChatLoopBackOff Episode 79: Capsule with Thomas and Oliver"
+    date: "2026-08-01"
+    youtube: "a7yVjFFa0Eo"
+    type: "video"
+    tags:
+      - maintainer
   - title: "REX Ubisoft - Quand et comment partager un cluster : retour d'expérience sur Capsule chez Ubisoft"
     youtube: "NAx2s_o1iuE"
     date: "2026-02-25"
@@ -58,7 +64,6 @@ resources:
       - "Talk"
       - "Maintainer"
       - customer-journey
-
 
   - title: "Multi-Tenant Kubernetes Cluster With Capsule"
     youtube: "1sVq8gzwyRU"

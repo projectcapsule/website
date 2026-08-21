@@ -1,0 +1,51 @@
+{{- $event := . -}}
+{{- $start := time.AsTime $event.start -}}
+{{- $endValue := $event.start -}}
+{{- with $event.end }}{{ $endValue = . }}{{ end -}}
+{{- $end := time.AsTime $endValue -}}
+{{- $sameDay := eq $event.start $endValue -}}
+{{- $dateText := time.Format "2 January 2006" $start -}}
+{{- $dayText := time.Format "2" $start -}}
+{{- $monthText := time.Format "Jan" $start -}}
+{{- if not $sameDay -}}
+  {{- if and (eq (time.Format "2006-01" $start) (time.Format "2006-01" $end)) (eq (time.Format "2006" $start) (time.Format "2006" $end)) -}}
+    {{- $dateText = printf "%s–%s %s" (time.Format "2" $start) (time.Format "2" $end) (time.Format "January 2006" $start) -}}
+    {{- $dayText = printf "%s–%s" (time.Format "2" $start) (time.Format "2" $end) -}}
+  {{- else -}}
+    {{- $dateText = printf "%s–%s" (time.Format "2 January 2006" $start) (time.Format "2 January 2006" $end) -}}
+    {{- $dayText = printf "%s–%s" (time.Format "2 Jan" $start) (time.Format "2 Jan" $end) -}}
+    {{- $monthText = "" -}}
+  {{- end -}}
+{{- end -}}
+
+<article class="card mb-3" id="event-{{ $event.id }}">
+  <div class="card-body">
+    <div class="row g-3 align-items-start">
+      <div class="col-12 col-sm-3 col-lg-2">
+        <time class="d-block rounded border text-center px-2 py-2"
+              datetime="{{ $event.start }}">
+          {{ with $monthText }}
+            <span class="d-block small fw-semibold text-uppercase text-muted">
+              {{ . }}
+            </span>
+          {{ end }}
+          <span class="d-block fs-4 fw-bold lh-sm">{{ $dayText }}</span>
+          <span class="d-block small text-muted">{{ time.Format "2006" $start }}</span>
+        </time>
+      </div>
+      <div class="col-12 col-sm-9 col-lg-10">
+        <h3 class="h5 mb-1">
+          <a href="{{ $event.url }}" rel="noopener">{{ $event.title }}</a>
+          {{ with $event.flag }}<span aria-hidden="true">{{ . }}</span>{{ end }}
+        </h3>
+        <p class="small fw-semibold text-muted mb-2">{{ $dateText }}</p>
+        <div class="mb-0">{{ $event.description | markdownify }}</div>
+        {{ with $event.details }}
+          <ul class="mb-0 mt-2">
+            {{ range . }}<li>{{ . | markdownify }}</li>{{ end }}
+          </ul>
+        {{ end }}
+      </div>
+    </div>
+  </div>
+</article>
