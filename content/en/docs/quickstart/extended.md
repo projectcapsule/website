@@ -184,7 +184,7 @@ Any attempt to create a `NodePort` or `LoadBalancer` service is denied at admiss
 
 ## Permission Bindings
 
-[Read More](/docs/rules/permissions/)
+[Read More](/docs/tenants/rules/#bindings)
 
 Automatically distribute `RoleBindings` across Tenant namespaces based on namespace metadata. This example gives an `operators` group `edit` access in dev and test namespaces, and only `view` access in production:
 
@@ -530,7 +530,6 @@ solar   Active   2                 0                                 True    rec
 | Topic | Link |
 |---|---|
 | Installation guide | [Installation](/docs/operating/setup/installation/) |
-| Tenant Owner Guide | [Tenant Owner Guide](/docs/tenants/tenant-owner-guide/) |
 | Rules | [Rules](/docs/rules/) |
 | Tenant resource replication | [TenantResources](/docs/replications/tenant/) |
 | Cross-tenant replication | [GlobalTenantResources](/docs/replications/global/) |

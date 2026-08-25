@@ -14,7 +14,7 @@ With help of Capsule, Bill, the cluster admin, can set and enforce resources quo
 ## Resource Quota
 
 {{% alert title="Deprecated" color="warning" %}}
-This feature will be deprecated in a future release of Capsule. Instead use [Rules Quota](/docs/tenants/rules/quotas/). **[Migration Guide Here](/docs/tenants/rules/#migration)**
+This feature will be deprecated in a future release of Capsule. Instead use [Rules Quota](/docs/tenants/rules/#quotas). **[Migration Guide Here](/docs/tenants/rules/#migration)**
 {{% /alert %}}
 
 With help of Capsule, Bill, the cluster admin, can set and enforce resources quota and limits for Alice's `Tenant`. Set resources quota for each `Namespace` in the Alice's `Tenant` by defining them in the `Tenant` spec:

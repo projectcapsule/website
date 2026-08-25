@@ -282,7 +282,6 @@ You have seen the core of Capsule: a cluster administrator defines constraints, 
 | Topic | Link |
 |---|---|
 | Installation guide | [Installation](/docs/operating/setup/installation/) |
-| Tenant Owner Guide | [Tenant Owner Guide](/docs/tenants/tenant-owner-guide/) |
 | Rules | [Rules](/docs/rules/) |
 | Tenant resource replication | [TenantResources](/docs/replications/tenant/) |
 | Cross-tenant replication | [GlobalTenantResources](/docs/replications/global/) |

@@ -260,7 +260,7 @@ Before you enable strict mode, you must implement the required permissions for y
 
 ### Admission Policies
 
-While Capsule provides a robust framework for managing multi-tenancy in Kubernetes, it does not include built-in admission policies for enforcing specific security or operational standards for all possible aspects of a Kubernetes cluster.  [We provide additional policy recommendations here](/docs/operating/concepts/admission-policies/).
+While Capsule provides a robust framework for managing multi-tenancy in Kubernetes, it does not include built-in admission policies for enforcing specific security or operational standards for all possible aspects of a Kubernetes cluster.  [We provide additional policy recommendations here](/docs/operating/best-practices/admission-policies.md).
 
 ### Certificate Management
 
