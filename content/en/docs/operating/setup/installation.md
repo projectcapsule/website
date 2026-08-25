@@ -161,7 +161,7 @@ Ensure to first upgrade to version `0.13.0` of capsule before enabling strict mo
 {{% /alert %}}
 
 
-By default, the Capsule controller runs with the ClusterRole `cluster-admin`, which provides full access to the cluster. This is because the controller itself must grant RoleBindings on a per-namespace basis that by default reference the ClusterRole `admin`, which needs to at least match the permissions of the controller itself. However, for production environments we recommend configuring stricter RBAC permissions for the Capsule controller. You can enable the minimal required permissions by setting the following value in the Helm chart:
+By default, the Capsule controller runs with the ClusterRole `cluster-admin`, which provides full access to the cluster. This is because the controller must be able to grant RoleBindings on a per-namespace basis: Kubernetes [prevents privilege escalation through RBAC](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#privilege-escalation-prevention-and-bootstrapping), so a RoleBinding referencing a ClusterRole can only be created by a subject that either already holds all permissions of that ClusterRole or holds the `bind` verb on it. For production environments we recommend configuring stricter RBAC permissions for the Capsule controller by setting the following value in the Helm chart:
 
 ```yaml
 manager:
@@ -169,31 +169,68 @@ manager:
     strict: true
 ```
 
-This grants the controller the minimal permissions required for its own operation. However, that alone is not sufficient for it to function properly. The ClusterRole for the controller allows aggregating further permissions to it via the following labels:
+This replaces the `cluster-admin` binding with a ClusterRole that grants the controller only the permissions required for its own operation (`manager.rbac.minimal` is a deprecated alias for this option; both flags enable the same behavior). To satisfy the escalation prevention described above, this ClusterRole contains the narrow `bind` verb on the ClusterRoles listed in `manager.rbac.bindableClusterRoles` (default: `admin`) plus the ClusterRoles managed by Capsule itself (the `manager.options.rbac` provisioner, deleter, `administrationClusterRoles` and `promotionClusterRoles`), which are always bindable. With default values this renders as:
+
+```yaml
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["clusterroles"]
+  resourceNames: ["admin", "capsule-namespace-deleter", "capsule-namespace-provisioner"]
+  verbs: ["bind"]
+```
+
+Tenant owner RoleBindings for the default ClusterRoles therefore work out of the box, without the controller inheriting all of `admin`'s permissions.
+
+{{% alert title="Chart versions v0.13.11 and earlier" color="warning" %}}
+On older chart versions strict mode is only enabled via `manager.rbac.minimal: true` (`manager.rbac.strict` had no effect there), and the controller ClusterRole includes neither the `bind` rule above nor `create` on NetworkPolicies, which [GlobalTenantResource](/docs/replications/global/) propagation requires. Add both via Helm values:
+
+    manager:
+      rbac:
+        minimal: true
+        clusterRole:
+          extraResources:
+            - apiGroups: ["rbac.authorization.k8s.io"]
+              resources: ["clusterroles"]
+              resourceNames: ["admin", "capsule-namespace-provisioner", "capsule-namespace-deleter"]
+              verbs: ["bind"]
+            - apiGroups: ["networking.k8s.io"]
+              resources: ["networkpolicies"]
+              verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
+
+Or aggregate the full `admin` ClusterRole to the controller — note that the controller then holds all of `admin`'s permissions:
+
+    kubectl label clusterrole admin projectcapsule.dev/aggregate-to-controller=true
+{{% /alert %}}
+
+Any further ClusterRole that is assigned to [Tenant owners](/docs/tenants/permissions/#owner-roles) or used for [additional RoleBindings](/docs/tenants/permissions/#strict) needs the same treatment. This applies only to ClusterRoles that are not managed by Capsule (see [Configuration](/docs/operating/setup/configuration/#rbac)). The narrowest option is adding it to `manager.rbac.bindableClusterRoles` — note that the list replaces the default, so keep `admin` in it:
+
+```yaml
+manager:
+  rbac:
+    strict: true
+    bindableClusterRoles:
+      - admin
+      - prometheus-servicemonitors-viewer
+```
+
+Alternatively, you can aggregate the permissions of further ClusterRoles into the controller. The ClusterRole for the controller aggregates all ClusterRoles carrying one of the following labels:
 
 * `projectcapsule.dev/aggregate-to-controller: "true"`
 * `projectcapsule.dev/aggregate-to-controller-instance: {{ .Release.Name }}`
-
-In other words, you must aggregate all ClusterRoles that are assigned to [Tenant owners](/docs/tenants/permissions/#owner-roles) or used for [additional RoleBindings](/docs/tenants/permissions/#strict). This applies only to ClusterRoles that are not managed by Capsule (see [Configuration](/docs/operating/setup/configuration/#rbac)). By default, the only such ClusterRole granted to owners is `admin` (not managed by Capsule).
-
-```bash
-kubectl label clusterrole admin projectcapsule.dev/aggregate-to-controller=true
-```
-
-Verify that the label has been applied:
 
 ```yaml
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: admin
+  name: prometheus-servicemonitors-viewer
   labels:
     projectcapsule.dev/aggregate-to-controller: "true"
 rules:
 ...
 ```
 
-Alternatively you can directly grant more permissions via Helm values:
+This is broader than `bind` — the controller then actually holds these permissions. It is required whenever the controller must exercise the permissions itself, for example when replicating resources via [TenantResources](/docs/replications/tenant/) without impersonation.
+
+You can also directly grant arbitrary additional permissions via Helm values:
 
 ```yaml
 manager:
@@ -215,15 +252,7 @@ green   Active                     2                                 False   can
 
 ```
 
-Alternatively, you can enable only the minimal required permissions by setting the following value in the Helm chart:
-
-```yaml
-manager:
-  rbac:
-    minimal: true
-```
-
-Before you enable this option, you must implement the required permissions for your use case. Depending on which features you are using, you may need to take manual action, for example:
+Before you enable strict mode, you must implement the required permissions for your use case. Depending on which features you are using, you may need to take manual action, for example:
 
 * [Migrate additional RoleBindings](/docs/tenants/permissions/#strict)
 * [Migrate `TenantResources` to use impersonation](/docs/replications/tenant/#impersonation)
