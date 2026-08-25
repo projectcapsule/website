@@ -7,7 +7,7 @@ description: >
 
 Service enforcement allows administrators to allow, deny, or audit Kubernetes `Service` resources in Tenant namespaces.
 
-Service rules are configured under `spec.rules[].enforce.services`. Each rule can define an `action`, a list of allowed or denied Service `types`, and optional type-specific constraints for `LoadBalancer`, `ExternalName`, and `NodePort` Services.
+Service rules are configured under `spec.rules[].enforce.services`. Each rule can define an `action`, a list of allowed or denied Service `types`, constraints for `spec.externalIPs`, and optional type-specific constraints for `LoadBalancer`, `ExternalName`, and `NodePort` Services.
 
 ```yaml
 rules:
@@ -22,6 +22,9 @@ rules:
         loadBalancers:
           cidrs:
             - 10.0.0.2/32
+        externalIPs:
+          cidrs:
+            - 10.20.0.0/16
         externalNames:
           hostnames:
             - exp: ".*\\.example\\.com"
@@ -139,7 +142,7 @@ rules:
 
 Because later matching allow or deny decisions win, namespaces labeled `external-services=blocked` cannot create `ExternalName` Services, while other matching namespaces can.
 
-The `services.types` field is the Service capability gate. Type-specific sections such as `loadBalancers`, `externalNames`, and `nodePorts` do not automatically allow a Service type by themselves.
+The `services.types` field is the Service capability gate. Constraint sections such as `loadBalancers`, `externalIPs`, `externalNames`, and `nodePorts` do not automatically allow a Service type by themselves. The `externalIPs` constraint is type-independent and applies to any allowed Service that specifies `spec.externalIPs`.
 
 For example, this rule restricts LoadBalancer CIDRs, but it does not by itself allow `LoadBalancer` Services if another type allow-list exists that excludes `LoadBalancer`:
 
@@ -404,6 +407,126 @@ rules:
 ```
 
 In namespaces labeled `environment=prod`, a Service using `10.0.171.239` is admitted. In other namespaces, it is denied because it does not match the default allowed CIDR.
+
+### External IPs
+
+External IP rules allow administrators to restrict the addresses supplied in `spec.externalIPs`.
+
+External IP constraints are configured under `enforce.services.externalIPs.cidrs`. They are admission rules only: Capsule does not allocate addresses, add entries to `spec.externalIPs`, or configure routing for them.
+
+The constraint applies to any Service type that specifies `spec.externalIPs`. Individual addresses in a rule are treated as host CIDRs:
+
+* an IPv4 address without a prefix is treated as `/32`;
+* an IPv6 address without a prefix is treated as `/128`.
+
+Allow external IPs from selected networks:
+
+```yaml
+rules:
+  - enforce:
+      action: allow
+      services:
+        types:
+          - ClusterIP
+        externalIPs:
+          cidrs:
+            - 10.20.0.0/16
+            - 192.168.1.2
+            - 2001:db8::/32
+```
+
+This Service is admitted because both requested addresses match an allowed CIDR:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: internal-api
+spec:
+  type: ClusterIP
+  externalIPs:
+    - 10.20.1.44
+    - 192.168.1.2
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+```
+
+Every entry in `spec.externalIPs` must satisfy the rule evaluation. The following Service is denied because `8.8.8.8` is outside the allowed CIDRs:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: public-dns
+spec:
+  type: ClusterIP
+  externalIPs:
+    - 10.20.1.44
+    - 8.8.8.8
+  ports:
+    - name: dns
+      protocol: UDP
+      port: 53
+      targetPort: 5353
+```
+
+Example rejection:
+
+```bash
+Error from server (Forbidden): error when creating "svc.yaml": admission webhook "services.validating.projectcapsule.dev" denied the request: external IP "8.8.8.8" at spec.externalIPs[1] is not allowed by namespace rule: value did not match any allowed rule. Allowed CIDRs: 10.20.0.0/16, 192.168.1.2, 2001:db8::/32
+```
+
+Unlike LoadBalancer CIDR and NodePort range constraints, an external IP rule does not require the Service to specify a value. A Service without `spec.externalIPs` is admitted if it satisfies the other applicable Service rules.
+
+#### Denying selected external IPs
+
+You can combine a broad allow-list with a later deny rule:
+
+```yaml
+rules:
+  - enforce:
+      action: allow
+      services:
+        externalIPs:
+          cidrs:
+            - 10.20.0.0/16
+
+  - enforce:
+      action: deny
+      services:
+        externalIPs:
+          cidrs:
+            - 10.20.66.0/24
+```
+
+An address such as `10.20.1.44` is admitted, while `10.20.66.4` is denied because the later deny rule matches.
+
+#### Denying all external IPs
+
+For a deny rule, an empty `cidrs` array matches every value in `spec.externalIPs`:
+
+```yaml
+rules:
+  - enforce:
+      action: deny
+      services:
+        externalIPs:
+          cidrs: []
+```
+
+The equivalent short form is:
+
+```yaml
+rules:
+  - enforce:
+      action: deny
+      services:
+        externalIPs: {}
+```
+
+Both forms deny any Service that supplies one or more external IPs. Services that omit `spec.externalIPs` remain unaffected. An empty `cidrs` array in an `allow` or `audit` rule does not create an external IP restriction.
 
 ### ExternalName
 
@@ -880,7 +1003,7 @@ With these rules, `audit.internal` emits an audit event but is still denied beca
 
 ### Combining Service Rules
 
-Service rules can be split across multiple rule blocks. This is useful when type permissions, LoadBalancer CIDR rules, hostname rules, and NodePort ranges should be managed independently.
+Service rules can be split across multiple rule blocks. This is useful when type permissions, external IP rules, LoadBalancer CIDR rules, hostname rules, and NodePort ranges should be managed independently.
 
 For example:
 
@@ -968,7 +1091,9 @@ Service enforcement is intentionally explicit. Keep the following behavior in mi
 | Behavior                                                      | Explanation                                                                                                                                                      |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `services.types` is the type gate                             | Type-specific sections do not automatically grant the Service type. Include the Service type in `services.types` when an allow-list for Service types is active. |
-| Type-specific constraints create allow-lists for their values | If `loadBalancers.cidrs`, `externalNames.hostnames`, or `nodePorts.ports` is configured with `action: allow`, non-matching values are denied.                    |
+| Value constraints create allow-lists for their values        | If `loadBalancers.cidrs`, `externalIPs.cidrs`, `externalNames.hostnames`, or `nodePorts.ports` is configured with `action: allow`, non-matching values are denied. |
+| External IP rules do not require a value                     | `externalIPs.cidrs` is evaluated only when a Service supplies `spec.externalIPs`; every supplied address is evaluated independently.                              |
+| An empty external IP deny rule denies all external IPs       | `action: deny` with `externalIPs: {}` or `externalIPs.cidrs: []` denies any Service that supplies an external IP.                                                 |
 | `loadBalancers.cidrs` requires explicit values                | When CIDR constraints are configured, `LoadBalancer` Services must set `spec.loadBalancerIP` or `spec.loadBalancerSourceRanges`.                                 |
 | `nodePorts.ports` requires explicit node ports                | When port constraints are configured, `NodePort` Services and LoadBalancer Services with node port allocation enabled must set `spec.ports[].nodePort`.          |
 | LoadBalancer node port allocation matters                     | `LoadBalancer` Services are subject to NodePort range checks unless `spec.allocateLoadBalancerNodePorts: false` is set.                                          |
@@ -979,7 +1104,7 @@ Service enforcement is intentionally explicit. Keep the following behavior in mi
 
 ### Complete Service Enforcement Example
 
-The following example combines type enforcement, LoadBalancer CIDR restrictions, ExternalName hostname restrictions, NodePort range restrictions, audit rules, and namespace-specific exceptions:
+The following example combines type enforcement, external IP restrictions, LoadBalancer CIDR restrictions, ExternalName hostname restrictions, NodePort range restrictions, audit rules, and namespace-specific exceptions:
 
 ```yaml
 ---
@@ -998,6 +1123,14 @@ spec:
             - NodePort
             - LoadBalancer
             - ExternalName
+
+    - enforce:
+        action: allow
+        services:
+          externalIPs:
+            cidrs:
+              - 10.20.0.0/16
+              - 192.168.1.2
 
     - enforce:
         action: allow
@@ -1037,6 +1170,13 @@ spec:
     - enforce:
         action: deny
         services:
+          externalIPs:
+            cidrs:
+              - 10.20.66.0/24
+
+    - enforce:
+        action: deny
+        services:
           loadBalancers:
             cidrs:
               - 10.0.66.0/24
@@ -1062,6 +1202,8 @@ spec:
 With this configuration:
 
 * `ClusterIP`, `NodePort`, `LoadBalancer`, and `ExternalName` Services are valid Service types.
+* External IPs must be contained in `10.20.0.0/16` or match `192.168.1.2`.
+* External IPs in `10.20.66.0/24` are denied even though they are inside the broader allowed range.
 * LoadBalancer IPs must be contained in `10.0.0.2/32` or `10.0.1.0/24`.
 * Namespaces labeled `environment=prod` can also use LoadBalancer IPs in `10.0.171.0/24`.
 * ExternalName hostnames must be `internal.git.com` or match `.*\\.example\\.com`.

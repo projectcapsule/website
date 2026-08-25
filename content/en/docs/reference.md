@@ -2435,10 +2435,23 @@ Enforcement for Services.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[externalIPs](#rulestatusspecindexenforceservicesexternalips)** | object | ExternalIPs defines constraints for spec.externalIPs. | false |
 | **[externalNames](#rulestatusspecindexenforceservicesexternalnames)** | object | ExternalNames defines additional constraints for Services of type ExternalName. | false |
 | **[loadBalancers](#rulestatusspecindexenforceservicesloadbalancers)** | object | LoadBalancers defines additional constraints for Services of type LoadBalancer. | false |
 | **[nodePorts](#rulestatusspecindexenforceservicesnodeports)** | object | NodePorts defines additional constraints for nodePort values. | false |
 | **types** | []enum | Types defines the Service types matched by this rule.<br><br>Supported values:<br>- ClusterIP<br>- NodePort<br>- LoadBalancer<br>- ExternalName<br/>*Enum*: ClusterIP, NodePort, LoadBalancer, ExternalName<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.services.externalIPs
+
+
+
+ExternalIPs defines constraints for spec.externalIPs.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs restricts spec.externalIPs. Individual IP addresses are treated as<br>host CIDRs (/32 for IPv4 and /128 for IPv6).<br>For deny rules, empty means all external IPs are denied. For allow and<br>audit rules, empty means no external IP restriction. | false |
 
 
 ### RuleStatus.spec[index].enforce.services.externalNames
@@ -2833,10 +2846,23 @@ Enforcement for Services.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[externalIPs](#rulestatusstatusruleenforceservicesexternalips)** | object | ExternalIPs defines constraints for spec.externalIPs. | false |
 | **[externalNames](#rulestatusstatusruleenforceservicesexternalnames)** | object | ExternalNames defines additional constraints for Services of type ExternalName. | false |
 | **[loadBalancers](#rulestatusstatusruleenforceservicesloadbalancers)** | object | LoadBalancers defines additional constraints for Services of type LoadBalancer. | false |
 | **[nodePorts](#rulestatusstatusruleenforceservicesnodeports)** | object | NodePorts defines additional constraints for nodePort values. | false |
 | **types** | []enum | Types defines the Service types matched by this rule.<br><br>Supported values:<br>- ClusterIP<br>- NodePort<br>- LoadBalancer<br>- ExternalName<br/>*Enum*: ClusterIP, NodePort, LoadBalancer, ExternalName<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.services.externalIPs
+
+
+
+ExternalIPs defines constraints for spec.externalIPs.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs restricts spec.externalIPs. Individual IP addresses are treated as<br>host CIDRs (/32 for IPv4 and /128 for IPv6).<br>For deny rules, empty means all external IPs are denied. For allow and<br>audit rules, empty means no external IP restriction. | false |
 
 
 ### RuleStatus.status.rule.enforce.services.externalNames
@@ -3198,10 +3224,23 @@ Enforcement for Services.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[externalIPs](#rulestatusstatusrulesindexenforceservicesexternalips)** | object | ExternalIPs defines constraints for spec.externalIPs. | false |
 | **[externalNames](#rulestatusstatusrulesindexenforceservicesexternalnames)** | object | ExternalNames defines additional constraints for Services of type ExternalName. | false |
 | **[loadBalancers](#rulestatusstatusrulesindexenforceservicesloadbalancers)** | object | LoadBalancers defines additional constraints for Services of type LoadBalancer. | false |
 | **[nodePorts](#rulestatusstatusrulesindexenforceservicesnodeports)** | object | NodePorts defines additional constraints for nodePort values. | false |
 | **types** | []enum | Types defines the Service types matched by this rule.<br><br>Supported values:<br>- ClusterIP<br>- NodePort<br>- LoadBalancer<br>- ExternalName<br/>*Enum*: ClusterIP, NodePort, LoadBalancer, ExternalName<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.services.externalIPs
+
+
+
+ExternalIPs defines constraints for spec.externalIPs.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs restricts spec.externalIPs. Individual IP addresses are treated as<br>host CIDRs (/32 for IPv4 and /128 for IPv6).<br>For deny rules, empty means all external IPs are denied. For allow and<br>audit rules, empty means no external IP restriction. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.services.externalNames
@@ -4863,10 +4902,23 @@ Enforcement for Services.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[externalIPs](#tenantspecrulesindexenforceservicesexternalips)** | object | ExternalIPs defines constraints for spec.externalIPs. | false |
 | **[externalNames](#tenantspecrulesindexenforceservicesexternalnames)** | object | ExternalNames defines additional constraints for Services of type ExternalName. | false |
 | **[loadBalancers](#tenantspecrulesindexenforceservicesloadbalancers)** | object | LoadBalancers defines additional constraints for Services of type LoadBalancer. | false |
 | **[nodePorts](#tenantspecrulesindexenforceservicesnodeports)** | object | NodePorts defines additional constraints for nodePort values. | false |
 | **types** | []enum | Types defines the Service types matched by this rule.<br><br>Supported values:<br>- ClusterIP<br>- NodePort<br>- LoadBalancer<br>- ExternalName<br/>*Enum*: ClusterIP, NodePort, LoadBalancer, ExternalName<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.services.externalIPs
+
+
+
+ExternalIPs defines constraints for spec.externalIPs.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs restricts spec.externalIPs. Individual IP addresses are treated as<br>host CIDRs (/32 for IPv4 and /128 for IPv6).<br>For deny rules, empty means all external IPs are denied. For allow and<br>audit rules, empty means no external IP restriction. | false |
 
 
 ### Tenant.spec.rules[index].enforce.services.externalNames
