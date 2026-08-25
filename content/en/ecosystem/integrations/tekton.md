@@ -1,6 +1,6 @@
 ---
 title: Tekton
-describtion: Capsule interation with Tekton
+description: Capsule integration with Tekton
 logo: https://avatars.githubusercontent.com/u/47602533?s=200&v=4
 type: single
 display: false
@@ -9,7 +9,7 @@ integration: true
 
 With Capsule extension for [Lens](https://github.com/lensapp/lens), a cluster administrator can easily manage from a single pane of glass all resources of a Kubernetes cluster, including all the Tenants created through the Capsule Operator.
 
-## Prerequisites 
+## Prerequisites
 
 Tekton must be already installed on your cluster, if that's not the case consult the documentation here:
 
@@ -27,7 +27,7 @@ Now for the enduser experience we are going to deploy the tekton dashboard. When
 
   - [Tekton Dashboard](https://github.com/tektoncd/dashboard/blob/main/docs/walkthrough/walkthrough-oauth2-proxy.md)
 
-Once that is done, we need to make small adjustments to the `tekton-dashboard` service account. 
+Once that is done, we need to make small adjustments to the `tekton-dashboard` service account.
 
 **kustomization.yaml**
 ```yaml
@@ -88,13 +88,13 @@ patches:
 
 ```
 
-This patch assumes there's a secret called `capsule-proxy` with the CA certificate for the Capsule Proxy URL. 
+This patch assumes there's a secret called `capsule-proxy` with the CA certificate for the Capsule Proxy URL.
 
 
 Apply the given kustomization:
 
 
-  
+
 
 extraEnv:
   - name: KUBERNETES_SERVICE_HOST
@@ -104,7 +104,7 @@ extraEnv:
 
 
 
-### Tekton Operator 
+### Tekton Operator
 
 When using the [Tekton Operator](https://tekton.dev/docs/operator/), you need to add the following to the `TektonConfig`:
 
@@ -145,6 +145,6 @@ spec:
                         value: "capsule-proxy.capsule-system.svc"
                       - name: KUBERNETES_SERVICE_PORT
                         value: "9001"
-```  
-  
+```
+
 See for reference the [options spec](https://tekton.dev/docs/operator/tektonconfig/#additional-fields-as-options)

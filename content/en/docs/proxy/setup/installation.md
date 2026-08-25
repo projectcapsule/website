@@ -66,7 +66,7 @@ spec:
   project: system
   source:
     repoURL: ghcr.io/projectcapsule/charts
-    targetRevision: {{< capsule_chart_version >}} 
+    targetRevision: {{< capsule_chart_version >}}
     chart: capsule
     helm:
       valuesObject:
@@ -177,7 +177,68 @@ spec:
 
 ## Considerations
 
-Consdierations when deploying capsule-proxy
+Considerations when deploying capsule-proxy
+
+### Scalability
+
+For large clusters you might need to consider adjusting values for the Capsule controller.
+
+#### QPS/Burst
+
+In order to handle a large number of tenants and resources, you may need to increase the QPS and Burst values for the Capsule-Proxy. This avoids the Proxy being throttled by the Kubernetes API server (Client Rate limited). You can set the following values in the Helm chart:
+
+```yaml
+options:
+  # -- QPS to use for interacting with Kubernetes API Server.
+  clientConnectionQPS: 200
+  # -- Burst to use for interacting with kubernetes API Server.
+  clientConnectionBurst: 400
+```
+
+#### API Priority and Fairness (APF)
+
+With APF enabled, the Capsule controller will be subject to the APF configuration of the cluster. If you are running a large cluster with many users/tenants, you may need to adjust the APF configuration to ensure that the Capsule controller has sufficient resources to operate effectively. For more information on APF, see [Kubernetes API Priority and Fairness](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/apiserver-aggregation/#api-priority-and-fairness).
+
+We provide a built-in APF configuration for the Capsule-Proxy, which provides API priority for all LIST operations and especially for `subjectaccessreviews` and `tokenreviews`. This configuration is applied automatically when you install Capsule-Proxy. To enable the built-in APF configuration, set the following value in the Helm chart:
+
+```yaml
+apiPriorityAndFairness:
+  # -- Change to `true` if you want to insulate the API calls made by Capsule admission controller activities.
+  # This will help ensure Capsule stability in busy clusters.
+  # Ref: https://kubernetes.io/docs/concepts/cluster-administration/flow-control/
+  enabled: true
+  # -- Only the first matching FlowSchema for a given request matters. If multiple FlowSchemas match a single inbound request, it will be assigned based on the one with the highest matchingPrecedence.
+  # Ref: https://kubernetes.io/docs/concepts/cluster-administration/flow-control/#flowschema
+  matchingPrecedence: 900
+  # -- Priority level configuration.
+  # The block is directly forwarded into the priorityLevelConfiguration, so you can use whatever specification you want.
+  # ref: https://kubernetes.io/docs/concepts/cluster-administration/flow-control/#prioritylevelconfiguration
+  priorityLevelConfigurationSpec:
+    type: Limited
+    limited:
+        nominalConcurrencyShares: 100
+        limitResponse:
+          type: Queue
+          queuing:
+            queues: 64
+            handSize: 6
+            queueLengthLimit: 100
+```
+
+#### Ignore Groups
+
+ When tokens have a lot of groups, you can try to exclude groups which may never be used for authorization. This can be done by setting `options.impersonationGroupRegexp` and `options.ignoredImpersonationGroups` in the Helm chart:
+
+```yaml
+options:
+    # -- Regular expression to match the groups which are considered for impersonation
+  impersonationGroupRegexp: "kubernetes:.*"
+  # --  Names of the groups which are not used for impersonation (considered after impersonation-group-regexp)
+  ignoredImpersonationGroups:
+    - "specific:ignored"
+```
+
+This results in less SSAR requests to the Kubernetes API server and less memory usage for the Capsule-Proxy. This is especially useful when using OIDC providers which provide a lot of groups, but only a few are used for authorization.
 
 ### Exposure
 
@@ -364,9 +425,9 @@ CIDR ranges of trusted proxies allowed to send forwarded client certificate head
 
 ```yaml
 options:
-  extraArgs:
-    - "--trusted-proxy-cidrs=10.0.0.0/8"
-    - "--trusted-proxy-cidrs=127.0.0.1/32"
+  trustedProxyCidrs:
+    - "10.0.0.0/8"
+    - "127.0.0.1/32"
 ```
 
 ### Certificate Management
@@ -377,7 +438,7 @@ By default, Capsule delegates its certificate management to cert-manager. This i
 options:
   generateCertificates: true
 certManager:
-  generateCertificates: false  
+  generateCertificates: false
 ```
 
 #### Distribute CA within the Cluster
@@ -402,7 +463,7 @@ How to distribute the CA certificate using External Secrets Operator (ESO). In t
 
 First allow ServiceAccount `headlamp` to read the Secret `capsule-proxy` in the `capsule-system` namespace:
 
-```yaml 
+```yaml
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -503,5 +564,3 @@ capsule_proxy_requests_total counts the global requests that Capsule Proxy is pa
 
 path: the HTTP path of every single request that Capsule Proxy passes to the upstream
 status: the HTTP status code of the request
-
-

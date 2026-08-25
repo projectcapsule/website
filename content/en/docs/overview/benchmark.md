@@ -2,8 +2,12 @@
 title: Benchmark
 weight: 10
 description: Multi-Tenancy Benchmark
+_build:
+  render: never
+  list: never
 ---
 
+## This page has been archived since it's not updated in a long time. Also, the Multi-Tenancy benchmark is in public archive. If you want to unarchive, remove the `_build` section in the header.
 
 The [Multi-Tenancy Benchmark](https://github.com/kubernetes-sigs/multi-tenancy) is a _WG_ (Working Group) committed to achieving multi-tenancy in Kubernetes.
 
@@ -83,22 +87,22 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
 
 As tenant owner, retrieve the networkpolicies resources in the tenant namespace
 
-```bash 
-kubectl --kubeconfig alice get networkpolicies 
+```bash
+kubectl --kubeconfig alice get networkpolicies
 NAME            POD-SELECTOR   AGE
 capsule-oil-0   <none>         7m5s
 ```
 
 As a tenant, checks for permissions to manage networkpolicy for each verb
 
-```bash 
+```bash
 kubectl --kubeconfig alice auth can-i get networkpolicies
 kubectl --kubeconfig alice auth can-i create networkpolicies
 kubectl --kubeconfig alice auth can-i update networkpolicies
@@ -112,7 +116,7 @@ Each command must return 'yes'
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 ```
 
@@ -150,14 +154,14 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
 
 As tenant owner check for permissions to manage rolebindings for each verb
 
-```bash 
+```bash
 kubectl --kubeconfig alice auth can-i get rolebindings
 kubectl --kubeconfig alice auth can-i create rolebindings
 kubectl --kubeconfig alice auth can-i update rolebindings
@@ -171,7 +175,7 @@ Each command must return 'yes'
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 ```
 
@@ -209,14 +213,14 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
 
 As tenant owner, check for permissions to manage roles for each verb
 
-```bash 
+```bash
 kubectl --kubeconfig alice auth can-i get roles
 kubectl --kubeconfig alice auth can-i create roles
 kubectl --kubeconfig alice auth can-i update roles
@@ -230,7 +234,7 @@ Each command must return 'yes'
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 ```
 
@@ -266,12 +270,12 @@ EOF
 ```
 
 As cluster admin, run the following command to retrieve the list of non-namespaced resources
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin api-resources --namespaced=false
 ```
 For all non-namespaced resources, and each verb (get, list, create, update, patch, watch, delete, and deletecollection) issue the following command:
 
-```bash 
+```bash
 kubectl --kubeconfig alice auth can-i <verb> <resource>
 ```
 Each command must return `no`
@@ -280,7 +284,7 @@ Each command must return `no`
 
 It should, but it does not:
 
-```bash 
+```bash
 kubectl --kubeconfig alice auth can-i create selfsubjectaccessreviews
 yes
 kubectl --kubeconfig alice auth can-i create selfsubjectrulesreviews
@@ -291,7 +295,7 @@ yes
 
 Any kubernetes user can create `SelfSubjectAccessReview` and `SelfSubjectRulesReviews` to checks whether he/she can act. First, two exceptions are not an issue.
 
-```bash 
+```bash
 kubectl --anyuser auth can-i --list
 Resources                                       Non-Resource URLs   Resource Names   Verbs
 selfsubjectaccessreviews.authorization.k8s.io   []                  []               [create]
@@ -327,7 +331,7 @@ Role:
 Subjects:
   Kind   Name                Namespace
   ----   ----                ---------
-  Group  capsule.clastix.io  
+  Group  capsule.clastix.io
 
 kubectl describe clusterrole capsule-namespace-provisioner
 Name:         capsule-namespace-provisioner
@@ -344,7 +348,7 @@ Capsule controls self-service namespace creation by limiting the number of names
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 ```
 
@@ -402,15 +406,15 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
 
 As tenant owner, retrieve the networkpolicies resources in the tenant namespace
 
-```bash 
-kubectl --kubeconfig alice get networkpolicies 
+```bash
+kubectl --kubeconfig alice get networkpolicies
 NAME            POD-SELECTOR   AGE
 capsule-oil-0   <none>         7m5s
 capsule-oil-1   <none>         7m5s
@@ -418,13 +422,13 @@ capsule-oil-1   <none>         7m5s
 
 As tenant owner try to modify or delete one of the networkpolicies
 
-```bash 
+```bash
 kubectl --kubeconfig alice delete networkpolicies capsule-oil-0
 ```
 
 You should receive an error message denying the edit/delete request
 
-```bash 
+```bash
 Error from server (Forbidden): networkpolicies.networking.k8s.io "capsule-oil-0" is forbidden:
 User "oil" cannot delete resource "networkpolicies" in API group "networking.k8s.io" in the namespace "oil-production"
 ```
@@ -439,7 +443,7 @@ metadata:
   name: hijacking
   namespace: oil-production
 spec:
-  egress: 
+  egress:
     - to:
       - ipBlock:
           cidr: 0.0.0.0/0
@@ -453,7 +457,7 @@ However, due to the additive nature of networkpolicies, the `DENY ALL` policy se
 
 As tenant owner list RBAC permissions set by Capsule
 
-```bash 
+```bash
 kubectl --kubeconfig alice get rolebindings
 NAME                                      ROLE                                    AGE
 capsule-oil-0-admin                       ClusterRole/admin                       11h
@@ -462,7 +466,7 @@ capsule-oil-1-capsule-namespace-deleter   ClusterRole/capsule-namespace-deleter 
 
 As tenant owner, try to change/delete  the rolebinding to escalate permissions
 
-```bash 
+```bash
 kubectl --kubeconfig alice edit/delete rolebinding capsule-oil-0-admin
 ```
 
@@ -500,7 +504,7 @@ EOF
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 ```
 
@@ -556,14 +560,14 @@ EOF
 
 As `oil` tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
 
 As `gas` tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig joe create ns gas-production
 kubectl --kubeconfig joe config set-context --current --namespace gas-production
 ```
@@ -571,8 +575,8 @@ kubectl --kubeconfig joe config set-context --current --namespace gas-production
 
 As `oil` tenant owner, try to retrieve the resources in the `gas` tenant namespaces
 
-```bash 
-kubectl --kubeconfig alice get serviceaccounts --namespace  gas-production 
+```bash
+kubectl --kubeconfig alice get serviceaccounts --namespace  gas-production
 ```
 
 You must receive an error message:
@@ -584,8 +588,8 @@ User "oil" cannot list resource "serviceaccounts" in API group "" in the namespa
 
 As `gas` tenant owner, try to retrieve the resources in the `oil` tenant namespaces
 
-```bash 
-kubectl --kubeconfig joe get serviceaccounts --namespace  oil-production 
+```bash
+kubectl --kubeconfig joe get serviceaccounts --namespace  oil-production
 ```
 
 You must receive an error message:
@@ -598,7 +602,7 @@ User "joe" cannot list resource "serviceaccounts" in API group "" in the namespa
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenants oil gas
 ```
 
@@ -686,15 +690,15 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
 
 As tenant owner, create a pod and see new capabilities cannot be added in the tenant namespaces
 
-```yaml 
-kubectl --kubeconfig alice apply -f - << EOF 
+```yaml
+kubectl --kubeconfig alice apply -f - << EOF
 apiVersion: v1
 kind: Pod
 metadata:
@@ -718,7 +722,7 @@ You must have the pod blocked by PodSecurityPolicy.
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 kubectl --kubeconfig cluster-admin delete PodSecurityPolicy tenant
 kubectl --kubeconfig cluster-admin delete ClusterRole tenant:psp
@@ -770,14 +774,14 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
 
 As tenant owner, check the permissions to modify/delete the quota in the tenant namespace:
 
-```bash 
+```bash
 kubectl --kubeconfig alice auth can-i create quota
 kubectl --kubeconfig alice auth can-i update quota
 kubectl --kubeconfig alice auth can-i patch quota
@@ -790,7 +794,7 @@ Each command must return 'no'
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 ```
 
@@ -864,7 +868,7 @@ EOF
 
 As `oil` tenant owner, run the following commands to create a namespace and resources in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 kubectl --kubeconfig alice run webserver --image nginx:latest
@@ -873,7 +877,7 @@ kubectl --kubeconfig alice expose pod webserver --port 80
 
 As `gas` tenant owner, run the following commands to create a namespace and resources in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig joe create ns gas-production
 kubectl --kubeconfig joe config set-context --current --namespace gas-production
 kubectl --kubeconfig joe run webserver --image nginx:latest
@@ -882,14 +886,14 @@ kubectl --kubeconfig joe expose pod webserver --port 80
 
 As `oil` tenant owner, verify you can access the service in `oil` tenant namespace but not in the `gas` tenant namespace
 
-```bash 
+```bash
 kubectl --kubeconfig alice exec webserver -- curl http://webserver.oil-production.svc.cluster.local
 kubectl --kubeconfig alice exec webserver -- curl http://webserver.gas-production.svc.cluster.local
 ```
 
-Viceversa, as `gas` tenant owner, verify you can access the service in `gas` tenant namespace but not in the `oil` tenant namespace
+Vice versa, as `gas` tenant owner, verify you can access the service in `gas` tenant namespace but not in the `oil` tenant namespace
 
-```bash 
+```bash
 kubectl --kubeconfig alice exec webserver -- curl http://webserver.oil-production.svc.cluster.local
 kubectl --kubeconfig alice exec webserver -- curl http://webserver.gas-production.svc.cluster.local
 ```
@@ -898,7 +902,7 @@ kubectl --kubeconfig alice exec webserver -- curl http://webserver.gas-productio
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenants oil gas
 ```
 
@@ -982,15 +986,15 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
 
 As tenant owner, create a pod or container that sets `allowPrivilegeEscalation=true` in its `securityContext`.
 
-```yaml 
-kubectl --kubeconfig alice apply -f - << EOF 
+```yaml
+kubectl --kubeconfig alice apply -f - << EOF
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1012,7 +1016,7 @@ You must have the pod blocked by `PodSecurityPolicy`.
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 kubectl --kubeconfig cluster-admin delete PodSecurityPolicy tenant
 kubectl --kubeconfig cluster-admin delete ClusterRole tenant:psp
@@ -1099,15 +1103,15 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
 
 As tenant owner, create a pod or container that sets privileges in its `securityContext`.
 
-```yaml 
-kubectl --kubeconfig alice apply -f - << EOF 
+```yaml
+kubectl --kubeconfig alice apply -f - << EOF
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1129,7 +1133,7 @@ You must have the pod blocked by `PodSecurityPolicy`.
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 kubectl --kubeconfig cluster-admin delete PodSecurityPolicy tenant
 kubectl --kubeconfig cluster-admin delete ClusterRole tenant:psp
@@ -1168,7 +1172,7 @@ EOF
 
 As tenant owner, check if you can access the persistent volumes
 
-```bash 
+```bash
 kubectl --kubeconfig alice auth can-i get persistentvolumes
 kubectl --kubeconfig alice auth can-i list persistentvolumes
 kubectl --kubeconfig alice auth can-i watch persistentvolumes
@@ -1258,15 +1262,15 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
 
 As tenant owner, create a pod mounting the host IPC namespace.
 
-```yaml 
-kubectl --kubeconfig alice apply -f - << EOF 
+```yaml
+kubectl --kubeconfig alice apply -f - << EOF
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1286,7 +1290,7 @@ You must have the pod blocked by `PodSecurityPolicy`.
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 kubectl --kubeconfig cluster-admin delete PodSecurityPolicy tenant
 kubectl --kubeconfig cluster-admin delete ClusterRole tenant:psp
@@ -1375,15 +1379,15 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
 
 As tenant owner, create a pod using `hostNetwork`
 
-```yaml 
-kubectl --kubeconfig alice apply -f - << EOF 
+```yaml
+kubectl --kubeconfig alice apply -f - << EOF
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1401,8 +1405,8 @@ EOF
 
 As tenant owner, create a pod defining a container using `hostPort`
 
-```yaml 
-kubectl --kubeconfig alice apply -f - << EOF 
+```yaml
+kubectl --kubeconfig alice apply -f - << EOF
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1423,7 +1427,7 @@ In both the cases above, you must have the pod blocked by `PodSecurityPolicy`.
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 kubectl --kubeconfig cluster-admin delete PodSecurityPolicy tenant
 kubectl --kubeconfig cluster-admin delete ClusterRole tenant:psp
@@ -1516,15 +1520,15 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
 
 As tenant owner, create a pod defining a volume of type `hostpath`.
 
-```yaml 
-kubectl --kubeconfig alice apply -f - << EOF 
+```yaml
+kubectl --kubeconfig alice apply -f - << EOF
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1552,7 +1556,7 @@ You must have the pod blocked by `PodSecurityPolicy`.
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 kubectl --kubeconfig cluster-admin delete PodSecurityPolicy tenant
 kubectl --kubeconfig cluster-admin delete ClusterRole tenant:psp
@@ -1640,15 +1644,15 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
 
 As tenant owner, create a pod mounting the host PID namespace.
 
-```yaml 
-kubectl --kubeconfig alice apply -f - << EOF 
+```yaml
+kubectl --kubeconfig alice apply -f - << EOF
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1668,7 +1672,7 @@ You must have the pod blocked by `PodSecurityPolicy`.
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 kubectl --kubeconfig cluster-admin delete PodSecurityPolicy tenant
 kubectl --kubeconfig cluster-admin delete ClusterRole tenant:psp
@@ -1710,7 +1714,7 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
@@ -1748,7 +1752,7 @@ NodePort service types are forbidden for the tenant: please, reach out to the sy
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 ```
 
@@ -1794,20 +1798,20 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
 
 As tenant owner, retrieve the configured quotas in the tenant namespace:
 
-```bash 
+```bash
 kubectl --kubeconfig alice get quota
 NAME            AGE   REQUEST                 LIMIT
 capsule-oil-0   23s   persistentvolumeclaims: 0/100,
                       pods: 0/100, services: 0/50,
                       services.loadbalancers: 0/3,
-                      services.nodeports: 0/20  
+                      services.nodeports: 0/20
 ```
 
 Make sure that a quota is configured for API objects: `PersistentVolumeClaim`, `LoadBalancer`, `NodePort`, `Pods`, etc
@@ -1815,7 +1819,7 @@ Make sure that a quota is configured for API objects: `PersistentVolumeClaim`, `
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 ```
 
@@ -1862,18 +1866,18 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
 
 As tenant owner, retrieve the configured quotas in the tenant namespace:
 
-```bash 
+```bash
 kubectl --kubeconfig alice get quota
 NAME            AGE   REQUEST                                      LIMIT
-capsule-oil-0   24s   requests.cpu: 0/8, requests.memory: 0/16Gi   limits.cpu: 0/8, limits.memory: 0/16Gi                 
-capsule-oil-1   24s   requests.storage: 0/10Gi                     
+capsule-oil-0   24s   requests.cpu: 0/8, requests.memory: 0/16Gi   limits.cpu: 0/8, limits.memory: 0/16Gi
+capsule-oil-1   24s   requests.storage: 0/10Gi
 ```
 
 Make sure that a quota is configured for CPU, memory, and storage resources.
@@ -1881,7 +1885,7 @@ Make sure that a quota is configured for CPU, memory, and storage resources.
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 ```
 
@@ -1920,7 +1924,7 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
@@ -1953,7 +1957,7 @@ ImagePullPolicy IfNotPresent for container nginx is forbidden, use one of the fo
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 ```
 
@@ -1983,7 +1987,7 @@ spec:
   privileged: false
   # Required to prevent escalations to root.
   allowPrivilegeEscalation: false
-  volumes: 
+  volumes:
     - 'persistentVolumeClaim'
   runAsUser:
     rule: RunAsAny
@@ -2040,15 +2044,15 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
 
 As tenant owner, create a pod defining a volume of any of the core type except `PersistentVolumeClaim`. For example:
 
-```yaml 
-kubectl --kubeconfig alice apply -f - << EOF 
+```yaml
+kubectl --kubeconfig alice apply -f - << EOF
 apiVersion: v1
 kind: Pod
 metadata:
@@ -2076,7 +2080,7 @@ You must have the pod blocked by `PodSecurityPolicy`.
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 kubectl --kubeconfig cluster-admin delete PodSecurityPolicy tenant
 kubectl --kubeconfig cluster-admin delete ClusterRole tenant:psp
@@ -2131,7 +2135,7 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
@@ -2165,7 +2169,7 @@ A valid Storage Class must be used, one of the following (delete-policy)
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 kubectl --kubeconfig cluster-admin delete storageclass delete-policy
 ```
@@ -2257,15 +2261,15 @@ EOF
 
 As tenant owner, run the following command to create a namespace in the given tenant
 
-```bash 
+```bash
 kubectl --kubeconfig alice create ns oil-production
 kubectl --kubeconfig alice config set-context --current --namespace oil-production
 ```
 
 As tenant owner, create a pod or container that does not set `runAsNonRoot` to `true` in its `securityContext`, and `runAsUser` must not be set to 0.
 
-```yaml 
-kubectl --kubeconfig alice apply -f - << EOF 
+```yaml
+kubectl --kubeconfig alice apply -f - << EOF
 apiVersion: v1
 kind: Pod
 metadata:
@@ -2284,7 +2288,7 @@ You must have the pod blocked by `PodSecurityPolicy`.
 **Cleanup:**
 As cluster admin, delete all the created resources
 
-```bash 
+```bash
 kubectl --kubeconfig cluster-admin delete tenant oil
 kubectl --kubeconfig cluster-admin delete PodSecurityPolicy tenant
 kubectl --kubeconfig cluster-admin delete ClusterRole tenant:psp

@@ -67,7 +67,7 @@ What that means in practice:
 * There is no randomness involved
 * The output is always a valid UUID
 
-So from the outside, it behaves just like a normal UUID — just deterministic.
+So from the outside, it behaves just like a normal UUID, just deterministic.
 
 ```go
 deterministicUUID(parts ...string) string
@@ -93,8 +93,8 @@ This is especially useful for:
 
 The function does **not** return a plain string. It returns an object with two fields:
 
-* `Identity` — the private age identity, e.g. `AGE-SECRET-KEY-1...`
-* `Recipient` — the public age recipient, e.g. `age1...`
+* `Identity`: the private age identity, e.g. `AGE-SECRET-KEY-1...`
+* `Recipient`: the public age recipient, e.g. `age1...`
 
 What that means in practice:
 
@@ -153,8 +153,8 @@ This is especially useful for:
 
 The function does **not** return a plain string. It returns an object with two fields:
 
-* `Identity` — the private age hybrid identity, e.g. `AGE-SECRET-KEY-PQ-1...`
-* `Recipient` — the public age recipient, e.g. `age1...`
+* `Identity`: the private age hybrid identity, e.g. `AGE-SECRET-KEY-PQ-1...`
+* `Recipient`: the public age recipient, e.g. `age1...`
 
 What that means in practice:
 

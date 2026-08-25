@@ -4,5 +4,6 @@ exclude = [
   "https://goteleport.com/", # Teleport always returns 403, even it is available
   "https://docs.redhat.com/", # Red Hat docs return 403 to bots
   "https://issues.redhat.com/", # Red Hat issue tracker returns 403 to bots
+  "https://kubernetes.slack.com/", # Slack returns 403 to bots
 ]
 exclude_path = ["public/docs/reference/"]

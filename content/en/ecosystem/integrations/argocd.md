@@ -49,7 +49,7 @@ resource.customizations.actions.Namespace: |
       return false
     end
     if not has_managed_ownerref() then
-      return {} 
+      return {}
     end
     local labels = {}
     if obj.metadata ~= nil and obj.metadata.labels ~= nil then
@@ -137,6 +137,77 @@ resource.customizations.actions.capsule.clastix.io_Tenant: |
         return obj
 ```
 
+### TenantResource and GlobalTenantResource Actions
+
+With the following configuration, ArgoCD will show `Cordon`, `Uncordon`, and `Reconcile` actions for `TenantResource` and `GlobalTenantResource`. Cordoning pauses all apply and delete operations. The `Reconcile` action triggers an immediate reconcile by setting the `reconcile.projectcapsule.dev/requestedAt` annotation. Both `Cordon` and `Reconcile` are disabled when the resource is already cordoned, since the controller skips processing in that state.
+
+```yaml
+resource.customizations.actions.capsule.clastix.io_TenantResource: |
+  mergeBuiltinActions: true
+  discovery.lua: |
+    local actions = {}
+    actions["cordon"] = {
+      ["iconClass"] = "fa fa-fw fa-pause",
+      ["disabled"] = true,
+    }
+    actions["uncordon"] = {
+      ["iconClass"] = "fa fa-fw fa-play",
+      ["disabled"] = true,
+    }
+    actions["reconcile"] = {
+      ["iconClass"] = "fa fa-fw fa-rotate-right",
+      ["disabled"] = true,
+    }
+
+    local cordoned = false
+    if obj.spec ~= nil and obj.spec.cordoned ~= nil then
+      cordoned = obj.spec.cordoned
+    end
+
+    if cordoned then
+      actions["uncordon"]["disabled"] = false
+    else
+      actions["cordon"]["disabled"] = false
+      actions["reconcile"]["disabled"] = false
+    end
+
+    return actions
+
+  definitions:
+    - name: cordon
+      action.lua: |
+        if obj.spec == nil then
+          obj.spec = {}
+        end
+        obj.spec.cordoned = true
+        return obj
+
+    - name: uncordon
+      action.lua: |
+        if obj.spec ~= nil and obj.spec.cordoned ~= nil and obj.spec.cordoned then
+          obj.spec.cordoned = false
+        end
+        return obj
+
+    - name: reconcile
+      action.lua: |
+        local os = require("os")
+        if obj.metadata.annotations == nil then
+          obj.metadata.annotations = {}
+        end
+        obj.metadata.annotations["reconcile.projectcapsule.dev/requestedAt"] = os.date("!%Y-%m-%dT%XZ")
+        return obj
+```
+
+Apply the same block for `GlobalTenantResource` by replacing the resource key:
+
+```yaml
+resource.customizations.actions.capsule.clastix.io_GlobalTenantResource: |
+  # same content as above
+```
+
+
+
 ## Resource Health
 
 You may provide [Custom Resource Health](https://argo-cd.readthedocs.io/en/stable/operator-manual/health/) for Capsule specific resources and interactions.
@@ -145,37 +216,47 @@ You may provide [Custom Resource Health](https://argo-cd.readthedocs.io/en/stabl
 
 ![Tenant Resource Actions](/images/ecosystem/argo-tenant-health.png)
 
-`Suspends` a `Tenant` when it's `Cordoned`. Cordoning a Tenant will Cordon/Uncordon all it's Namespaces.
+Shows `Suspended` when the `Tenant` is cordoned, reflecting that no new workloads can be scheduled in its Namespaces. Reports `Degraded` when the `Ready` condition is `False`, `Healthy` when `Ready` is `True`, and `Progressing` otherwise.
 
 ```yaml
 resource.customizations.health.capsule.clastix.io_Tenant: |
-  hs = {}
-  if obj.status ~= nil then
-    if obj.status.conditions ~= nil then
-      for i, condition in ipairs(obj.status.conditions) do
-        if condition.type == "Cordoned" and condition.status == "True" then
-          hs.status = "Suspended"
-          hs.message = condition.message
-          return hs
-        end
-      end
-      for i, condition in ipairs(obj.status.conditions) do
-        if condition.type == "Ready" and condition.status == "False" then
-          hs.status = "Degraded"
-          hs.message = condition.message
-          return hs
-        end
-        if condition.type == "Ready" and condition.status == "True" then
-          hs.status = "Healthy"
-          hs.message = condition.message
-          return hs
-        end
-      end
+  local hs = {}
+  if obj.status == nil or obj.status.conditions == nil then
+    hs.status = "Progressing"
+    hs.message = "Waiting for status"
+    return hs
+  end
+
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Cordoned" and condition.status == "True" then
+      hs.status = "Suspended"
+      hs.message = condition.message
+      return hs
     end
   end
-  
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Ready" and condition.status == "False" then
+      hs.status = "Degraded"
+      hs.message = condition.message
+      return hs
+    end
+    if condition.type == "Ready" and condition.status == "True" then
+      hs.status = "Healthy"
+      hs.message = condition.message
+      return hs
+    end
+  end
+
   hs.status = "Progressing"
-  hs.message = "Waiting for Status"
+  hs.message = "Waiting for Ready condition"
   return hs
 ```
 
@@ -187,7 +268,7 @@ resource.customizations.health.capsule.clastix.io_Tenant: |
 
 ```yaml
 resource.customizations.health.Namespace: |
-  hs = {}
+  local hs = {}
   local function has_managed_ownerref()
     if obj.metadata == nil or obj.metadata.ownerReferences == nil then
       return false
@@ -229,5 +310,561 @@ resource.customizations.health.Namespace: |
 
   hs.status = "Progressing"
   hs.message = "Waiting for Namespace status"
+  return hs
+```
+
+### CapsuleConfiguration Resource Health
+
+Reports health based on the `Ready` condition.
+
+```yaml
+resource.customizations.health.capsule.clastix.io_CapsuleConfiguration: |
+  local hs = {}
+  if obj.status == nil or obj.status.conditions == nil then
+    hs.status = "Progressing"
+    hs.message = "Waiting for status"
+    return hs
+  end
+
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Ready" and condition.status == "False" then
+      hs.status = "Degraded"
+      hs.message = condition.message
+      return hs
+    end
+    if condition.type == "Ready" and condition.status == "True" then
+      hs.status = "Healthy"
+      hs.message = condition.message
+      return hs
+    end
+  end
+
+  hs.status = "Progressing"
+  hs.message = "Waiting for Ready condition"
+  return hs
+```
+
+### TenantOwner Resource Health
+
+Reports `Degraded` when the `TenantOwner` failed to reconcile, and `Healthy` when the owner has been successfully bound to its tenant.
+
+```yaml
+resource.customizations.health.capsule.clastix.io_TenantOwner: |
+  local hs = {}
+  if obj.status == nil or obj.status.conditions == nil then
+    hs.status = "Progressing"
+    hs.message = "Waiting for status"
+    return hs
+  end
+
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Ready" and condition.status == "False" then
+      hs.status = "Degraded"
+      hs.message = condition.message
+      return hs
+    end
+    if condition.type == "Ready" and condition.status == "True" then
+      hs.status = "Healthy"
+      hs.message = condition.message
+      return hs
+    end
+  end
+
+  hs.status = "Progressing"
+  hs.message = "Waiting for Ready condition"
+  return hs
+```
+
+### ResourcePool Resource Health
+
+Reports `Degraded` when any resource is exhausted or not ready, and `Healthy` when the pool is active and within limits.
+
+```yaml
+resource.customizations.health.capsule.clastix.io_ResourcePool: |
+  local hs = {}
+  if obj.status == nil or obj.status.conditions == nil then
+    hs.status = "Progressing"
+    hs.message = "Waiting for status"
+    return hs
+  end
+
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
+  end
+
+  if obj.status.exhaustions ~= nil then
+    local exhausted = {}
+    for resource, _ in pairs(obj.status.exhaustions) do
+      table.insert(exhausted, resource)
+    end
+    table.sort(exhausted)
+    if #exhausted > 0 then
+      hs.status = "Degraded"
+      hs.message = "Pool exhausted for: " .. table.concat(exhausted, ", ")
+      return hs
+    end
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Ready" and condition.status == "False" then
+      hs.status = "Degraded"
+      hs.message = condition.message
+      return hs
+    end
+    if condition.type == "Ready" and condition.status == "True" then
+      hs.status = "Healthy"
+      hs.message = condition.message
+      return hs
+    end
+  end
+
+  hs.status = "Progressing"
+  hs.message = "Waiting for Ready condition"
+  return hs
+```
+
+### ResourcePoolClaim Resource Health
+
+Reports `Suspended` when unbound (waiting for a pool), `Degraded` when not ready, and `Healthy` when bound and ready.
+
+```yaml
+resource.customizations.health.capsule.clastix.io_ResourcePoolClaim: |
+  local hs = {}
+  if obj.status == nil or obj.status.conditions == nil then
+    hs.status = "Progressing"
+    hs.message = "Waiting for status"
+    return hs
+  end
+
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Bound" and condition.status == "False" then
+      hs.status = "Suspended"
+      hs.message = condition.message
+      return hs
+    end
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Ready" and condition.status == "False" then
+      hs.status = "Degraded"
+      hs.message = condition.message
+      return hs
+    end
+    if condition.type == "Ready" and condition.status == "True" then
+      hs.status = "Healthy"
+      hs.message = condition.message
+      return hs
+    end
+  end
+
+  hs.status = "Progressing"
+  hs.message = "Waiting for Ready condition"
+  return hs
+```
+
+### CustomQuota Resource Health
+
+Reports `Degraded` when the quota reconcile failed (e.g. a matched resource has a missing field), and `Healthy` when usage has been successfully calculated for the namespace.
+
+```yaml
+resource.customizations.health.capsule.clastix.io_CustomQuota: |
+  local hs = {}
+  if obj.status == nil or obj.status.conditions == nil then
+    hs.status = "Progressing"
+    hs.message = "Waiting for status"
+    return hs
+  end
+
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Ready" and condition.status == "False" then
+      hs.status = "Degraded"
+      hs.message = condition.message
+      return hs
+    end
+    if condition.type == "Ready" and condition.status == "True" then
+      hs.status = "Healthy"
+      hs.message = condition.message
+      return hs
+    end
+  end
+
+  hs.status = "Progressing"
+  hs.message = "Waiting for Ready condition"
+  return hs
+```
+
+### GlobalCustomQuota Resource Health
+
+Reports `Degraded` when the quota reconcile failed, and `Healthy` when usage has been successfully calculated across all selected namespaces.
+
+```yaml
+resource.customizations.health.capsule.clastix.io_GlobalCustomQuota: |
+  local hs = {}
+  if obj.status == nil or obj.status.conditions == nil then
+    hs.status = "Progressing"
+    hs.message = "Waiting for status"
+    return hs
+  end
+
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Ready" and condition.status == "False" then
+      hs.status = "Degraded"
+      hs.message = condition.message
+      return hs
+    end
+    if condition.type == "Ready" and condition.status == "True" then
+      hs.status = "Healthy"
+      hs.message = condition.message
+      return hs
+    end
+  end
+
+  hs.status = "Progressing"
+  hs.message = "Waiting for Ready condition"
+  return hs
+```
+
+### TenantResource Resource Health
+
+Reports `Suspended` when the replication is cordoned (paused for maintenance). Reports `Degraded` when the replication of tenant-scoped resources failed, and `Healthy` when all resources have been successfully replicated into the target namespaces.
+
+```yaml
+resource.customizations.health.capsule.clastix.io_TenantResource: |
+  local hs = {}
+  if obj.spec ~= nil and obj.spec.cordoned ~= nil and obj.spec.cordoned then
+    hs.status = "Suspended"
+    hs.message = "Replication is cordoned"
+    return hs
+  end
+
+  if obj.status == nil or obj.status.conditions == nil then
+    hs.status = "Progressing"
+    hs.message = "Waiting for status"
+    return hs
+  end
+
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Ready" and condition.status == "False" then
+      hs.status = "Degraded"
+      hs.message = condition.message
+      return hs
+    end
+    if condition.type == "Ready" and condition.status == "True" then
+      hs.status = "Healthy"
+      hs.message = condition.message
+      return hs
+    end
+  end
+
+  hs.status = "Progressing"
+  hs.message = "Waiting for Ready condition"
+  return hs
+```
+
+### GlobalTenantResource Resource Health
+
+Reports `Suspended` when the replication is cordoned (paused for maintenance). Reports `Degraded` when the cluster-wide resource replication failed, and `Healthy` when all resources have been successfully replicated across all tenant namespaces.
+
+```yaml
+resource.customizations.health.capsule.clastix.io_GlobalTenantResource: |
+  local hs = {}
+  if obj.spec ~= nil and obj.spec.cordoned ~= nil and obj.spec.cordoned then
+    hs.status = "Suspended"
+    hs.message = "Replication is cordoned"
+    return hs
+  end
+
+  if obj.status == nil or obj.status.conditions == nil then
+    hs.status = "Progressing"
+    hs.message = "Waiting for status"
+    return hs
+  end
+
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Ready" and condition.status == "False" then
+      hs.status = "Degraded"
+      hs.message = condition.message
+      return hs
+    end
+    if condition.type == "Ready" and condition.status == "True" then
+      hs.status = "Healthy"
+      hs.message = condition.message
+      return hs
+    end
+  end
+
+  hs.status = "Progressing"
+  hs.message = "Waiting for Ready condition"
+  return hs
+```
+
+## Capsule Proxy
+
+The following health checks apply to [Capsule Proxy](https://github.com/projectcapsule/capsule-proxy) CRDs.
+
+### ProxySetting Resource Health
+
+Reports `Degraded` when a per-user or per-group `ProxySetting` failed to reconcile, and `Healthy` when the proxy rules have been successfully applied.
+
+```yaml
+resource.customizations.health.capsule.clastix.io_ProxySetting: |
+  local hs = {}
+  if obj.status == nil or obj.status.conditions == nil then
+    hs.status = "Progressing"
+    hs.message = "Waiting for status"
+    return hs
+  end
+
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Ready" and condition.status == "False" then
+      hs.status = "Degraded"
+      hs.message = condition.message
+      return hs
+    end
+    if condition.type == "Ready" and condition.status == "True" then
+      hs.status = "Healthy"
+      hs.message = condition.message
+      return hs
+    end
+  end
+
+  hs.status = "Progressing"
+  hs.message = "Waiting for Ready condition"
+  return hs
+```
+
+### GlobalProxySettings Resource Health
+
+Reports `Degraded` when the cluster-wide proxy settings failed to reconcile, and `Healthy` when the global proxy rules have been successfully applied.
+
+```yaml
+resource.customizations.health.capsule.clastix.io_GlobalProxySettings: |
+  local hs = {}
+  if obj.status == nil or obj.status.conditions == nil then
+    hs.status = "Progressing"
+    hs.message = "Waiting for status"
+    return hs
+  end
+
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Ready" and condition.status == "False" then
+      hs.status = "Degraded"
+      hs.message = condition.message
+      return hs
+    end
+    if condition.type == "Ready" and condition.status == "True" then
+      hs.status = "Healthy"
+      hs.message = condition.message
+      return hs
+    end
+  end
+
+  hs.status = "Progressing"
+  hs.message = "Waiting for Ready condition"
+  return hs
+```
+
+## SOPS Operator
+
+The following health checks apply to [SOPS Operator](https://github.com/peak-scale/sops-operator) CRDs (`addons.projectcapsule.dev`), which is a Capsule Addon.
+
+### SopsSecret Resource Health
+
+Reports `Degraded` when decryption or secret replication failed, and `Healthy` when all managed secrets have been successfully decrypted and replicated.
+
+```yaml
+resource.customizations.health.addons.projectcapsule.dev_SopsSecret: |
+  local hs = {}
+  if obj.status == nil or obj.status.conditions == nil then
+    hs.status = "Progressing"
+    hs.message = "Waiting for status"
+    return hs
+  end
+
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Ready" then
+      if condition.status == "True" then
+        hs.status = "Healthy"
+        hs.message = condition.message
+        return hs
+      end
+      if condition.status == "False" then
+        hs.status = "Degraded"
+        hs.message = condition.message
+        return hs
+      end
+      if condition.status == "Unknown" then
+        hs.status = "Progressing"
+        hs.message = condition.message
+        return hs
+      end
+    end
+  end
+
+  hs.status = "Progressing"
+  hs.message = "Waiting for Ready condition"
+  return hs
+```
+
+### SopsProvider Resource Health
+
+Reports `Degraded` when one or more decryption providers failed to load or validate, and `Healthy` when all configured providers are available.
+
+```yaml
+resource.customizations.health.addons.projectcapsule.dev_SopsProvider: |
+  local hs = {}
+  if obj.status == nil or obj.status.conditions == nil then
+    hs.status = "Progressing"
+    hs.message = "Waiting for status"
+    return hs
+  end
+
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Ready" then
+      if condition.status == "True" then
+        hs.status = "Healthy"
+        hs.message = condition.message
+        return hs
+      end
+      if condition.status == "False" then
+        hs.status = "Degraded"
+        hs.message = condition.message
+        return hs
+      end
+      if condition.status == "Unknown" then
+        hs.status = "Progressing"
+        hs.message = condition.message
+        return hs
+      end
+    end
+  end
+
+  hs.status = "Progressing"
+  hs.message = "Waiting for Ready condition"
+  return hs
+```
+
+### GlobalSopsSecret Resource Health
+
+Reports `Degraded` when decryption or cross-namespace secret replication failed, and `Healthy` when all managed secrets have been successfully decrypted and replicated into their target namespaces.
+
+```yaml
+resource.customizations.health.addons.projectcapsule.dev_GlobalSopsSecret: |
+  local hs = {}
+  if obj.status == nil or obj.status.conditions == nil then
+    hs.status = "Progressing"
+    hs.message = "Waiting for status"
+    return hs
+  end
+
+  if obj.metadata ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration ~= nil
+      and obj.status.observedGeneration ~= obj.metadata.generation then
+    hs.status = "Progressing"
+    hs.message = "Waiting for reconciliation (generation mismatch)"
+    return hs
+  end
+
+  for _, condition in ipairs(obj.status.conditions) do
+    if condition.type == "Ready" then
+      if condition.status == "True" then
+        hs.status = "Healthy"
+        hs.message = condition.message
+        return hs
+      end
+      if condition.status == "False" then
+        hs.status = "Degraded"
+        hs.message = condition.message
+        return hs
+      end
+      if condition.status == "Unknown" then
+        hs.status = "Progressing"
+        hs.message = condition.message
+        return hs
+      end
+    end
+  end
+
+  hs.status = "Progressing"
+  hs.message = "Waiting for Ready condition"
   return hs
 ```

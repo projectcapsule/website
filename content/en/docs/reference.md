@@ -19,6 +19,8 @@ Resource Types:
 
 - [GlobalCustomQuota](#globalcustomquota)
 
+- [GlobalResourceQuota](#globalresourcequota)
+
 - [GlobalTenantResource](#globaltenantresource)
 
 - [QuantityLedger](#quantityledger)
@@ -69,9 +71,10 @@ CapsuleConfigurationSpec defines the Capsule configuration.
 | **cacheInvalidation** | string | Define the period of time upon a cache invalidation is executed for all caches.<br/>*Default*: 24h<br/> | true |
 | **enableTLSReconciler** | boolean | Toggles the TLS reconciler, the controller that is able to generate CA and certificates for the webhooks<br>when not using an already provided CA and certificate, or when these are managed externally with Vault, or cert-manager.<br/>*Default*: false<br/> | true |
 | **[rbac](#capsuleconfigurationspecrbac)** | object | Define Properties for managed ClusterRoles by Capsule<br/>*Default*: map[]<br/> | true |
-| **[administrators](#capsuleconfigurationspecadministratorsindex)** | []object | Define entities which can act as Administrators in the capsule construct<br>These entities are automatically owners for all existing tenants. Meaning they can add namespaces to any tenant. However they must be specific by using the capsule label<br>for interacting with namespaces. Because if that label is not defined, it's assumed that namespace interaction was not targeted towards a tenant and will therefor<br>be ignored by capsule. | false |
+| **[administrators](#capsuleconfigurationspecadministratorsindex)** | []object | Define entities which can act as Administrators in the capsule construct<br>These entities are automatically owners for all existing tenants. Meaning they can add namespaces to any tenant. However they must be specific by using the capsule label<br>for interacting with namespaces. Because if that label is not defined, it's assumed that namespace interaction was not targeted towards a tenant and will therefore<br>be ignored by capsule. | false |
 | **[admission](#capsuleconfigurationspecadmission)** | object | Configuration for dynamic Validating and Mutating Admission webhooks managed by Capsule. | false |
 | **allowServiceAccountPromotion** | boolean | ServiceAccounts within tenant namespaces can be promoted to owners of the given tenant<br>this can be achieved by labeling the serviceaccount and then they are considered owners. This can only be done by other owners of the tenant.<br>However ServiceAccounts which have been promoted to owner can not promote further serviceAccounts.<br/>*Default*: false<br/> | false |
+| **[events](#capsuleconfigurationspecevents)** | object | Event (Audit) Configuration<br/>*Default*: map[namespace:default]<br/> | false |
 | **forceTenantPrefix** | boolean | Enforces the Tenant owner, during Namespace creation, to name it using the selected Tenant name as prefix,<br>separated by a dash. This is useful to avoid Namespace name collision in a public CaaS environment.<br/>*Default*: false<br/> | false |
 | **ignoreUserWithGroups** | []string | Define groups which when found in the request of a user will be ignored by the Capsule<br>this might be useful if you have one group where all the users are in, but you want to separate administrators from normal users with additional groups. | false |
 | **[impersonation](#capsuleconfigurationspecimpersonation)** | object | Service Account Client configuration for impersonation properties | false |
@@ -150,16 +153,16 @@ whats the problem
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **caBundle** | string | `caBundle` is a PEM encoded CA bundle which will be used to validate the webhook's server certificate.<br>If unspecified, system trust roots on the apiserver are used.<br/>*Format*: byte<br/> | false |
-| **[service](#capsuleconfigurationspecadmissionmutatingclientservice)** | object | `service` is a reference to the service for this webhook. Either<br>`service` or `url` must be specified.<br><br>If the webhook is running within the cluster, then you should use `service`. | false |
-| **url** | string | `url` gives the location of the webhook, in standard URL form<br>(`scheme://host:port/path`). Exactly one of `url` or `service`<br>must be specified.<br><br>The `host` should not refer to a service running in the cluster; use<br>the `service` field instead. The host might be resolved via external<br>DNS in some apiservers (e.g., `kube-apiserver` cannot resolve<br>in-cluster DNS as that would be a layering violation). `host` may<br>also be an IP address.<br><br>Please note that using `localhost` or `127.0.0.1` as a `host` is<br>risky unless you take great care to run this webhook on all hosts<br>which run an apiserver which might need to make calls to this<br>webhook. Such installs are likely to be non-portable, i.e., not easy<br>to turn up in a new cluster.<br><br>The scheme must be "https"; the URL must begin with "https://".<br><br>A path is optional, and if present may be any string permissible in<br>a URL. You may use the path to pass an arbitrary string to the<br>webhook, for example, a cluster identifier.<br><br>Attempting to use a user or basic auth e.g. "user:password@" is not<br>allowed. Fragments ("#...") and query parameters ("?...") are not<br>allowed, either. | false |
+| **caBundle** | string | caBundle is a PEM encoded CA bundle which will be used to validate the webhook's server certificate.<br>If unspecified, system trust roots on the apiserver are used.<br/>*Format*: byte<br/> | false |
+| **[service](#capsuleconfigurationspecadmissionmutatingclientservice)** | object | service is a reference to the service for this webhook. Either<br>`service` or `url` must be specified.<br><br>If the webhook is running within the cluster, then you should use `service`. | false |
+| **url** | string | url gives the location of the webhook, in standard URL form<br>(`scheme://host:port/path`). Exactly one of `url` or `service`<br>must be specified.<br><br>The `host` should not refer to a service running in the cluster; use<br>the `service` field instead. The host might be resolved via external<br>DNS in some apiservers (e.g., `kube-apiserver` cannot resolve<br>in-cluster DNS as that would be a layering violation). `host` may<br>also be an IP address.<br><br>Please note that using `localhost` or `127.0.0.1` as a `host` is<br>risky unless you take great care to run this webhook on all hosts<br>which run an apiserver which might need to make calls to this<br>webhook. Such installs are likely to be non-portable, i.e., not easy<br>to turn up in a new cluster.<br><br>The scheme must be "https"; the URL must begin with "https://".<br><br>A path is optional, and if present may be any string permissible in<br>a URL. You may use the path to pass an arbitrary string to the<br>webhook, for example, a cluster identifier.<br><br>Attempting to use a user or basic auth e.g. "user:password@" is not<br>allowed. Fragments ("#...") and query parameters ("?...") are not<br>allowed, either. | false |
 
 
 ### CapsuleConfiguration.spec.admission.mutating.client.service
 
 
 
-`service` is a reference to the service for this webhook. Either
+service is a reference to the service for this webhook. Either
 `service` or `url` must be specified.
 
 If the webhook is running within the cluster, then you should use `service`.
@@ -167,10 +170,10 @@ If the webhook is running within the cluster, then you should use `service`.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **name** | string | `name` is the name of the service.<br>Required | true |
-| **namespace** | string | `namespace` is the namespace of the service.<br>Required | true |
-| **path** | string | `path` is an optional URL path which will be sent in any request to<br>this service. | false |
-| **port** | integer | If specified, the port on the service that hosting webhook.<br>Default to 443 for backward compatibility.<br>`port` should be a valid port number (1-65535, inclusive).<br/>*Format*: int32<br/> | false |
+| **name** | string | name is the name of the service.<br>Required | true |
+| **namespace** | string | namespace is the namespace of the service.<br>Required | true |
+| **path** | string | path is an optional URL path which will be sent in any request to<br>this service. | false |
+| **port** | integer | port is the port on the service that hosts the webhook.<br>Default to 443 for backward compatibility.<br>`port` should be a valid port number (1-65535, inclusive).<br/>*Format*: int32<br/> | false |
 
 
 ### CapsuleConfiguration.spec.admission.mutating.webhooks[index]
@@ -206,8 +209,8 @@ MatchCondition represents a condition which must by fulfilled for a request to b
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **expression** | string | Expression represents the expression which will be evaluated by CEL. Must evaluate to bool.<br>CEL expressions have access to the contents of the AdmissionRequest and Authorizer, organized into CEL variables:<br><br>'object' - The object from the incoming request. The value is null for DELETE requests.<br>'oldObject' - The existing object. The value is null for CREATE requests.<br>'request' - Attributes of the admission request(/pkg/apis/admission/types.go#AdmissionRequest).<br>'authorizer' - A CEL Authorizer. May be used to perform authorization checks for the principal (user or service account) of the request.<br>  See https://pkg.go.dev/k8s.io/apiserver/pkg/cel/library#Authz<br>'authorizer.requestResource' - A CEL ResourceCheck constructed from the 'authorizer' and configured with the<br>  request resource.<br>Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/<br><br>Required. | true |
-| **name** | string | Name is an identifier for this match condition, used for strategic merging of MatchConditions,<br>as well as providing an identifier for logging purposes. A good name should be descriptive of<br>the associated expression.<br>Name must be a qualified name consisting of alphanumeric characters, '-', '_' or '.', and<br>must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or<br>'123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]') with an<br>optional DNS subdomain prefix and '/' (e.g. 'example.com/MyName')<br><br>Required. | true |
+| **expression** | string | expression represents the expression which will be evaluated by CEL. Must evaluate to bool.<br>CEL expressions have access to the contents of the AdmissionRequest and Authorizer, organized into CEL variables:<br><br>'object' - The object from the incoming request. The value is null for DELETE requests.<br>'oldObject' - The existing object. The value is null for CREATE requests.<br>'request' - Attributes of the admission request(/pkg/apis/admission/types.go#AdmissionRequest).<br>'authorizer' - A CEL Authorizer. May be used to perform authorization checks for the principal (user or service account) of the request.<br>  See https://pkg.go.dev/k8s.io/apiserver/pkg/cel/library#Authz<br>'authorizer.requestResource' - A CEL ResourceCheck constructed from the 'authorizer' and configured with the<br>  request resource.<br>Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/<br><br>Required. | true |
+| **name** | string | name is an identifier for this match condition, used for strategic merging of MatchConditions,<br>as well as providing an identifier for logging purposes. A good name should be descriptive of<br>the associated expression.<br>Name must be a qualified name consisting of alphanumeric characters, '-', '_' or '.', and<br>must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or<br>'123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]') with an<br>optional DNS subdomain prefix and '/' (e.g. 'example.com/MyName')<br><br>Required. | true |
 
 
 ### CapsuleConfiguration.spec.admission.mutating.webhooks[index].namespaceSelector
@@ -341,10 +344,10 @@ sure that all the tuple expansions are valid.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **apiGroups** | []string | APIGroups is the API groups the resources belong to. '*' is all groups.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
-| **apiVersions** | []string | APIVersions is the API versions the resources belong to. '*' is all versions.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
-| **operations** | []string | Operations is the operations the admission hook cares about - CREATE, UPDATE, DELETE, CONNECT or *<br>for all of those operations and any future admission operations that are added.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
-| **resources** | []string | Resources is a list of resources this rule applies to.<br><br>For example:<br>'pods' means pods.<br>'pods/log' means the log subresource of pods.<br>'*' means all resources, but not subresources.<br>'pods/*' means all subresources of pods.<br>'*/scale' means all scale subresources.<br>'*/*' means all resources and their subresources.<br><br>If wildcard is present, the validation rule will ensure resources do not<br>overlap with each other.<br><br>Depending on the enclosing object, subresources might not be allowed.<br>Required. | false |
+| **apiGroups** | []string | apiGroups is the API groups the resources belong to. '*' is all groups.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **apiVersions** | []string | apiVersions is the API versions the resources belong to. '*' is all versions.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **operations** | []string | operations is the operations the admission hook cares about - CREATE, UPDATE, DELETE, CONNECT or *<br>for all of those operations and any future admission operations that are added.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **resources** | []string | resources is a list of resources this rule applies to.<br><br>For example:<br>'pods' means pods.<br>'pods/log' means the log subresource of pods.<br>'*' means all resources, but not subresources.<br>'pods/*' means all subresources of pods.<br>'*/scale' means all scale subresources.<br>'*/*' means all resources and their subresources.<br><br>If wildcard is present, the validation rule will ensure resources do not<br>overlap with each other.<br><br>Depending on the enclosing object, subresources might not be allowed.<br>Required. | false |
 | **scope** | string | scope specifies the scope of this rule.<br>Valid values are "Cluster", "Namespaced", and "*"<br>"Cluster" means that only cluster-scoped resources will match this rule.<br>Namespace API objects are cluster-scoped.<br>"Namespaced" means that only namespaced resources will match this rule.<br>"*" means that there are no scope restrictions.<br>Subresources match the scope of their parent resource.<br>Default is "*". | false |
 
 
@@ -373,16 +376,16 @@ whats the problem
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **caBundle** | string | `caBundle` is a PEM encoded CA bundle which will be used to validate the webhook's server certificate.<br>If unspecified, system trust roots on the apiserver are used.<br/>*Format*: byte<br/> | false |
-| **[service](#capsuleconfigurationspecadmissionvalidatingclientservice)** | object | `service` is a reference to the service for this webhook. Either<br>`service` or `url` must be specified.<br><br>If the webhook is running within the cluster, then you should use `service`. | false |
-| **url** | string | `url` gives the location of the webhook, in standard URL form<br>(`scheme://host:port/path`). Exactly one of `url` or `service`<br>must be specified.<br><br>The `host` should not refer to a service running in the cluster; use<br>the `service` field instead. The host might be resolved via external<br>DNS in some apiservers (e.g., `kube-apiserver` cannot resolve<br>in-cluster DNS as that would be a layering violation). `host` may<br>also be an IP address.<br><br>Please note that using `localhost` or `127.0.0.1` as a `host` is<br>risky unless you take great care to run this webhook on all hosts<br>which run an apiserver which might need to make calls to this<br>webhook. Such installs are likely to be non-portable, i.e., not easy<br>to turn up in a new cluster.<br><br>The scheme must be "https"; the URL must begin with "https://".<br><br>A path is optional, and if present may be any string permissible in<br>a URL. You may use the path to pass an arbitrary string to the<br>webhook, for example, a cluster identifier.<br><br>Attempting to use a user or basic auth e.g. "user:password@" is not<br>allowed. Fragments ("#...") and query parameters ("?...") are not<br>allowed, either. | false |
+| **caBundle** | string | caBundle is a PEM encoded CA bundle which will be used to validate the webhook's server certificate.<br>If unspecified, system trust roots on the apiserver are used.<br/>*Format*: byte<br/> | false |
+| **[service](#capsuleconfigurationspecadmissionvalidatingclientservice)** | object | service is a reference to the service for this webhook. Either<br>`service` or `url` must be specified.<br><br>If the webhook is running within the cluster, then you should use `service`. | false |
+| **url** | string | url gives the location of the webhook, in standard URL form<br>(`scheme://host:port/path`). Exactly one of `url` or `service`<br>must be specified.<br><br>The `host` should not refer to a service running in the cluster; use<br>the `service` field instead. The host might be resolved via external<br>DNS in some apiservers (e.g., `kube-apiserver` cannot resolve<br>in-cluster DNS as that would be a layering violation). `host` may<br>also be an IP address.<br><br>Please note that using `localhost` or `127.0.0.1` as a `host` is<br>risky unless you take great care to run this webhook on all hosts<br>which run an apiserver which might need to make calls to this<br>webhook. Such installs are likely to be non-portable, i.e., not easy<br>to turn up in a new cluster.<br><br>The scheme must be "https"; the URL must begin with "https://".<br><br>A path is optional, and if present may be any string permissible in<br>a URL. You may use the path to pass an arbitrary string to the<br>webhook, for example, a cluster identifier.<br><br>Attempting to use a user or basic auth e.g. "user:password@" is not<br>allowed. Fragments ("#...") and query parameters ("?...") are not<br>allowed, either. | false |
 
 
 ### CapsuleConfiguration.spec.admission.validating.client.service
 
 
 
-`service` is a reference to the service for this webhook. Either
+service is a reference to the service for this webhook. Either
 `service` or `url` must be specified.
 
 If the webhook is running within the cluster, then you should use `service`.
@@ -390,10 +393,10 @@ If the webhook is running within the cluster, then you should use `service`.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **name** | string | `name` is the name of the service.<br>Required | true |
-| **namespace** | string | `namespace` is the namespace of the service.<br>Required | true |
-| **path** | string | `path` is an optional URL path which will be sent in any request to<br>this service. | false |
-| **port** | integer | If specified, the port on the service that hosting webhook.<br>Default to 443 for backward compatibility.<br>`port` should be a valid port number (1-65535, inclusive).<br/>*Format*: int32<br/> | false |
+| **name** | string | name is the name of the service.<br>Required | true |
+| **namespace** | string | namespace is the namespace of the service.<br>Required | true |
+| **path** | string | path is an optional URL path which will be sent in any request to<br>this service. | false |
+| **port** | integer | port is the port on the service that hosts the webhook.<br>Default to 443 for backward compatibility.<br>`port` should be a valid port number (1-65535, inclusive).<br/>*Format*: int32<br/> | false |
 
 
 ### CapsuleConfiguration.spec.admission.validating.webhooks[index]
@@ -428,8 +431,8 @@ MatchCondition represents a condition which must by fulfilled for a request to b
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **expression** | string | Expression represents the expression which will be evaluated by CEL. Must evaluate to bool.<br>CEL expressions have access to the contents of the AdmissionRequest and Authorizer, organized into CEL variables:<br><br>'object' - The object from the incoming request. The value is null for DELETE requests.<br>'oldObject' - The existing object. The value is null for CREATE requests.<br>'request' - Attributes of the admission request(/pkg/apis/admission/types.go#AdmissionRequest).<br>'authorizer' - A CEL Authorizer. May be used to perform authorization checks for the principal (user or service account) of the request.<br>  See https://pkg.go.dev/k8s.io/apiserver/pkg/cel/library#Authz<br>'authorizer.requestResource' - A CEL ResourceCheck constructed from the 'authorizer' and configured with the<br>  request resource.<br>Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/<br><br>Required. | true |
-| **name** | string | Name is an identifier for this match condition, used for strategic merging of MatchConditions,<br>as well as providing an identifier for logging purposes. A good name should be descriptive of<br>the associated expression.<br>Name must be a qualified name consisting of alphanumeric characters, '-', '_' or '.', and<br>must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or<br>'123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]') with an<br>optional DNS subdomain prefix and '/' (e.g. 'example.com/MyName')<br><br>Required. | true |
+| **expression** | string | expression represents the expression which will be evaluated by CEL. Must evaluate to bool.<br>CEL expressions have access to the contents of the AdmissionRequest and Authorizer, organized into CEL variables:<br><br>'object' - The object from the incoming request. The value is null for DELETE requests.<br>'oldObject' - The existing object. The value is null for CREATE requests.<br>'request' - Attributes of the admission request(/pkg/apis/admission/types.go#AdmissionRequest).<br>'authorizer' - A CEL Authorizer. May be used to perform authorization checks for the principal (user or service account) of the request.<br>  See https://pkg.go.dev/k8s.io/apiserver/pkg/cel/library#Authz<br>'authorizer.requestResource' - A CEL ResourceCheck constructed from the 'authorizer' and configured with the<br>  request resource.<br>Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/<br><br>Required. | true |
+| **name** | string | name is an identifier for this match condition, used for strategic merging of MatchConditions,<br>as well as providing an identifier for logging purposes. A good name should be descriptive of<br>the associated expression.<br>Name must be a qualified name consisting of alphanumeric characters, '-', '_' or '.', and<br>must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or<br>'123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]') with an<br>optional DNS subdomain prefix and '/' (e.g. 'example.com/MyName')<br><br>Required. | true |
 
 
 ### CapsuleConfiguration.spec.admission.validating.webhooks[index].namespaceSelector
@@ -563,11 +566,23 @@ sure that all the tuple expansions are valid.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **apiGroups** | []string | APIGroups is the API groups the resources belong to. '*' is all groups.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
-| **apiVersions** | []string | APIVersions is the API versions the resources belong to. '*' is all versions.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
-| **operations** | []string | Operations is the operations the admission hook cares about - CREATE, UPDATE, DELETE, CONNECT or *<br>for all of those operations and any future admission operations that are added.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
-| **resources** | []string | Resources is a list of resources this rule applies to.<br><br>For example:<br>'pods' means pods.<br>'pods/log' means the log subresource of pods.<br>'*' means all resources, but not subresources.<br>'pods/*' means all subresources of pods.<br>'*/scale' means all scale subresources.<br>'*/*' means all resources and their subresources.<br><br>If wildcard is present, the validation rule will ensure resources do not<br>overlap with each other.<br><br>Depending on the enclosing object, subresources might not be allowed.<br>Required. | false |
+| **apiGroups** | []string | apiGroups is the API groups the resources belong to. '*' is all groups.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **apiVersions** | []string | apiVersions is the API versions the resources belong to. '*' is all versions.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **operations** | []string | operations is the operations the admission hook cares about - CREATE, UPDATE, DELETE, CONNECT or *<br>for all of those operations and any future admission operations that are added.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **resources** | []string | resources is a list of resources this rule applies to.<br><br>For example:<br>'pods' means pods.<br>'pods/log' means the log subresource of pods.<br>'*' means all resources, but not subresources.<br>'pods/*' means all subresources of pods.<br>'*/scale' means all scale subresources.<br>'*/*' means all resources and their subresources.<br><br>If wildcard is present, the validation rule will ensure resources do not<br>overlap with each other.<br><br>Depending on the enclosing object, subresources might not be allowed.<br>Required. | false |
 | **scope** | string | scope specifies the scope of this rule.<br>Valid values are "Cluster", "Namespaced", and "*"<br>"Cluster" means that only cluster-scoped resources will match this rule.<br>Namespace API objects are cluster-scoped.<br>"Namespaced" means that only namespaced resources will match this rule.<br>"*" means that there are no scope restrictions.<br>Subresources match the scope of their parent resource.<br>Default is "*". | false |
+
+
+### CapsuleConfiguration.spec.events
+
+
+
+Event (Audit) Configuration
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **namespace** | string | Namespace where the events are logged for cluster scoped resources or deny events (default namespace)<br/>*Default*: default<br/> | false |
 
 
 ### CapsuleConfiguration.spec.impersonation
@@ -666,7 +681,27 @@ CapsuleConfigurationStatus defines the Capsule configuration status.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[conditions](#capsuleconfigurationstatusconditionsindex)** | []object | Conditions holds the reconciliation conditions for this CapsuleConfiguration.<br>Includes a Ready condition indicating whether the configuration was<br>successfully validated and applied. | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
+| **tenants** | []string | Tenants is the sorted list of Tenant names currently present in the cluster.<br>The total count is available via len(Tenants). | false |
 | **[users](#capsuleconfigurationstatususersindex)** | []object | Users which are considered Capsule Users and are bound to the Capsule Tenant construct. | false |
+
+
+### CapsuleConfiguration.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
 
 
 ### CapsuleConfiguration.status.users[index]
@@ -736,8 +771,9 @@ Additional Options for the CustomQuotaSpecification
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **apiVersion** | string | API version of the referent. | true |
-| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
+| **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
+| **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
+| **cel** | string | CEL expression evaluated against the source object.<br>The object is available as "object".<br>Must evaluate to kubernetes.Quantity or list<kubernetes.Quantity>.<br>Mutually exclusive with path and must be empty when op is "count". | false |
 | **op** | enum | Operation used to evaluate usage.<br/>*Enum*: add, sub, count<br/>*Default*: add<br/> | false |
 | **path** | string | Path on GVK where usage is evaluated.<br>Must be empty when op is "count".<br>Required and non-empty for all other operations. | false |
 | **[selectors](#customquotaspecsourcesindexselectorsindex)** | []object | Provide more granular selectors for these sources<br>The ScopeSelector and NamespaceSelector are always applied<br>Allowing these selectors to make further selecting on the resulting subset. | false |
@@ -752,6 +788,7 @@ Additional Options for the CustomQuotaSpecification
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **celExpressions** | []string | Additional CEL expressions evaluated against the selected object.<br>The object is available as "object".<br>All must evaluate to true for this selector to match.<br>CEL expressions and fieldSelectors may be used together. | false |
 | **fieldSelectors** | []string | Additional boolean JSONPath expressions.<br>All must evaluate to true for this selector to match. | false |
 | **[matchExpressions](#customquotaspecsourcesindexselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
 | **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
@@ -814,6 +851,7 @@ CustomQuotaStatus defines the observed state of GlobalResourceQuota.
 | **[conditions](#customquotastatusconditionsindex)** | []object | Conditions | true |
 | **[targets](#customquotastatustargetsindex)** | []object | Targeting GVK | true |
 | **[claims](#customquotastatusclaimsindex)** | []object | Objects regarding this policy | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 | **[usage](#customquotastatususage)** | object | Usage measurements | false |
 
 
@@ -846,9 +884,10 @@ Condition contains details for one aspect of the current state of this API Resou
 | **group** | string |  | true |
 | **kind** | string |  | true |
 | **version** | string |  | true |
+| **cel** | string | CEL expression evaluated against the source object.<br>The object is available as "object".<br>Must evaluate to kubernetes.Quantity or list<kubernetes.Quantity>.<br>Mutually exclusive with path and must be empty when op is "count". | false |
 | **op** | enum | Operation used to evaluate usage.<br/>*Enum*: add, sub, count<br/>*Default*: add<br/> | false |
 | **path** | string | Path on GVK where usage is evaluated.<br>Must be empty when op is "count".<br>Required and non-empty for all other operations. | false |
-| **scope** | string | Path on GVK where usage is evaluated | false |
+| **scope** | string | Scope of the GVK where usage is evaluated. | false |
 | **[selectors](#customquotastatustargetsindexselectorsindex)** | []object | Provide more granular selectors for these sources<br>The ScopeSelector and NamespaceSelector are always applied<br>Allowing these selectors to make further selecting on the resulting subset. | false |
 
 
@@ -861,6 +900,7 @@ Condition contains details for one aspect of the current state of this API Resou
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **celExpressions** | []string | Additional CEL expressions evaluated against the selected object.<br>The object is available as "object".<br>All must evaluate to true for this selector to match.<br>CEL expressions and fieldSelectors may be used together. | false |
 | **fieldSelectors** | []string | Additional boolean JSONPath expressions.<br>All must evaluate to true for this selector to match. | false |
 | **[matchExpressions](#customquotastatustargetsindexselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
 | **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
@@ -967,8 +1007,9 @@ Additional Options for the CustomQuotaSpecification
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **apiVersion** | string | API version of the referent. | true |
-| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
+| **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
+| **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
+| **cel** | string | CEL expression evaluated against the source object.<br>The object is available as "object".<br>Must evaluate to kubernetes.Quantity or list<kubernetes.Quantity>.<br>Mutually exclusive with path and must be empty when op is "count". | false |
 | **op** | enum | Operation used to evaluate usage.<br/>*Enum*: add, sub, count<br/>*Default*: add<br/> | false |
 | **path** | string | Path on GVK where usage is evaluated.<br>Must be empty when op is "count".<br>Required and non-empty for all other operations. | false |
 | **[selectors](#globalcustomquotaspecsourcesindexselectorsindex)** | []object | Provide more granular selectors for these sources<br>The ScopeSelector and NamespaceSelector are always applied<br>Allowing these selectors to make further selecting on the resulting subset. | false |
@@ -983,6 +1024,7 @@ Additional Options for the CustomQuotaSpecification
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **celExpressions** | []string | Additional CEL expressions evaluated against the selected object.<br>The object is available as "object".<br>All must evaluate to true for this selector to match.<br>CEL expressions and fieldSelectors may be used together. | false |
 | **fieldSelectors** | []string | Additional boolean JSONPath expressions.<br>All must evaluate to true for this selector to match. | false |
 | **[matchExpressions](#globalcustomquotaspecsourcesindexselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
 | **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
@@ -1074,6 +1116,7 @@ CustomQuotaStatus defines the observed state of GlobalResourceQuota.
 | **[targets](#globalcustomquotastatustargetsindex)** | []object | Targeting GVK | true |
 | **[claims](#globalcustomquotastatusclaimsindex)** | []object | Objects regarding this policy | false |
 | **namespaces** | []string | Observed Namespaces | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 | **[usage](#globalcustomquotastatususage)** | object | Usage measurements | false |
 
 
@@ -1106,9 +1149,10 @@ Condition contains details for one aspect of the current state of this API Resou
 | **group** | string |  | true |
 | **kind** | string |  | true |
 | **version** | string |  | true |
+| **cel** | string | CEL expression evaluated against the source object.<br>The object is available as "object".<br>Must evaluate to kubernetes.Quantity or list<kubernetes.Quantity>.<br>Mutually exclusive with path and must be empty when op is "count". | false |
 | **op** | enum | Operation used to evaluate usage.<br/>*Enum*: add, sub, count<br/>*Default*: add<br/> | false |
 | **path** | string | Path on GVK where usage is evaluated.<br>Must be empty when op is "count".<br>Required and non-empty for all other operations. | false |
-| **scope** | string | Path on GVK where usage is evaluated | false |
+| **scope** | string | Scope of the GVK where usage is evaluated. | false |
 | **[selectors](#globalcustomquotastatustargetsindexselectorsindex)** | []object | Provide more granular selectors for these sources<br>The ScopeSelector and NamespaceSelector are always applied<br>Allowing these selectors to make further selecting on the resulting subset. | false |
 
 
@@ -1121,6 +1165,7 @@ Condition contains details for one aspect of the current state of this API Resou
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **celExpressions** | []string | Additional CEL expressions evaluated against the selected object.<br>The object is available as "object".<br>All must evaluate to true for this selector to match.<br>CEL expressions and fieldSelectors may be used together. | false |
 | **fieldSelectors** | []string | Additional boolean JSONPath expressions.<br>All must evaluate to true for this selector to match. | false |
 | **[matchExpressions](#globalcustomquotastatustargetsindexselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
 | **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
@@ -1170,6 +1215,170 @@ Usage measurements
 | :---- | :---- | :----------- | :-------- |
 | **available** | int or string | Used is the current observed total available of the resource (limit - used). | false |
 | **used** | int or string | Used is the current observed total usage of the resource. | false |
+
+## GlobalResourceQuota
+
+
+
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | capsule.clastix.io/v1beta2 | true |
+| **kind** | string | GlobalResourceQuota | true |
+| **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
+| **[spec](#globalresourcequotaspec)** | object | GlobalResourceQuotaSpec defines a native ResourceQuota shared by every<br>namespace matched by any namespace selector. | true |
+| **[status](#globalresourcequotastatus)** | object |  | false |
+
+
+### GlobalResourceQuota.spec
+
+
+
+GlobalResourceQuotaSpec defines a native ResourceQuota shared by every
+namespace matched by any namespace selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[quota](#globalresourcequotaspecquota)** | object | Quota is the native Kubernetes ResourceQuota specification enforced<br>across the selected namespaces. | true |
+| **[namespaceSelectors](#globalresourcequotaspecnamespaceselectorsindex)** | []object | NamespaceSelectors select the namespaces that share this quota.<br>Selectors are ORed; requirements within one selector are ANDed. An empty<br>label selector matches all namespaces. | false |
+
+
+### GlobalResourceQuota.spec.quota
+
+
+
+Quota is the native Kubernetes ResourceQuota specification enforced
+across the selected namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **hard** | map[string]int or string | hard is the set of desired hard limits for each named resource.<br>More info: https://kubernetes.io/docs/concepts/policy/resource-quotas/ | false |
+| **[scopeSelector](#globalresourcequotaspecquotascopeselector)** | object | scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota<br>but expressed using ScopeSelectorOperator in combination with possible values.<br>For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched. | false |
+| **scopes** | []string | A collection of filters that must match each object tracked by a quota.<br>If not specified, the quota matches all objects. | false |
+
+
+### GlobalResourceQuota.spec.quota.scopeSelector
+
+
+
+scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota
+but expressed using ScopeSelectorOperator in combination with possible values.
+For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#globalresourcequotaspecquotascopeselectormatchexpressionsindex)** | []object | A list of scope selector requirements by scope of the resources. | false |
+
+
+### GlobalResourceQuota.spec.quota.scopeSelector.matchExpressions[index]
+
+
+
+A scoped-resource selector requirement is a selector that contains values, a scope name, and an operator
+that relates the scope name and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **operator** | string | Represents a scope's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. | true |
+| **scopeName** | string | The name of the scope that the selector applies to. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### GlobalResourceQuota.spec.namespaceSelectors[index]
+
+
+
+Selector for resources and their labels or selecting origin namespaces
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#globalresourcequotaspecnamespaceselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### GlobalResourceQuota.spec.namespaceSelectors[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### GlobalResourceQuota.status
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[conditions](#globalresourcequotastatusconditionsindex)** | []object | Conditions report reconciliation and admission readiness. | true |
+| **[total](#globalresourcequotastatustotal)** | object | Total contains aggregate quota usage across all selected namespaces. | true |
+| **namespaceCount** | integer | NamespaceSize is the number of selected namespaces.<br/>*Default*: 0<br/> | false |
+| **[namespaceUsage](#globalresourcequotastatusnamespaceusagekey)** | map[string]object | NamespaceUsage contains observed quota usage per selected namespace. | false |
+| **namespaces** | []string | Namespaces is the ordered set of selected namespace names. | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation observed by the controller.<br/>*Format*: int64<br/> | false |
+
+
+### GlobalResourceQuota.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
+
+
+### GlobalResourceQuota.status.total
+
+
+
+Total contains aggregate quota usage across all selected namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **available** | map[string]int or string | Available is max(Hard-Used, 0). | false |
+| **hard** | map[string]int or string | Hard is the configured shared limit. | false |
+| **used** | map[string]int or string | Used is the usage observed across the relevant namespace set. | false |
+
+
+### GlobalResourceQuota.status.namespaceUsage[key]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **used** | map[string]int or string | Used is the usage observed in this namespace. | false |
 
 ## GlobalTenantResource
 
@@ -1263,8 +1472,8 @@ the declared items for the replication
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **apiVersion** | string | API version of the referent. | true |
-| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
+| **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
+| **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
 | **index** | string | Index to mount the resource in the template context | false |
 | **name** | string | Name of the values referent. This is useful<br>when you traying to get a specific resource | false |
 | **namespace** | string | Namespace of the values referent. | false |
@@ -1351,8 +1560,8 @@ Reference
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **apiVersion** | string | API version of the referent. | true |
-| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
+| **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
+| **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
 | **name** | string | Name of the values referent. This is useful<br>when you traying to get a specific resource | false |
 | **namespace** | string | Namespace of the values referent. | false |
 | **optional** | boolean | Only relevant if name is set. If an item is not optional, there will be an error thrown when it does not exist<br/>*Default*: true<br/> | false |
@@ -1465,6 +1674,7 @@ GlobalTenantResourceStatus defines the observed state of GlobalTenantResource.
 | :---- | :---- | :----------- | :-------- |
 | **size** | integer | How many items are being replicated by the TenantResource. | true |
 | **[conditions](#globaltenantresourcestatusconditionsindex)** | []object | Condition of the GlobalTenantResource. | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 | **[processedItems](#globaltenantresourcestatusprocesseditemsindex)** | []object | List of the replicated resources for the given TenantResource. | false |
 | **selectedTenants** | []string | List of Tenants addressed by the GlobalTenantResource. | false |
 | **[serviceAccount](#globaltenantresourcestatusserviceaccount)** | object | Serviceaccount used for impersonation | false |
@@ -1517,6 +1727,7 @@ Advanced Status Item for pin pointing items in tenants/namespaces.
 | :---- | :---- | :----------- | :-------- |
 | **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
 | **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **clusterScoped** | boolean | Indicates whether the referenced resource is cluster-scoped. | false |
 | **created** | boolean | Indicates wether the resource was created or adopted | false |
 | **lastApply** | string | An opaque value that represents the internal version of this object that can<br>be used by clients to determine when objects have changed. May be used for optimistic<br>concurrency, change detection, and the watch operation on a resource or set of resources.<br>Clients must treat these values as opaque and passed unmodified back to the server.<br>They may only be valid for a particular resource or set of resources.<br><br>Populated by the system.<br>Read-only.<br>Value must be treated as opaque by clients and .<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency<br/>*Format*: date-time<br/> | false |
 | **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | false |
@@ -1596,6 +1807,7 @@ and quota controllers.
 | **[pendingDeletes](#quantityledgerstatuspendingdeletesindex)** | []object | Pending delete hints carried over from admission delete handling. | false |
 | **[reservations](#quantityledgerstatusreservationsindex)** | []object | Active inflight reservations for this quota. | false |
 | **reserved** | int or string | Reserved is the aggregate sum of all active reservations.<br>Controllers/webhooks should treat this as derived data from Reservations. | false |
+| **[resourceQuota](#quantityledgerstatusresourcequota)** | object | ResourceQuota contains coordination state for GlobalResourceQuota.<br>It is unset for CustomQuota and GlobalCustomQuota ledgers. | false |
 
 
 ### QuantityLedger.status.conditions[index]
@@ -1627,6 +1839,7 @@ soon, but may still temporarily appear during rebuild due to propagation delay.
 | :---- | :---- | :----------- | :-------- |
 | **createdAt** | string | <br/>*Format*: date-time<br/> | true |
 | **[objectRef](#quantityledgerstatuspendingdeletesindexobjectref)** | object | QuotaLedgerObjectRef identifies the object for which a reservation exists.<br>UID may be empty for CREATE admission before the object is persisted. | true |
+| **id** | string | ID identifies the admission request that added this hint. It allows a<br>failed multi-quota admission to roll back only its own hint. | false |
 
 
 ### QuantityLedger.status.pendingDeletes[index].objectRef
@@ -1663,10 +1876,66 @@ In practice, admission.Request.UID is a good default.
 | **[objectRef](#quantityledgerstatusreservationsindexobjectref)** | object | Object that this reservation is intended to create/update. | true |
 | **updatedAt** | string | Time the reservation was last refreshed or updated.<br/>*Format*: date-time<br/> | true |
 | **usage** | int or string | Amount reserved for this request. | true |
+| **delta** | int or string | Delta is the additional amount held against the quota while the admitted<br>object is materializing. For creates this is normally equal to Usage. For<br>updates it is max(newUsage-oldUsage, 0), so admission never releases<br>capacity before the API server has persisted the update.<br><br>A nil value is interpreted as Usage for backwards compatibility with<br>ledgers written before this field was introduced. | false |
 | **expiresAt** | string | Time after which the reservation may be considered stale.<br/>*Format*: date-time<br/> | false |
 
 
 ### QuantityLedger.status.reservations[index].objectRef
+
+
+
+Object that this reservation is intended to create/update.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | APIVersion of the tracked object, for example "v1". | true |
+| **kind** | string | Kind of the tracked object, for example "Pod". | true |
+| **apiGroup** | string | APIGroup of the tracked object. | false |
+| **name** | string | Name of the tracked object. | false |
+| **namespace** | string | Namespace of the tracked object. | false |
+| **uid** | string | UID of the tracked object. | false |
+
+
+### QuantityLedger.status.resourceQuota
+
+
+
+ResourceQuota contains coordination state for GlobalResourceQuota.
+It is unset for CustomQuota and GlobalCustomQuota ledgers.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **allocated** | map[string]int or string | Allocated is Used plus all active reservations. | false |
+| **initialized** | boolean | Initialized is true after every selected namespace has reported<br>ResourceQuota status for this quota. | false |
+| **namespaces** | []string | Namespaces is the selected namespace set represented by Used. | false |
+| **observedGeneration** | integer | ObservedGeneration is the GlobalResourceQuota generation represented by<br>this ledger state.<br/>*Format*: int64<br/> | false |
+| **[reservations](#quantityledgerstatusresourcequotareservationsindex)** | []object | Reservations contains inflight admission operations. | false |
+| **reserved** | map[string]int or string | Reserved is derived from Reservations. | false |
+| **used** | map[string]int or string | Used is the usage observed from ResourceQuota status across all selected<br>namespaces. | false |
+
+
+### QuantityLedger.status.resourceQuota.reservations[index]
+
+
+
+QuantityLedgerResourceQuotaReservation is an atomic reservation against all
+resources tracked by a GlobalResourceQuota.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **createdAt** | string | <br/>*Format*: date-time<br/> | true |
+| **id** | string | Unique reservation identifier. | true |
+| **[objectRef](#quantityledgerstatusresourcequotareservationsindexobjectref)** | object | Object that this reservation is intended to create/update. | true |
+| **updatedAt** | string | <br/>*Format*: date-time<br/> | true |
+| **delta** | map[string]int or string | Delta is the positive amount held while ResourceQuota status catches up. | false |
+| **expiresAt** | string | <br/>*Format*: date-time<br/> | false |
+| **usage** | map[string]int or string | Usage is the calculated usage of the admitted object. | false |
+
+
+### QuantityLedger.status.resourceQuota.reservations[index].objectRef
 
 
 
@@ -1726,6 +1995,7 @@ ResourceQuotaClaimStatus defines the observed state of ResourceQuotaClaim.
 | **[conditions](#resourcepoolclaimstatusconditionsindex)** | []object | Conditions for the resource claim | true |
 | **[allocation](#resourcepoolclaimstatusallocation)** | object | Tracks the Usage from Claimed from this claim and available resources | false |
 | **[condition](#resourcepoolclaimstatuscondition)** | object | <span style="color:red;font-weight:bold">Deprecated: Use Conditions</span> | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 | **[pool](#resourcepoolclaimstatuspool)** | object | Reference to the GlobalQuota being claimed from | false |
 
 
@@ -1928,6 +2198,7 @@ GlobalResourceQuotaStatus defines the observed state of GlobalResourceQuota.
 | **[exhaustions](#resourcepoolstatusexhaustionskey)** | map[string]object | Exhaustions from claims associated with the pool | false |
 | **namespaceCount** | integer | How many namespaces are considered<br/>*Default*: 0<br/> | false |
 | **namespaces** | []string | Namespaces which are considered for claims | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 
 
 ### ResourcePool.status.conditions[index]
@@ -2011,12 +2282,27 @@ ResourceQuotaClaimStatus defines the observed state of ResourceQuotaClaim.
 
 
 
-For future inmplementatiosn where users might manage RuleStatus CRs tehmselves
+For future implementation where users might manage RuleStatus CRs themselves
 
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[audience](#rulestatusspecindexaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#rulestatusspecindexenforce)** | object | Enforcement for given rule | false |
+| **[quota](#rulestatusspecindexquotaindex)** | []object | Quota contains native Kubernetes ResourceQuota specifications shared by<br>all namespaces selected by this rule. Unlike Enforce, quota accounting is<br>independent of the request audience. | false |
+
+
+### RuleStatus.spec[index].audience[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | <br/>*Enum*: User, Group, ServiceAccount, Custom<br/> | true |
+| **name** | string |  | true |
 
 
 ### RuleStatus.spec[index].enforce
@@ -2028,10 +2314,57 @@ Enforcement for given rule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[registries](#rulestatusspecindexenforceregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[ingress](#rulestatusspecindexenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
+| **[metadata](#rulestatusspecindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
+| **[services](#rulestatusspecindexenforceservices)** | object | Enforcement for Services. | false |
+| **[workloads](#rulestatusspecindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
 
 
-### RuleStatus.spec[index].enforce.registries[index]
+### RuleStatus.spec[index].enforce.ingress
+
+
+
+Enforcement for Ingress and Gateway API resource hostnames.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[hostnames](#rulestatusspecindexenforceingresshostnamesindex)** | []object | Hostnames defines allowed, denied, or audited hostname expressions.<br>A resource targeted by an allow or deny rule must declare non-empty values<br>in all hostname fields. Audit-only rules record missing hostnames without<br>denying them. | false |
+| **types** | []enum | Types defines the resource kinds to which hostname enforcement applies.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.ingress.hostnames[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.metadata[index]
+
+
+
+MetadataRule defines metadata constraints for namespaced resources.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kinds** | []string | Kinds of the referents.<br><br>Use "*" to match all kinds. | true |
+| **[annotations](#rulestatusspecindexenforcemetadataindexannotationskey)** | map[string]object | Annotations defines metadata policies by annotation key. | false |
+| **apiGroups** | []string | API groups or API group/version selectors of the referents.<br><br>Empty or omitted APIGroups means the core Kubernetes API version "v1".<br>Use "*" to match all API groups and versions.<br><br>Examples:<br>- [] or [""] means core "v1".<br>- ["v1"] means core "v1".<br>- ["apps"] means any version in the "apps" API group.<br>- ["apps/v1"] means only "apps/v1".<br>- ["apps", "batch/v1"] means any "apps" version and "batch/v1".<br>- ["*"] means all API groups and versions. | false |
+| **[labels](#rulestatusspecindexenforcemetadataindexlabelskey)** | map[string]object | Labels defines metadata policies by label key. | false |
+
+
+### RuleStatus.spec[index].enforce.metadata[index].annotations[key]
 
 
 
@@ -2040,9 +2373,225 @@ Enforcement for given rule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **url** | string | OCI Registry endpoint, is treated as regular expression. | true |
+| **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusspecindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+
+
+### RuleStatus.spec[index].enforce.metadata[index].annotations[key].values[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.metadata[index].labels[key]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusspecindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+
+
+### RuleStatus.spec[index].enforce.metadata[index].labels[key].values[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.services
+
+
+
+Enforcement for Services.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[externalNames](#rulestatusspecindexenforceservicesexternalnames)** | object | ExternalNames defines additional constraints for Services of type ExternalName. | false |
+| **[loadBalancers](#rulestatusspecindexenforceservicesloadbalancers)** | object | LoadBalancers defines additional constraints for Services of type LoadBalancer. | false |
+| **[nodePorts](#rulestatusspecindexenforceservicesnodeports)** | object | NodePorts defines additional constraints for nodePort values. | false |
+| **types** | []enum | Types defines the Service types matched by this rule.<br><br>Supported values:<br>- ClusterIP<br>- NodePort<br>- LoadBalancer<br>- ExternalName<br/>*Enum*: ClusterIP, NodePort, LoadBalancer, ExternalName<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.services.externalNames
+
+
+
+ExternalNames defines additional constraints for Services of type ExternalName.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[hostnames](#rulestatusspecindexenforceservicesexternalnameshostnamesindex)** | []object | Hostnames restricts spec.externalName.<br>Empty means no additional hostname restriction once ExternalName is allowed by types. | false |
+
+
+### RuleStatus.spec[index].enforce.services.externalNames.hostnames[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.services.loadBalancers
+
+
+
+LoadBalancers defines additional constraints for Services of type LoadBalancer.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs restricts spec.loadBalancerIP and spec.loadBalancerSourceRanges.<br>Empty means no additional CIDR restriction once LoadBalancer is allowed by types. | false |
+
+
+### RuleStatus.spec[index].enforce.services.nodePorts
+
+
+
+NodePorts defines additional constraints for nodePort values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[ports](#rulestatusspecindexenforceservicesnodeportsportsindex)** | []object | Ports restricts explicitly requested nodePort values.<br>Empty means no additional port restriction once NodePort is allowed by types. | false |
+
+
+### RuleStatus.spec[index].enforce.services.nodePorts.ports[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **from** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
+| **to** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
+
+
+### RuleStatus.spec[index].enforce.workloads
+
+
+
+Enforcement for Workloads (Pods)
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
+| **[registries](#rulestatusspecindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **[schedulers](#rulestatusspecindexenforceworkloadsschedulersindex)** | []object | Schedulers defines schedulerName matchers for Pod admission.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
+| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.registries[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
-| **validation** | []enum | Requesting Resources<br/>*Enum*: pod/images, pod/volumes<br/>*Default*: [pod/images pod/volumes]<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.schedulers[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].quota[index]
+
+
+
+ResourceQuotaRule defines a named ResourceQuota specification generated by a
+Tenant rule. Name is the durable identity of the generated
+GlobalResourceQuota and must be unique across all rules of a Tenant.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name is the stable identity of this quota within the Tenant. Changing the<br>name replaces the generated GlobalResourceQuota; changing the quota or its<br>namespace selector updates the existing object. | true |
+| **hard** | map[string]int or string | hard is the set of desired hard limits for each named resource.<br>More info: https://kubernetes.io/docs/concepts/policy/resource-quotas/ | false |
+| **[scopeSelector](#rulestatusspecindexquotaindexscopeselector)** | object | scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota<br>but expressed using ScopeSelectorOperator in combination with possible values.<br>For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched. | false |
+| **scopes** | []string | A collection of filters that must match each object tracked by a quota.<br>If not specified, the quota matches all objects. | false |
+
+
+### RuleStatus.spec[index].quota[index].scopeSelector
+
+
+
+scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota
+but expressed using ScopeSelectorOperator in combination with possible values.
+For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusspecindexquotaindexscopeselectormatchexpressionsindex)** | []object | A list of scope selector requirements by scope of the resources. | false |
+
+
+### RuleStatus.spec[index].quota[index].scopeSelector.matchExpressions[index]
+
+
+
+A scoped-resource selector requirement is a selector that contains values, a scope name, and an operator
+that relates the scope name and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **operator** | string | Represents a scope's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. | true |
+| **scopeName** | string | The name of the scope that the selector applies to. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty.<br>This array is replaced during a strategic merge patch. | false |
 
 
 ### RuleStatus.status
@@ -2055,7 +2604,9 @@ RuleStatus contains the accumulated rules applying to namespace it's deployed in
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **[conditions](#rulestatusstatusconditionsindex)** | []object | Conditions | true |
-| **[rule](#rulestatusstatusrule)** | object | Managed Enforcement properties per Namespace (aggregated from rules) | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
+| **[rule](#rulestatusstatusrule)** | object | <span style="color:red;font-weight:bold">Deprecated: use Rules.<br>Rule contains a legacy flattened view and cannot fully represent action-aware rules.</span> | false |
+| **[rules](#rulestatusstatusrulesindex)** | []object | Rules contains the effective namespace rules after tenant rule selection.<br>Order is preserved from the originating Tenant rules. | false |
 
 
 ### RuleStatus.status.conditions[index]
@@ -2079,12 +2630,28 @@ Condition contains details for one aspect of the current state of this API Resou
 
 
 
-Managed Enforcement properties per Namespace (aggregated from rules)
+Deprecated: use Rules.
+Rule contains a legacy flattened view and cannot fully represent action-aware rules.
 
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[audience](#rulestatusstatusruleaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#rulestatusstatusruleenforce)** | object | Enforcement for given rule | false |
+| **[quota](#rulestatusstatusrulequotaindex)** | []object | Quota contains native Kubernetes ResourceQuota specifications shared by<br>all namespaces selected by this rule. Unlike Enforce, quota accounting is<br>independent of the request audience. | false |
+
+
+### RuleStatus.status.rule.audience[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | <br/>*Enum*: User, Group, ServiceAccount, Custom<br/> | true |
+| **name** | string |  | true |
 
 
 ### RuleStatus.status.rule.enforce
@@ -2096,10 +2663,57 @@ Enforcement for given rule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[registries](#rulestatusstatusruleenforceregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[ingress](#rulestatusstatusruleenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
+| **[metadata](#rulestatusstatusruleenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
+| **[services](#rulestatusstatusruleenforceservices)** | object | Enforcement for Services. | false |
+| **[workloads](#rulestatusstatusruleenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
 
 
-### RuleStatus.status.rule.enforce.registries[index]
+### RuleStatus.status.rule.enforce.ingress
+
+
+
+Enforcement for Ingress and Gateway API resource hostnames.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[hostnames](#rulestatusstatusruleenforceingresshostnamesindex)** | []object | Hostnames defines allowed, denied, or audited hostname expressions.<br>A resource targeted by an allow or deny rule must declare non-empty values<br>in all hostname fields. Audit-only rules record missing hostnames without<br>denying them. | false |
+| **types** | []enum | Types defines the resource kinds to which hostname enforcement applies.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.ingress.hostnames[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.metadata[index]
+
+
+
+MetadataRule defines metadata constraints for namespaced resources.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kinds** | []string | Kinds of the referents.<br><br>Use "*" to match all kinds. | true |
+| **[annotations](#rulestatusstatusruleenforcemetadataindexannotationskey)** | map[string]object | Annotations defines metadata policies by annotation key. | false |
+| **apiGroups** | []string | API groups or API group/version selectors of the referents.<br><br>Empty or omitted APIGroups means the core Kubernetes API version "v1".<br>Use "*" to match all API groups and versions.<br><br>Examples:<br>- [] or [""] means core "v1".<br>- ["v1"] means core "v1".<br>- ["apps"] means any version in the "apps" API group.<br>- ["apps/v1"] means only "apps/v1".<br>- ["apps", "batch/v1"] means any "apps" version and "batch/v1".<br>- ["*"] means all API groups and versions. | false |
+| **[labels](#rulestatusstatusruleenforcemetadataindexlabelskey)** | map[string]object | Labels defines metadata policies by label key. | false |
+
+
+### RuleStatus.status.rule.enforce.metadata[index].annotations[key]
 
 
 
@@ -2108,9 +2722,541 @@ Enforcement for given rule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **url** | string | OCI Registry endpoint, is treated as regular expression. | true |
+| **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusstatusruleenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+
+
+### RuleStatus.status.rule.enforce.metadata[index].annotations[key].values[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.metadata[index].labels[key]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusstatusruleenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+
+
+### RuleStatus.status.rule.enforce.metadata[index].labels[key].values[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.services
+
+
+
+Enforcement for Services.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[externalNames](#rulestatusstatusruleenforceservicesexternalnames)** | object | ExternalNames defines additional constraints for Services of type ExternalName. | false |
+| **[loadBalancers](#rulestatusstatusruleenforceservicesloadbalancers)** | object | LoadBalancers defines additional constraints for Services of type LoadBalancer. | false |
+| **[nodePorts](#rulestatusstatusruleenforceservicesnodeports)** | object | NodePorts defines additional constraints for nodePort values. | false |
+| **types** | []enum | Types defines the Service types matched by this rule.<br><br>Supported values:<br>- ClusterIP<br>- NodePort<br>- LoadBalancer<br>- ExternalName<br/>*Enum*: ClusterIP, NodePort, LoadBalancer, ExternalName<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.services.externalNames
+
+
+
+ExternalNames defines additional constraints for Services of type ExternalName.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[hostnames](#rulestatusstatusruleenforceservicesexternalnameshostnamesindex)** | []object | Hostnames restricts spec.externalName.<br>Empty means no additional hostname restriction once ExternalName is allowed by types. | false |
+
+
+### RuleStatus.status.rule.enforce.services.externalNames.hostnames[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.services.loadBalancers
+
+
+
+LoadBalancers defines additional constraints for Services of type LoadBalancer.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs restricts spec.loadBalancerIP and spec.loadBalancerSourceRanges.<br>Empty means no additional CIDR restriction once LoadBalancer is allowed by types. | false |
+
+
+### RuleStatus.status.rule.enforce.services.nodePorts
+
+
+
+NodePorts defines additional constraints for nodePort values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[ports](#rulestatusstatusruleenforceservicesnodeportsportsindex)** | []object | Ports restricts explicitly requested nodePort values.<br>Empty means no additional port restriction once NodePort is allowed by types. | false |
+
+
+### RuleStatus.status.rule.enforce.services.nodePorts.ports[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **from** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
+| **to** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
+
+
+### RuleStatus.status.rule.enforce.workloads
+
+
+
+Enforcement for Workloads (Pods)
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
+| **[registries](#rulestatusstatusruleenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **[schedulers](#rulestatusstatusruleenforceworkloadsschedulersindex)** | []object | Schedulers defines schedulerName matchers for Pod admission.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
+| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.registries[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
-| **validation** | []enum | Requesting Resources<br/>*Enum*: pod/images, pod/volumes<br/>*Default*: [pod/images pod/volumes]<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.schedulers[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.quota[index]
+
+
+
+ResourceQuotaRule defines a named ResourceQuota specification generated by a
+Tenant rule. Name is the durable identity of the generated
+GlobalResourceQuota and must be unique across all rules of a Tenant.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name is the stable identity of this quota within the Tenant. Changing the<br>name replaces the generated GlobalResourceQuota; changing the quota or its<br>namespace selector updates the existing object. | true |
+| **hard** | map[string]int or string | hard is the set of desired hard limits for each named resource.<br>More info: https://kubernetes.io/docs/concepts/policy/resource-quotas/ | false |
+| **[scopeSelector](#rulestatusstatusrulequotaindexscopeselector)** | object | scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota<br>but expressed using ScopeSelectorOperator in combination with possible values.<br>For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched. | false |
+| **scopes** | []string | A collection of filters that must match each object tracked by a quota.<br>If not specified, the quota matches all objects. | false |
+
+
+### RuleStatus.status.rule.quota[index].scopeSelector
+
+
+
+scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota
+but expressed using ScopeSelectorOperator in combination with possible values.
+For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulequotaindexscopeselectormatchexpressionsindex)** | []object | A list of scope selector requirements by scope of the resources. | false |
+
+
+### RuleStatus.status.rule.quota[index].scopeSelector.matchExpressions[index]
+
+
+
+A scoped-resource selector requirement is a selector that contains values, a scope name, and an operator
+that relates the scope name and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **operator** | string | Represents a scope's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. | true |
+| **scopeName** | string | The name of the scope that the selector applies to. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### RuleStatus.status.rules[index]
+
+
+
+For future implementation where users might manage RuleStatus CRs themselves
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[audience](#rulestatusstatusrulesindexaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
+| **[enforce](#rulestatusstatusrulesindexenforce)** | object | Enforcement for given rule | false |
+| **[quota](#rulestatusstatusrulesindexquotaindex)** | []object | Quota contains native Kubernetes ResourceQuota specifications shared by<br>all namespaces selected by this rule. Unlike Enforce, quota accounting is<br>independent of the request audience. | false |
+
+
+### RuleStatus.status.rules[index].audience[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | <br/>*Enum*: User, Group, ServiceAccount, Custom<br/> | true |
+| **name** | string |  | true |
+
+
+### RuleStatus.status.rules[index].enforce
+
+
+
+Enforcement for given rule
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[ingress](#rulestatusstatusrulesindexenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
+| **[metadata](#rulestatusstatusrulesindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
+| **[services](#rulestatusstatusrulesindexenforceservices)** | object | Enforcement for Services. | false |
+| **[workloads](#rulestatusstatusrulesindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+
+
+### RuleStatus.status.rules[index].enforce.ingress
+
+
+
+Enforcement for Ingress and Gateway API resource hostnames.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[hostnames](#rulestatusstatusrulesindexenforceingresshostnamesindex)** | []object | Hostnames defines allowed, denied, or audited hostname expressions.<br>A resource targeted by an allow or deny rule must declare non-empty values<br>in all hostname fields. Audit-only rules record missing hostnames without<br>denying them. | false |
+| **types** | []enum | Types defines the resource kinds to which hostname enforcement applies.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.ingress.hostnames[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.metadata[index]
+
+
+
+MetadataRule defines metadata constraints for namespaced resources.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kinds** | []string | Kinds of the referents.<br><br>Use "*" to match all kinds. | true |
+| **[annotations](#rulestatusstatusrulesindexenforcemetadataindexannotationskey)** | map[string]object | Annotations defines metadata policies by annotation key. | false |
+| **apiGroups** | []string | API groups or API group/version selectors of the referents.<br><br>Empty or omitted APIGroups means the core Kubernetes API version "v1".<br>Use "*" to match all API groups and versions.<br><br>Examples:<br>- [] or [""] means core "v1".<br>- ["v1"] means core "v1".<br>- ["apps"] means any version in the "apps" API group.<br>- ["apps/v1"] means only "apps/v1".<br>- ["apps", "batch/v1"] means any "apps" version and "batch/v1".<br>- ["*"] means all API groups and versions. | false |
+| **[labels](#rulestatusstatusrulesindexenforcemetadataindexlabelskey)** | map[string]object | Labels defines metadata policies by label key. | false |
+
+
+### RuleStatus.status.rules[index].enforce.metadata[index].annotations[key]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusstatusrulesindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+
+
+### RuleStatus.status.rules[index].enforce.metadata[index].annotations[key].values[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.metadata[index].labels[key]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusstatusrulesindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+
+
+### RuleStatus.status.rules[index].enforce.metadata[index].labels[key].values[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.services
+
+
+
+Enforcement for Services.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[externalNames](#rulestatusstatusrulesindexenforceservicesexternalnames)** | object | ExternalNames defines additional constraints for Services of type ExternalName. | false |
+| **[loadBalancers](#rulestatusstatusrulesindexenforceservicesloadbalancers)** | object | LoadBalancers defines additional constraints for Services of type LoadBalancer. | false |
+| **[nodePorts](#rulestatusstatusrulesindexenforceservicesnodeports)** | object | NodePorts defines additional constraints for nodePort values. | false |
+| **types** | []enum | Types defines the Service types matched by this rule.<br><br>Supported values:<br>- ClusterIP<br>- NodePort<br>- LoadBalancer<br>- ExternalName<br/>*Enum*: ClusterIP, NodePort, LoadBalancer, ExternalName<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.services.externalNames
+
+
+
+ExternalNames defines additional constraints for Services of type ExternalName.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[hostnames](#rulestatusstatusrulesindexenforceservicesexternalnameshostnamesindex)** | []object | Hostnames restricts spec.externalName.<br>Empty means no additional hostname restriction once ExternalName is allowed by types. | false |
+
+
+### RuleStatus.status.rules[index].enforce.services.externalNames.hostnames[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.services.loadBalancers
+
+
+
+LoadBalancers defines additional constraints for Services of type LoadBalancer.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs restricts spec.loadBalancerIP and spec.loadBalancerSourceRanges.<br>Empty means no additional CIDR restriction once LoadBalancer is allowed by types. | false |
+
+
+### RuleStatus.status.rules[index].enforce.services.nodePorts
+
+
+
+NodePorts defines additional constraints for nodePort values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[ports](#rulestatusstatusrulesindexenforceservicesnodeportsportsindex)** | []object | Ports restricts explicitly requested nodePort values.<br>Empty means no additional port restriction once NodePort is allowed by types. | false |
+
+
+### RuleStatus.status.rules[index].enforce.services.nodePorts.ports[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **from** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
+| **to** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
+
+
+### RuleStatus.status.rules[index].enforce.workloads
+
+
+
+Enforcement for Workloads (Pods)
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
+| **[registries](#rulestatusstatusrulesindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **[schedulers](#rulestatusstatusrulesindexenforceworkloadsschedulersindex)** | []object | Schedulers defines schedulerName matchers for Pod admission.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
+| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.registries[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.schedulers[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].quota[index]
+
+
+
+ResourceQuotaRule defines a named ResourceQuota specification generated by a
+Tenant rule. Name is the durable identity of the generated
+GlobalResourceQuota and must be unique across all rules of a Tenant.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name is the stable identity of this quota within the Tenant. Changing the<br>name replaces the generated GlobalResourceQuota; changing the quota or its<br>namespace selector updates the existing object. | true |
+| **hard** | map[string]int or string | hard is the set of desired hard limits for each named resource.<br>More info: https://kubernetes.io/docs/concepts/policy/resource-quotas/ | false |
+| **[scopeSelector](#rulestatusstatusrulesindexquotaindexscopeselector)** | object | scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota<br>but expressed using ScopeSelectorOperator in combination with possible values.<br>For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched. | false |
+| **scopes** | []string | A collection of filters that must match each object tracked by a quota.<br>If not specified, the quota matches all objects. | false |
+
+
+### RuleStatus.status.rules[index].quota[index].scopeSelector
+
+
+
+scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota
+but expressed using ScopeSelectorOperator in combination with possible values.
+For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulesindexquotaindexscopeselectormatchexpressionsindex)** | []object | A list of scope selector requirements by scope of the resources. | false |
+
+
+### RuleStatus.status.rules[index].quota[index].scopeSelector.matchExpressions[index]
+
+
+
+A scoped-resource selector requirement is a selector that contains values, a scope name, and an operator
+that relates the scope name and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **operator** | string | Represents a scope's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. | true |
+| **scopeName** | string | The name of the scope that the selector applies to. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty.<br>This array is replaced during a strategic merge patch. | false |
 
 ## TenantOwner
 
@@ -2128,7 +3274,7 @@ TenantOwner is the Schema for the tenantowners API.
 | **kind** | string | TenantOwner | true |
 | **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
 | **[spec](#tenantownerspec)** | object | spec defines the desired state of TenantOwner. | true |
-| **status** | object | status defines the observed state of TenantOwner. | false |
+| **[status](#tenantownerstatus)** | object | status defines the observed state of TenantOwner. | false |
 
 
 ### TenantOwner.spec
@@ -2140,10 +3286,41 @@ spec defines the desired state of TenantOwner.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **aggregate** | boolean | Adds the given subject as capsule user. When enabled this subject does not have to be<br>mentioned in the CapsuleConfiguration as Capsule User. In almost all scenarios Tenant Owners<br>must be Capsule Users.<br/>*Default*: true<br/> | true |
 | **kind** | enum | Kind of entity. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
 | **name** | string | Name of the entity. | true |
+| **aggregate** | boolean | Adds the given subject as capsule user. When enabled this subject does not have to be<br>mentioned in the CapsuleConfiguration as Capsule User. In almost all scenarios Tenant Owners<br>must be Capsule Users.<br/>*Default*: true<br/> | false |
 | **clusterRoles** | []string | Defines additional cluster-roles for the specific Owner.<br/>*Default*: [admin capsule-namespace-deleter]<br/> | false |
+
+
+### TenantOwner.status
+
+
+
+status defines the observed state of TenantOwner.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[conditions](#tenantownerstatusconditionsindex)** | []object | Conditions contains the reconciliation conditions for this TenantOwner. | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
+| **tenants** | []string | Tenants lists the names of all Tenants that this TenantOwner is currently matched to<br>via the Tenant's spec.permissions.matchOwners selectors. | false |
+
+
+### TenantOwner.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
 
 ## TenantResource
 
@@ -2237,8 +3414,8 @@ the declared items for the replication
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **apiVersion** | string | API version of the referent. | true |
-| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
+| **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
+| **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
 | **index** | string | Index to mount the resource in the template context | false |
 | **name** | string | Name of the values referent. This is useful<br>when you traying to get a specific resource | false |
 | **namespace** | string | Namespace of the values referent. | false |
@@ -2325,8 +3502,8 @@ Reference
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **apiVersion** | string | API version of the referent. | true |
-| **kind** | string | Kind of the referent.<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds | true |
+| **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
+| **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
 | **name** | string | Name of the values referent. This is useful<br>when you traying to get a specific resource | false |
 | **namespace** | string | Namespace of the values referent. | false |
 | **optional** | boolean | Only relevant if name is set. If an item is not optional, there will be an error thrown when it does not exist<br/>*Default*: true<br/> | false |
@@ -2410,6 +3587,7 @@ TenantResourceStatus defines the observed state of TenantResource.
 | :---- | :---- | :----------- | :-------- |
 | **size** | integer | How many items are being replicated by the TenantResource. | true |
 | **[conditions](#tenantresourcestatusconditionsindex)** | []object | Condition of the GlobalTenantResource. | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 | **[processedItems](#tenantresourcestatusprocesseditemsindex)** | []object | List of the replicated resources for the given TenantResource. | false |
 | **[serviceAccount](#tenantresourcestatusserviceaccount)** | object | Serviceaccount used for impersonation | false |
 
@@ -2461,6 +3639,7 @@ Advanced Status Item for pin pointing items in tenants/namespaces.
 | :---- | :---- | :----------- | :-------- |
 | **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
 | **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **clusterScoped** | boolean | Indicates whether the referenced resource is cluster-scoped. | false |
 | **created** | boolean | Indicates wether the resource was created or adopted | false |
 | **lastApply** | string | An opaque value that represents the internal version of this object that can<br>be used by clients to determine when objects have changed. May be used for optimistic<br>concurrency, change detection, and the watch operation on a resource or set of resources.<br>Clients must treat these values as opaque and passed unmodified back to the server.<br>They may only be valid for a particular resource or set of resources.<br><br>Populated by the system.<br>Read-only.<br>Value must be treated as opaque by clients and .<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency<br/>*Format*: date-time<br/> | false |
 | **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | false |
@@ -2541,7 +3720,7 @@ TenantSpec defines the desired state of Tenant.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **clusterRoleName** | string |  | true |
-| **[subjects](#tenantspecadditionalrolebindingsindexsubjectsindex-1)** | []object | kubebuilder:validation:Minimum=1 | true |
+| **[subjects](#tenantspecadditionalrolebindingsindexsubjectsindex-1)** | []object |  | true |
 | **annotations** | map[string]string | Additional Annotations for the synchronized rolebindings | false |
 | **labels** | map[string]string | Additional Labels for the synchronized rolebindings | false |
 
@@ -3377,9 +4556,24 @@ Rules Distributed via Tenants
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[audience](#tenantspecrulesindexaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#tenantspecrulesindexenforce)** | object | Enforcement for given rule | false |
 | **[namespaceSelector](#tenantspecrulesindexnamespaceselector)** | object | Select namespaces which are going to be targeted with this rule | false |
 | **[permissions](#tenantspecrulesindexpermissions)** | object | Permissions for given rule | false |
+| **[quota](#tenantspecrulesindexquotaindex)** | []object | Quota contains native Kubernetes ResourceQuota specifications shared by<br>all namespaces selected by this rule. Unlike Enforce, quota accounting is<br>independent of the request audience. | false |
+
+
+### Tenant.spec.rules[index].audience[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | <br/>*Enum*: User, Group, ServiceAccount, Custom<br/> | true |
+| **name** | string |  | true |
 
 
 ### Tenant.spec.rules[index].enforce
@@ -3391,10 +4585,57 @@ Enforcement for given rule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[registries](#tenantspecrulesindexenforceregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[ingress](#tenantspecrulesindexenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
+| **[metadata](#tenantspecrulesindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
+| **[services](#tenantspecrulesindexenforceservices)** | object | Enforcement for Services. | false |
+| **[workloads](#tenantspecrulesindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
 
 
-### Tenant.spec.rules[index].enforce.registries[index]
+### Tenant.spec.rules[index].enforce.ingress
+
+
+
+Enforcement for Ingress and Gateway API resource hostnames.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[hostnames](#tenantspecrulesindexenforceingresshostnamesindex)** | []object | Hostnames defines allowed, denied, or audited hostname expressions.<br>A resource targeted by an allow or deny rule must declare non-empty values<br>in all hostname fields. Audit-only rules record missing hostnames without<br>denying them. | false |
+| **types** | []enum | Types defines the resource kinds to which hostname enforcement applies.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.ingress.hostnames[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.metadata[index]
+
+
+
+MetadataRule defines metadata constraints for namespaced resources.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kinds** | []string | Kinds of the referents.<br><br>Use "*" to match all kinds. | true |
+| **[annotations](#tenantspecrulesindexenforcemetadataindexannotationskey)** | map[string]object | Annotations defines metadata policies by annotation key. | false |
+| **apiGroups** | []string | API groups or API group/version selectors of the referents.<br><br>Empty or omitted APIGroups means the core Kubernetes API version "v1".<br>Use "*" to match all API groups and versions.<br><br>Examples:<br>- [] or [""] means core "v1".<br>- ["v1"] means core "v1".<br>- ["apps"] means any version in the "apps" API group.<br>- ["apps/v1"] means only "apps/v1".<br>- ["apps", "batch/v1"] means any "apps" version and "batch/v1".<br>- ["*"] means all API groups and versions. | false |
+| **[labels](#tenantspecrulesindexenforcemetadataindexlabelskey)** | map[string]object | Labels defines metadata policies by label key. | false |
+
+
+### Tenant.spec.rules[index].enforce.metadata[index].annotations[key]
 
 
 
@@ -3403,9 +4644,179 @@ Enforcement for given rule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **url** | string | OCI Registry endpoint, is treated as regular expression. | true |
+| **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#tenantspecrulesindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+
+
+### Tenant.spec.rules[index].enforce.metadata[index].annotations[key].values[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.metadata[index].labels[key]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#tenantspecrulesindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+
+
+### Tenant.spec.rules[index].enforce.metadata[index].labels[key].values[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.services
+
+
+
+Enforcement for Services.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[externalNames](#tenantspecrulesindexenforceservicesexternalnames)** | object | ExternalNames defines additional constraints for Services of type ExternalName. | false |
+| **[loadBalancers](#tenantspecrulesindexenforceservicesloadbalancers)** | object | LoadBalancers defines additional constraints for Services of type LoadBalancer. | false |
+| **[nodePorts](#tenantspecrulesindexenforceservicesnodeports)** | object | NodePorts defines additional constraints for nodePort values. | false |
+| **types** | []enum | Types defines the Service types matched by this rule.<br><br>Supported values:<br>- ClusterIP<br>- NodePort<br>- LoadBalancer<br>- ExternalName<br/>*Enum*: ClusterIP, NodePort, LoadBalancer, ExternalName<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.services.externalNames
+
+
+
+ExternalNames defines additional constraints for Services of type ExternalName.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[hostnames](#tenantspecrulesindexenforceservicesexternalnameshostnamesindex)** | []object | Hostnames restricts spec.externalName.<br>Empty means no additional hostname restriction once ExternalName is allowed by types. | false |
+
+
+### Tenant.spec.rules[index].enforce.services.externalNames.hostnames[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.services.loadBalancers
+
+
+
+LoadBalancers defines additional constraints for Services of type LoadBalancer.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs restricts spec.loadBalancerIP and spec.loadBalancerSourceRanges.<br>Empty means no additional CIDR restriction once LoadBalancer is allowed by types. | false |
+
+
+### Tenant.spec.rules[index].enforce.services.nodePorts
+
+
+
+NodePorts defines additional constraints for nodePort values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[ports](#tenantspecrulesindexenforceservicesnodeportsportsindex)** | []object | Ports restricts explicitly requested nodePort values.<br>Empty means no additional port restriction once NodePort is allowed by types. | false |
+
+
+### Tenant.spec.rules[index].enforce.services.nodePorts.ports[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **from** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
+| **to** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
+
+
+### Tenant.spec.rules[index].enforce.workloads
+
+
+
+Enforcement for Workloads (Pods)
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
+| **[registries](#tenantspecrulesindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
+| **[schedulers](#tenantspecrulesindexenforceworkloadsschedulersindex)** | []object | Schedulers defines schedulerName matchers for Pod admission.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
+| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.registries[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
-| **validation** | []enum | Requesting Resources<br/>*Enum*: pod/images, pod/volumes<br/>*Default*: [pod/images pod/volumes]<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.schedulers[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
 ### Tenant.spec.rules[index].namespaceSelector
@@ -3445,10 +4856,42 @@ Permissions for given rule
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[rules](#tenantspecrulesindexpermissionsrulesindex)** | []object | Define Promotion Rules which distributed additional ClusterRoles across the Tenant<br>for promoted ServiceAccounts. | false |
+| **[bindings](#tenantspecrulesindexpermissionsbindingsindex)** | []object | Bindings defines additional RoleBindings for namespaces selected by this rule. | false |
+| **[promotions](#tenantspecrulesindexpermissionspromotionsindex)** | []object | Define Promotion Rules which distributed additional ClusterRoles across the Tenant<br>for promoted ServiceAccounts. | false |
 
 
-### Tenant.spec.rules[index].permissions.rules[index]
+### Tenant.spec.rules[index].permissions.bindings[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **clusterRoleName** | string |  | true |
+| **[subjects](#tenantspecrulesindexpermissionsbindingsindexsubjectsindex)** | []object |  | true |
+| **annotations** | map[string]string | Additional Annotations for the synchronized rolebindings | false |
+| **labels** | map[string]string | Additional Labels for the synchronized rolebindings | false |
+
+
+### Tenant.spec.rules[index].permissions.bindings[index].subjects[index]
+
+
+
+Subject contains a reference to the object or user identities a role binding applies to.  This can either hold a direct API object reference,
+or a value for non-objects such as user and group names.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | string | Kind of object being referenced. Values defined by this API group are "User", "Group", and "ServiceAccount".<br>If the Authorizer does not recognized the kind value, the Authorizer should report an error. | true |
+| **name** | string | Name of the object being referenced. | true |
+| **apiGroup** | string | APIGroup holds the API group of the referenced subject.<br>Defaults to "" for ServiceAccount subjects.<br>Defaults to "rbac.authorization.k8s.io" for User and Group subjects. | false |
+| **namespace** | string | Namespace of the referenced object.  If the object kind is non-namespace, such as "User" or "Group", and this value is not empty<br>the Authorizer should report an error. | false |
+
+
+### Tenant.spec.rules[index].permissions.promotions[index]
 
 
 
@@ -3458,10 +4901,10 @@ Permissions for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **clusterRoles** | []string | ClusterRoles granted to the promoted ServiceAccounts across the Tenant<br>kubebuilder:validation:Minimum=1 | false |
-| **[selector](#tenantspecrulesindexpermissionsrulesindexselector)** | object | Match ServiceAccounts which are promoted which are granted these additional ClusterRoles<br>across the Tenant | false |
+| **[selector](#tenantspecrulesindexpermissionspromotionsindexselector)** | object | Match ServiceAccounts which are promoted which are granted these additional ClusterRoles<br>across the Tenant | false |
 
 
-### Tenant.spec.rules[index].permissions.rules[index].selector
+### Tenant.spec.rules[index].permissions.promotions[index].selector
 
 
 
@@ -3471,11 +4914,11 @@ across the Tenant
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[matchExpressions](#tenantspecrulesindexpermissionsrulesindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **[matchExpressions](#tenantspecrulesindexpermissionspromotionsindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
 | **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
 
 
-### Tenant.spec.rules[index].permissions.rules[index].selector.matchExpressions[index]
+### Tenant.spec.rules[index].permissions.promotions[index].selector.matchExpressions[index]
 
 
 
@@ -3488,6 +4931,52 @@ relates the key and values.
 | **key** | string | key is the label key that the selector applies to. | true |
 | **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
 | **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### Tenant.spec.rules[index].quota[index]
+
+
+
+ResourceQuotaRule defines a named ResourceQuota specification generated by a
+Tenant rule. Name is the durable identity of the generated
+GlobalResourceQuota and must be unique across all rules of a Tenant.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name is the stable identity of this quota within the Tenant. Changing the<br>name replaces the generated GlobalResourceQuota; changing the quota or its<br>namespace selector updates the existing object. | true |
+| **hard** | map[string]int or string | hard is the set of desired hard limits for each named resource.<br>More info: https://kubernetes.io/docs/concepts/policy/resource-quotas/ | false |
+| **[scopeSelector](#tenantspecrulesindexquotaindexscopeselector)** | object | scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota<br>but expressed using ScopeSelectorOperator in combination with possible values.<br>For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched. | false |
+| **scopes** | []string | A collection of filters that must match each object tracked by a quota.<br>If not specified, the quota matches all objects. | false |
+
+
+### Tenant.spec.rules[index].quota[index].scopeSelector
+
+
+
+scopeSelector is also a collection of filters like scopes that must match each object tracked by a quota
+but expressed using ScopeSelectorOperator in combination with possible values.
+For a resource to match, both scopes AND scopeSelector (if specified in spec), must be matched.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecrulesindexquotaindexscopeselectormatchexpressionsindex)** | []object | A list of scope selector requirements by scope of the resources. | false |
+
+
+### Tenant.spec.rules[index].quota[index].scopeSelector.matchExpressions[index]
+
+
+
+A scoped-resource selector requirement is a selector that contains values, a scope name, and an operator
+that relates the scope name and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **operator** | string | Represents a scope's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. | true |
+| **scopeName** | string | The name of the scope that the selector applies to. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty.<br>This array is replaced during a strategic merge patch. | false |
 
 
 ### Tenant.spec.runtimeClasses
@@ -3652,6 +5141,7 @@ Returns the observed state of the Tenant.
 | **state** | enum | The operational state of the Tenant. Possible values are "Active", "Cordoned" or "Terminating".<br/>*Enum*: Cordoned, Active, Terminating<br/>*Default*: Active<br/> | true |
 | **[classes](#tenantstatusclasses)** | object | Available Class Types within Tenant | false |
 | **namespaces** | []string | <span style="color:red;font-weight:bold">List of namespaces assigned to the Tenant. (Deprecated)</span> | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 | **[owners](#tenantstatusownersindex)** | []object | Collected owners for this tenant | false |
 | **[promotions](#tenantstatuspromotionsindex)** | []object | Promoted ServiceAccounts across the Tenant | false |
 | **[spaces](#tenantstatusspacesindex)** | []object | Tracks state for the namespaces associated with this tenant | false |
@@ -3773,9 +5263,10 @@ Managed Metadata
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **url** | string | OCI Registry endpoint, is treated as regular expression. | true |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
-| **validation** | []enum | Requesting Resources<br/>*Enum*: pod/images, pod/volumes<br/>*Default*: [pod/images pod/volumes]<br/> | false |
 
 
 ### Tenant.status.spaces[index].metadata
@@ -3879,7 +5370,7 @@ TenantSpec defines the desired state of Tenant.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **clusterRoleName** | string |  | true |
-| **[subjects](#tenantspecadditionalrolebindingsindexsubjectsindex)** | []object | kubebuilder:validation:Minimum=1 | true |
+| **[subjects](#tenantspecadditionalrolebindingsindexsubjectsindex)** | []object |  | true |
 | **annotations** | map[string]string | Additional Annotations for the synchronized rolebindings | false |
 | **labels** | map[string]string | Additional Labels for the synchronized rolebindings | false |
 

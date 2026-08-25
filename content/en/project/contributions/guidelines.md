@@ -15,13 +15,13 @@ Versions follow [Semantic Versioning](https://semver.org/) terminology and are e
 
 Security fixes, may be backported to the three most recent minor releases, depending on severity and feasibility.
 
-Prereleases are marked as `-rc.x` (release candidate) and may refere to any type of version bump.
+Prereleases are marked as `-rc.x` (release candidate) and may refer to any type of version bump.
 
 ## Pull Requests
 
 The pull request title is checked according to the described [semantics](#semantics) (pull requests don't require a scope). However pull requests are currently not used to generate the changelog. Check if your pull requests body meets the following criteria:
 
-- reference a previously opened issue: https://docs.github.com/en/github/writing-on-github/autolinked-references-and-urls#issues-and-pull-requests 
+- reference a previously opened issue: https://docs.github.com/en/github/writing-on-github/autolinked-references-and-urls#issues-and-pull-requests
 - splitting changes into several and documented small commits
 - limit the git subject to 50 characters and write as the continuation of the
   sentence "If applied, this commit will ..."
@@ -80,7 +80,7 @@ To reorganise your commits, do the following (or use your way of doing it):
 
 
 1. Pull upstream changes
-   
+
 ```bash
 git remote add upstream git@github.com:projectcapsule/capsule.git
 git pull upstream main
@@ -160,7 +160,7 @@ The semantics should indicate the change and it's impact. The general format for
 The following types are allowed for commits and pull requests:
 
   * `chore`: housekeeping changes, no production code change
-  * `ci`: changes to buillding process/workflows
+  * `ci`: changes to building process/workflows
   * `docs`: changes to documentation
   * `feat`: new features
   * `fix`: bug fixes

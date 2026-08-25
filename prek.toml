@@ -1,0 +1,37 @@
+[[repos]]
+repo = "https://github.com/pre-commit/pre-commit-hooks"
+rev = "v6.0.0"
+hooks = [
+  { id = "check-executables-have-shebangs", files = "^content/", exclude = "^content/en/docs/(proxy/)?reference\\.md$" },
+  { id = "end-of-file-fixer", files = "^content/", exclude = "^content/en/docs/(proxy/)?reference\\.md$" },
+  { id = "trailing-whitespace", files = "^content/", exclude = "^content/en/docs/(proxy/)?reference\\.md$" },
+  { id = "check-yaml", files = "^content/", exclude = "^content/en/docs/(proxy/)?reference\\.md$" },
+  { id = "check-merge-conflict", files = "^content/", exclude = "^content/en/docs/(proxy/)?reference\\.md$" },
+]
+
+[[repos]]
+repo = "https://github.com/adrienverge/yamllint"
+rev = "v1.38.0"
+hooks = [
+  { id = "yamllint", files = "^content/", exclude = "^content/en/docs/(proxy/)?reference\\.md$" },
+]
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "lychee"
+name = "Check links with lychee"
+entry = "scripts/lychee.sh"
+args = ["--config", "config/lychee.toml", "--max-concurrency", "2", "--accept", "200,429", "--timeout", "60", "./content"]
+language = "system"
+stages = ["pre-push"]
+pass_filenames = false
+
+[[repos.hooks]]
+id = "apidocs-check"
+name = "Check API docs are up to date"
+entry = "scripts/apidocs-check.sh"
+language = "system"
+stages = ["pre-push"]
+pass_filenames = false

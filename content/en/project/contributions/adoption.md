@@ -11,13 +11,13 @@ Have your tried Capsule or are you using it in your project or company? Please c
 In the [adopters.yaml](https://github.com/projectcapsule/capsule/blob/main/ADOPTERS.md) file you can add yourself as an adopter of the project. You just need to add an entry for your company and upon merging it will automatically be added to our website. To add your organization follow these steps:
 
   1. Fork the [projectcapsule/capsule](https://github.com/projectcapsule/website/fork) project to your personal space.
-  
+
   2. Clone it locally with `git clone https://github.com/<YOUR-GH-USERNAME>/capsule.git`.
 
   3. We prefer using the logo from an upstream resource instead of collecting logos. If you don't have a logo to provide you will get a default logo.
 
   4. Open  `docs/data/adopters.yaml` file and add your organization to the list. The file is in the following format:
-  
+
     ```yaml
       # Company/Project Name
     - name: "Adopter Name"
@@ -34,5 +34,5 @@ In the [adopters.yaml](https://github.com/projectcapsule/capsule/blob/main/ADOPT
   2. Push the commit with `git push origin main`.
 
   3. Open a Pull Request to [projectcapsule/capsule](https://github.com/projectcapsule/capsule/pulls) and a preview build will turn up.
-  
+
 Thanks a lot for being part of our community - we very much appreciate it!

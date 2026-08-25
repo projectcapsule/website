@@ -1,0 +1,113 @@
+name: Sync version switcher
+permissions: {}
+
+# Triggered automatically when params.yaml changes on main (i.e. a new release
+# is cut or the version switcher is edited), or manually for one-off runs.
+#
+# config/_default/params.yaml on main declares the desired version switcher.
+# This workflow opens (or updates) a PR against every release/<x.y> branch
+# replacing the branch's copy of the file, with the branch's own version and
+# archived flag stamped in. Replacing the whole file makes the sync
+# convergent: a branch that missed a run is healed on the next one.
+on:
+  push:
+    branches: [main]
+    paths: ['config/_default/params.yaml']
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    name: Sync version switcher
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Open PRs for all release branches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          REPO="${GITHUB_REPOSITORY}"
+          DESIRED_FILE=$(mktemp)
+
+          # Find all versioned release branches (release/x.y), skip preview branches
+          mapfile -t branches < <(git ls-remote --heads origin 'release/*' | sed 's|.*refs/heads/||')
+
+          for branch in "${branches[@]}"; do
+            if [[ ! $branch =~ ^release/[0-9]+\.[0-9]+$ ]]; then
+              echo "$branch: does not match release/<x.y>, skipping"
+              continue
+            fi
+            echo "::group::$branch"
+
+            # Desired file for this branch: main's copy with the branch's own
+            # version stamped in. Always archived: main serves the latest at
+            # the apex, so every branch copy is an archived snapshot.
+            export VERSION="v${branch#release/}"
+            cp config/_default/params.yaml "$DESIRED_FILE"
+            yq -i '
+                .version = strenv(VERSION)
+              | .version_menu = strenv(VERSION)
+              | .archived_version = true
+            ' "$DESIRED_FILE"
+
+            # Skip the branch if its copy already matches (e.g. the sync PR
+            # was merged). Every release branch must have the file; if one
+            # does not, this fails the run rather than papering over it.
+            EXISTING=$(gh api "repos/${REPO}/contents/config/_default/params.yaml?ref=${branch}")
+            if jq -r '.content' <<< "$EXISTING" | base64 -d | cmp -s - "$DESIRED_FILE"; then
+              echo "Already in desired state, skipping ${branch}"
+              echo "::endgroup::"
+              continue
+            fi
+
+            WORK_BRANCH="chore/sync-version-switcher-${branch//\//-}"
+
+            # --- API-based commit (GitHub auto-verifies; no GPG key needed) ---
+
+            # Point the work branch at the release branch HEAD, creating it if needed
+            BASE_SHA=$(gh api "repos/${REPO}/branches/${branch}" --jq '.commit.sha')
+            if git ls-remote --exit-code origin "refs/heads/${WORK_BRANCH}" > /dev/null 2>&1; then
+              gh api --silent "repos/${REPO}/git/refs/heads/${WORK_BRANCH}" \
+                -X PATCH -f sha="$BASE_SHA" -F force=true
+            else
+              gh api --silent "repos/${REPO}/git/refs" \
+                -f ref="refs/heads/${WORK_BRANCH}" \
+                -f sha="$BASE_SHA"
+            fi
+
+            # Build commit message with Signed-off-by for DCO
+            COMMIT_MSG=$(printf 'chore: sync version switcher from main\n\nSigned-off-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>')
+
+            # Commit the desired file (GitHub signs API commits automatically → Verified)
+            gh api --silent -X PUT "repos/${REPO}/contents/config/_default/params.yaml" \
+              -f branch="$WORK_BRANCH" \
+              -f message="$COMMIT_MSG" \
+              -f content="$(base64 -w 0 "$DESIRED_FILE")" \
+              -f sha="$(jq -r '.sha' <<< "$EXISTING")"
+
+            # Open a PR unless one is already open (re-runs update the same PR)
+            OPEN_PRS=$(gh pr list --repo "$REPO" --base "$branch" --head "$WORK_BRANCH" \
+              --state open --json number --jq 'length')
+            if [[ $OPEN_PRS -eq 0 ]]; then
+              gh pr create \
+                --repo "$REPO" \
+                --base "$branch" \
+                --head "$WORK_BRANCH" \
+                --title "chore: sync version switcher in ${branch}" \
+                --body "Automated PR: syncs the version switcher from \`config/_default/params.yaml\` on main, stamping this branch's version. Triggered by: ${{ github.event_name }} (${{ github.sha }})"
+              echo "Opened PR: ${WORK_BRANCH} -> ${branch}"
+            else
+              echo "Updated PR branch: ${WORK_BRANCH}"
+            fi
+
+            echo "::endgroup::"
+          done

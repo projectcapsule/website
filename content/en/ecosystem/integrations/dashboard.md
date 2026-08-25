@@ -17,7 +17,7 @@ This guide describes how to integrate the [Kubernetes Dashboard](https://kuberne
 
 ## OIDC Authentication
 
-Your cluster must also be configured to use [OIDC Authentication](/docs/operating/authentication#oidc) for seemless Kubernetes RBAC integration. In a such scenario, you should have in the kube-apiserver.yaml manifest the following content:
+Your cluster must also be configured to use [OIDC Authentication](/docs/operating/setup/authentication#oidc) for seamless Kubernetes RBAC integration. In a such scenario, you should have in the kube-apiserver.yaml manifest the following content:
 
 ```yaml
 spec:
@@ -78,7 +78,7 @@ helm install oauth2-proxy oauth2-proxy/oauth2-proxy -n ${KUBERNETES_DASHBOARD_NA
 
 ## Configuring Keycloak
 
-The Kubernetes cluster must be configured with a valid OIDC provider: for our guide, we're giving for granted that Keycloak is used, if you need more info please follow the [OIDC Authentication](/docs/operating/authentication#oidc) section.
+The Kubernetes cluster must be configured with a valid OIDC provider: for our guide, we're giving for granted that Keycloak is used, if you need more info please follow the [OIDC Authentication](/docs/operating/setup/authentication#oidc) section.
 
 In a such scenario, you should have in the `kube-apiserver.yaml` manifest the following content:
 ```yaml
@@ -166,4 +166,3 @@ Now you can install the Kubernetes Dashboard:
 helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
 helm install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard -n ${KUBERNETES_DASHBOARD_NAMESPACE} -f values-kubernetes-dashboard.yaml
 ```
-

@@ -12,9 +12,9 @@ In the [addons.yaml](https://github.com/projectcapsule/website/blob/main/data/ad
 
 1. Fork the [projectcapsule/capsule](https://github.com/projectcapsule/capsule/fork) project to your personal space.
 2. Clone it locally with `git clone https://github.com/<YOUR-GH-USERNAME>/capsule.git`.
-3.  We prefer using the logo from an upstream resource instead of collecting logos. If you don't have a logo to provide you will get a default logo. 
+3.  We prefer using the logo from an upstream resource instead of collecting logos. If you don't have a logo to provide you will get a default logo.
 4.  Open  `docs/data/addons.yaml` following format:
-  
+
     ```yaml
       # Addon Name
     - name: "Example Addon"
@@ -28,11 +28,11 @@ In the [addons.yaml](https://github.com/projectcapsule/website/blob/main/data/ad
 
 
     ```
-    
+
     > You can just add to the end of the file, we already sort alphabetically by name of organization.
-    
+
   1. Save the file, then do `git add` -A and commit using `git commit -s -m "chore(docs): add my-addon to addons"` [See our contribution guidelines](/project/contributions/guidelines/).
   2. Push the commit with `git push origin main`.
   3. Open a Pull Request to [projectcapsule/capsule](https://github.com/projectcapsule/capsule/pulls) and a preview build will turn up.
-  
+
   Thanks a lot for being part of our community - we very much appreciate it!

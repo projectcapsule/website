@@ -58,15 +58,110 @@ Perform the following steps to install the Capsule operator:
 
 Here are some key considerations to keep in mind when installing Capsule. Also check out the **[Best Practices](/docs/operating/best-practices)** for more information.
 
-### Strict RBAC
+### Scalability
 
+For large clusters you might need to consider adjusting values for the Capsule controller.
+
+#### QPS/Burst
+
+In order to handle a large number of tenants and resources, you may need to increase the QPS and Burst values for the Capsule controller. This avoids the controller being throttled by the Kubernetes API server (Client Rate limited). You can set the following values in the Helm chart:
+
+```yaml
+manager:
+  options:
+    clientConnectionQPS: 400
+    clientConnectionBurst: 200
+```
+
+#### Workers
+
+Define the number of workers for the Capsule controller, which translates into the number of concurrent reconciles:
+
+```yaml
+manager:
+  options:
+    workers: 4
+```
+
+#### Cache Synchronisation
+
+The more resources you have in your cluster, the longer it will take for the Capsule controller to sync its cache. You can adjust the cache sync period to a higher value to reduce the load on the API server:
+
+```yaml
+manager:
+  options:
+    cacheSyncTimeout: "10m"
+```
+
+#### Leader Election Timeout
+
+In high pressure environments leader election may fail due to the default timeout values. You can adjust the leader election timeout values to avoid this issue:
+
+```shell
+E0707 08:38:18.319041       1 leaderelection.go:452] "Error retrieving lease lock"
+  err="Get \"https://10.96.0.1:443/apis/coordination.k8s.io/v1/namespaces/capsule-
+  system/leases/42c733ea.clastix.capsule.io?timeout=5s\": net/http: request canceled
+  (Client.Timeout exceeded while awaiting headers)" lock="capsule-
+  system/42c733ea.clastix.capsule.io"
+  I0707 08:38:18.442700       1 leaderelection.go:299] "Failed to renew lease"
+```
+
+Tune leader election with `manager.options.leaderElection.leaseDuration`, `manager.options.leaderElection.renewDeadline`, and `manager.options.leaderElection.retryPeriod`. Increasing these values makes Capsule more tolerant of slow or overloaded Kubernetes API servers; for example, raising `renewDeadline` also raises the leader-election client request timeout because controller-runtime uses roughly half of that value. The tradeoff is slower failover: if the active controller really dies, standby replicas will wait longer before taking leadership. Keep the ordering valid: `leaseDuration` should be greater than `renewDeadline`, and `renewDeadline` should be greater than `retryPeriod`.
+
+```yaml
+manager:
+  options:
+    leaderElection:
+      leaseDuration: "60s"
+      renewDeadline: "40s"
+      retryPeriod: "5s"
+```
+
+Worst-case leader failover is slower, around 60s, if the active pod really dies. Keep `manager.options.leaderElection.leaseDuration` > `manager.options.leaderElection.renewDeadline` > `manager.options.leaderElection.retryPeriod`.
+
+#### API Priority and Fairness (APF)
+
+With APF enabled, the Capsule controller will be subject to the APF configuration of the cluster. If you are running a large cluster with many tenants, you may need to adjust the APF configuration to ensure that the Capsule controller has sufficient resources to operate effectively. For more information on APF, see [Kubernetes API Priority and Fairness](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/apiserver-aggregation/#api-priority-and-fairness).
+
+We provide a built-in APF configuration for the Capsule controller, which provides API priority for all resources managed by Capsule. This configuration is applied automatically when you install Capsule. To enable the built-in APF configuration, set the following value in the Helm chart:
+
+```yaml
+# Manager Options
+manager:
+  apiPriorityAndFairness:
+    # -- Change to `true` if you want to insulate the API calls made by Capsule admission controller activities.
+    # This will help ensure Capsule stability in busy clusters.
+    # Ref: https://kubernetes.io/docs/concepts/cluster-administration/flow-control/
+    enabled: true
+
+    # -- Only the first matching FlowSchema for a given request matters. If multiple FlowSchemas match a single inbound request, it will be assigned based on the one with the highest matchingPrecedence.
+    # Ref: https://kubernetes.io/docs/concepts/cluster-administration/flow-control/#flowschema
+    matchingPrecedence: 900
+
+    # -- Priority level configuration.
+    # The block is directly forwarded into the priorityLevelConfiguration, so you can use whatever specification you want.
+    # ref: https://kubernetes.io/docs/concepts/cluster-administration/flow-control/#prioritylevelconfiguration
+    priorityLevelConfigurationSpec:
+      type: Limited
+      limited:
+          nominalConcurrencyShares: 100
+          limitResponse:
+            type: Queue
+            queuing:
+              queues: 64
+              handSize: 6
+              queueLengthLimit: 100
+```
+
+
+### Strict RBAC
 
 {{% alert title="Attention" color="warning" %}}
 Ensure to first upgrade to version `0.13.0` of capsule before enabling strict mode. As it requires fields which are newly added with version `0.13.0`.
 {{% /alert %}}
 
 
-By default, the Capsule controller runs with the ClusterRole `cluster-admin`, which provides full access to the cluster. This is because the controller itself must grant RoleBindings on a per-namespace basis that by default reference the ClusterRole `admin`, which needs to at least match the permissions of the controller itself. However, for production environments we recommend configuring stricter RBAC permissions for the Capsule controller. You can enable the minimal required permissions by setting the following value in the Helm chart:
+By default, the Capsule controller runs with the ClusterRole `cluster-admin`, which provides full access to the cluster. This is because the controller must be able to grant RoleBindings on a per-namespace basis: Kubernetes [prevents privilege escalation through RBAC](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#privilege-escalation-prevention-and-bootstrapping), so a RoleBinding referencing a ClusterRole can only be created by a subject that either already holds all permissions of that ClusterRole or holds the `bind` verb on it. For production environments we recommend configuring stricter RBAC permissions for the Capsule controller by setting the following value in the Helm chart:
 
 ```yaml
 manager:
@@ -74,28 +169,78 @@ manager:
     strict: true
 ```
 
-This grants the controller the minimal permissions required for its own operation. However, that alone is not sufficient for it to function properly. The ClusterRole for the controller allows aggregating further permissions to it via the following labels:
+This replaces the `cluster-admin` binding with a ClusterRole that grants the controller only the permissions required for its own operation (`manager.rbac.minimal` is a deprecated alias for this option; both flags enable the same behavior). To satisfy the escalation prevention described above, this ClusterRole contains the narrow `bind` verb on the ClusterRoles listed in `manager.rbac.bindableClusterRoles` (default: `admin`) plus the ClusterRoles managed by Capsule itself (the `manager.options.rbac` provisioner, deleter, `administrationClusterRoles` and `promotionClusterRoles`), which are always bindable. With default values this renders as:
+
+```yaml
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["clusterroles"]
+  resourceNames: ["admin", "capsule-namespace-deleter", "capsule-namespace-provisioner"]
+  verbs: ["bind"]
+```
+
+Tenant owner RoleBindings for the default ClusterRoles therefore work out of the box, without the controller inheriting all of `admin`'s permissions.
+
+{{% alert title="Chart versions v0.13.11 and earlier" color="warning" %}}
+On older chart versions strict mode is only enabled via `manager.rbac.minimal: true` (`manager.rbac.strict` had no effect there), and the controller ClusterRole includes neither the `bind` rule above nor `create` on NetworkPolicies, which [GlobalTenantResource](/docs/replications/global/) propagation requires. Add both via Helm values:
+
+    manager:
+      rbac:
+        minimal: true
+        clusterRole:
+          extraResources:
+            - apiGroups: ["rbac.authorization.k8s.io"]
+              resources: ["clusterroles"]
+              resourceNames: ["admin", "capsule-namespace-provisioner", "capsule-namespace-deleter"]
+              verbs: ["bind"]
+            - apiGroups: ["networking.k8s.io"]
+              resources: ["networkpolicies"]
+              verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
+
+Or aggregate the full `admin` ClusterRole to the controller — note that the controller then holds all of `admin`'s permissions:
+
+    kubectl label clusterrole admin projectcapsule.dev/aggregate-to-controller=true
+{{% /alert %}}
+
+Any further ClusterRole that is assigned to [Tenant owners](/docs/tenants/permissions/#owner-roles) or used for [additional RoleBindings](/docs/tenants/permissions/#strict) needs the same treatment. This applies only to ClusterRoles that are not managed by Capsule (see [Configuration](/docs/operating/setup/configuration/#rbac)). The narrowest option is adding it to `manager.rbac.bindableClusterRoles` — note that the list replaces the default, so keep `admin` in it:
+
+```yaml
+manager:
+  rbac:
+    strict: true
+    bindableClusterRoles:
+      - admin
+      - prometheus-servicemonitors-viewer
+```
+
+Alternatively, you can aggregate the permissions of further ClusterRoles into the controller. The ClusterRole for the controller aggregates all ClusterRoles carrying one of the following labels:
 
 * `projectcapsule.dev/aggregate-to-controller: "true"`
 * `projectcapsule.dev/aggregate-to-controller-instance: {{ .Release.Name }}`
-
-In other words, you must aggregate all ClusterRoles that are assigned to [Tenant owners](/docs/tenants/permissions/#owner-roles) or used for [additional RoleBindings](/docs/tenants/permissions/#strict). This applies only to ClusterRoles that are not managed by Capsule (see [Configuration](/docs/operating/setup/configuration/#rbac)). By default, the only such ClusterRole granted to owners is `admin` (not managed by Capsule).
-
-```bash
-kubectl label clusterrole admin projectcapsule.dev/aggregate-to-controller=true
-```
-
-Verify that the label has been applied:
 
 ```yaml
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: admin
+  name: prometheus-servicemonitors-viewer
   labels:
     projectcapsule.dev/aggregate-to-controller: "true"
 rules:
 ...
+```
+
+This is broader than `bind` — the controller then actually holds these permissions. It is required whenever the controller must exercise the permissions itself, for example when replicating resources via [TenantResources](/docs/replications/tenant/) without impersonation.
+
+You can also directly grant arbitrary additional permissions via Helm values:
+
+```yaml
+manager:
+  rbac:
+    strict: true
+    clusterRole:
+      extraResources:
+        - apiGroups: ["storage.k8s.io"]
+          resources: ["storageclasses"]
+          verbs: ["get", "list", "watch", "update", "patch"]
 ```
 
 If you are missing permissions you will see an error status for the respective tenants reflecting
@@ -107,23 +252,15 @@ green   Active                     2                                 False   can
 
 ```
 
-Alternatively, you can enable only the minimal required permissions by setting the following value in the Helm chart:
-
-```yaml
-manager:
-  rbac:
-    minimal: true
-```
-
-Before you enable this option, you must implement the required permissions for your use case. Depending on which features you are using, you may need to take manual action, for example:
+Before you enable strict mode, you must implement the required permissions for your use case. Depending on which features you are using, you may need to take manual action, for example:
 
 * [Migrate additional RoleBindings](/docs/tenants/permissions/#strict)
-
-
+* [Migrate `TenantResources` to use impersonation](/docs/replications/tenant/#impersonation)
+* [Migrate `GlobalTenantResources` to use impersonation](/docs/replications/global/#impersonation)
 
 ### Admission Policies
 
-While Capsule provides a robust framework for managing multi-tenancy in Kubernetes, it does not include built-in admission policies for enforcing specific security or operational standards for all possible aspects of a Kubernetes cluster.  [We provide additional policy recommendations here](/docs/operating/admission-policies/).
+While Capsule provides a robust framework for managing multi-tenancy in Kubernetes, it does not include built-in admission policies for enforcing specific security or operational standards for all possible aspects of a Kubernetes cluster.  [We provide additional policy recommendations here](/docs/operating/concepts/admission-policies/).
 
 ### Certificate Management
 

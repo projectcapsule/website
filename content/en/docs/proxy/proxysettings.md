@@ -69,14 +69,13 @@ spec:
 
 A powerful tool to enhance the user-experience for all your users.
 
-## Proxysettings
+## Proxysetting
 
-`ProxySettings` are created in a namespace of a tenant, if it's not in a namespace of a tenant it's not regarded as valid. With the `ProxySettings` Tenant Owners can further improve the experience for their fellow tenant users.
-
+A `ProxySetting` is created in a namespace of a tenant, if it's not in a namespace of a tenant it's not regarded as valid. With the `ProxySetting` Tenant Owners can further improve the experience for their fellow tenant users.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta1
-kind: ProxySettings
+kind: ProxySetting
 metadata:
   name: solar-proxy
   namespace: solar-prod

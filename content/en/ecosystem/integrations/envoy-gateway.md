@@ -161,4 +161,3 @@ spec:
                         namespace: {{tenant.name}}-system
                         sectionName: http-challenge
 ```
-

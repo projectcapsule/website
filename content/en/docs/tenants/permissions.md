@@ -12,7 +12,7 @@ Administrators are users that have full control over all `Tenants` and their nam
 
 ## Ownership
 
-Capsule introduces the principal, that tenants must have owners ([Tenant Owners](/docs/operating/architecture/#tenant-owners)). The owner of a tenant is a user or a group of users that have the right to create, delete, and manage the [tenant's namespaces](/docs/tenants/namespaces) and other tenant resources. However an owner does not have the permissions to manage the tenants they are owner of. This is still done by cluster-administrators.
+Capsule introduces the principal, that tenants must have owners ([Tenant Owners](/docs/operating/concepts/architecture/#tenant-owners)). The owner of a tenant is a user or a group of users that have the right to create, delete, and manage the [tenant's namespaces](/docs/tenants/namespaces) and other tenant resources. However an owner does not have the permissions to manage the tenants they are owner of. This is still done by cluster-administrators.
 
 At any time you are able to verify which users or groups are owners of a tenant by checking the `owners` field of the Tenant status subresource:
 
@@ -47,7 +47,7 @@ To explain these entries, let's inspect one of them:
 
 * `kind`: It can be [User](#users), [Group](#groups) or [ServiceAccount](#serviceaccounts)
 * `name`: Is the reference name of the user, group or serviceaccount we want to bind
-* `clusterRoles`: ClusterRoles which are bound for each namespace of teh tenant to the owner. By default, Capsule assigns `admin` and `capsule-namespace-deleter` roles to each owner, but you can customize them as explained in [Owner Roles](#owner-roles) section.
+* `clusterRoles`: ClusterRoles which are bound for each namespace of the tenant to the owner. By default, Capsule assigns `admin` and `capsule-namespace-deleter` roles to each owner, but you can customize them as explained in [Owner Roles](#owner-roles) section.
 
 With this information available you
 
@@ -180,7 +180,7 @@ status:
     name: alice
 ```
 
-We. can see that the `system:serviceaccount:capsule:controller` ServiceAccount now has additional `mega-admin` and `controller` roles assigned.
+We can see that the `system:serviceaccount:capsule:controller` ServiceAccount now has additional `mega-admin` and `controller` roles assigned.
 
 #### Implicit Tenant Assignment
 
@@ -232,7 +232,7 @@ status:
 
 #### Aggregation
 
-All subjects defined in `TenantOwner` resources are automatically considered [Capsule Users](/docs/operating/architecture/#capsule-users) and don't need to mentioned further in the CapsuleConfiguration [User Scope](/docs/operating/setup/configuration/#users). If you don't want this behavior, you can disable it by setting `aggregate: false` in the `TenantOwner` spec:
+All subjects defined in `TenantOwner` resources are automatically considered [Capsule Users](/docs/operating/concepts/architecture/#capsule-users) and don't need to mentioned further in the CapsuleConfiguration [User Scope](/docs/operating/setup/configuration/#users). If you don't want this behavior, you can disable it by setting `aggregate: false` in the `TenantOwner` spec:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -327,7 +327,7 @@ spec:
     kind: User
 ```
 
-However, it's more likely that Bill assigns the ownership of the solar `Tenant` to a group of users instead of a single one, especially if you use [OIDC Authentication](/docs/operating/authentication/#oidc). Bill creates a new group account solar-users in the Acme Corp. identity management system and then he assigns Alice and Bob identities to the solar-users group.
+However, it's more likely that Bill assigns the ownership of the solar `Tenant` to a group of users instead of a single one, especially if you use [OIDC Authentication](/docs/operating/setup/authentication/#oidc). Bill creates a new group account solar-users in the Acme Corp. identity management system and then he assigns Alice and Bob identities to the solar-users group.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -347,7 +347,7 @@ kubectl auth can-i create namespaces
 yes
 ```
 
-All the groups you want to promot to `TenantOwners` must be part of the Group Scope. You have to add `solar-users` to the CapsuleConfiguration [Group Scope](#group-scope) to make it work.
+All the groups you want to promote to `TenantOwners` must be part of the Group Scope. You have to add `solar-users` to the CapsuleConfiguration [Group Scope](#group-scope) to make it work.
 
 ### ServiceAccounts
 
@@ -743,12 +743,24 @@ As you can see the subjects is a classic [rolebinding subject](https://kubernete
 
 ### Strict
 
-If you have [strict RBAC enabled for the controller](/docs/operating/setup/installation/#strict-rbac), you need to ensure that the controller ServiceAccount has the permission to create RoleBindings for the specified ClusterRole. The Controller Aggregates ClusterRoles with the labels (OR):
+If you have [strict RBAC enabled for the controller](/docs/operating/setup/installation/#strict-rbac), you need to ensure that the controller ServiceAccount is allowed to create RoleBindings for the specified ClusterRole. Because of [RBAC escalation prevention](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#privilege-escalation-prevention-and-bootstrapping), the controller must either hold the `bind` verb on that ClusterRole or hold all of its permissions. The default owner ClusterRoles (`admin`, `capsule-namespace-provisioner` and `capsule-namespace-deleter`) are covered out of the box; for any other ClusterRole you have two options.
+
+The narrowest option is adding the ClusterRole to `manager.rbac.bindableClusterRoles`, which grants the controller the `bind` verb on it — note that the list replaces the default, so keep `admin` in it. For the above example:
+
+```yaml
+manager:
+  rbac:
+    bindableClusterRoles:
+      - admin
+      - prometheus-servicemonitors-viewer
+```
+
+Alternatively, you can aggregate the ClusterRole's permissions into the controller. The Controller Aggregates ClusterRoles with the labels (OR):
 
   - `projectcapsule.dev/aggregate-to-controller: "true"`
   - `projectcapsule.dev/aggregate-to-controller-instance: {{ .Release.Name }}`
 
-So for the above example, you need to label the `prometheus-servicemonitors-viewer` ClusterRole like this:
+So for the above example, you can label the `prometheus-servicemonitors-viewer` ClusterRole like this:
 
 ```yaml
 kind: ClusterRole
