@@ -743,12 +743,24 @@ As you can see the subjects is a classic [rolebinding subject](https://kubernete
 
 ### Strict
 
-If you have [strict RBAC enabled for the controller](/docs/operating/setup/installation/#strict-rbac), you need to ensure that the controller ServiceAccount has the permission to create RoleBindings for the specified ClusterRole. The Controller Aggregates ClusterRoles with the labels (OR):
+If you have [strict RBAC enabled for the controller](/docs/operating/setup/installation/#strict-rbac), you need to ensure that the controller ServiceAccount is allowed to create RoleBindings for the specified ClusterRole. Because of [RBAC escalation prevention](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#privilege-escalation-prevention-and-bootstrapping), the controller must either hold the `bind` verb on that ClusterRole or hold all of its permissions. The default owner ClusterRoles (`admin`, `capsule-namespace-provisioner` and `capsule-namespace-deleter`) are covered out of the box; for any other ClusterRole you have two options.
+
+The narrowest option is adding the ClusterRole to `manager.rbac.bindableClusterRoles`, which grants the controller the `bind` verb on it — note that the list replaces the default, so keep `admin` in it. For the above example:
+
+```yaml
+manager:
+  rbac:
+    bindableClusterRoles:
+      - admin
+      - prometheus-servicemonitors-viewer
+```
+
+Alternatively, you can aggregate the ClusterRole's permissions into the controller. The Controller Aggregates ClusterRoles with the labels (OR):
 
   - `projectcapsule.dev/aggregate-to-controller: "true"`
   - `projectcapsule.dev/aggregate-to-controller-instance: {{ .Release.Name }}`
 
-So for the above example, you need to label the `prometheus-servicemonitors-viewer` ClusterRole like this:
+So for the above example, you can label the `prometheus-servicemonitors-viewer` ClusterRole like this:
 
 ```yaml
 kind: ClusterRole

@@ -159,7 +159,7 @@ subjects:
 
 ### Provision RoleBindings
 
- Provisioning the `RoleBindings` via [Tenant Rules](/docs/tenants/rules/permissions/#bindings) is the best way to ensure that the `RoleBindings` are created in all namespaces of a `Tenant` and also in any new namespace created within the `Tenant`. The following example shows how to provision a `RoleBinding` for the user `joe` in all namespaces of the `solar` tenant:
+ Provisioning the `RoleBindings` via [Tenant Rules](/docs/tenants/rules/#bindings) is the best way to ensure that the `RoleBindings` are created in all namespaces of a `Tenant` and also in any new namespace created within the `Tenant`. The following example shows how to provision a `RoleBinding` for the user `joe` in all namespaces of the `solar` tenant:
 ```yaml
 ---
 apiVersion: capsule.clastix.io/v1beta2
