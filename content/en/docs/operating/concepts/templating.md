@@ -46,9 +46,99 @@ spec:
       nested: value
 ```
 
+### Replication Context
+
+Templates rendered by a `TenantResource` or `GlobalTenantResource` always have the metadata of the replication object available under `$.replications.metadata`. An explicit `resources[].context` is not required.
+
+Commonly used fields include:
+
+* `$.replications.metadata.name`
+* `$.replications.metadata.namespace` for a namespaced `TenantResource`
+* `$.replications.metadata.labels`
+* `$.replications.metadata.annotations`
+* `$.replications.metadata.uid`
+* `$.replications.metadata.resourceVersion`
+* `$.replications.metadata.generation`
+* `$.replications.metadata.ownerReferences`
+* `$.replications.metadata.finalizers`
+
+For example:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $.replications.metadata.name }}
+  labels:
+    replication-name: {{ $.replications.metadata.name | quote }}
+    team: {{ index $.replications.metadata.labels "company.example/team" | quote }}
+data:
+  sourceNamespace: {{ $.replications.metadata.namespace | quote }}
+```
+
+`metadata.namespace` is absent for a cluster-scoped `GlobalTenantResource`. The context excludes `managedFields` and the `kubectl.kubernetes.io/last-applied-configuration` annotation.
+
 ## Function Library
 
 Custom Functions we provide in our template package.
+
+### getResourceByName
+
+`getResourceByName` finds a Kubernetes object by `metadata.name` in a resource collection loaded through `resources[].context.resources[].index`.
+
+```go
+getResourceByName(name string, resources any) map[string]any
+```
+
+The function is pipe-friendly. The indexed resource collection is passed last:
+
+```yaml
+{{- $management := $.mgmt | getResourceByName "tenant-management" -}}
+```
+
+If no object matches, the function returns an empty map. This makes it suitable for optional resources:
+
+```yaml
+{{- with ($.mgmt | getResourceByName "optional-settings") }}
+data:
+  source: {{ .metadata.name | quote }}
+{{- end }}
+```
+
+If multiple objects have the requested name, rendering fails because the match is ambiguous. Use `getResourceByNamespacedName` when an index can contain objects from multiple namespaces.
+
+### mustGetResourceByName
+
+`mustGetResourceByName` is the required variant of `getResourceByName`. Rendering fails if no object matches or if multiple objects have the requested name.
+
+```go
+mustGetResourceByName(name string, resources any) map[string]any
+```
+
+Example using a ConfigMap value containing YAML:
+
+```yaml
+{{- $management := $.mgmt | mustGetResourceByName "tenant-management" -}}
+{{- $team := $management.data | get "team-a" | fromYAML -}}
+subjects:
+{{ $team.subjects | toYAML | indent 2 }}
+```
+
+### getResourceByNamespacedName
+
+`getResourceByNamespacedName` finds an object by both `metadata.namespace` and `metadata.name`. Use it when a context index contains resources from more than one namespace.
+
+```go
+getResourceByNamespacedName(namespace string, name string, resources any) map[string]any
+```
+
+The namespace and name are supplied before the piped resource collection:
+
+```yaml
+{{- $management := $.mgmt | getResourceByNamespacedName "solar-system" "tenant-management" -}}
+```
+
+If no object matches, the function returns an empty map. Rendering fails if the namespace and name still identify multiple objects.
 
 ### deterministicUUID
 
