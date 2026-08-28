@@ -26,7 +26,7 @@ Before starting, ensure you have:
 ## Limitations
 The following limitations are known when using OpenShift with Capsule:
 - A tenant owner cannot create a namespace/project in the OpenShift GUI. This must be done with `kubectl`.
-- When copying the `login token` from the OpenShift GUI, the server address will always point to the Kubernetes API instead of the Capsule Proxy. An RFE has been filed with Red Hat to make this URL configurable ([RFE-7592](https://issues.redhat.com/browse/RFE-7592)). If you have a support contract with Red Hat, consider opening a support request (SR) asking for this feature. The more requests there are, the higher the priority.
+- When copying the `login token` from the OpenShift GUI, the server address will always point to the Kubernetes API instead of the Capsule Proxy, so the `--server` flag has to be adjusted manually. Browser-based `oc login --web` against the Capsule Proxy works without this workaround when public paths are configured (see [Capsule Proxy](#capsule-proxy)). An RFE has been filed with Red Hat to make this URL configurable ([RFE-7592](https://issues.redhat.com/browse/RFE-7592)). If you have a support contract with Red Hat, consider opening a support request (SR) asking for this feature. The more requests there are, the higher the priority.
 
 ## Capsule Installation
 ### Remove the self-provisioners ClusterRoleBinding
@@ -211,6 +211,24 @@ spec:
         matchLabels:
             capsule.clastix.io/tenant: solar
 ```
+
+### Hosted control planes (HyperShift)
+
+On hosted control planes each hosted cluster runs its own OAuth server, exposed on its own route (for example, `oauth-clusters-<cluster-name>.<base-domain>`) with a certificate signed by that cluster's root CA.
+
+The `oc login --web` flow retrieves the OAuth server metadata from `/.well-known/oauth-authorization-server` on the API endpoint before any credentials exist. Since Capsule Proxy requires authentication on every request, this lookup is rejected by default and the login aborts with `unsupported protocol scheme ""`.
+
+Public paths solve this (available since capsule-proxy v0.14.1): requests to a public path are proxied to the upstream API server without authentication, while everything else keeps requiring one.
+
+```yaml
+options:
+  extraArgs:
+    - '--public-paths=/.well-known/oauth-authorization-server'
+```
+
+With this in place `oc login <capsule-proxy-host> --web` completes: the browser login and the token exchange run against the hosted cluster's OAuth server, and the API traffic goes through the proxy as usual.
+
+Since the browser and the token exchange talk to the OAuth server directly, the client must trust the certificate of that OAuth server: import the hosted cluster's root CA on the client first, the same procedure as when logging in against the API server directly.
 
 ## Console Customization
 The OpenShift console can be customized. For example, the capsule-proxy can be added as a shortcut on the top right application menu with the `ConsoleLink` CR:
