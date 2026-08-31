@@ -22,7 +22,7 @@ adopters:
     logo: https://klarrio.com/wp-content/uploads/klarrio.png
   - name: KubeRocketCI
     link: https://docs.kuberocketci.io/
-    logo: https://raw.githubusercontent.com/epam/edp-install/master/docs/assets/krci-logo-267×150-white.png
+    logo: https://github.com/KubeRocketCI/docs/blob/main/static/img/kuberocketci.png?raw=true
   - name: ODC-Noord
     link: https://odc-noord.nl/
     logo: https://github.com/projectcapsule/capsule/raw/main/assets/customer_logo/odc-noord-logo.png
