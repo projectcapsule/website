@@ -11,7 +11,7 @@ title: Project Capsule
   Learn More <i class="fas fa-arrow-alt-circle-right ms-2"></i>
 </a>
 
-<a class="btn btn-lg btn-primary me-3 mb-4" href="https://killercoda.com/peak-scale-test/course/playgrounds/capsule">
+<a class="btn btn-lg btn-primary me-3 mb-4" href="https://killercoda.com/projectcapsule/scenario/demo">
   Live-Demo <i class="fas fa-arrow-alt-circle-right ms-2"></i>
 </a>
 </div>

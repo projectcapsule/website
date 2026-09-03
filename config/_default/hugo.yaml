@@ -143,6 +143,10 @@ module:
   mounts:
     - source: content/en
       target: content
+    - source: static
+      target: static
+    - source: presentations
+      target: static/presentations
 menu:
   main:
     - name: Docs
