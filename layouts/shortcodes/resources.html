@@ -1,18 +1,19 @@
 {{- $resources := sort site.Data.resources.resources "date" "desc" -}}
 {{- $years := slice -}}
-{{- $types := slice -}}
+{{- $types := slice "video" "article" "presentation" -}}
+{{- $typeLabels := dict "video" "Videos" "article" "Articles" "presentation" "Presentations" -}}
 {{- range $resources -}}
   {{- $years = $years | append ((time.AsTime .date).Format "2006") -}}
   {{- $types = $types | append (.type | default "resource" | lower) -}}
 {{- end -}}
 {{- $years = uniq $years -}}
-{{- $types = sort (uniq $types) -}}
+{{- $types = uniq $types -}}
 
 <div class="resource-browser" data-resource-browser>
   <div class="resource-browser__summary d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-2 mb-4">
     <div>
       <p class="text-uppercase fw-semibold mb-1">Community library</p>
-      <p class="lead mb-0">Browse talks, articles, demos, and stories from the Capsule community.</p>
+      <p class="lead mb-0">Browse videos, articles, and downloadable presentations from the Capsule community.</p>
     </div>
     <span class="resource-browser__total text-nowrap" data-resource-count aria-live="polite">{{ len $resources }} resources</span>
   </div>
@@ -39,7 +40,7 @@
         <div class="btn-group w-100" role="group" aria-label="Resource format">
           <button class="btn btn-primary" type="button" data-resource-type-filter="all" aria-pressed="true">All</button>
           {{- range $types }}
-            <button class="btn btn-outline-secondary" type="button" data-resource-type-filter="{{ . }}" aria-pressed="false">{{ . | humanize }}</button>
+            <button class="btn btn-outline-secondary" type="button" data-resource-type-filter="{{ . }}" aria-pressed="false">{{ index $typeLabels . | default (. | humanize) }}</button>
           {{- end }}
         </div>
       </div>
@@ -102,6 +103,18 @@
       const resetButtons = Array.from(root.querySelectorAll("[data-resource-reset]"));
       let selectedType = "all";
 
+      const updateTypeParameter = () => {
+        const url = new URL(window.location.href);
+
+        if (selectedType === "all") {
+          url.searchParams.delete("type");
+        } else {
+          url.searchParams.set("type", selectedType);
+        }
+
+        window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+      };
+
       const update = () => {
         const query = searchInput.value.trim().toLocaleLowerCase();
         const selectedYear = yearSelect.value;
@@ -128,17 +141,21 @@
         empty.classList.toggle("d-none", visibleCount !== 0);
       };
 
-      typeButtons.forEach((button) => {
-        button.addEventListener("click", () => {
-          selectedType = button.dataset.resourceTypeFilter;
-          typeButtons.forEach((candidate) => {
-            const active = candidate === button;
-            candidate.classList.toggle("btn-primary", active);
-            candidate.classList.toggle("btn-outline-secondary", !active);
-            candidate.setAttribute("aria-pressed", active ? "true" : "false");
-          });
-          update();
+      const selectType = (button, updateUrl = true) => {
+        selectedType = button.dataset.resourceTypeFilter;
+        typeButtons.forEach((candidate) => {
+          const active = candidate === button;
+          candidate.classList.toggle("btn-primary", active);
+          candidate.classList.toggle("btn-outline-secondary", !active);
+          candidate.setAttribute("aria-pressed", active ? "true" : "false");
         });
+
+        if (updateUrl) updateTypeParameter();
+        update();
+      };
+
+      typeButtons.forEach((button) => {
+        button.addEventListener("click", () => selectType(button));
       });
 
       searchInput.addEventListener("input", update);
@@ -151,6 +168,12 @@
           searchInput.focus();
         });
       });
+
+      const requestedType = new URLSearchParams(window.location.search).get("type");
+      const initialTypeButton = typeButtons.find(
+        (button) => button.dataset.resourceTypeFilter === requestedType
+      );
+      selectType(initialTypeButton || typeButtons[0], false);
     });
   })();
 </script>

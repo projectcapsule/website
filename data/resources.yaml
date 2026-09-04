@@ -1,4 +1,13 @@
+# Downloadable decks use `type: "presentation"` and a direct file URL.
 resources:
+  - title: "Project Capsule Overview"
+    date: "2026-09-03"
+    url: "/presentations/Project_Capsule_Overview.pptx"
+    type: "presentation"
+    description: "A 15-minute introduction to shared-cluster multi-tenancy, delegated ownership, and policy guardrails."
+    tags:
+      - overview
+      - multi-tenancy
   - title: "ChatLoopBackOff Episode 79: Capsule with Thomas and Oliver"
     date: "2026-08-01"
     youtube: "a7yVjFFa0Eo"
