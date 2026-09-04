@@ -63,8 +63,8 @@ env:
     value: "<SECRET>"
   - name: "OIDC_USE_ACCESS_TOKEN"
     value: "false"
-  - name: "OIDC_SCOPES"
-    value: "openid profile email groups offline_access"
+  #- name: "OIDC_SCOPES"
+  #  value: "openid profile email groups offline_access"
 volumeMounts:
   - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
     name: token-ca
