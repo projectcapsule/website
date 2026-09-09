@@ -70,7 +70,7 @@ In the upcoming releases we are planning to work on the following features:
   * Capsule: Porting more Properties to the Namespace Rule Approach.
   * Capsule: Adding `transformers` for `Global`/`TenantResources`.
   * Capsule: Adding `healthChecks` for `Global`/`TenantResources`.
-  * Capsule: Introducing Break-The-Glass to allow temporary elevation of permissions for Tenant Owners, with an approval process by Platform Administrators.
+  * Capsule: Introducing [Resource Permits](/docs/resource-permits/) for approved Kubernetes resources, including temporary elevation of permissions for Tenant Owners and managed services provisioned by Platform Administrators.
   * Capsule: Adding custom health checks for ArgoCD to upstream
   * Capsule: Adding Generic Implementation for `Global`/`TenantResources`.
   * Website: Improving the documentation with more examples and use-cases.
