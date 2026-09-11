@@ -131,7 +131,22 @@ spec:
   priorityClasses:
     allowed:
       - openshift-user-critical
+  rules:
+    - enforce:
+        action: deny
+        metadata:
+          - kinds:
+              - Namespace
+            labels:
+              openshift.io/run-level:
+                required: false
+                values:
+                  - exp:  ".*"
 ```
+
+{{% alert title="Block openshift.io/run-level label" color="warning" %}}
+Make sure to disallow the `openshift.io/run-level` on a Namespace by adding the rule above. If a user can set the `openshift.io/run-level` label, they can completely bypass the SecurityContextConstraints and create privileged workloads in their namespace. See for more information the [Red Hat Documentation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/authentication_and_authorization/managing-pod-security-policies#security-context-constraints-about_configuring-internal-oauth)
+{{% /alert %}}
 
 Combined with a `TenantOwner` resource to grant access to the tenant:
 
