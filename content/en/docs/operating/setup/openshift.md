@@ -140,8 +140,6 @@ spec:
             labels:
               openshift.io/run-level:
                 required: false
-                values:
-                  - exp:  ".*"
 ```
 
 {{% alert title="Block openshift.io/run-level label" color="warning" %}}
