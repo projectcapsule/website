@@ -16,7 +16,7 @@ outputs:
 ## Security 🔒
 
 * **(Enterprise)**: Projectcapsule is now providing their releases on an immutable OCI registry, which allows users to verify the integrity of the images and provides a more secure way to distribute the images. Which is not possible on GHCR due to the fact that GHCR does not support immutability of images.
-* [OpenShift] Added documentation about denying the `openshift.io/run-level` label, preventing users from bypassing SecurityContextConstraints. [Read More](/docs/operating/setup/openshift/#example-tenant-and-tenantowners)
+* [OpenShift] Added documentation showing how to prevent CapsuleUsers from modifying OpenShift-managed namespace labels and annotations, including `openshift.io/run-level`, to help prevent SecurityContextConstraints bypasses. [Read More](/docs/operating/setup/openshift/#example-tenant-and-tenantowners)
 
 ## Breaking Changes ⚠️
 

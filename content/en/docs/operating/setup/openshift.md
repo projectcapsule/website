@@ -132,18 +132,31 @@ spec:
     allowed:
       - openshift-user-critical
   rules:
-    - enforce:
+    - audience:
+        - kind: Custom
+          name: "CapsuleUser"
+      enforce:
         action: deny
         metadata:
-          - kinds:
-              - Namespace
+          - apiGroups:
+              - "v1"
+            kinds:
+              - "Namespace"
             labels:
-              openshift.io/run-level:
+              ".*openshift.io/.*":
                 required: false
+              "pod-security.kubernetes.io/enforce":
+                required: false
+            annotations:
+              ".*openshift.io/.*":
+                required: false
+              "pod-security.kubernetes.io/enforce":
+                required: false
+
 ```
 
-{{% alert title="Block openshift.io/run-level label" color="warning" %}}
-Make sure to disallow the `openshift.io/run-level` on a Namespace by adding the rule above. If a user can set the `openshift.io/run-level` label, they can completely bypass the SecurityContextConstraints and create privileged workloads in their namespace. See for more information the [Red Hat Documentation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/authentication_and_authorization/managing-pod-security-policies#security-context-constraints-about_configuring-internal-oauth)
+{{% alert title="Block openshift labels and annotations" color="warning" %}}
+Make sure that CapsuleUsers cannot modify OpenShift-managed labels and annotations. These metadata fields should be mutable only by OpenShift-managed components. For example, modifying the openshift.io/run-level label on a namespace can allow a user to bypass SecurityContextConstraints and create privileged workloads. Similarly, the openshift.io/sa.scc.uid-range annotation controls important SecurityContextConstraints configuration and must not be user-modifiable. The pod-security.kubernetes.io/enforce label should also be protected because it is managed by OpenShift based on the SCCs. See the [Red Hat documentation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/authentication_and_authorization/managing-pod-security-policies#security-context-constraints-about_configuring-internal-oauth) for more information.
 {{% /alert %}}
 
 Combined with a `TenantOwner` resource to grant access to the tenant:
