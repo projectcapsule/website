@@ -2,6 +2,7 @@
 title: Resource Permit Templates
 weight: 10
 aliases:
+  - /docs/resource-permits/templates/
   - /docs/resource-leases/templates/
   - /docs/resource-permits/impersonation/
   - /docs/resource-leases/impersonation/
@@ -381,5 +382,5 @@ spec:
             name: {{ $.request.username }}
 ```
 
-See [Resource Permits](/docs/resource-permits/requests/) for approval, review, activation,
+See [Resource Permits](/docs/permits/requests/) for approval, review, activation,
 expiry, and troubleshooting.

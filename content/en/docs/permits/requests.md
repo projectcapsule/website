@@ -2,6 +2,7 @@
 title: Resource Permits
 weight: 20
 aliases:
+  - /docs/resource-permits/requests/
   - /docs/resource-leases/requests/
   - /docs/resource-permits/lifecycle/
   - /docs/resource-permits/approvals/

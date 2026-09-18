@@ -1,9 +1,10 @@
 ---
-title: Resource Permits
+title: Permits
 weight: 6
 description: >
   Request, review, and manage Kubernetes resources and permissions through reusable templates.
 aliases:
+  - /docs/resource-permits/
   - /docs/resource-leases/
 ---
 
