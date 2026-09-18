@@ -2377,8 +2377,8 @@ MetadataRule defines metadata constraints for namespaced resources.
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
 | **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
-| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
-| **[values](#rulestatusspecindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusspecindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
 
 ### RuleStatus.spec[index].enforce.metadata[index].annotations[key].values[index]
@@ -2407,8 +2407,8 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
 | **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
-| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
-| **[values](#rulestatusspecindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusspecindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
 
 ### RuleStatus.spec[index].enforce.metadata[index].labels[key].values[index]
@@ -2788,8 +2788,8 @@ MetadataRule defines metadata constraints for namespaced resources.
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
 | **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
-| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
-| **[values](#rulestatusstatusruleenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusstatusruleenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
 
 ### RuleStatus.status.rule.enforce.metadata[index].annotations[key].values[index]
@@ -2818,8 +2818,8 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
 | **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
-| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
-| **[values](#rulestatusstatusruleenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusstatusruleenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
 
 ### RuleStatus.status.rule.enforce.metadata[index].labels[key].values[index]
@@ -3166,8 +3166,8 @@ MetadataRule defines metadata constraints for namespaced resources.
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
 | **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
-| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
-| **[values](#rulestatusstatusrulesindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusstatusrulesindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.metadata[index].annotations[key].values[index]
@@ -3196,8 +3196,8 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
 | **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
-| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
-| **[values](#rulestatusstatusrulesindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#rulestatusstatusrulesindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.metadata[index].labels[key].values[index]
@@ -4844,8 +4844,8 @@ MetadataRule defines metadata constraints for namespaced resources.
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
 | **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
-| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
-| **[values](#tenantspecrulesindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#tenantspecrulesindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
 
 ### Tenant.spec.rules[index].enforce.metadata[index].annotations[key].values[index]
@@ -4874,8 +4874,8 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
 | **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
-| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is mainly meaningful with action=allow. Deny and audit rules remain<br>value matchers and do not require missing metadata to exist.<br/>*Default*: false<br/> | false |
-| **[values](#tenantspecrulesindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>If Required=true and Values is empty, only presence is enforced. | false |
+| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **[values](#tenantspecrulesindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
 
 ### Tenant.spec.rules[index].enforce.metadata[index].labels[key].values[index]

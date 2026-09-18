@@ -131,7 +131,33 @@ spec:
   priorityClasses:
     allowed:
       - openshift-user-critical
+  rules:
+    - audience:
+        - kind: Custom
+          name: "CapsuleUser"
+      enforce:
+        action: deny
+        metadata:
+          - apiGroups:
+              - "v1"
+            kinds:
+              - "Namespace"
+            labels:
+              ".*openshift.io/.*":
+                required: false
+              "pod-security.kubernetes.io/enforce":
+                required: false
+            annotations:
+              ".*openshift.io/.*":
+                required: false
+              "pod-security.kubernetes.io/enforce":
+                required: false
+
 ```
+
+{{% alert title="Block openshift labels and annotations" color="warning" %}}
+Make sure that CapsuleUsers cannot modify OpenShift-managed labels and annotations. These metadata fields should be mutable only by OpenShift-managed components. For example, modifying the openshift.io/run-level label on a namespace can allow a user to bypass SecurityContextConstraints and create privileged workloads. Similarly, the openshift.io/sa.scc.uid-range annotation controls important SecurityContextConstraints configuration and must not be user-modifiable. The pod-security.kubernetes.io/enforce label should also be protected because it is managed by OpenShift based on the SCCs. See the [Red Hat documentation](https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/authentication_and_authorization/managing-pod-security-policies#security-context-constraints-about_configuring-internal-oauth) for more information.
+{{% /alert %}}
 
 Combined with a `TenantOwner` resource to grant access to the tenant:
 

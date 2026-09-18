@@ -5,6 +5,13 @@
 [build]
 publish = "public"
 command = "npm install --save-dev autoprefixer && npm install --save-dev postcss-cli && npm install -D postcss && hugo --gc --minify --baseURL $URL"
+
+[[redirects]]
+from = "/demo"
+to = "https://killercoda.com/projectcapsule/scenario/demo"
+status = 302
+force = true
+
 [context.deploy-preview]
 command = "npm install --save-dev autoprefixer && npm install --save-dev postcss-cli && npm install -D postcss && hugo --gc --minify --baseURL $DEPLOY_PRIME_URL"
 [context.production.environment]
