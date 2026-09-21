@@ -11,4 +11,6 @@ Enforcement rules allow Bill, the cluster administrator, to set policies and res
 
 Rules cover two areas:
 
+- **[Mutate](/docs/rules/mutate/)**: apply typed workload settings to new Pods in selected namespaces.
+
 - **[Enforcement](/docs/rules/enforcement/)**: control allowed workloads, ingress hostnames, service types, and namespace metadata.

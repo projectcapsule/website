@@ -1,6 +1,6 @@
 ---
 title: Workloads
-weight: 2
+weight: 1
 description: >
   Workload enforcement
 ---
@@ -9,7 +9,11 @@ Workload enforcement mainly targets `Pod` objects and the resources associated
 with them. It is configured under `spec.rules[].enforce.workloads`. Each rule
 can define an `action`, optional workload `targets`, and one or more workload
 policies such as resource requests and limits, registry match expressions,
-scheduler match expressions, or QoS classes.
+scheduler match expressions, QoS classes, or [Pod placement](#placement).
+
+Add optional [`conditions`](/docs/rules/conditions/) under `enforce.workloads` to
+gate only this resource block. Conditions are evaluated on the current admission
+object; false conditions leave other resource blocks and rules unaffected.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -1216,3 +1220,207 @@ rules:
 
 This rule applies to regular containers and ephemeral containers, but not to
 init containers or image volumes.
+
+## Placement
+
+The `nodeSelector`, `tolerations`, `topologySpreadConstraints`, and `affinity`
+properties each accept a dedicated list of matchers under `enforce.workloads`.
+Use [`mutate[].workloads`](/docs/rules/mutate/workloads/) alongside them to add
+placement settings before validation. The mutation page includes a
+[complete YAML example](/docs/rules/mutate/workloads/#complete-placement-example).
+
+```yaml
+enforce:
+  action: allow
+  workloads:
+    nodeSelector:
+      - key:
+          exact: [kubernetes.io/os]
+        values:
+          exact: [linux]
+      - key:
+          exp: '^placement\.example\.com/[a-z0-9-]+$'
+        values:
+          exact: [shared, batch]
+```
+
+With `action: allow`, every supplied node-selector entry must match one complete
+matcher. Fields within one matcher are combined with AND; entries in the list
+are alternatives. The same rule applies to each toleration, topology-spread
+constraint, and affinity term. Separate allow entries cannot authorize different
+parts of one affinity term.
+
+Allow rules do not require a property to be present. Omitted properties and empty
+lists contain no entries to validate. Use `mutate` to establish required settings.
+An omitted enforcement list or `[]` supplies no matchers.
+
+Later matching allow or deny rules win for each entry. Audit rules observe matches
+without changing the decision. Mutated values and values injected by Kubernetes
+are subject to the same enforcement.
+
+Placement uses the `pod` workload target. Omitting `targets` includes Pod
+placement; selecting only container targets does not. On main-resource Pod
+updates, Capsule checks changed placement properties. Label changes also recheck
+affinity and spread selectors that can depend on those labels. Unrelated updates
+and subresources skip these checks. Placement is not mutated on update.
+
+### Match expressions
+
+`key`, `values`, `topologyKey`, and `namespaces` support the common
+[`exact`, `exp`, and `negate` match expression](/docs/rules/enforcement/#match-expressions).
+`exact` is a list of alternatives; `exp` is a Go regular expression. If both are
+supplied, either can match, and `negate` inverts the combined result. Anchor
+expressions with `^` and `$` to match the whole string.
+
+Omit a matcher field to leave it unrestricted. An explicitly supplied expression
+must contain `exact` or `exp`; `key: {}` is invalid. Use `exp: '^$'` to match an
+empty string.
+
+An empty placement matcher, `{}`, matches every entry. To disallow all tolerations:
+
+```yaml
+enforce:
+  action: deny
+  workloads:
+    tolerations:
+      - {}
+```
+
+This also rejects tolerations injected by Kubernetes. Kubernetes normally adds
+not-ready and unreachable tolerations, so a total ban will reject ordinary Pods
+with those injected entries. Use an allowlist when the intention is to permit
+only system tolerations. The same `[{}]` syntax can ban any of the other placement
+properties without a separate switch.
+
+### Node selectors
+
+Each `nodeSelector` matcher supports `key` and `values`. Both apply to one
+key/value pair in the Pod's `spec.nodeSelector` map. An empty label value is
+evaluated literally.
+
+### Tolerations
+
+| Field | Matches |
+|---|---|
+| `key` | Taint key expression. An empty Pod key is a literal empty string. |
+| `values` | Toleration value expression. |
+| `operators` | `Equal` or `Exists`. An omitted Pod operator is `Equal`. |
+| `effects` | `NoSchedule`, `PreferNoSchedule`, `NoExecute`, or the literal empty string `""`. |
+| `tolerationSeconds` | Inclusive `min` and `max` bounds, with optional `allowUnlimited`. |
+
+An empty toleration key or effect has broad Kubernetes semantics. It does not
+match an allowlist of specific keys or effects. To allow an empty effect, include
+`""` explicitly in `effects`.
+
+An absent `tolerationSeconds` means unlimited. Bounds apply to finite durations;
+`allowUnlimited` defaults to `true`. Set it to `false` when a finite duration is
+required:
+
+```yaml
+enforce:
+  action: allow
+  workloads:
+    tolerations:
+      - key:
+          exact: [node.kubernetes.io/not-ready, node.kubernetes.io/unreachable]
+        operators: [Exists]
+        effects: [NoExecute]
+        tolerationSeconds:
+          max: 600
+          allowUnlimited: false
+```
+
+### Topology spread constraints
+
+| Field | Matches |
+|---|---|
+| `topologyKey` | Topology-key expression. |
+| `whenUnsatisfiable` | List containing `DoNotSchedule` or `ScheduleAnyway`. |
+| `maxSkew` | Inclusive `min` and `max` bounds. |
+| `minDomains` | Inclusive bounds; an omitted Pod value is evaluated as `1`. |
+| `nodeAffinityPolicy` | `Honor` or `Ignore`; an omitted Pod value is `Honor`. |
+| `nodeTaintsPolicy` | `Honor` or `Ignore`; an omitted Pod value is `Ignore`. |
+| `labelSelector` | Selector policy described below. |
+
+### Selector policies
+
+The `labelSelector` and `namespaceSelector` policy objects support:
+
+| Field | Behavior |
+|---|---|
+| `required` | When `true`, require at least one effective selector requirement. |
+| `requirements` | Allowlist for individual selector requirements. Omission or an empty list leaves requirements unrestricted. |
+
+Each requirement matcher supports `key`, `values`, and `operators`. Label
+selectors support `In`, `NotIn`, `Exists`, and `DoesNotExist`. Every actual
+requirement must match one complete entry, and every supplied value must match
+its `values` expression. `matchLabels` entries are evaluated as singleton `In`
+requirements.
+
+`Exists` and `DoesNotExist` have no values to test. Permitting those operators
+permits their valueless form; use `operators: [In]` when allowed values must
+restrict the selection. A requirement allowlist constrains supplied requirements;
+it does not require every listed key to appear.
+
+Dynamic `matchLabelKeys` and `mismatchLabelKeys` are checked as `In` and `NotIn`
+requirements using the incoming Pod's label values. Missing dynamic labels are
+ignored, matching Kubernetes behavior. `required: true` uses this effective
+selector, including any dynamic requirements.
+
+### Affinity
+
+All affinity validation is expressed in one flat list:
+
+```yaml
+enforce:
+  action: allow
+  workloads:
+    affinity:
+      - types: [nodeAffinity]
+        modes: [required, preferred]
+        requirements:
+          - key:
+              exact: [topology.kubernetes.io/zone]
+            operators: [In]
+            values:
+              exact: [zone-a, zone-b]
+      - types: [podAffinity, podAntiAffinity]
+        modes: [preferred]
+        topologyKey:
+          exact: [kubernetes.io/hostname]
+        namespaceScope: SameNamespace
+        weight:
+          min: 1
+          max: 100
+```
+
+| Field | Applies to | Behavior |
+|---|---|---|
+| `types` | All | Select `nodeAffinity`, `podAffinity`, or `podAntiAffinity`. Omission selects all compatible types. |
+| `modes` | All | Select `required`, `preferred`, or both. Omission selects both. |
+| `weight` | Preferred terms | Inclusive `min` and `max` bounds within 1–100. Requires `modes: [preferred]`. |
+| `requirements` | Node affinity | Match `matchExpressions` using key, values, and operators. |
+| `fieldRequirements` | Node affinity | Match `matchFields` using the same requirement structure. |
+| `topologyKey` | Pod affinity and anti-affinity | Topology-key expression. |
+| `labelSelector` | Pod affinity and anti-affinity | Selector policy for matching Pods. |
+| `namespaceScope` | Pod affinity and anti-affinity | `SameNamespace` or `Any`. Omission imposes no scope restriction. |
+| `namespaces` | Pod affinity and anti-affinity | Expression matched against every explicitly supplied namespace. |
+| `namespaceSelector` | Pod affinity and anti-affinity | Selector policy for matching namespaces. |
+
+Node requirements also support `Gt` and `Lt`. Their value matcher checks the
+literal numeric operand; it does not query node labels. When either node
+requirement list constrains a term, requirements from the other source must be
+explicitly allowed if present. For example, `fieldRequirements: [{}]` permits
+any native-valid field requirement alongside constrained `requirements`.
+
+`SameNamespace` permits an omitted `namespaces` list or explicit references to
+the Pod's own namespace, and requires the Pod term's `namespaceSelector` to be
+absent. Even `namespaceSelector: {}` selects more than the current namespace and
+does not match this scope. `Any` leaves namespace scope unrestricted. A
+`namespaces` expression alone does not restrict namespaces selected through a
+`namespaceSelector`.
+
+Type-specific fields only match types on which they are meaningful. Explicitly
+incompatible combinations are rejected when the policy is saved. Matching
+examines the submitted selectors and terms without listing nodes, Pods, or
+namespaces during admission.

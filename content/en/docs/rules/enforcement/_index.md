@@ -1,5 +1,5 @@
 ---
-title: Enforcement
+title: Enforce
 weight: 5
 description: >
   Enforcement policies and restrictions on a per-Namespace basis with Rules
