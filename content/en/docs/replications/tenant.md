@@ -96,6 +96,9 @@ solar-2     postgres-solar-2  80s   3           3       Cluster in healthy state
 
 ### Resources
 
+Each block accepts a [resource policy](#object-management) for creation, protection,
+SSA conflicts, cleanup, and optional CEL conditions.
+
 A resource block defines *what* to replicate. Multiple blocks can be stacked in the `resources` array, each using one or more of the strategies below.
 
 #### NamespaceSelector
@@ -797,211 +800,109 @@ This section covers more advanced features of the Replication setup.
 
 ### Object Management
 
-Capsule uses [Server-Side Apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/) for all replication operations. Two management modes exist depending on whether the object already existed before reconciliation.
+Set `spec.resources[].policy` separately for each resource block. The policy applies
+to all destinations produced by that block, while namespace selectors determine
+which namespace profiles receive them. See the
+[shared SSA policy reference](/docs/operating/concepts/managed-resources/) for the
+complete contract and [migration guidance](/docs/replications/#deprecated-settings-and-migration)
+for existing manifests using `spec.settings`.
 
 #### Create
 
-An object is *Created* when the `TenantResource` first encounters it - it did not exist prior to reconciliation. Created objects receive the following metadata:
-
-  * `metadata.labels.projectcapsule.dev/created-by`: `resources`
-  * `metadata.labels.projectcapsule.dev/managed-by`: `resources`
-
-```yaml
-kind: ConfigMap
-metadata:
-  labels:
-    projectcapsule.dev/created-by: resources
-    projectcapsule.dev/managed-by: resources
-  name: common-config
-  namespace: wind-test
-  resourceVersion: "549517"
-  uid: 23abbb7a-2926-416a-bc72-9f793ebf6080
-```
-
-Because Server-Side Apply tracks field ownership, multiple `TenantResource` objects can contribute non-conflicting fields to the same object:
+`creation: Owner` is the default. Capsule creates an absent object and applies future
+changes to objects created by the applying controller. An unrelated existing target
+is an ownership error. Capsule records whether each processed target was created or
+adopted; `protect: true` blocks direct user updates and deletion while it is managed.
 
 ```yaml
----
 apiVersion: capsule.clastix.io/v1beta2
 kind: TenantResource
 metadata:
-  name: tenant-ns-cm-registration
-  namespace: wind-test
+  name: namespace-profile
+  namespace: solar-uat
 spec:
   resources:
-    - generators:
-        - template: |
-            ---
-            apiVersion: v1
-            kind: ConfigMap
-            metadata:
-              name: common-config
-            data:
-              {{ $.namespace.metadata.name }}.conf: |
-                {{ toYAML $.namespace .metadata | nindent 4 }}
-    - rawItems:
+    - policy:
+        creation: Owner
+        force: false
+        protect: true
+        deletion: Remove
+      rawItems:
         - apiVersion: v1
           kind: ConfigMap
           metadata:
-            name: common-config
+            name: namespace-profile
           data:
-            additional-data: "raw"
+            environment: production
 ```
 
-Result:
-
-```yaml
-apiVersion: v1
-data:
-  additional-data: raw
-  wind-test.conf: |2
-    creationTimestamp: "2026-02-10T10:58:33Z"
-    labels:
-        capsule.clastix.io/tenant: wind
-        kubernetes.io/metadata.name: wind-test
-    name: wind-test
-    ownerReferences:
-        - apiVersion: capsule.clastix.io/v1beta2
-          kind: Tenant
-          name: wind
-          uid: 42f72944-f6d9-44a2-9feb-cd2b52f4043d
-    resourceVersion: "526252"
-    uid: 3f280d61-98b7-4188-9853-9a6598ca10a9
-kind: ConfigMap
-metadata:
-  creationTimestamp: "2026-02-05T15:37:09Z"
-  labels:
-    projectcapsule.dev/created-by: resources
-    projectcapsule.dev/managed-by: resources
-  name: common-config
-  namespace: wind-test
-  resourceVersion: "561707"
-  uid: 33cfe1c6-1c9e-4417-9dd5-26ac0ba3bc85
-```
-
-You can check the `created` property on each item's status to determine whether it was created or adopted. Field conflicts can be resolved with [Force](#force).
-
-##### Pruning
-
-When pruning is enabled, *Created* objects are deleted when they fall out of scope. When pruning is disabled, the `metadata.labels.projectcapsule.dev/managed-by` label is removed instead.
-
-The label `metadata.labels.projectcapsule.dev/created-by` is preserved after pruning, allowing another `GlobalTenantResource` or `TenantResource` to take ownership without explicit adoption. To prevent re-adoption, remove or change this label manually.
+SSA tracks ownership of individual fields. Multiple managers can contribute
+non-conflicting fields to a shared object. A conflict is reported through
+processed-item status; use [Force](#force) only when Capsule should take ownership
+of those fields.
 
 #### Adopt
 
-By default, a `TenantResource` cannot modify objects it did not create. Adoption must be explicitly enabled. Adopted objects receive the following metadata:
-
-  * `metadata.labels.projectcapsule.dev/managed-by`: `resources`
-
-The following example attempts to modify the existing `app-demo` `ConfigMap` in `wind-test`:
+Use `creation: Merge` to manage fields on an existing object, or create it if it is
+absent. For example, this block adds a data entry to an existing ConfigMap:
 
 ```yaml
-apiVersion: capsule.clastix.io/v1beta2
-kind: TenantResource
-metadata:
-  name: app-config
-  namespace: wind-test
 spec:
   resources:
-    - generators:
-        - template: |
-            ---
-            apiVersion: v1
-            kind: ConfigMap
-            metadata:
-              name: app-demo
-            data:
-              {{ $.namespace.metadata.name }}.conf: |
-                {{ toYAML $.namespace .metadata | nindent 4 }}
+    - policy:
+        creation: Merge
+        force: false
+        protect: false
+        deletion: Remove
+      rawItems:
+        - apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: shared-config
+          data:
+            capsule-profile: production
 ```
 
-Without adoption enabled, all items fail:
-
-```yaml
-kubectl get tenantresource argo-cd-permission -o yaml
-
-...
-  processedItems:
-  - kind: ConfigMap
-    name: app-demo
-    namespace: wind-prod
-    origin: 0/template-0-0
-    status:
-      created: true
-      lastApply: "2026-02-10T17:59:46Z"
-      status: "True"
-      type: Ready
-    tenant: wind
-    version: v1
-  - kind: ConfigMap
-    name: app-demo
-    namespace: wind-test
-    origin: 0/template-0-0
-    status:
-      message: 'apply failed for item 0/template-0-0: evaluating managed metadata:
-        object v1/ConfigMap wind-test/app-demo exists and cannot be adopted'
-      status: "False"
-      type: Ready
-    tenant: wind
-    version: v1
-```
-
-Enable adoption by setting `settings.adopt: true`:
-
-```yaml
-apiVersion: capsule.clastix.io/v1beta2
-kind: TenantResource
-metadata:
-  name: app-config
-  namespace: wind-test
-spec:
-  settings:
-    adopt: true
-  resources:
-    - generators:
-        - template: |
-            ---
-            apiVersion: v1
-            kind: ConfigMap
-            metadata:
-              name: app-demo
-            data:
-              {{ $.namespace.metadata.name }}.conf: |
-                {{ toYAML $.namespace .metadata | nindent 4 }}
-```
-
-When adoption is enabled, resources can be modified. Note that if multiple operators manage the same resource, all must use Server-Side Apply to avoid conflicts.
-
-```yaml
-  processedItems:
-  - kind: ConfigMap
-    name: app-demo
-    namespace: wind-prod
-    origin: 0/generator-0-0
-    status:
-      created: true
-      lastApply: "2026-02-10T17:59:46Z"
-      status: "True"
-      type: Ready
-    tenant: wind
-    version: v1
-  - kind: ConfigMap
-    name: app-demo
-    namespace: wind-test
-    origin: 0/generator-0-0
-    status:
-      lastApply: "2026-02-10T18:01:31Z"
-      status: "True"
-      type: Ready
-    tenant: wind
-    version: v1
-```
+This example explicitly disables protection so other actors can continue managing
+the ConfigMap. Adoption alone does not disable protection; the default remains
+`protect: true`. Existing fields owned by other managers remain unless ownership
+conflicts are intentionally resolved with `force`.
 
 ##### Pruning
 
-When pruning is enabled, adoption is reverted - the patches introduced by the `TenantResource` are removed from the object. When pruning is disabled, only the `metadata.labels.projectcapsule.dev/managed-by` label is removed.
+Each block's `policy.deletion` controls cleanup when its targets leave scope,
+including namespace deselection, block removal, or parent deletion:
 
----
+| Policy | Created target | Adopted target |
+| --- | --- | --- |
+| `Remove` | Delete the object | Relinquish Capsule's applied fields and tracking |
+| `Orphan` | Retain the object and content; remove lifecycle metadata | Retain the object and content; remove lifecycle metadata |
+
+Cleanup uses the last successfully reconciled policy. A false apply condition does
+not suppress cleanup, and changing `deletion` while the condition is false updates
+the policy used for subsequent cleanup of already managed targets.
+
+#### Conditional apply
+
+Use `policy.condition` to control when rendered content is applied. It is evaluated
+independently for every destination, with `object` set to the existing resource or
+`null`, and `now` set to the evaluation timestamp:
+
+```yaml
+policy:
+  condition: "object == null"
+```
+
+This creates a target only when absent. Rendering still happens before evaluation.
+A false result reports `ConditionNotMet: apply skipped`, preserves content and its
+last apply timestamp, and keeps already managed targets tracked. Policy changes
+still take effect: protection metadata is reconciled and the current cleanup policy
+is retained. Previously unowned targets remain untouched. See
+[apply conditions](/docs/operating/concepts/managed-resources/#apply-conditions)
+for validation, error handling, and field-retention semantics, and
+[conditional age-key rotation](/docs/replications/global/#conditional-age-key-rotation)
+for a complete stateful generator. A TenantResource can use the same resource block
+within its tenant.
 
 ### DependsOn
 
@@ -1058,7 +959,7 @@ Dependencies are evaluated in the order they are declared in the `dependsOn` arr
 
 ### Force
 
-Setting `settings.force: true` instructs Capsule to [force-apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts) changes on Server-Side Apply conflicts, claiming field ownership even if another manager already holds it.
+Setting `spec.resources[].policy.force: true` instructs Capsule to [force-apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts) changes on Server-Side Apply conflicts, claiming field ownership even if another manager already holds it.
 
 **This option should generally be avoided.** Forcing ownership over a field managed by another operator will almost certainly cause a reconcile war. Only use it in scenarios where you intentionally want Capsule to win ownership disputes.
 
@@ -1070,10 +971,13 @@ metadata:
   name: tenant-technical-accounts
   namespace: wind-test
 spec:
-  settings:
-    force: true
   resources:
-    - generators:
+    - policy:
+        creation: Owner
+        force: true
+        protect: true
+        deletion: Remove
+      generators:
         - template: |
             ---
             apiVersion: v1
@@ -1137,11 +1041,14 @@ metadata:
   name: imagepullsecrets-default-sa-green
   namespace: wind-test
 spec:
-  settings:
-    adopt: true
   resyncPeriod: 600s
   resources:
-    - context:
+    - policy:
+        creation: Merge
+        force: false
+        protect: false
+        deletion: Remove
+      context:
         resources:
           - index: secrets
             apiVersion: v1

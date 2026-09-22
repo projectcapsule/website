@@ -132,7 +132,7 @@ template does not accept a separate `user` parameter.
 
 `params` must satisfy the template schema. `duration` and `startTime` are optional,
 and a start time supplied during creation must be in the future. Capsule replaces
-`spec.requestor` with the authenticated username and groups, so callers cannot claim a
+`spec.requester` with the authenticated username and groups, so callers cannot claim a
 different identity. See
 [Parameter Schemas and Dynamic Forms](/docs/operating/concepts/parameter-schema/) for
 JSON Schema, CEL, and Kubernetes-backed form fields.
@@ -198,7 +198,7 @@ status:
 `status.transitions` is the chronological lifecycle audit trail. Each entry records
 the entered state as `type`, its `timestamp`, compact actor identity (`name` and
 `type`), reason, and optional message. Group claims are deliberately not duplicated
-into transitions; requester groups remain in `spec.requestor.groups`. `conditions`
+into transitions; requester groups remain in `spec.requester.groups`. `conditions`
 describe operational state such as `Ready`, rather than lifecycle history.
 
 Inspect the complete snapshot and conditions with:
@@ -267,7 +267,7 @@ spec:
         name: platform-on-call
     conditions:
       - "request.spec.reason.startsWith('INC-')"
-      - "'platform-engineering' in requestor.groups"
+      - "'platform-engineering' in requester.groups"
 ```
 
 For manual approval, a non-empty `approvers` list must match the authenticated
@@ -277,7 +277,7 @@ restricts approval, not denial.
 
 Conditions form an OR list: at least one must evaluate to `true`; an empty list is
 unconditional. The approver check and condition block are ANDed. Expressions can use
-the ResourcePermit as `request`, the authenticated requester as `requestor`, and the
+the ResourcePermit as `request`, the authenticated requester as `requester`, and the
 authenticated manual reviewer as `reviewer`.
 
 With `auto: true`, `approvers` is ignored and conditions are checked during creation.
@@ -286,7 +286,7 @@ approval without conditions is unconditional and should only be used when every
 caller who can create the request may safely receive the rendered access.
 
 Clients submit only the desired phase change. Admission reconstructs reviewer identity
-and lifecycle fields while preserving the requestor, rendered snapshot, resolved
+and lifecycle fields while preserving the requester, rendered snapshot, resolved
 template version, execution ServiceAccount, and activation timestamps. A denied
 request cannot later be approved, and `Expired` is terminal.
 
@@ -313,6 +313,43 @@ kubectl capsule rp review gateway-editor-incident-1042 \
 
 Repeat `--as-group` for multiple groups. A group cannot be supplied without a user
 unless the loaded kubeconfig already impersonates one.
+
+## Conditional target lifecycle
+
+1. Capsule renders the request and records the concrete targets and policies in
+   `status.request.resources`.
+2. Preflight evaluates each condition against the live destination and dry-runs
+   allowed writes using the resolved execution ServiceAccount. No target is
+   persisted by preflight.
+3. Activation reevaluates against the live destination and current `now`, then
+   applies allowed targets. A result can change between preflight and activation.
+4. Active permits keep the reviewed snapshot. Editing the template does not
+   replace that snapshot, and Active permits do not periodically rerender or
+   reevaluate. Explicit retries of a Failed permit use its captured snapshot.
+   During an activation retry, a false condition can still reconcile protection
+   metadata on targets already applied by that permit, using the captured policy.
+   This does not make template policy edits affect an existing permit.
+5. Expiration/deletion cleans up applied targets according to `policy.deletion`.
+   A target that was never applied by this permit is left untouched. A target
+   applied on an earlier attempt remains eligible for cleanup even if a later
+   attempt skips it.
+
+A changed apply expression requires a new request to capture the updated template.
+Retrying a Failed permit retains its reviewed expression and targets. Template policy
+edits do not change an existing request's snapshot. Examples for both template kinds
+are in [Conditional resources](../templates/#conditional-resources).
+
+Inspect conditions without printing rendered target data, which may contain Secrets:
+
+```bash
+kubectl get resourcepermit REQUEST -n NAMESPACE -o json \
+  | jq '.status | {phase, failure, processedItems}'
+```
+
+Applied targets have a `lastApply` timestamp. Skipped targets report
+`ConditionNotMet: apply skipped`; previously applied targets retain their last
+successful timestamp, while never-applied targets have none. The condition never
+suppresses expiration cleanup of targets the permit previously applied.
 
 ## Operations and troubleshooting
 
@@ -350,6 +387,12 @@ Common problems can be narrowed down quickly:
 | Request is `Failed` | Inspect `.status.failure`, correct the reported execution problem, then issue `rp retry` or `rp expire` |
 | Request deletion is denied | Cancel only `Created`/`Requested`/`Pending`; otherwise expire and wait for retention |
 | Managed object cannot be changed | Check whether its resource group uses `protect: true` |
+| Template rejected at `spec.resources[i].policy.condition` | Correct CEL syntax, undeclared variables, or a non-boolean expression such as `42` |
+| Preflight fails with `ResourceDryRunFailed` and `ConditionEvaluationFailed` | Guard missing fields and check timestamp formats; preflight has not persisted targets |
+| Activation fails | Inspect failure and processed-item status; other independent targets may already have been applied |
+| Conditional target read is forbidden | Grant the execution ServiceAccount `get` on that target, even for a false expression |
+| Namespace read is forbidden during cleanup | Retain `get` on the target Namespace until cleanup finishes |
+| Permit is Active but targets were skipped | A false condition is a successful skip; Active permits do not reevaluate when time passes or a template changes |
 
 Useful diagnostics:
 
@@ -393,7 +436,7 @@ with a short hash suffix. The unmodified identity is always available in
 `.status.transitions[].actor`. Transition entries remain the durable in-object audit
 trail and include `eventTime` after Capsule emits the corresponding event.
 
-For audit purposes, retain the trusted requestor, reason and parameters, request
+For audit purposes, retain the trusted requester, reason and parameters, request
 snapshot, review decision, transitions, conditions, and managed-resource results.
 Configure `keepFor` on templates that require an in-cluster audit window after access
 ends.

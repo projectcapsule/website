@@ -79,6 +79,9 @@ TenantSelector is an optional field. If not set, the resources will be replicate
 
 ### Resources
 
+Each block accepts a [resource policy](#object-management) for creation, protection,
+SSA conflicts, cleanup, and optional CEL conditions.
+
 A resource block defines *what* to replicate. Multiple blocks can be stacked in the `resources` array, each using one or more of the strategies below.
 
 #### NamespaceSelector
@@ -838,333 +841,108 @@ This section covers more advanced features of the Replication setup.
 
 ### Object Management
 
-Capsule uses [Server-Side Apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/) for all replication operations. Two management modes exist depending on whether the object already existed before reconciliation.
+Set `spec.resources[].policy` separately for each resource block. The policy applies
+to all destinations produced by that block, while namespace selectors determine
+which namespace profiles receive them. See the
+[shared SSA policy reference](/docs/operating/concepts/managed-resources/) for the
+complete contract and [migration guidance](/docs/replications/#deprecated-settings-and-migration)
+for existing manifests using `spec.settings`.
 
 #### Create
 
-An object is *Created* when the `GlobalTenantResource` first encounters it - it did not exist prior to reconciliation. Created objects receive the following metadata:
-
-  * `metadata.labels.projectcapsule.dev/created-by`: `resources`
-  * `metadata.labels.projectcapsule.dev/managed-by`: `resources`
-  * `metadata.ownerReferences`: Owner reference to the corresponding `GlobalTenantResource`
-
-```yaml
-kind: ConfigMap
-metadata:
-  labels:
-    projectcapsule.dev/created-by: resources
-    projectcapsule.dev/managed-by: resources
-  name: common-config
-  namespace: green-test
-  ownerReferences:
-  - apiVersion: capsule.clastix.io/v1beta2
-    kind: GlobalTenantResource
-    name: tenant-cm-providers
-    uid: 903395eb-9314-462d-ae19-7c87d71e890b
-  resourceVersion: "549517"
-  uid: 23abbb7a-2926-416a-bc72-9f793ebf6080
-```
-
-Since we are using [Server-Side Apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/) we can also allow different items making changes to the same object, when it was created by a `GlobalTenantResource`, as long as there are no conflicts:
+`creation: Owner` is the default. Capsule creates an absent object and applies future
+changes to objects created by the applying controller. An unrelated existing target
+is an ownership error. Capsule records whether each processed target was created or
+adopted; `protect: true` blocks direct user updates and deletion while it is managed.
 
 ```yaml
----
 apiVersion: capsule.clastix.io/v1beta2
 kind: GlobalTenantResource
 metadata:
-  name: tenant-cm-registration
+  name: namespace-profile
 spec:
-  scope: Tenant
   resources:
-    - generators:
-        - template: |
-            ---
-            apiVersion: v1
-            kind: ConfigMap
-            metadata:
-              name: common-config
-              namespace: default
-            data:
-              {{ $.tenant.metadata.name }}.conf: |
-                {{ toYAML $.tenant.metadata | nindent 4 }}
+    - policy:
+        creation: Owner
+        force: false
+        protect: true
+        deletion: Remove
+      rawItems:
+        - apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: namespace-profile
+          data:
+            environment: production
 ```
 
-Will result in the following object:
-
-```yaml
-apiVersion: v1
-data:
-  green.conf: "\ncreationTimestamp: \"2026-02-05T08:03:25Z\"\ngeneration: 2\nlabels:\n
-    \ customer: a\n  kubernetes.io/metadata.name: green\nname: green\nresourceVersion:
-    \"549455\"\nuid: 7b756efd-cdad-484b-a41f-d1a00d401781 \n"
-  solar.conf: "\ncreationTimestamp: \"2026-02-05T08:03:25Z\"\ngeneration: 2\nlabels:\n
-    \ customer: a\n  kubernetes.io/metadata.name: solar\nname: solar\nresourceVersion:
-    \"549521\"\nuid: c2b21703-2321-4789-af9f-65e541c883d5 \n"
-  wind.conf: "\ncreationTimestamp: \"2026-02-05T13:43:22Z\"\ngeneration: 1\nlabels:\n
-    \ kubernetes.io/metadata.name: wind\nname: wind\nresourceVersion: \"542629\"\nuid:
-    72388253-ff5c-4614-94a2-2fd8cd7cf813 \n"
-kind: ConfigMap
-metadata:
-  creationTimestamp: "2026-02-05T15:37:09Z"
-  labels:
-    projectcapsule.dev/created-by: resources
-    projectcapsule.dev/managed-by: resources
-  name: common-config
-  namespace: default
-  ownerReferences:
-  - apiVersion: capsule.clastix.io/v1beta2
-    kind: GlobalTenantResource
-    name: tenant-sops-providers
-    uid: 7cf01d19-0555-490f-bd01-a5beff0cbc64
-  resourceVersion: "561707"
-  uid: 33cfe1c6-1c9e-4417-9dd5-26ac0ba3bc85
-```
-
-This also works across different `GlobalTenantResources`:
-
-```yaml
-apiVersion: v1
-data:
-  common.conf: "\ncreationTimestamp: \"2026-02-05T08:03:25Z\"\ngeneration: 2\nlabels:\n
-    \ customer: a\n  kubernetes.io/metadata.name: green\nname: green\nresourceVersion:
-    \"549455\"\nuid: 7b756efd-cdad-484b-a41f-d1a00d401781 \n"
-  green.conf: "\ncreationTimestamp: \"2026-02-05T08:03:25Z\"\ngeneration: 2\nlabels:\n
-    \ customer: a\n  kubernetes.io/metadata.name: green\nname: green\nresourceVersion:
-    \"549455\"\nuid: 7b756efd-cdad-484b-a41f-d1a00d401781 \n"
-  solar.conf: "\ncreationTimestamp: \"2026-02-05T08:03:25Z\"\ngeneration: 2\nlabels:\n
-    \ customer: a\n  kubernetes.io/metadata.name: solar\nname: solar\nresourceVersion:
-    \"549521\"\nuid: c2b21703-2321-4789-af9f-65e541c883d5 \n"
-  wind.conf: "\ncreationTimestamp: \"2026-02-05T13:43:22Z\"\ngeneration: 1\nlabels:\n
-    \ kubernetes.io/metadata.name: wind\nname: wind\nresourceVersion: \"542629\"\nuid:
-    72388253-ff5c-4614-94a2-2fd8cd7cf813 \n"
-kind: ConfigMap
-metadata:
-  creationTimestamp: "2026-02-05T15:37:09Z"
-  labels:
-    projectcapsule.dev/created-by: resources
-    projectcapsule.dev/managed-by: resources
-  name: common-config
-  namespace: default
-  ownerReferences:
-  - apiVersion: capsule.clastix.io/v1beta2
-    kind: GlobalTenantResource
-    name: tenant-sops-providers
-    uid: 7cf01d19-0555-490f-bd01-a5beff0cbc64
-  - apiVersion: capsule.clastix.io/v1beta2
-    kind: GlobalTenantResource
-    name: tenant-cm-registration
-    uid: b2d34727-b403-4e2a-9115-232ba61d3c69
-  resourceVersion: "562881"
-  uid: 33cfe1c6-1c9e-4417-9dd5-26ac0ba3bc85
-```
-
- However, when try to manage the same field, we will get an error:
-
-```yaml
----
-apiVersion: capsule.clastix.io/v1beta2
-kind: GlobalTenantResource
-metadata:
-  name: tenant-cm-registration
-spec:
-  scope: Tenant
-  resources:
-      generators:
-        - template: |
-            ---
-            apiVersion: v1
-            kind: ConfigMap
-            metadata:
-              name: common-config
-              namespace: default
-            data:
-              common.conf: |
-                {{ toYAML $.tenant.metadata.name | nindent 4 }}
-```
-
-We can see a Conflict Error in the `GlobalTenantResource` status:
-
-```yaml
-kubectl get globaltenantresource tenant-cm-registration -o yaml
-
-...
-
-  status:
-    processedItems:
-    - kind: ConfigMap
-      name: common-config
-      namespace: default
-      status:
-        lastApply: "2026-02-05T15:52:26Z"
-        status: "True"
-        type: Ready
-      tenant: wind
-      version: v1
-    - kind: ConfigMap
-      name: common-config
-      namespace: default
-      status:
-        created: true
-        message: 'apply failed for item 0/generator-0-0: applying object failed: Apply
-          failed with 1 conflict: conflict with "projectcapsule.dev/resource/cluster/tenant-cm-registration//default/wind/":
-          .data.common.conf'
-        status: "False"
-        type: Ready
-      tenant: green
-      version: v1
-    - kind: ConfigMap
-      name: common-config
-      namespace: default
-      status:
-        created: true
-        message: 'apply failed for item 0/generator-0-0: applying object failed: Apply
-          failed with 1 conflict: conflict with "projectcapsule.dev/resource/cluster/tenant-cm-registration//default/wind/":
-          .data.common.conf'
-        status: "False"
-        type: Ready
-      tenant: solar
-      version: v1
-```
-
-You can check the `created` property on each item's status to determine whether it was created or adopted. Field conflicts can be resolved with [Force](#force).
-
-##### Pruning
-
-When pruning is enabled, *Created* objects are deleted when they fall out of scope. When pruning is disabled, the following metadata is removed instead:
-
-  * `metadata.labels.projectcapsule.dev/managed-by`: `resources`
-  * `metadata.ownerReferences`: owner reference to the `GlobalTenantResource`
-
-The label `metadata.labels.projectcapsule.dev/created-by` is preserved after pruning, allowing another `GlobalTenantResource` or `TenantResource` to take ownership without explicit adoption. To prevent re-adoption, remove or change this label manually.
+SSA tracks ownership of individual fields. Multiple managers can contribute
+non-conflicting fields to a shared object. A conflict is reported through
+processed-item status; use [Force](#force) only when Capsule should take ownership
+of those fields.
 
 #### Adopt
 
-By default, a `GlobalTenantResource` cannot modify objects it did not create. Adoption must be explicitly enabled. Adopted objects receive the following metadata:
-
-  * `metadata.labels.projectcapsule.dev/managed-by`: `resources`
-
-For example the following `GlobalTenantResource` tries to change the content of the existing `argo-rbac` `ConfigMap`:
+Use `creation: Merge` to manage fields on an existing object, or create it if it is
+absent. For example, this block adds a data entry to an existing ConfigMap:
 
 ```yaml
-apiVersion: capsule.clastix.io/v1beta2
-kind: GlobalTenantResource
-metadata:
-  name: argo-cd-permission
 spec:
   resources:
-    - generators:
-        - template: |
-            ---
-            apiVersion: v1
-            kind: ConfigMap
-            metadata:
-              name: argocd-rbac-cm
-            data:
-              {{ $.tenant.metadata.name }}.csv: |
-                {{- range $.tenant.status.owners }}
-                p, {{ .name }}, applications, sync, my-{{ $.tenant.metadata.name }}/*, allow
-                {{- end }}
+    - policy:
+        creation: Merge
+        force: false
+        protect: false
+        deletion: Remove
+      rawItems:
+        - apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: shared-config
+          data:
+            capsule-profile: production
 ```
 
-We can see, that we get an error for all items. Telling us, we can not overwrite an existing object:
-
-```yaml
-kubectl get globaltenantresource argo-cd-permission -o yaml
-
-...
-  processedItems:
-  - kind: ConfigMap
-    name: argocd-rbac-cm
-    namespace: argocd
-    status:
-      message: 'apply failed for item 0/generator-0-0: resource evaluation: resource
-        v1/ConfigMap argocd/argocd-rbac-cm exists and cannot be adopted'
-      status: "False"
-      type: Ready
-    tenant: green
-    version: v1
-  - kind: ConfigMap
-    name: argocd-rbac-cm
-    namespace: argocd
-    status:
-      message: 'apply failed for item 0/generator-0-0: resource evaluation: resource
-        v1/ConfigMap argocd/argocd-rbac-cm exists and cannot be adopted'
-      status: "False"
-      type: Ready
-    tenant: solar
-    version: v1
-  - kind: ConfigMap
-    name: argocd-rbac-cm
-    namespace: argocd
-    status:
-      message: 'apply failed for item 0/generator-0-0: resource evaluation: resource
-        v1/ConfigMap argocd/argocd-rbac-cm exists and cannot be adopted'
-      status: "False"
-      type: Ready
-    tenant: wind
-    version: v1
-```
-
-If we want to allow that, we can set the `adopt` property to `true`:
-
-```yaml
-apiVersion: capsule.clastix.io/v1beta2
-kind: GlobalTenantResource
-metadata:
-  name: argo-cd-permission
-spec:
-  settings:
-    adopt: true
-  resources:
-    - generators:
-        - template: |
-            ---
-            apiVersion: v1
-            kind: ConfigMap
-            metadata:
-              name: argocd-rbac-cm
-            data:
-              {{ $.tenant.metadata.name }}.csv: |
-                {{- range $.tenant.status.owners }}
-                p, {{ .name }}, applications, sync, {{ $.tenant.metadata.name }}/*, allow
-                {{- end }}
-```
-
-When adoption is enabled, resources can be modified. Note that if multiple operators manage the same resource, all must use Server-Side Apply to avoid conflicts.
-
-```shell
-kubectl get cm -n argocd  argocd-rbac-cm -o yaml
-apiVersion: v1
-data:
-  policy.csv: |
-    p, my-org:team-alpha, applications, sync, my-project/*, allow
-    g, my-org:team-beta, role:admin
-    g, user@example.org, role:admin
-    g, admin, role:admin
-    g, role:admin, role:readonly
-  policy.default: role:readonly
-  scopes: '[groups, email]'
-
-  green.csv: |2
-
-    p, oidc:org:devops, applications, sync, green/*, allow
-    p, bob, applications, sync, green/*, allow
-  solar.csv: |2
-
-    p, oidc:org:platform, applications, sync, solar/*, allow
-    p, alice, applications, sync, solar/*, allow
-  wind.csv: |2
-
-    p, oidc:org:devops, applications, sync, wind/*, allow
-    p, joe, applications, sync, wind/*, allow
-kind: ConfigMap
-```
+This example explicitly disables protection so other actors can continue managing
+the ConfigMap. Adoption alone does not disable protection; the default remains
+`protect: true`. Existing fields owned by other managers remain unless ownership
+conflicts are intentionally resolved with `force`.
 
 ##### Pruning
 
-When pruning is enabled, adoption is reverted - the patches introduced by the `GlobalTenantResource` are removed from the object. When pruning is disabled, only the `metadata.labels.projectcapsule.dev/managed-by` label is removed.
+Each block's `policy.deletion` controls cleanup when its targets leave scope,
+including namespace deselection, block removal, or parent deletion:
 
----
+| Policy | Created target | Adopted target |
+| --- | --- | --- |
+| `Remove` | Delete the object | Relinquish Capsule's applied fields and tracking |
+| `Orphan` | Retain the object and content; remove lifecycle metadata | Retain the object and content; remove lifecycle metadata |
+
+Cleanup uses the last successfully reconciled policy. A false apply condition does
+not suppress cleanup, and changing `deletion` while the condition is false updates
+the policy used for subsequent cleanup of already managed targets.
+
+#### Conditional apply
+
+Use `policy.condition` to control when rendered content is applied. It is evaluated
+independently for every destination, with `object` set to the existing resource or
+`null`, and `now` set to the evaluation timestamp:
+
+```yaml
+policy:
+  condition: "object == null"
+```
+
+This creates a target only when absent. Rendering still happens before evaluation.
+A false result reports `ConditionNotMet: apply skipped`, preserves content and its
+last apply timestamp, and keeps already managed targets tracked. Policy changes
+still take effect: protection metadata is reconciled and the current cleanup policy
+is retained. Previously unowned targets remain untouched. See
+[apply conditions](/docs/operating/concepts/managed-resources/#apply-conditions)
+for validation, error handling, and field-retention semantics, and
+[conditional age-key rotation](/docs/replications/global/#conditional-age-key-rotation)
+for a complete stateful generator. A TenantResource can use the same resource block
+within its tenant.
 
 ### DependsOn
 
@@ -1222,7 +1000,7 @@ Dependencies are evaluated in the order they are declared in the `dependsOn` arr
 
 ### Force
 
-Setting `settings.force: true` instructs Capsule to [force-apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts) changes on Server-Side Apply conflicts, claiming field ownership even if another manager already holds it.
+Setting `spec.resources[].policy.force: true` instructs Capsule to [force-apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/#conflicts) changes on Server-Side Apply conflicts, claiming field ownership even if another manager already holds it.
 
 **This option should generally be avoided.** Forcing ownership over a field managed by another operator will almost certainly cause a reconcile war. Only use it in scenarios where you intentionally want Capsule to win ownership disputes.
 
@@ -1233,10 +1011,13 @@ kind: GlobalTenantResource
 metadata:
   name: tenant-technical-accounts
 spec:
-  settings:
-    force: true
   resources:
-    - generators:
+    - policy:
+        creation: Owner
+        force: true
+        protect: true
+        deletion: Remove
+      generators:
         - template: |
             ---
             apiVersion: v1
@@ -1298,8 +1079,6 @@ kind: GlobalTenantResource
 metadata:
   name: imagepullsecrets-default-sa-non-renewable
 spec:
-  settings:
-    adopt: true
   tenantSelector:
     matchLabels:
       energy: non-renewable
@@ -1307,7 +1086,12 @@ spec:
     - name: replicate-imagepullsecrets-non-renewable
   resyncPeriod: 600s
   resources:
-    - context:
+    - policy:
+        creation: Merge
+        force: false
+        protect: false
+        deletion: Remove
+      context:
         resources:
           - index: secrets
             apiVersion: v1
@@ -1467,6 +1251,170 @@ capsule_global_resource_condition{condition="Ready",name="templated-forbidden-na
 ## Examples
 
 Different use cases for `GlobalTenantResource` objects.
+
+### Conditional age-key rotation
+
+This namespace profile creates `<tenant>-age-keys` in every selected namespace and
+retains each previous private identity in its own Secret data entry. It rotates on
+the first successful reconciliation at least 30 days after the last rotation.
+`720h` is a fixed 30-day duration, not a calendar month; `30d` is not supported by
+`resyncPeriod` or CEL's `duration()`.
+
+The example uses `deletion: Orphan`, so removing the GTR, its block, or namespace
+selection retains the Secret and keys while removing Capsule's lifecycle metadata.
+
+Create the execution identity and grant it Secret access before applying the GTR.
+This cluster-wide example is for platform administrators; scope the binding to the
+intended namespaces when distributing only to a fixed set of namespaces.
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gtr-reconciler
+  namespace: capsule-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: capsule-age-key-reconciler
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: capsule-age-key-reconciler
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: capsule-age-key-reconciler
+subjects:
+  - kind: ServiceAccount
+    name: gtr-reconciler
+    namespace: capsule-system
+```
+
+Apply this GTR, then opt in a namespace belonging to a Tenant:
+
+```yaml
+---
+# Enable this namespace profile with:
+# kubectl label namespace <namespace> projectcapsule.dev/age-keys=enabled
+# Uses the gtr-reconciler ServiceAccount and Secret permissions from rbac.yaml.
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalTenantResource
+metadata:
+  name: age-key-rotation
+spec:
+  scope: Namespace
+  resyncPeriod: 720h
+  serviceAccount:
+    name: gtr-reconciler
+    namespace: capsule-system
+  resources:
+    - namespaceSelector:
+        matchLabels:
+          projectcapsule.dev/age-keys: enabled
+      policy:
+        creation: Owner
+        force: false
+        protect: true
+        deletion: Orphan
+        # First creation, then the first successful reconciliation after 30 days.
+        # A missing marker initializes rotation; an invalid marker blocks writes.
+        condition: |
+          object == null ||
+          !has(object.metadata.annotations) ||
+          !('keys.example.org/rotated-at' in object.metadata.annotations) ||
+          now >= timestamp(object.metadata.annotations['keys.example.org/rotated-at']) + duration('720h')
+      context:
+        resources:
+          - index: existing
+            apiVersion: v1
+            kind: Secret
+            # Fast-template syntax; the namespace defaults to the selected namespace.
+            name: "{{tenant.name}}-age-keys"
+            optional: true
+      generators:
+        - missingKey: error
+          template: |
+            {{- $name := printf "%s-age-keys" .tenant.metadata.name -}}
+            {{- $existing := getResourceByName $name (index . "existing" | default (list)) -}}
+            {{- $key := generateAgeKey -}}
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: {{ $name | quote }}
+              annotations:
+                keys.example.org/rotated-at: {{ now | date "2006-01-02T15:04:05Z07:00" | quote }}
+            type: Opaque
+            data:
+              # Keep every previous entry under its original name and value.
+              {{- range $field, $value := get "data" $existing | default (dict) }}
+              {{- if ne $field "recipient" }}
+              {{ $field | quote }}: {{ $value | quote }}
+              {{- end }}
+              {{- end }}
+              # Each identity gets a unique entry named after its public recipient.
+              {{ printf "%s.agekey" $key.Recipient | quote }}: {{ $key.Identity | b64enc | quote }}
+              recipient: {{ $key.Recipient | b64enc | quote }}
+```
+
+```bash
+kubectl label namespace solar-uat projectcapsule.dev/age-keys=enabled
+```
+
+Context reference names use fast templates: `"{{tenant.name}}-age-keys"`.
+Generator bodies use Go templates: `.tenant.metadata.name`. An omitted context
+namespace resolves to the selected namespace, and `optional: true` handles the
+initial missing Secret. Context reads use the execution ServiceAccount. When a
+conditional generator reads its destination as context, Capsule checks the observed
+resource version before applying content; concurrent changes trigger a fresh render.
+
+Each identity is stored under `<public-recipient>.agekey`, preserving its name and
+value across rotations. `data.recipient` holds the newest public recipient. When
+mounted as a volume, each identity becomes a separate file. The generator explicitly
+loads and renders the previous data entries: a condition does not change SSA field
+retention. History has no automatic limit and must fit Kubernetes' Secret size limit.
+
+Rendering precedes condition evaluation, so a candidate key may be generated and
+discarded on a skip. A missing rotation marker initializes rotation; a malformed
+timestamp is an evaluation error and prevents the target write. A false condition
+keeps keys, the rotation marker, and the last content-apply timestamp unchanged.
+Protection and cleanup-policy changes still reconcile on an already managed Secret.
+
+`resyncPeriod` controls how often eligibility is checked, with reconciliation jitter;
+the condition defines the minimum rotation interval. The example uses `720h` for
+both. Use a shorter resync for more frequent eligibility checks. For a quick local
+demo, use `resyncPeriod: 10s` and `duration('5m')` in the condition.
+
+Inspect the result without printing private identities:
+
+```bash
+kubectl get gtr age-key-rotation -o json \
+  | jq '.status | {selectedTenants, size, processedItems, conditions}'
+kubectl get secret solar-age-keys -n solar-uat -o json \
+  | jq '{rotatedAt: .metadata.annotations["keys.example.org/rotated-at"],
+         identityEntries: [.data | keys[] | select(endswith(".agekey"))]}'
+```
+
+A fresh Secret has one `.agekey` entry. Before the interval elapses, the timestamp
+and entries stay unchanged. The next eligible successful reconciliation advances
+the timestamp and adds one entry while preserving every previous entry's name and
+value. Each selected namespace, including namespaces in different tenants, has an
+independent Secret and rotation timestamp.
+
+`Ready=True` with `size: 0` and empty `processedItems` can mean no namespace matched.
+`selectedTenants` alone does not prove that a namespace was selected. Check tenant
+membership and the namespace's `projectcapsule.dev/age-keys=enabled` label. A
+condition skip on a rendered destination instead appears in processed-item status
+as `ConditionNotMet: apply skipped`.
 
 ### Generate ServiceAccount Tenant Owner per Tenant
 

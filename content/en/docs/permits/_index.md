@@ -154,7 +154,7 @@ Run template installation as a template administrator, request creation as the
 requester, and review as an authorized reviewer. Generated Role and RoleBinding names
 include the permit name so separate permits can coexist in the same namespace.
 
-Capsule overwrites `spec.requestor` with the authenticated user's name and groups;
+Capsule overwrites `spec.requester` with the authenticated user's name and groups;
 clients should not rely on supplying that field themselves.
 
 ## Security model
@@ -182,12 +182,3 @@ and operations. Reusable behavior is documented under concepts:
 
 - [Parameter Schemas and Dynamic Forms](/docs/operating/concepts/parameter-schema/)
 - [Managed Resources and Server-Side Apply](/docs/operating/concepts/managed-resources/)
-
-## Updating from the previous API
-
-`ResourcePermit`, `ResourcePermitTemplate`, and `GlobalResourcePermitTemplate` replace
-the previous `ResourceLease`, `ResourceLeaseTemplate`, and
-`GlobalResourceLeaseTemplate` kinds. The API group and version remain
-`capsule.clastix.io/v1beta2`. Update manifests, `spec.template.kind`, RBAC resource
-names, Helm values, CLI commands, metrics, and managed-resource metadata to the new
-names shown in these pages. Existing objects are not converted automatically.

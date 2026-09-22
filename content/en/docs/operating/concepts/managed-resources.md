@@ -10,9 +10,11 @@ description: Resource ownership, server-side apply, protection, cleanup policies
 ---
 
 Capsule uses a shared resource manager to apply Kubernetes objects, track their
-ownership, and prune them when they leave scope. ResourcePermit templates expose these
-choices as a policy on each resource group; Capsule's resource-distribution APIs use
-the same apply and processed-item foundations.
+ownership, and prune them when they leave scope. `TenantResource`,
+`GlobalTenantResource`, `ResourcePermitTemplate`, and
+`GlobalResourcePermitTemplate` share `spec.resources[].policy`. Each block controls
+its generated resources, allowing namespaces within a tenant to receive different
+configuration and lifecycle behavior.
 
 ## Apply and ownership model
 
@@ -55,6 +57,7 @@ resources:
 | `protect` | `true`, `false` | `true` | Whether admission blocks direct changes while managed |
 | `force` | `true`, `false` | `false` | Whether SSA may take conflicting field ownership |
 | `deletion` | `Remove`, `Orphan` | `Remove` | What happens when the parent stops managing the object |
+| `condition` | CEL boolean expression | Omitted | Whether to apply rendered content to each destination |
 
 `Owner` requires Capsule to have created the target. If an object with the same
 identity already exists and was not created for the managing API, reconciliation
@@ -70,6 +73,11 @@ admission webhook rejects direct updates and deletion while the parent manages i
 except for the controller and the resolved execution ServiceAccount. Disable
 protection only when another actor must modify the object during its managed lifetime.
 
+With `deletion: Remove`, when multiple Capsule resource managers share an adopted
+target, removing one manager preserves the shared tracking and protection metadata while another
+Capsule resource manager remains. The final departing manager removes that
+metadata without deleting fields owned by external managers.
+
 Cleanup depends on both the deletion policy and whether Capsule created or adopted the
 object:
 
@@ -80,6 +88,91 @@ object:
 
 `Orphan` can leave privileges or configuration behind after the parent expires, so it
 should be an explicit design choice.
+
+## Apply conditions
+
+Set `spec.resources[].policy.condition` on `TenantResource`,
+`GlobalTenantResource`, `ResourcePermitTemplate`, or
+`GlobalResourcePermitTemplate`. One expression applies independently to every
+destination produced by that resource block; separate blocks can use different
+conditions. The expression must return a boolean and may contain up to 4096
+characters. Omit the field to keep unconditional apply; an empty or whitespace-only
+expression is not a substitute for omitting it.
+
+| Input | Meaning |
+| --- | --- |
+| `object` | The existing destination resource, read using the execution identity; `null` if it does not exist. It is not the rendered candidate. |
+| `now` | The UTC timestamp at evaluation time. Use `timestamp(...)` and `duration(...)` for time comparisons. |
+
+Apply conditions use CEL directly. There is no `self`, `.self`, Go-template
+expansion, or access to template parameters/context in this expression. Load
+context and render the desired resource through the existing template API. The
+condition then decides whether that rendered resource may be applied.
+
+For example, create a target only when it is absent:
+
+```yaml
+policy:
+  condition: "object == null"
+```
+
+To initialize a target and then allow a refresh after five minutes:
+
+```yaml
+policy:
+  condition: |
+    object == null ||
+    !has(object.metadata.annotations) ||
+    !('keys.example.org/rotated-at' in object.metadata.annotations) ||
+    now >= timestamp(object.metadata.annotations['keys.example.org/rotated-at']) + duration('5m')
+```
+
+The generator must write the `keys.example.org/rotated-at` annotation on each
+successful refresh. Guard missing objects and fields before accessing them;
+use bracket notation for annotation keys containing dots or slashes. A missing
+timestamp initializes this example, while a malformed timestamp causes an
+evaluation error. See the complete [rotation example](/docs/replications/global/#conditional-age-key-rotation)
+for the template, retention behavior, and verification steps.
+
+| Outcome | Apply behavior |
+| --- | --- |
+| Condition omitted | Existing unconditional apply behavior. |
+| `true` | Apply using the block's creation, force, and protection policies; normal authorization and ownership checks still apply. |
+| `false` | Skip rendered content and preserve its last-apply timestamp. Reconcile protection and retain the current policy for already managed targets. A never-applied target is not adopted, protected, or modified. |
+| Invalid syntax or non-boolean result type | Admission rejects the expression at `spec.resources[i].policy.condition`. |
+| Evaluation or target-read error | The target is not written; the failure is reported through existing status. A forbidden read is not treated as an absent object. |
+
+There is no configurable action for a false result. Conditions do not provide
+an all-or-nothing transaction across targets: each target is evaluated separately.
+They also do not change SSA retention. To preserve old fields owned by Capsule,
+include them in subsequent rendered resources, as the age-key example does.
+
+For example, changing `protect: true` to `protect: false` removes protection on
+an already managed target even while its condition is false, provided no other
+Capsule resource manager still shares the target. Protection is also reconciled
+when the condition becomes true or is removed; protection established during a
+skipped apply does not persist after a sole manager disables it. Changing
+`deletion: Remove` to `deletion: Orphan` takes effect for subsequent cleanup.
+`creation` and `force` govern the next permitted content apply; changing them
+does not override a false condition. Rendered labels, annotations, and data
+remain unchanged, including key material and rotation timestamps. Capsule may
+patch its own protection metadata, so the target's resource version can change.
+When that metadata already matches, a skipped reconciliation performs no target
+write. Policy changes that fail to reconcile are reported through existing status.
+
+### Evaluation lifecycle
+
+| Resource | Evaluation lifecycle | Suitable use |
+| --- | --- | --- |
+| `TenantResource` / `GlobalTenantResource` | Render and evaluate during reconciliation, including periodic resync. | Recurring namespace configuration and key rotation. |
+| `ResourcePermitTemplate` / `GlobalResourcePermitTemplate` | Render a request snapshot, then evaluate against live targets during preflight, activation, and explicit failure retries. Active permits do not periodically reevaluate. | Conditional provisioning during an approved permit's activation. |
+
+Permit approval conditions (`spec.approvals.conditions`) control approval
+eligibility. Apply conditions control target writes after those approval rules
+are satisfied. In particular, an Active permit may contain skipped targets;
+use approval conditions when the entire permit must be gated. The
+[permit guide](/docs/permits/templates/#conditional-resources)
+provides namespaced/global examples, required permissions, and status diagnostics.
 
 ## Scope, tracking, and cleanup
 
@@ -123,24 +216,29 @@ status:
       kind: Role
       namespace: solar-uat
       name: incident-1042-editor
-      clusterScoped: false
-      created: true
-      lastApply: "2026-08-31T10:02:13Z"
-      type: Ready
-      status: "True"
+      status:
+        clusterScoped: false
+        created: true
+        lastApply: "2026-08-31T10:02:13Z"
+        type: Ready
+        status: "True"
     - group: rbac.authorization.k8s.io
       version: v1
       kind: ClusterRole
       name: incident-1042-cluster-reader
-      clusterScoped: true
-      created: true
-      lastApply: "2026-08-31T10:02:14Z"
-      type: Ready
-      status: "True"
+      status:
+        clusterScoped: true
+        created: true
+        lastApply: "2026-08-31T10:02:14Z"
+        type: Ready
+        status: "True"
 ```
 
 Each item identifies its GVK, name, namespace and scope, whether it was created or
-adopted, its last apply time, and its latest condition or error. Ownership violations,
+adopted, its last apply time, and its latest condition or error. Skipped targets
+report `ConditionNotMet: apply skipped`. A previously applied target keeps its last
+successful apply time; a never-applied target has none. The retained policy records
+the last successful policy reconciliation and determines subsequent cleanup. Ownership violations,
 SSA conflicts, RBAC denials, unavailable GVKs, invalid manifests, and admission
 failures are reported through this status and the parent conditions.
 

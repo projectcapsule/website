@@ -281,7 +281,10 @@ spec:
 The ServiceAccount needs `get` for named context objects or `list` for selected
 context, plus the lifecycle verbs required by every rendered GVK. This usually means
 `get`, `create`, `patch`, and `update`, plus `delete` for resources that Capsule may
-remove. Cluster-scoped inputs and outputs require appropriately scoped RBAC. Keep this
+remove. Conditional targets need `get` even when the expression is always false.
+Cleanup also needs `get` on each target Namespace; the
+[conditional example](#namespaced-example) limits this with `resourceNames`.
+Cluster-scoped inputs and outputs require appropriately scoped RBAC. Keep this
 execution identity separate from approval identities: the approver authorizes the
 snapshot; the ServiceAccount executes it.
 
@@ -300,6 +303,214 @@ keepFor: 7d
 `defaultDuration` applies when the request omits a duration, `maxDuration` limits the
 approved value, and `keepFor` retains an expired request for auditing. Without an
 effective duration, access remains until explicitly expired.
+
+## Conditional resources
+
+Both template kinds support `spec.resources[].policy.condition`. The shared
+[apply-condition contract](/docs/operating/concepts/managed-resources/#apply-conditions)
+defines CEL inputs (`object` and `now`), validation, and skipped-target behavior.
+Conditions run after rendering, independently for each destination.
+
+| Field | Decision | Inputs |
+| --- | --- | --- |
+| `spec.approvals.conditions[]` | Approval eligibility; conditions are ORed | `request`, `requester`, `reviewer` |
+| `spec.resources[].policy.condition` | Whether to apply one target's rendered content | `object`, `now` |
+
+A false apply condition is a successful skip. It does not deny approval, keep the
+request pending, or schedule another attempt once Active. A permit can become
+Active even when every target is skipped. Use approval conditions to gate the whole
+request. Apply expressions are plain CEL and cannot reference template parameters
+or loaded context directly; a false expression cannot suppress a rendering error.
+
+For recurring time-based updates, use a TenantResource or GlobalTenantResource,
+such as the [age-key rotation example](/docs/replications/global/#conditional-age-key-rotation).
+See [conditional target lifecycle](../requests/#conditional-target-lifecycle) for
+preflight, activation, snapshot immutability, retries, and cleanup.
+
+### Namespaced example
+
+These examples assume a `solar` Tenant with a `solar-system` namespace. Run the
+ServiceAccount, RBAC, and template setup as a platform administrator. Submit each
+ResourcePermit as a tenant owner allowed to create requests in that namespace.
+Use controller and CRD versions that support `policy.condition`.
+
+Create an execution identity that can manage ConfigMaps only in `solar-system`.
+Cleanup also needs permission to read that Namespace; the ClusterRole limits
+that read to its exact name. Requester permissions remain separate from the
+execution identity's permissions.
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: condition-runner
+  namespace: solar-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: condition-runner
+  namespace: solar-system
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: condition-runner
+  namespace: solar-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: condition-runner
+subjects:
+  - kind: ServiceAccount
+    name: condition-runner
+    namespace: solar-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: solar-condition-namespace-reader
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    resourceNames: ["solar-system"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: solar-condition-namespace-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: solar-condition-namespace-reader
+subjects:
+  - kind: ServiceAccount
+    name: condition-runner
+    namespace: solar-system
+```
+
+Create this template as the administrator, wait for `Ready=True`, then submit the
+ResourcePermit as a tenant owner. Save the template and request in separate files
+so they can be applied with their respective identities. Automatic approval is
+intentional in this limited ConfigMap example; configure approvers for workflows
+that need review.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: ResourcePermitTemplate
+metadata:
+  name: initialize-profile
+  namespace: solar-system
+spec:
+  impersonation:
+    name: condition-runner
+  approvals:
+    auto: true
+  defaultDuration: 5m
+  keepFor: 10m
+  resources:
+    - policy:
+        creation: Owner
+        force: false
+        protect: true
+        deletion: Remove
+        condition: "object == null"
+      targets:
+        - apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: conditional-profile
+          data:
+            profile: temporary
+    - policy:
+        condition: "false"
+      targets:
+        - apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: skipped-profile
+          data:
+            profile: disabled
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: ResourcePermit
+metadata:
+  name: initialize-profile
+  namespace: solar-system
+spec:
+  template:
+    kind: ResourcePermitTemplate
+    name: initialize-profile
+```
+
+With no preexisting targets, `conditional-profile` is created and
+`skipped-profile` stays absent. If `conditional-profile` already exists, it is
+skipped without adoption or modification. Both outcomes allow the request to
+become Active. `keepFor` retains the expired request for inspection; it does not
+extend the target's five-minute lifetime.
+
+Omitting a target namespace defaults namespaced resources to the permit's
+namespace. A namespaced template can only be referenced from its own namespace.
+The local `impersonation` reference always resolves there.
+
+### Global example
+
+A global template uses the same policy, but its execution identity includes a
+namespace. `namespaceSelectors` restrict where a permit can reference it; they
+do not grant the execution identity permission to read or write resources.
+The example below reuses the previous ServiceAccount and RBAC and is available
+only in `solar-system`.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalResourcePermitTemplate
+metadata:
+  name: initialize-global-profile
+spec:
+  impersonation:
+    name: condition-runner
+    namespace: solar-system
+  namespaceSelectors:
+    - matchLabels:
+        kubernetes.io/metadata.name: solar-system
+  approvals:
+    auto: true
+  defaultDuration: 5m
+  keepFor: 10m
+  resources:
+    - policy:
+        creation: Owner
+        force: false
+        protect: true
+        deletion: Remove
+        condition: "object == null"
+      targets:
+        - apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: conditional-global-profile
+          data:
+            profile: temporary
+---
+apiVersion: capsule.clastix.io/v1beta2
+kind: ResourcePermit
+metadata:
+  name: initialize-global-profile
+  namespace: solar-system
+spec:
+  template:
+    kind: GlobalResourcePermitTemplate
+    name: initialize-global-profile
+```
+
+Wait for `solar-system` in the global template's `status.namespaces` before
+submitting its request. A request from another tenant namespace is rejected by
+the template's namespace selection.
 
 ## Complete CRD access example
 
