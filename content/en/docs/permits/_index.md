@@ -163,7 +163,7 @@ The Resource Permit API combines Kubernetes authorization with Capsule admission
 
 - Kubernetes RBAC controls who may create requests or update their status.
 - Template approvers and CEL conditions further restrict approval.
-- The rendered manifests, reviewer identity, template version, and resolved
+- The rendered manifests, reviewer identity, template version and resolved
   ServiceAccount are controller-owned status fields and cannot be forged.
 - Managed-resource protection can block direct update and delete operations while
   a request is active.
