@@ -7,7 +7,7 @@ companies:
   layoutColor: "black"
 
 - name: "Peak Scale"
-  logo: "https://peakscale.ch/images/logos/peakscale_dark.svg"
+  logo: "https://peakscale.ch/images/peakscale-logo.svg"
   description: "We are happy to support and advise with services in the areas of architecture, engineering, training, and assessments in the context of modern, cloud native-based infrastructures."
   link: "https://peakscale.ch/en"
   background: "#091836"
