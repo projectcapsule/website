@@ -38,7 +38,7 @@ template:
   name: temporary-widget-editor
 ```
 
-Admission rejects missing templates, local templates from another namespace, and
+Admission rejects missing templates, local templates from another namespace and
 global templates that do not select the request namespace. The reference cannot be
 changed after the request is created.
 
