@@ -46,7 +46,7 @@ Run the example as a cluster administrator. You need:
 * Capsule with support for `GlobalTenantResource.spec.scope: Tenant`, generators, and `Tenant.spec.data`; see the [installation guide](/docs/operating/setup/installation/) and [templating documentation](/docs/operating/concepts/templating/).
 * External Secrets Operator serving `external-secrets.io/v1`, with a working `ClusterSecretStore` named `platform-opensearch` connected to your secret backend.
 * A default StorageClass and capacity for three OpenSearch nodes, each requesting 2 GiB of memory and a 20 GiB volume, plus Dashboards.
-* Helm, `kubectl`, `curl`, and `jq` locally.
+* `Helm`, `kubectl`, `curl`, and `jq` locally.
 
 The example pins OpenSearch Operator chart `3.0.2` and OpenSearch/Dashboards `3.3.0`. It uses the `opensearch.org/v1` APIs. Older examples using `opensearch.opster.io/v1` need the operator's [API migration guidance](https://github.com/opensearch-project/opensearch-k8s-operator/blob/opensearch-operator-3.0.2/docs/userguide/migration-guide.md).
 
