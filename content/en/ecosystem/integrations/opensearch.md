@@ -37,7 +37,7 @@ flowchart LR
   Operator --> Cluster[Shared OpenSearch cluster]
 ```
 
-All generated objects live in `opensearch-system`, a platform-owned namespace outside any Capsule Tenant. Tenant owners must not have Kubernetes write access there: the OpenSearch custom resources can grant access to the shared cluster. `scope: Tenant` renders each set of resources once per enabled Capsule Tenant, regardless of how many namespaces it owns.
+All generated objects live in `opensearch-system`, a platform-owned namespace outside any Capsule Tenant. Tenant owners must not have Kubernetes write access there: the OpenSearch custom resources can grant access to the shared cluster. In the GlobalTenantResource, set the `scope` to `Tenant`. That renders each set of resources once per enabled Capsule Tenant, regardless of how many namespaces it owns.
 
 ## Prerequisites
 
