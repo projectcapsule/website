@@ -39,7 +39,7 @@ rules:
 Metadata enforcement follows the same action and precedence model as other namespace rules:
 
 * `allow` creates an allow-list for the evaluated metadata key.
-* `deny` denies matching metadata values.
+* `deny` denies matching metadata keys and values.
 * `audit` emits Kubernetes events and admission warnings but does not allow or deny the request.
 * If multiple `allow` or `deny` rules match the same metadata key and value, the last matching allow or deny rule wins.
 * If at least one `allow` rule exists for a metadata key and the object contains that key with a value that does not match any allow or deny rule, Capsule denies the request.
@@ -49,13 +49,13 @@ Metadata enforcement follows the same action and precedence model as other names
 Metadata rules are evaluated during create and update admission. Metadata enforcement is intentionally generic and conservative. Keep the following behavior in mind:
 
 | Behavior | Explanation |
-|---|---|
+| --- | --- |
 | Namespaced resources and explicitly selected Namespaces are evaluated | Metadata rules normally target resources inside Tenant namespaces. `Namespace` is the only supported cluster-scoped kind, and it must be selected explicitly with `kinds: ["Namespace"]`. |
 | Controller-managed objects can be skipped | Objects labeled `managed-by=controller` are ignored by generic metadata validation. This prevents controllers from being blocked when reconciling managed objects. The skip check is exact and case-sensitive. |
 | Capsule-managed metadata is ignored | Built-in Capsule labels and annotations are treated as managed metadata and are ignored by metadata validation. Do not rely on metadata rules to validate Capsule-owned keys. |
 | Managed annotation prefixes are ignored | Capsule-managed annotation prefixes such as resource quota and resource usage annotations are ignored. |
 | Missing optional metadata is ignored | If `required: false`, the key is only evaluated when it is present. |
-| `required` applies to allow rules | `required: true` enforces presence for `action: allow`. `deny` and `audit` rules match values; they do not require missing keys to exist. |
+| `required` applies to allow rules | `required: true` enforces presence for `action: allow`. `deny` and `audit` rules match present metadata keys and values; they do not require missing keys to exist. |
 | Empty metadata values are valid values | A label or annotation with an empty string value is still present and can be matched with `exact: [""]`. |
 | Labels and annotations are independent | A matching annotation does not satisfy a required label with the same key, and a matching label does not satisfy a required annotation. |
 | Empty `apiGroups` means core `v1` | Omitted `apiGroups`, an empty list, or an empty entry selects the core Kubernetes `v1` API. Use `apiGroups: ["*"]` to match every API group and version. |
@@ -70,7 +70,7 @@ Because these keys are owned by Capsule, metadata rules that reference them are 
 Each metadata rule defines which resource kinds it applies to:
 
 | Field | Description |
-|---|---|
+| --- | --- |
 | `apiGroups` | List of API group or group/version selectors. Empty or omitted means core `v1`; `apps` matches every version in that group; `apps/v1` matches that exact group/version; and `"*"` matches all groups and versions. |
 | `kinds` | List of Kubernetes kind selectors. `"*"` and partial wildcards match namespaced kinds, but `Namespace` must always appear as a separate literal entry to include it. |
 
@@ -120,7 +120,6 @@ metadata:
 
 This can match resources such as `apps/v1` `ReplicaSet` and `apps/v1` `StatefulSet`.
 
-
 ### Namespace
 
 `Namespace` is the only cluster-scoped resource supported by metadata rules. It
@@ -129,19 +128,8 @@ case-sensitive value `Namespace`. This prevents a broad rule intended for
 resources inside Tenant namespaces from accidentally changing or rejecting the
 Namespace object itself.
 
-The Namespace GVK is core `v1`, `Kind=Namespace`. The `apiGroups` selector must
-therefore match core `v1`. The clearest form is:
-
-```yaml
-metadata:
-  - apiGroups:
-      - "v1"
-    kinds:
-      - "Namespace"
-```
-
-Because omitted `apiGroups` defaults to core `v1`, this shorter form is
-equivalent:
+For `Namespace`, omit `apiGroups`. It defaults to the core Kubernetes API, so
+the kind selector is sufficient:
 
 ```yaml
 metadata:
@@ -180,8 +168,8 @@ metadata:
       - "Name*"
 ```
 
-In short, both conditions must be true: `apiGroups` must match core `v1`, and
-`kinds` must contain a dedicated `Namespace` entry.
+In short, include `Namespace` as a dedicated kind entry when a rule should
+target Namespace resources. A kind wildcard alone does not include Namespace.
 
 ### Important `apiGroups` behavior
 
@@ -284,6 +272,11 @@ Example rejection:
 Error from server (Forbidden): error when creating "configmap.yaml": admission webhook "rules.generic.projectcapsule.dev" denied the request: metadata label "env" is required at metadata.labels["env"]
 ```
 
+To deny labels or annotations on `Namespace` resources, see [Migrate Namespace
+Metadata](#migrate-namespace-metadata) below. That example shows both exact
+metadata keys and regular expressions, with `required: false` so that a deny
+rule rejects a matching key only when it is present.
+
 ## Annotation rules
 
 Annotation rules are configured under `metadata[].annotations`. Each map key is the annotation key to validate.
@@ -293,18 +286,10 @@ rules:
   - enforce:
       action: allow
       audience:
-        - kind: "Group"
-          name: "system:authenticated"
         - kind: "Custom"
           name: "CapsuleUser"
-        - kind: "Custom"
-          name: "Administrator"
-        - kind: "Custom"
-          name: "TenantOwner"
       metadata:
-        - apiGroups:
-            - "v1"
-          kinds:
+        - kinds:
             - Namespace
           annotations:
             example.corp/cost-center:
@@ -318,6 +303,13 @@ rules:
                 - exp: "II-10"
               default: "{{$.tenant.spec.data.costCenter}}"
 ```
+
+The `audience` field limits this rule to requests made by the listed subjects.
+The entries use OR semantics, so the rule is enforced when the requesting
+subject matches at least one entry. Requests from subjects that do not match
+any entry are not validated or mutated by this rule. In this example, the
+rule applies only to `CapsuleUser` requests. See
+[Audience](/docs/rules/enforcement/#audience) for more details.
 
 With this rule, the annotation is optional. If the object does not contain `metadata.annotations["example.corp/cost-center"]`, Capsule ignores the rule. If the annotation is present, its value must match the configured expression.
 
@@ -360,7 +352,9 @@ data:
 
 ## Default
 
-The `default` field provides a value for coressponding field should no value be provided by the user. This is only applied at admission time and does not enforce the value to be present in the object.
+The `default` field provides a value for the corresponding field when the user
+does not provide one. It is applied only at admission time and does not enforce
+the value on existing objects.
 
 `default` is meaningful for `action: allow`. `deny` and `audit` rules are value matchers; they do not require missing metadata to exist.
 
@@ -380,16 +374,17 @@ Default values still validate against the configured `values` matchers. If the d
 
 ## Managed
 
-Providing managed values ensures the metadata is always set to the provided value. This is applied at admission time and also enforced by the `RuleStatus` controller. Meaning it's also applied to already existing objects and also enforced at admission time. This is useful for enforcing certain metadata to be present and also to ensure the value is always set to a specific value.
+Providing a `managed` value ensures that the metadata is set to the configured
+value. It is applied at admission time and reconciled onto existing objects by
+the `RuleStatus` controller. This is useful when a metadata value must always
+be present and must not be changed by users.
 
 ```yaml
 rules:
   - enforce:
       action: allow
       metadata:
-        - apiGroups:
-            - "v1"
-          kinds:
+        - kinds:
             - Namespace
           annotations:
             example.corp/cost-center:
@@ -405,11 +400,12 @@ rules:
 The `required` field controls whether the metadata key must be present.
 
 | `required` | Behavior |
-|:---|:---|
+| :--- | :--- |
 | `true` | For `action: allow`, the key must be present on matching objects. |
 | `false` | The key is optional. If it is missing, Capsule ignores it. If it is present, configured values are evaluated. |
 
-`required` is meaningful for `action: allow`. `deny` and `audit` rules are value matchers; they do not require missing metadata to exist.
+`required` is meaningful for `action: allow`. `deny` and `audit` rules match
+present metadata and do not require missing metadata to exist.
 
 Presence-only enforcement is possible by setting `required: true` and omitting `values`:
 
@@ -454,7 +450,7 @@ values:
 
 A metadata value matches if any configured value matcher matches.
 
-`exact` and `exp` can be combined in the same matcher:
+`exact` and `exp` can be combined in the same matcher. This example allows the values `prod`, `test`, and the matching `^dev-[0-9]+$`.:
 
 ```yaml
 values:
@@ -464,8 +460,6 @@ values:
     exp: "^dev-[0-9]+$"
 ```
 
-This matcher allows `prod`, `test`, and values matching `^dev-[0-9]+$`.
-
 `negate: true` inverts the final matcher result:
 
 ```yaml
@@ -473,7 +467,8 @@ rules:
   - enforce:
       action: deny
       metadata:
-        - apiVersion: "*"
+        - apiGroups:
+          - "*"
           kinds:
             - ConfigMap
           labels:
@@ -515,23 +510,17 @@ options](/docs/tenants/metadata/#namespaces) map to rules as follows:
   `rules[].namespaceSelector` at the same rule level. For a Namespace target,
   the selector is evaluated against that Namespace's labels.
 * Exact entries in `forbiddenLabels.denied` and
-  `forbiddenAnnotations.denied` become `deny` rules that match any value for
-  the concrete metadata key.
+  `forbiddenAnnotations.denied` become `deny` rules with the concrete metadata
+  key and `required: false`.
+* `forbiddenLabels.deniedRegex` and `forbiddenAnnotations.deniedRegex` become
+  `deny` rules with the regular expression as the metadata key and
+  `required: false`.
 
-`Namespace` must be selected explicitly. Use the concrete core `v1` API and
-the literal `Namespace` kind, especially when the rule contains `managed`
-values:
-
-```yaml
-apiGroups:
-  - "v1"
-kinds:
-  - Namespace
-```
-
-The following rules replace the `requiredMetadata`,
-`additionalMetadataList`, and exact forbidden-key examples from the legacy
-page:
+The following example shows how to migrate `requiredMetadata`,
+`additionalMetadata`, `additionalMetadataList`, and exact forbidden-key
+configuration from the legacy API. For Namespace rules, the literal
+`Namespace` kind is sufficient because `apiGroups` defaults to the core
+Kubernetes API.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -548,9 +537,7 @@ spec:
     - enforce:
         action: allow
         metadata:
-          - apiGroups:
-              - "v1"
-            kinds:
+          - kinds:
               - Namespace
             labels:
               env:
@@ -582,9 +569,7 @@ spec:
       enforce:
         action: allow
         metadata:
-          - apiGroups:
-              - "v1"
-            kinds:
+          - kinds:
               - Namespace
             labels:
               pod-security.kubernetes.io/enforce:
@@ -601,9 +586,7 @@ spec:
       enforce:
         action: allow
         metadata:
-          - apiGroups:
-              - "v1"
-            kinds:
+          - kinds:
               - Namespace
             labels:
               pod-security.kubernetes.io/enforce:
@@ -614,24 +597,18 @@ spec:
     - enforce:
         action: deny
         metadata:
-          - apiGroups:
-              - "v1"
-            kinds:
+          - kinds:
               - Namespace
             labels:
               foo.acme.net:
-                values:
-                  - exp: ".*"
+                required: false
               bar.acme.net:
-                values:
-                  - exp: ".*"
+                required: false
             annotations:
               foo.acme.net:
-                values:
-                  - exp: ".*"
+                required: false
               bar.acme.net:
-                values:
-                  - exp: ".*"
+                required: false
 ```
 
 With these rules:
@@ -644,20 +621,20 @@ With these rules:
 
 #### Legacy options without a direct equivalent
 
-Metadata rules are keyed by concrete label and annotation names. They do not
-currently provide a direct replacement for these key-wide legacy behaviors:
+Metadata rules can use either concrete label and annotation names or regular
+expressions as metadata keys. They do not currently provide a direct
+replacement for this key-wide legacy behavior:
 
 * `managedMetadataOnly: true`, which rejects all user metadata not managed by
-  Capsule; and
-* `forbiddenLabels.deniedRegex` or
-  `forbiddenAnnotations.deniedRegex`, which match metadata _keys_ by regular
-  expression.
+  Capsule.
 
-Enumerate known sensitive keys with `deny` rules as shown above. If the policy
-must reject every unlisted key or a changing family of keys, retain the legacy
-option during migration or enforce that part with another admission policy.
-Value regular expressions remain supported through `values[].exp`; the
-limitation only applies to regular expressions over metadata key names.
+Use `required: false` for deny rules so that a missing metadata key is allowed
+while a present matching key is rejected. Regular expressions in metadata keys
+match label or annotation names. Regular expressions in `values[].exp` match
+their values instead.
+
+If the policy must reject every unlisted key, retain `managedMetadataOnly`
+during migration or enforce that requirement with another admission policy.
 
 #### Rollout
 
@@ -668,8 +645,7 @@ limitation only applies to regular expressions over metadata key names.
 3. Confirm that managed metadata has been reconciled onto existing Namespaces.
 4. Remove the migrated `requiredMetadata`, `additionalMetadata`,
    `additionalMetadataList`, and exact forbidden-key entries.
-5. Keep `managedMetadataOnly` or key-regex restrictions until an alternative
-   policy covers them.
+5. Keep `managedMetadataOnly` until an alternative policy covers it.
 
 ### Migrate Pod Metadata
 
@@ -749,7 +725,7 @@ rules:
 With this rule:
 
 | Object label | Result |
-|---|---|
+| --- | --- |
 | `env=prod` | Allowed |
 | `env=test` | Allowed |
 | `env=stage` | Denied |
@@ -776,7 +752,7 @@ rules:
 With this rule:
 
 | Object label | Result |
-|---|---|
+| --- | --- |
 | `env=prod` | Allowed |
 | `env=test` | Allowed |
 | `env=stage` | Denied |
@@ -962,7 +938,7 @@ spec:
         action: allow
         metadata:
           - apiGroups:
-            - "*"
+              - "*"
             kinds:
               - ConfigMap
               - Service
@@ -997,7 +973,7 @@ spec:
         action: audit
         metadata:
           - apiGroups:
-            - "*"
+              - "*"
             kinds:
               - ConfigMap
               - Service
@@ -1024,7 +1000,7 @@ spec:
 
 With this configuration:
 
-* `ConfigMap` and `Service` objects must contain `projectcapsule.dev/tenant=prod` or `projectcapsule.dev/tenant=test`.
+* `ConfigMap` and `Service` objects must contain `corp.com/tenant=prod` or `corp.com/tenant=test`.
 * `example.corp/cost-center` is optional, but if present it must match `^INV-[0-9]{4}$`, `prod`, or `test`.
 * `ConfigMap` objects with `environment=deprecated` are denied unless a later matching allow rule overrides the decision.
 * Objects with `example.corp/audit` values matching `^audit-.*` emit audit events.
