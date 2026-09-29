@@ -177,7 +177,9 @@ More information about tenants and tenant owners can be found in the chapter [Te
 
 ## Capsule Proxy
 For Capsule Proxy, all (pod)SecurityContexts can be disabled. By disabling these, the proxy and its jobs run under the `nonroot-v2` SCC.
-This example also enables the `ProxyAllNamespaced` feature, which is one of the Proxy's most powerful capabilities.
+
+The option `--public-paths=/.well-known/oauth-authorization-server` (available since capsule-proxy v0.14.1) is set, which allows `oc login --web` to be used against the Capsule Proxy. The `oc login --web` flow retrieves the OAuth server metadata from `/.well-known/oauth-authorization-server` on the API endpoint before any credentials exist. Since Capsule Proxy requires authentication on every request, this lookup is rejected by default and the login aborts with `unsupported protocol scheme ""`. Public paths solve this: requests to a public path are proxied to the upstream API server without authentication, while everything else keeps requiring one.
+
 The following helm values can be used as a template:
 
 ```yaml
@@ -194,7 +196,7 @@ The following helm values can be used as a template:
     generateCertificates: false #set to false, since we are using cert-manager in .Values.certManager.generateCertificates
     enableSSL: true
     extraArgs:
-      - '--feature-gates=ProxyAllNamespaced=true'
+      - '--public-paths=/.well-known/oauth-authorization-server'
   image:
     pullPolicy: Always
   webhooks:
@@ -242,19 +244,9 @@ spec:
 
 On hosted control planes each hosted cluster runs its own OAuth server, exposed on its own route (for example, `oauth-clusters-<cluster-name>.<base-domain>`) with a certificate signed by that cluster's root CA.
 
-The `oc login --web` flow retrieves the OAuth server metadata from `/.well-known/oauth-authorization-server` on the API endpoint before any credentials exist. Since Capsule Proxy requires authentication on every request, this lookup is rejected by default and the login aborts with `unsupported protocol scheme ""`.
+The `--public-paths=/.well-known/oauth-authorization-server` option described in the [Capsule Proxy](#capsule-proxy) section above also makes `oc login <capsule-proxy-host> --web` work against a HyperShift-hosted cluster: the browser login and the token exchange run against the hosted cluster's OAuth server, and the API traffic goes through the proxy as usual.
 
-Public paths solve this (available since capsule-proxy v0.14.1): requests to a public path are proxied to the upstream API server without authentication, while everything else keeps requiring one.
-
-```yaml
-options:
-  extraArgs:
-    - '--public-paths=/.well-known/oauth-authorization-server'
-```
-
-With this in place `oc login <capsule-proxy-host> --web` completes: the browser login and the token exchange run against the hosted cluster's OAuth server, and the API traffic goes through the proxy as usual.
-
-Since the browser and the token exchange talk to the OAuth server directly, the client must trust the certificate of that OAuth server: import the hosted cluster's root CA on the client first, the same procedure as when logging in against the API server directly.
+The only extra step here is trusting the certificate: since the browser and the token exchange talk to the hosted cluster's OAuth server directly, the client must import that hosted cluster's root CA first, the same procedure as when logging in against the API server directly.
 
 ## Console Customization
 The OpenShift console can be customized. For example, the capsule-proxy can be added as a shortcut on the top right application menu with the `ConsoleLink` CR:
