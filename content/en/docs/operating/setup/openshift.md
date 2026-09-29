@@ -177,9 +177,8 @@ More information about tenants and tenant owners can be found in the chapter [Te
 
 ## Capsule Proxy
 For Capsule Proxy, all (pod)SecurityContexts can be disabled. By disabling these, the proxy and its jobs run under the `nonroot-v2` SCC.
-This example also enables the `ProxyAllNamespaced` feature, which is one of the Proxy's most powerful capabilities.
 
-The option `--public-paths=/.well-known/oauth-authorization-server` (available since capsule-proxy v0.14.1) is also set, which allows `oc login --web` to be used against the Capsule Proxy. The `oc login --web` flow retrieves the OAuth server metadata from `/.well-known/oauth-authorization-server` on the API endpoint before any credentials exist. Since Capsule Proxy requires authentication on every request, this lookup is rejected by default and the login aborts with `unsupported protocol scheme ""`. Public paths solve this: requests to a public path are proxied to the upstream API server without authentication, while everything else keeps requiring one.
+The option `--public-paths=/.well-known/oauth-authorization-server` (available since capsule-proxy v0.14.1) is set, which allows `oc login --web` to be used against the Capsule Proxy. The `oc login --web` flow retrieves the OAuth server metadata from `/.well-known/oauth-authorization-server` on the API endpoint before any credentials exist. Since Capsule Proxy requires authentication on every request, this lookup is rejected by default and the login aborts with `unsupported protocol scheme ""`. Public paths solve this: requests to a public path are proxied to the upstream API server without authentication, while everything else keeps requiring one.
 
 The following helm values can be used as a template:
 
@@ -197,7 +196,6 @@ The following helm values can be used as a template:
     generateCertificates: false #set to false, since we are using cert-manager in .Values.certManager.generateCertificates
     enableSSL: true
     extraArgs:
-      - '--feature-gates=ProxyAllNamespaced=true'
       - '--public-paths=/.well-known/oauth-authorization-server'
   image:
     pullPolicy: Always
