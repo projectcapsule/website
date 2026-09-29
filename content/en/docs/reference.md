@@ -19,11 +19,17 @@ Resource Types:
 
 - [GlobalCustomQuota](#globalcustomquota)
 
+- [GlobalResourcePermitTemplate](#globalresourcepermittemplate)
+
 - [GlobalResourceQuota](#globalresourcequota)
 
 - [GlobalTenantResource](#globaltenantresource)
 
 - [QuantityLedger](#quantityledger)
+
+- [ResourcePermit](#resourcepermit)
+
+- [ResourcePermitTemplate](#resourcepermittemplate)
 
 - [ResourcePoolClaim](#resourcepoolclaim)
 
@@ -600,10 +606,10 @@ Service Account Client configuration for impersonation properties
 | **caSecretName** | string | Name of the secret containing the CA certificate | false |
 | **caSecretNamespace** | string | Namespace where the CA certificate secret is located | false |
 | **endpoint** | string | Kubernetes API Endpoint to use for impersonation | false |
-| **globalDefaultServiceAccount** | string | Default ServiceAccount for global resources (GlobalTenantResource)<br>When defined, users are required to use this ServiceAccount anywhere in the cluster<br>unless they explicitly provide their own. | false |
-| **globalDefaultServiceAccountNamespace** | string | Default ServiceAccount for global resources (GlobalTenantResource)<br>When defined, users are required to use this ServiceAccount anywhere in the cluster<br>unless they explicitly provide their own. | false |
+| **globalDefaultServiceAccount** | string | Default ServiceAccount for global resources (GlobalTenantResource and GlobalResourcePermitTemplate)<br>When defined, users are required to use this ServiceAccount anywhere in the cluster<br>unless they explicitly provide their own. | false |
+| **globalDefaultServiceAccountNamespace** | string | Namespace of the default ServiceAccount for global resources (GlobalTenantResource and GlobalResourcePermitTemplate)<br>When defined, users are required to use this ServiceAccount anywhere in the cluster<br>unless they explicitly provide their own. | false |
 | **skipTlsVerify** | boolean | If true, TLS certificate verification is skipped (not recommended for production)<br/>*Default*: false<br/> | false |
-| **tenantDefaultServiceAccount** | string | Default ServiceAccount for namespaced resources (TenantResource)<br>When defined, users are required to use this ServiceAccount within the namespace<br>where they deploy the resource, unless they explicitly provide their own. | false |
+| **tenantDefaultServiceAccount** | string | Default ServiceAccount for namespaced resources (TenantResource and ResourcePermitTemplate)<br>When defined, users are required to use this ServiceAccount within the namespace<br>where they deploy the resource, unless they explicitly provide their own. | false |
 
 
 ### CapsuleConfiguration.spec.nodeMetadata
@@ -1218,6 +1224,234 @@ Usage measurements
 | **available** | int or string | Used is the current observed total available of the resource (limit - used). | false |
 | **used** | int or string | Used is the current observed total usage of the resource. | false |
 
+## GlobalResourcePermitTemplate
+
+
+
+
+
+
+GlobalResourcePermitTemplate is the Schema for the globalresourcepermittemplates API.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | capsule.clastix.io/v1beta2 | true |
+| **kind** | string | GlobalResourcePermitTemplate | true |
+| **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
+| **[spec](#globalresourcepermittemplatespec)** | object | GlobalResourcePermitTemplateSpec defines the desired state of GlobalResourcePermitTemplate. | false |
+| **[status](#globalresourcepermittemplatestatus)** | object | GlobalResourcePermitTemplateStatus defines the observed state of GlobalResourcePermitTemplate. | false |
+
+
+### GlobalResourcePermitTemplate.spec
+
+
+
+GlobalResourcePermitTemplateSpec defines the desired state of GlobalResourcePermitTemplate.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[resources](#globalresourcepermittemplatespecresourcesindex)** | []object | Resources rendered and managed by this template. | true |
+| **[approvals](#globalresourcepermittemplatespecapprovals)** | object | Approvals configures automatic and manual approval of requests using this template. | false |
+| **[context](#globalresourcepermittemplatespeccontext)** | object | Context loads additional Kubernetes resources for use by all resource targets and templates.<br>Resource reference fields may use parameters declared by ParamSchema. | false |
+| **defaultDuration** | string | The default duration of the ResourcePermit referencing this template should be valid for. If not set,<br>the resource will be kept until the request is deleted. | false |
+| **[impersonation](#globalresourcepermittemplatespecimpersonation)** | object | Impersonation identifies the ServiceAccount used for context loading and<br>every managed-resource action performed for requests using this template.<br>When omitted, the global default ServiceAccount from CapsuleConfiguration<br>is used. If neither is configured, Capsule uses its controller identity. | false |
+| **keepFor** | string | The duration of this ResourcePermit will be kept in the system after it has been expired (eg. auditing purposes)<br>If not set, the ResourcePermit will be deleted after expiring. | false |
+| **maxDuration** | string | The max allowed duration of the ResourcePermit referencing this template should be valid for. | false |
+| **[namespaceSelectors](#globalresourcepermittemplatespecnamespaceselectorsindex)** | []object | NamespaceSelectors limit the namespaces in which ResourcePermits may reference this template.<br>Selectors are ORed. When omitted, the template is available in every namespace. | false |
+| **paramSchema** | object | ParamSchema is the JSON Schema used to validate template parameters.<br>Properties may use the x-capsule-form vendor extension to select values<br>from arbitrary Kubernetes GVKs in compatible form clients. The schema may<br>use x-kubernetes-validations for Kubernetes-compatible CEL rules. | false |
+
+
+### GlobalResourcePermitTemplate.spec.resources[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[policy](#globalresourcepermittemplatespecresourcesindexpolicy)** | object | Policy controls how every target in this resource group is created and managed.<br/>*Default*: map[]<br/> | false |
+| **targets** | []object | Targets are Kubernetes resource objects to render and manage with Policy.<br>Parameters and loaded context use the flat template root; trusted request<br>metadata is available under .request. | false |
+| **template** | string | Template is an optional Go template which may render one or more YAML or<br>JSON Kubernetes resources separated by YAML document markers. Request<br>parameters are available under .params and loaded resources under<br>.context.resources. Trusted request metadata is available under .request<br>with name, username, groups, and timestamp fields. | false |
+
+
+### GlobalResourcePermitTemplate.spec.resources[index].policy
+
+
+
+Policy controls how every target in this resource group is created and managed.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **creation** | enum | Creation controls how an existing target is handled. Owner requires the<br>resource to have been created by the applying controller and otherwise<br>returns an error. Merge adopts an existing resource when possible and<br>creates the resource when it does not exist.<br/>*Enum*: Owner, Merge<br/>*Default*: Owner<br/> | false |
+| **deletion** | enum | Deletion controls what happens when the parent stops managing the target.<br>Remove deletes resources created for the parent and relinquishes adopted<br>resources. Orphan keeps the resource and removes Capsule's lifecycle<br>metadata. Removal is the default.<br/>*Enum*: Remove, Orphan<br/>*Default*: Remove<br/> | false |
+| **force** | boolean | Force allows server-side apply to acquire conflicting field ownership.<br/>*Default*: false<br/> | false |
+| **protect** | boolean | Protect prevents users from changing or deleting the target through<br>admission while it is managed. Protection is enabled by default.<br/>*Default*: true<br/> | false |
+
+
+### GlobalResourcePermitTemplate.spec.approvals
+
+
+
+Approvals configures automatic and manual approval of requests using this template.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[approvers](#globalresourcepermittemplatespecapprovalsapproversindex)** | []object | Approvers lists the subjects permitted to approve a request manually.<br>When omitted, any subject with permission to update the request status may<br>approve it. | false |
+| **auto** | boolean | Auto automatically approves matching requests. Approvers are ignored for<br>automatic approvals. | false |
+| **conditions** | []string | Conditions contains CEL expressions evaluated as an OR list. At least one<br>expression must evaluate to true. When omitted, approval is unconditional. | false |
+
+
+### GlobalResourcePermitTemplate.spec.approvals.approvers[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | Kind of entity. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
+| **name** | string | Name of the entity. | true |
+
+
+### GlobalResourcePermitTemplate.spec.context
+
+
+
+Context loads additional Kubernetes resources for use by all resource targets and templates.
+Resource reference fields may use parameters declared by ParamSchema.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[resources](#globalresourcepermittemplatespeccontextresourcesindex)** | []object |  | false |
+
+
+### GlobalResourcePermitTemplate.spec.context.resources[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
+| **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
+| **index** | string | Index to mount the resource in the template context | false |
+| **name** | string | Name of the values referent. This is useful<br>when you traying to get a specific resource | false |
+| **namespace** | string | Namespace of the values referent. | false |
+| **optional** | boolean | Only relevant if name is set. If an item is not optional, there will be an error thrown when it does not exist<br/>*Default*: true<br/> | false |
+| **[selector](#globalresourcepermittemplatespeccontextresourcesindexselector)** | object | Selector which allows to get any amount of these resources based on labels | false |
+
+
+### GlobalResourcePermitTemplate.spec.context.resources[index].selector
+
+
+
+Selector which allows to get any amount of these resources based on labels
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#globalresourcepermittemplatespeccontextresourcesindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### GlobalResourcePermitTemplate.spec.context.resources[index].selector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### GlobalResourcePermitTemplate.spec.impersonation
+
+
+
+Impersonation identifies the ServiceAccount used for context loading and
+every managed-resource action performed for requests using this template.
+When omitted, the global default ServiceAccount from CapsuleConfiguration
+is used. If neither is configured, Capsule uses its controller identity.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name of the referent. | true |
+| **namespace** | string | Namespace of the referent. | true |
+
+
+### GlobalResourcePermitTemplate.spec.namespaceSelectors[index]
+
+
+
+Selector for resources and their labels or selecting origin namespaces
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#globalresourcepermittemplatespecnamespaceselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### GlobalResourcePermitTemplate.spec.namespaceSelectors[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### GlobalResourcePermitTemplate.status
+
+
+
+GlobalResourcePermitTemplateStatus defines the observed state of GlobalResourcePermitTemplate.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[conditions](#globalresourcepermittemplatestatusconditionsindex)** | []object | Conditions contains the reconciliation conditions for this template. | false |
+| **namespaces** | []string | Namespaces contains the namespaces allowed to reference this template.<br>A single "*" entry means that the template is available in every namespace. | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation resolved by the controller.<br/>*Format*: int64<br/> | false |
+
+
+### GlobalResourcePermitTemplate.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
+
 ## GlobalResourceQuota
 
 
@@ -1674,10 +1908,10 @@ GlobalTenantResourceStatus defines the observed state of GlobalTenantResource.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **size** | integer | How many items are being replicated by the TenantResource. | true |
+| **size** | integer | Number of managed resources. | true |
 | **[conditions](#globaltenantresourcestatusconditionsindex)** | []object | Condition of the GlobalTenantResource. | false |
 | **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
-| **[processedItems](#globaltenantresourcestatusprocesseditemsindex)** | []object | List of the replicated resources for the given TenantResource. | false |
+| **[processedItems](#globaltenantresourcestatusprocesseditemsindex)** | []object | List of resources managed by the API object. | false |
 | **selectedTenants** | []string | List of Tenants addressed by the GlobalTenantResource. | false |
 | **[serviceAccount](#globaltenantresourcestatusserviceaccount)** | object | Serviceaccount used for impersonation | false |
 
@@ -1952,6 +2186,536 @@ Object that this reservation is intended to create/update.
 | **name** | string | Name of the tracked object. | false |
 | **namespace** | string | Namespace of the tracked object. | false |
 | **uid** | string | UID of the tracked object. | false |
+
+## ResourcePermit
+
+
+
+
+
+
+ResourcePermit is the Schema for the ResourcePermits API.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | capsule.clastix.io/v1beta2 | true |
+| **kind** | string | ResourcePermit | true |
+| **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
+| **[spec](#resourcepermitspec)** | object | ResourcePermitSpec defines the desired state of ResourcePermit. | false |
+| **[status](#resourcepermitstatus)** | object | ResourcePermitStatus defines the observed state of ResourcePermit. | false |
+
+
+### ResourcePermit.spec
+
+
+
+ResourcePermitSpec defines the desired state of ResourcePermit.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[template](#resourcepermitspectemplate)** | object | Template references the template to use for this request. | true |
+| **duration** | string | The duration of this ResourcePermit should be valid for.<br>If no duration was defined, the lifecycle is bound to the request itself -<br>if the request is deleted, it's the end of the duration.<br>The Request can also be Terminated by another automation via calling the ExpirePermit() API-Function. | false |
+| **params** | object | Params the parameters to use for the template. | false |
+| **reason** | string | A reason on why the request is needed | false |
+| **[requestor](#resourcepermitspecrequestor)** | object | Requesting actor for the resource permit. | false |
+| **startTime** | string | Optional point in time when the permit should become active. Must be in the future.<br>If omitted, this is set to the current time. The Request must already be approved before the start time.<br/>*Format*: date-time<br/> | false |
+
+
+### ResourcePermit.spec.template
+
+
+
+Template references the template to use for this request.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | Kind of template being referenced.<br/>*Enum*: ResourcePermitTemplate, GlobalResourcePermitTemplate<br/> | true |
+| **name** | string | Name of the template being referenced. | true |
+
+
+### ResourcePermit.spec.requestor
+
+
+
+Requesting actor for the resource permit.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **groups** | []string | The groups the entity belongs to | false |
+| **name** | string | The name of the entity | false |
+| **type** | enum | The type of the entity<br/>*Enum*: User, Group, System, ServiceAccount<br/> | false |
+
+
+### ResourcePermit.status
+
+
+
+ResourcePermitStatus defines the observed state of ResourcePermit.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **size** | integer | Number of managed resources. | true |
+| **[active](#resourcepermitstatusactive)** | object | Shows timestamps between approval and termination of the request. | false |
+| **[conditions](#resourcepermitstatusconditionsindex)** | []object | Conditions describes current operational state such as readiness. | false |
+| **[failure](#resourcepermitstatusfailure)** | object | Failure describes a recoverable preflight or activation failure. RetryPhase<br>is the trusted lifecycle phase Capsule resumes after a successful retry. | false |
+| **keepUntil** | string | The time until which the ResourcePermit should be retained after it expires (e.g. for auditing).<br>If unset, the ResourcePermit can be deleted immediately after expiring.<br/>*Format*: date-time<br/> | false |
+| **phase** | enum | <br/>*Enum*: Created, Requested, Pending, Denied, Approved, Active, Failed, Retrying, Expired<br/> | false |
+| **[processedItems](#resourcepermitstatusprocesseditemsindex)** | []object | List of resources managed by the API object. | false |
+| **[request](#resourcepermitstatusrequest)** | object | Request contains the resolved template, execution identity, lifecycle<br>properties, and rendered resources presented for review. | false |
+| **[review](#resourcepermitstatusreview)** | object | Review refers to the subject that either approved or denied the request | false |
+| **[transitions](#resourcepermitstatustransitionsindex)** | []object | Transitions is the chronological, append-only audit trail of lifecycle<br>changes. Conditions remain reserved for operational state such as Ready. | false |
+
+
+### ResourcePermit.status.active
+
+
+
+Shows timestamps between approval and termination of the request.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **from** | string | <br/>*Format*: date-time<br/> | false |
+| **until** | string | <br/>*Format*: date-time<br/> | false |
+
+
+### ResourcePermit.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
+
+
+### ResourcePermit.status.failure
+
+
+
+Failure describes a recoverable preflight or activation failure. RetryPhase
+is the trusted lifecycle phase Capsule resumes after a successful retry.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **message** | string | Message contains the latest actionable failure returned by Kubernetes. | true |
+| **reason** | string | Reason is the stable machine-readable Ready condition reason. | true |
+| **retryPhase** | enum | RetryPhase is the phase Capsule resumes after recovery succeeds.<br/>*Enum*: Requested, Approved<br/> | true |
+| **stage** | enum | Stage identifies whether the failure happened before review or while<br>activating an already approved request.<br/>*Enum*: Preflight, Activation<br/> | true |
+
+
+### ResourcePermit.status.processedItems[index]
+
+
+
+Advanced Status Item for pin pointing items in tenants/namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **group** | string |  | false |
+| **kind** | string |  | false |
+| **name** | string |  | false |
+| **namespace** | string |  | false |
+| **origin** | string |  | false |
+| **[status](#resourcepermitstatusprocesseditemsindexstatus)** | object |  | false |
+| **tenant** | string |  | false |
+| **version** | string |  | false |
+
+
+### ResourcePermit.status.processedItems[index].status
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **clusterScoped** | boolean | Indicates whether the referenced resource is cluster-scoped. | false |
+| **created** | boolean | Indicates wether the resource was created or adopted | false |
+| **lastApply** | string | An opaque value that represents the internal version of this object that can<br>be used by clients to determine when objects have changed. May be used for optimistic<br>concurrency, change detection, and the watch operation on a resource or set of resources.<br>Clients must treat these values as opaque and passed unmodified back to the server.<br>They may only be valid for a particular resource or set of resources.<br><br>Populated by the system.<br>Read-only.<br>Value must be treated as opaque by clients and .<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency<br/>*Format*: date-time<br/> | false |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | false |
+
+
+### ResourcePermit.status.request
+
+
+
+Request contains the resolved template, execution identity, lifecycle
+properties, and rendered resources presented for review.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[approvals](#resourcepermitstatusrequestapprovals)** | object | Approvals is the approval policy copied from the resolved template. It is<br>immutable after rendering so an in-flight request is reviewed against the<br>policy presented with its resource snapshot. | false |
+| **duration** | string |  | false |
+| **[impersonation](#resourcepermitstatusrequestimpersonation)** | object | Impersonation is the resolved identity used for template context loading<br>and managed-resource actions. Capsule records its controller ServiceAccount<br>when no impersonation is configured. | false |
+| **keepFor** | string |  | false |
+| **[resources](#resourcepermitstatusrequestresourcesindex)** | []object | Resources contains the fully rendered manifests prepared for this request.<br>These resources are the source of truth for server-side apply and pruning;<br>source templates and rendering context are never copied into the request. | false |
+| **startTime** | string | <br/>*Format*: date-time<br/> | false |
+| **[template](#resourcepermitstatusrequesttemplate)** | object | Template identifies the exact template version used to render the request. | false |
+
+
+### ResourcePermit.status.request.approvals
+
+
+
+Approvals is the approval policy copied from the resolved template. It is
+immutable after rendering so an in-flight request is reviewed against the
+policy presented with its resource snapshot.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[approvers](#resourcepermitstatusrequestapprovalsapproversindex)** | []object | Approvers lists the subjects permitted to approve a request manually.<br>When omitted, any subject with permission to update the request status may<br>approve it. | false |
+| **auto** | boolean | Auto automatically approves matching requests. Approvers are ignored for<br>automatic approvals. | false |
+| **conditions** | []string | Conditions contains CEL expressions evaluated as an OR list. At least one<br>expression must evaluate to true. When omitted, approval is unconditional. | false |
+
+
+### ResourcePermit.status.request.approvals.approvers[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | Kind of entity. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
+| **name** | string | Name of the entity. | true |
+
+
+### ResourcePermit.status.request.impersonation
+
+
+
+Impersonation is the resolved identity used for template context loading
+and managed-resource actions. Capsule records its controller ServiceAccount
+when no impersonation is configured.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name of the referent. | true |
+| **namespace** | string | Namespace of the referent. | true |
+
+
+### ResourcePermit.status.request.resources[index]
+
+
+
+RenderedResource is an execution-ready group of Kubernetes manifests
+produced from a ResourceTemplate. It intentionally cannot contain a source
+template so status consumers and reconcilers only observe concrete targets.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **targets** | []object | Targets are the fully rendered Kubernetes manifests. | true |
+| **[policy](#resourcepermitstatusrequestresourcesindexpolicy)** | object | Policy controls how every rendered target is created and managed. | false |
+
+
+### ResourcePermit.status.request.resources[index].policy
+
+
+
+Policy controls how every rendered target is created and managed.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **creation** | enum | Creation controls how an existing target is handled. Owner requires the<br>resource to have been created by the applying controller and otherwise<br>returns an error. Merge adopts an existing resource when possible and<br>creates the resource when it does not exist.<br/>*Enum*: Owner, Merge<br/>*Default*: Owner<br/> | false |
+| **deletion** | enum | Deletion controls what happens when the parent stops managing the target.<br>Remove deletes resources created for the parent and relinquishes adopted<br>resources. Orphan keeps the resource and removes Capsule's lifecycle<br>metadata. Removal is the default.<br/>*Enum*: Remove, Orphan<br/>*Default*: Remove<br/> | false |
+| **force** | boolean | Force allows server-side apply to acquire conflicting field ownership.<br/>*Default*: false<br/> | false |
+| **protect** | boolean | Protect prevents users from changing or deleting the target through<br>admission while it is managed. Protection is enabled by default.<br/>*Default*: true<br/> | false |
+
+
+### ResourcePermit.status.request.template
+
+
+
+Template identifies the exact template version used to render the request.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | Kind of template being referenced.<br/>*Enum*: ResourcePermitTemplate, GlobalResourcePermitTemplate<br/> | true |
+| **name** | string | Name of the template being referenced. | true |
+| **resourceVersion** | string | ResourceVersion of the template used to render the request resources. | true |
+
+
+### ResourcePermit.status.review
+
+
+
+Review refers to the subject that either approved or denied the request
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **message** | string | Message with the review | false |
+| **[reviewer](#resourcepermitstatusreviewreviewer)** | object | The Entity reviewing this request | false |
+| **verdict** | enum | The verdict made by the reviewing entity<br/>*Enum*: Pending, Denied, Approved<br/> | false |
+
+
+### ResourcePermit.status.review.reviewer
+
+
+
+The Entity reviewing this request
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **groups** | []string | The groups the entity belongs to | false |
+| **name** | string | The name of the entity | false |
+| **type** | enum | The type of the entity<br/>*Enum*: User, Group, System, ServiceAccount<br/> | false |
+
+
+### ResourcePermit.status.transitions[index]
+
+
+
+ResourcePermitTransition records one authenticated lifecycle transition.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[actor](#resourcepermitstatustransitionsindexactor)** | object | Actor is the authenticated user, ServiceAccount, or Capsule system actor<br>responsible for the transition. Group claims are deliberately not copied<br>into the audit trail. | true |
+| **reason** | string | Reason is a stable machine-readable explanation of the transition. | true |
+| **timestamp** | string | Timestamp is when the transition was requested or performed.<br/>*Format*: date-time<br/> | true |
+| **type** | enum | Type identifies the lifecycle state entered by this transition. The<br>previous state can be derived from the preceding chronological entry.<br/>*Enum*: Created, Requested, Pending, Denied, Approved, Active, Failed, Retrying, Expired<br/> | true |
+| **eventTime** | string | EventTime is set after Capsule emits the Kubernetes lifecycle event for<br>this transition.<br/>*Format*: date-time<br/> | false |
+| **message** | string | Message is the human-readable explanation of the transition. | false |
+
+
+### ResourcePermit.status.transitions[index].actor
+
+
+
+Actor is the authenticated user, ServiceAccount, or Capsule system actor
+responsible for the transition. Group claims are deliberately not copied
+into the audit trail.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name is the authenticated actor name. | true |
+| **type** | enum | Type identifies the kind of authenticated actor.<br/>*Enum*: User, Group, System, ServiceAccount<br/> | true |
+
+## ResourcePermitTemplate
+
+
+
+
+
+
+ResourcePermitTemplate is the Schema for namespaced ResourcePermit templates.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | capsule.clastix.io/v1beta2 | true |
+| **kind** | string | ResourcePermitTemplate | true |
+| **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
+| **[spec](#resourcepermittemplatespec)** | object | ResourcePermitTemplateSpec defines the desired state of a namespaced ResourcePermitTemplate. | false |
+| **[status](#resourcepermittemplatestatus)** | object | ResourcePermitTemplateStatus defines the observed state of ResourcePermitTemplate. | false |
+
+
+### ResourcePermitTemplate.spec
+
+
+
+ResourcePermitTemplateSpec defines the desired state of a namespaced ResourcePermitTemplate.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[resources](#resourcepermittemplatespecresourcesindex)** | []object | Resources rendered and managed by this template. | true |
+| **[approvals](#resourcepermittemplatespecapprovals)** | object | Approvals configures automatic and manual approval of requests using this template. | false |
+| **[context](#resourcepermittemplatespeccontext)** | object | Context loads additional Kubernetes resources for use by all resource targets and templates.<br>Resource reference fields may use parameters declared by ParamSchema. | false |
+| **defaultDuration** | string | The default duration of a ResourcePermit referencing this template. | false |
+| **[impersonation](#resourcepermittemplatespecimpersonation)** | object | Impersonation identifies the namespace-local ServiceAccount used for<br>context loading and every managed-resource action performed for requests<br>using this template. When omitted, the tenant default ServiceAccount from<br>CapsuleConfiguration is used. If neither is configured, Capsule uses its<br>controller identity. | false |
+| **keepFor** | string | The duration a ResourcePermit is retained after it expires for auditing. | false |
+| **maxDuration** | string | The maximum allowed duration of a ResourcePermit referencing this template. | false |
+| **paramSchema** | object | ParamSchema is the JSON Schema used to validate template parameters.<br>Properties may use the x-capsule-form vendor extension to select values<br>from arbitrary Kubernetes GVKs in compatible form clients. The schema may<br>use x-kubernetes-validations for Kubernetes-compatible CEL rules. | false |
+
+
+### ResourcePermitTemplate.spec.resources[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[policy](#resourcepermittemplatespecresourcesindexpolicy)** | object | Policy controls how every target in this resource group is created and managed.<br/>*Default*: map[]<br/> | false |
+| **targets** | []object | Targets are Kubernetes resource objects to render and manage with Policy.<br>Parameters and loaded context use the flat template root; trusted request<br>metadata is available under .request. | false |
+| **template** | string | Template is an optional Go template which may render one or more YAML or<br>JSON Kubernetes resources separated by YAML document markers. Request<br>parameters are available under .params and loaded resources under<br>.context.resources. Trusted request metadata is available under .request<br>with name, username, groups, and timestamp fields. | false |
+
+
+### ResourcePermitTemplate.spec.resources[index].policy
+
+
+
+Policy controls how every target in this resource group is created and managed.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **creation** | enum | Creation controls how an existing target is handled. Owner requires the<br>resource to have been created by the applying controller and otherwise<br>returns an error. Merge adopts an existing resource when possible and<br>creates the resource when it does not exist.<br/>*Enum*: Owner, Merge<br/>*Default*: Owner<br/> | false |
+| **deletion** | enum | Deletion controls what happens when the parent stops managing the target.<br>Remove deletes resources created for the parent and relinquishes adopted<br>resources. Orphan keeps the resource and removes Capsule's lifecycle<br>metadata. Removal is the default.<br/>*Enum*: Remove, Orphan<br/>*Default*: Remove<br/> | false |
+| **force** | boolean | Force allows server-side apply to acquire conflicting field ownership.<br/>*Default*: false<br/> | false |
+| **protect** | boolean | Protect prevents users from changing or deleting the target through<br>admission while it is managed. Protection is enabled by default.<br/>*Default*: true<br/> | false |
+
+
+### ResourcePermitTemplate.spec.approvals
+
+
+
+Approvals configures automatic and manual approval of requests using this template.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[approvers](#resourcepermittemplatespecapprovalsapproversindex)** | []object | Approvers lists the subjects permitted to approve a request manually.<br>When omitted, any subject with permission to update the request status may<br>approve it. | false |
+| **auto** | boolean | Auto automatically approves matching requests. Approvers are ignored for<br>automatic approvals. | false |
+| **conditions** | []string | Conditions contains CEL expressions evaluated as an OR list. At least one<br>expression must evaluate to true. When omitted, approval is unconditional. | false |
+
+
+### ResourcePermitTemplate.spec.approvals.approvers[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | Kind of entity. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
+| **name** | string | Name of the entity. | true |
+
+
+### ResourcePermitTemplate.spec.context
+
+
+
+Context loads additional Kubernetes resources for use by all resource targets and templates.
+Resource reference fields may use parameters declared by ParamSchema.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[resources](#resourcepermittemplatespeccontextresourcesindex)** | []object |  | false |
+
+
+### ResourcePermitTemplate.spec.context.resources[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
+| **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
+| **index** | string | Index to mount the resource in the template context | false |
+| **name** | string | Name of the values referent. This is useful<br>when you traying to get a specific resource | false |
+| **namespace** | string | Namespace of the values referent. | false |
+| **optional** | boolean | Only relevant if name is set. If an item is not optional, there will be an error thrown when it does not exist<br/>*Default*: true<br/> | false |
+| **[selector](#resourcepermittemplatespeccontextresourcesindexselector)** | object | Selector which allows to get any amount of these resources based on labels | false |
+
+
+### ResourcePermitTemplate.spec.context.resources[index].selector
+
+
+
+Selector which allows to get any amount of these resources based on labels
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#resourcepermittemplatespeccontextresourcesindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### ResourcePermitTemplate.spec.context.resources[index].selector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### ResourcePermitTemplate.spec.impersonation
+
+
+
+Impersonation identifies the namespace-local ServiceAccount used for
+context loading and every managed-resource action performed for requests
+using this template. When omitted, the tenant default ServiceAccount from
+CapsuleConfiguration is used. If neither is configured, Capsule uses its
+controller identity.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name of the referent. | true |
+
+
+### ResourcePermitTemplate.status
+
+
+
+ResourcePermitTemplateStatus defines the observed state of ResourcePermitTemplate.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[conditions](#resourcepermittemplatestatusconditionsindex)** | []object | Conditions contains the reconciliation conditions for this template. | false |
+| **observedGeneration** | integer | ObservedGeneration is the most recent generation resolved by the controller.<br/>*Format*: int64<br/> | false |
+
+
+### ResourcePermitTemplate.status.conditions[index]
+
+
+
+Condition contains details for one aspect of the current state of this API Resource.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
+| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
+| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
+| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
+| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
+| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
 
 ## ResourcePoolClaim
 
@@ -2376,7 +3140,7 @@ MetadataRule defines metadata constraints for namespaced resources.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
-| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes.<br>Present metadata matching the effective managed value is exempt from<br>metadata value validation, including overlapping deny rules. The last<br>applicable managed value for each concrete key wins.<br>During admission, only rules matching the request's audience contribute<br>to the effective managed value. | false |
 | **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
 | **[values](#rulestatusspecindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
@@ -2406,7 +3170,7 @@ Both may be set together.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
-| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes.<br>Present metadata matching the effective managed value is exempt from<br>metadata value validation, including overlapping deny rules. The last<br>applicable managed value for each concrete key wins.<br>During admission, only rules matching the request's audience contribute<br>to the effective managed value. | false |
 | **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
 | **[values](#rulestatusspecindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
@@ -2787,7 +3551,7 @@ MetadataRule defines metadata constraints for namespaced resources.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
-| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes.<br>Present metadata matching the effective managed value is exempt from<br>metadata value validation, including overlapping deny rules. The last<br>applicable managed value for each concrete key wins.<br>During admission, only rules matching the request's audience contribute<br>to the effective managed value. | false |
 | **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
 | **[values](#rulestatusstatusruleenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
@@ -2817,7 +3581,7 @@ Both may be set together.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
-| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes.<br>Present metadata matching the effective managed value is exempt from<br>metadata value validation, including overlapping deny rules. The last<br>applicable managed value for each concrete key wins.<br>During admission, only rules matching the request's audience contribute<br>to the effective managed value. | false |
 | **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
 | **[values](#rulestatusstatusruleenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
@@ -3165,7 +3929,7 @@ MetadataRule defines metadata constraints for namespaced resources.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
-| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes.<br>Present metadata matching the effective managed value is exempt from<br>metadata value validation, including overlapping deny rules. The last<br>applicable managed value for each concrete key wins.<br>During admission, only rules matching the request's audience contribute<br>to the effective managed value. | false |
 | **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
 | **[values](#rulestatusstatusrulesindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
@@ -3195,7 +3959,7 @@ Both may be set together.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
-| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes.<br>Present metadata matching the effective managed value is exempt from<br>metadata value validation, including overlapping deny rules. The last<br>applicable managed value for each concrete key wins.<br>During admission, only rules matching the request's audience contribute<br>to the effective managed value. | false |
 | **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
 | **[values](#rulestatusstatusrulesindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
@@ -3773,10 +4537,10 @@ TenantResourceStatus defines the observed state of TenantResource.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **size** | integer | How many items are being replicated by the TenantResource. | true |
+| **size** | integer | Number of managed resources. | true |
 | **[conditions](#tenantresourcestatusconditionsindex)** | []object | Condition of the GlobalTenantResource. | false |
 | **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
-| **[processedItems](#tenantresourcestatusprocesseditemsindex)** | []object | List of the replicated resources for the given TenantResource. | false |
+| **[processedItems](#tenantresourcestatusprocesseditemsindex)** | []object | List of resources managed by the API object. | false |
 | **[serviceAccount](#tenantresourcestatusserviceaccount)** | object | Serviceaccount used for impersonation | false |
 
 
@@ -4843,7 +5607,7 @@ MetadataRule defines metadata constraints for namespaced resources.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
-| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes.<br>Present metadata matching the effective managed value is exempt from<br>metadata value validation, including overlapping deny rules. The last<br>applicable managed value for each concrete key wins.<br>During admission, only rules matching the request's audience contribute<br>to the effective managed value. | false |
 | **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
 | **[values](#tenantspecrulesindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
@@ -4873,7 +5637,7 @@ Both may be set together.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
-| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes. | false |
+| **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes.<br>Present metadata matching the effective managed value is exempt from<br>metadata value validation, including overlapping deny rules. The last<br>applicable managed value for each concrete key wins.<br>During admission, only rules matching the request's audience contribute<br>to the effective managed value. | false |
 | **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
 | **[values](#tenantspecrulesindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
