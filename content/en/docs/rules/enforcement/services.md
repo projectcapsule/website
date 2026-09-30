@@ -9,6 +9,8 @@ Service enforcement allows administrators to allow, deny, or audit Kubernetes `S
 
 Service rules are configured under `spec.rules[].enforce.services`. Each rule can define an `action`, a list of allowed or denied Service `types`, constraints for `spec.externalIPs`, and optional type-specific constraints for `LoadBalancer`, `ExternalName`, and `NodePort` Services.
 
+See [Conditions](/docs/rules/#enforcement-conditions) for conditional Service policies.
+
 ```yaml
 rules:
   - enforce:

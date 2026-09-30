@@ -10,7 +10,9 @@ Kubernetes Ingresses, OpenShift Routes, and Gateway API resources in Tenant
 namespaces.
 
 Ingress rules are configured under `spec.rules[].enforce.ingress`. Each rule
-selects one or more resource `types` and defines hostname match expressions:
+selects one or more resource `types` and defines hostname match expressions.
+
+See [Conditions](/docs/rules/#enforcement-conditions) for conditional ingress policies.
 
 ```yaml
 rules:
