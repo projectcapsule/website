@@ -9,6 +9,8 @@ Metadata enforcement allows administrators to allow, deny, or audit Kubernetes o
 
 Metadata rules are configured under `spec.rules[].enforce.metadata`. They are evaluated by a generic validating webhook and can target one or more Kubernetes kinds. This makes metadata enforcement useful for objects such as `ConfigMap`, `Secret`, `Service`, `Deployment`, custom resources, and other namespaced resources.
 
+See [Conditions](/docs/rules/#enforcement-conditions) for conditional metadata policies.
+
 ```yaml
 rules:
   - enforce:
@@ -290,17 +292,17 @@ Annotation rules are configured under `metadata[].annotations`. Each map key is 
 
 ```yaml
 rules:
-  - enforce:
+  - audience:
+      - kind: "Group"
+        name: "system:authenticated"
+      - kind: "Custom"
+        name: "CapsuleUser"
+      - kind: "Custom"
+        name: "Administrator"
+      - kind: "Custom"
+        name: "TenantOwner"
+    enforce:
       action: allow
-      audience:
-        - kind: "Group"
-          name: "system:authenticated"
-        - kind: "Custom"
-          name: "CapsuleUser"
-        - kind: "Custom"
-          name: "Administrator"
-        - kind: "Custom"
-          name: "TenantOwner"
       metadata:
         - apiGroups:
             - "v1"
@@ -380,7 +382,9 @@ Default values still validate against the configured `values` matchers. If the d
 
 ## Managed
 
-Providing managed values ensures the metadata is always set to the provided value. This is applied at admission time and also enforced by the `RuleStatus` controller. Meaning it's also applied to already existing objects and also enforced at admission time. This is useful for enforcing certain metadata to be present and also to ensure the value is always set to a specific value.
+Managed values set metadata to the configured value during admission,
+overwriting an existing value. For background reconciliation behavior, see
+[managed metadata and conditions](/docs/rules/#managed-metadata).
 
 ```yaml
 rules:
