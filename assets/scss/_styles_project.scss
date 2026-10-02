@@ -264,3 +264,43 @@
     transition: none;
   }
 }
+
+// Each complete YAML rule is one native link; code remains selectable/copyable.
+.linked-yaml {
+  .highlight > pre {
+    padding: 1rem 0;
+
+    > code {
+      display: block;
+      width: max-content;
+      min-width: 100%;
+    }
+  }
+
+  &__plain,
+  &__rule {
+    display: block;
+    padding: 0 1rem;
+  }
+
+  &__rule {
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    user-select: text;
+    -webkit-user-drag: none;
+
+    &:hover,
+    &:focus-visible {
+      color: inherit;
+      text-decoration: none;
+      background-color: rgba(var(--bs-primary-rgb, 48, 99, 142), 0.12);
+      box-shadow: inset 3px 0 var(--bs-primary, #30638e);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--bs-primary, #30638e);
+      outline-offset: -2px;
+    }
+  }
+}

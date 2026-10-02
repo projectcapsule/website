@@ -7,7 +7,11 @@ description: >
 
 Use `spec.rules[].mutate` to set resource properties during admission. It is an
 ordered list of entries, each with an optional `action` and a typed resource
-block. Currently, `workloads` is supported and applies to Pods on creation.
+block. Currently, `workloads` applies to Pods on creation;
+[`readOnlyRootFilesystem`](/docs/rules/mutate/workloads/#read-only-root-filesystem)
+also applies to newly added ephemeral containers.
+[Mutation targets](/docs/rules/mutate/workloads/#targets) select compatible Pod
+locations, with `pod` including all container groups.
 
 `mutate` and [`enforce`](/docs/rules/enforcement/) are sibling keys. Mutation
 changes the resource; enforcement validates the result. Either can be used alone,
@@ -48,7 +52,7 @@ Other admission controllers can subsequently add tolerations.
 
 Replacement happens at the supplied property's boundary. For example,
 `nodeSelector` is replaced as one map and `affinity` as one object, including
-all its branches. The [scheduling reference](/docs/rules/mutate/workloads/#scheduling)
+all its branches. The [placement reference](/docs/rules/mutate/workloads/#placement)
 explains which list entries match during a merge and how required affinity is
 combined.
 
@@ -58,7 +62,7 @@ combined.
 |---|---|
 | Property omitted or `null` | Leave the existing property unchanged with either action. |
 | Empty map, list, or `affinity: {}` with `replace` | Clear that property. |
-| `hostUsers: false` | Set an explicit Boolean value; `false` is not an omission. |
+| `hostUsers: false` or `readOnlyRootFilesystem: false` | Set an explicit Boolean value; `false` is not an omission. |
 
 For example, this clears node selectors and affinity while retaining tolerations
 and topology-spread constraints:
@@ -70,14 +74,3 @@ mutate:
       nodeSelector: {}
       affinity: {}
 ```
-
-## Workloads
-
-See [Workloads](/docs/rules/mutate/workloads/) for workload configuration and
-property behavior:
-
-- [Configure workload mutations](/docs/rules/mutate/workloads/#configure-workload-mutations).
-- [Configure scheduling](/docs/rules/mutate/workloads/#scheduling).
-- [Default a scheduler with a condition](/docs/rules/mutate/workloads/#default-a-scheduler-with-a-condition).
-- [Configure security](/docs/rules/mutate/workloads/#security).
-- [Combine mutation and enforcement in a Tenant](/docs/rules/mutate/workloads/#complete-placement-example).

@@ -7,6 +7,9 @@ description: Best Practices when running Capsule in production
 
 This is general advice you should consider before making Kubernetes Distribution consideration. They are partly relevant for Multi-Tenancy with Capsule.
 
+For a complete configuration combining the workload and networking policies,
+see the [combined Tenant baseline](/docs/operating/best-practices/tenants/#reference).
+
 ### Authentication
 
 User authentication for the platform should be handled via a central OIDC-compatible identity provider system (e.g., Keycloak, Azure AD, Okta, or any other OIDC-compliant provider).

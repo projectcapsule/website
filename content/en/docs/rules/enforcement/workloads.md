@@ -5,13 +5,15 @@ description: >
   Workload enforcement
 ---
 
-Workload enforcement mainly targets `Pod` objects and the resources associated
-with them. It is configured under `spec.rules[].enforce.workloads`. Each rule
-can define an `action`, optional workload `targets`, and one or more workload
-policies such as resource requests and limits, registry match expressions,
-scheduler match expressions, QoS classes, or [Pod placement](#placement).
+Workload enforcement is configured under `spec.rules[].enforce.workloads`.
+Use `targets` to select native workload kinds or locations inside their Pod
+specs. A targets-only rule matches the selected kinds themselves. When workload
+policies are present, targets scope those policies: [resource management](#resource-management),
+[OCI registries](#oci-registries), scheduler names, QoS, [placement](#placement),
+and [security profiles](#security).
 
 See [Conditions](/docs/rules/#enforcement-conditions) for conditional workload policies.
+See [Reference](#reference) for a complete Tenant combining workload policies.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -27,7 +29,279 @@ spec:
             - BestEffort
 ```
 
-## Resource requests and limits
+## Workload Targets
+
+Configure targets under `spec.rules[].enforce.workloads.targets`. The same list
+selects workloads for resource, registry, scheduler, QoS, placement, and security policies;
+individual policies do not have separate target lists.
+
+* With no workload policies, targets apply the rule's `action` to the selected
+  workload kinds. For example, `targets: [daemonset]` with `action: deny` rejects
+  DaemonSets.
+* With workload policies, targets scope those policies to the selected workloads
+  and Pod-spec locations. Adding a policy means the rule checks that property
+  instead of restricting the kind itself. Use separate rule entries when you
+  need both kind restrictions and property checks.
+
+Omitted or empty targets preserve the default Pod scopes described below and do
+not enable controller checks. An empty workload block has no effect. Namespace
+selectors, audiences, and `enforce.conditions` apply to both forms.
+
+Supported native workload kinds are:
+
+| Target | Native API group / kind |
+|---|---|
+| `pod` | core / Pod |
+| `deployment` | apps / Deployment |
+| `statefulset` | apps / StatefulSet |
+| `daemonset` | apps / DaemonSet |
+| `replicaset` | apps / ReplicaSet |
+| `replicationcontroller` | core / ReplicationController |
+| `job` | batch / Job |
+| `cronjob` | batch / CronJob |
+
+Requests match their own API group and kind, without following owner references.
+A custom resource named `DaemonSet` in another API group is not a native target.
+Targets use the exact lowercase values shown here; wildcards such as `pod/*`,
+`deployment/*`, and `*` are not supported.
+
+Controller targets validate the Pod template during controller creation and
+updates, including nested CronJob templates. For example, this denies one
+scheduler and one image in Deployment and CronJob templates while permitting
+compliant ones:
+
+```yaml
+rules:
+  - enforce:
+      action: deny
+      workloads:
+        targets: [deployment, cronjob]
+        schedulers:
+          - exact: [forbidden-scheduler]
+        registries:
+          - exact: [example.com/blocked/app:v1]
+```
+
+A whole-controller target such as `deployment` selects all compatible policy
+locations in its Pod template. Append `/containers`, `/initcontainers`, or
+`/volumes` to narrow resource, registry, or security-profile checks, for example
+`deployment/containers` or `cronjob/initcontainers`. These parts have the same
+policy scopes as their Pod equivalents in the [Pod targets table](#pod-targets). Controller templates
+do not support `/ephemeralcontainers`, and resource policies do not support
+`/volumes`. Security-profile checks support container and init-container parts,
+not volume parts.
+
+Scheduler and QoS policies apply to the selected workload's whole Pod spec,
+including when a part is selected. Placement checks require a whole-controller
+target; selecting only controller parts skips them. Unlike `pod`, a
+whole-controller target also includes container resources and image references.
+
+Conditions see the whole admitted controller: use `object.spec.template.spec`
+for a Deployment and `object.spec.jobTemplate.spec.template.spec` for a CronJob.
+Events concern the controller object. Policies on controller templates do not
+imply policies on the resulting Pods; include Pod targets where those checks
+are needed. Targets do not extend `mutate[].workloads` to controllers; workload
+mutation there remains limited to Pod creation.
+
+**Migration:** targets-only rules previously had no effect. They now apply the
+action to the selected kinds, and an omitted action defaults to `deny`. Remove
+unused targets-only entries before upgrading if they were placeholders.
+
+### Pod targets
+
+When workload policies are present, Pod targets select these locations.
+✅ indicates support; ❌ means the policy does not apply to that target.
+
+| Target | Resource policies | Registry policies | Placement policies | [Seccomp / AppArmor](#security) |
+|---|---|---|---|---|
+| `pod` | ✅ Pod-level `spec.resources` | ❌ | ✅ Pod placement fields | ✅ Pod default only |
+| `pod/containers` | ✅ `spec.containers[].resources` | ✅ Regular container images | ❌ | ✅ Effective regular-container profiles |
+| `pod/initcontainers` | ✅ `spec.initContainers[].resources` | ✅ Init container images | ❌ | ✅ Effective init-container profiles |
+| `pod/ephemeralcontainers` | ❌ | ✅ Ephemeral container images | ❌ | ✅ Effective ephemeral-container profiles |
+| `pod/volumes` | ❌ | ✅ Image volumes under `spec.volumes[].image` | ❌ | ❌ |
+
+For seccomp and AppArmor, an **effective profile** resolves a container override
+before the Pod default. Init containers include restartable sidecars.
+Selecting `pod` alone checks the default and leaves container overrides
+unchecked. See [Target security profiles](#target-security-profiles) for a
+complete Tenant and a comparison of these scopes.
+
+This table describes enforcement. Profile mutations under `mutate[].workloads`
+set Pod-level defaults on Pod creation, using `pod` or omitted mutation targets.
+Neither `merge` nor `replace` modifies container profile overrides. For
+`readOnlyRootFilesystem` mutation, `pod` selects all container groups and
+container targets can narrow the selection. See the separate
+[mutation targets table](/docs/rules/mutate/workloads/#targets). Enforcement
+targets do not control mutation.
+
+Scheduler and QoS policies always evaluate the whole Pod selected by any Pod
+target. For example, `pod/containers` does not limit QoS calculation to regular
+containers. Resource policies cannot be combined with targets for ephemeral
+containers or volumes.
+
+Omitting `targets`, or setting it to `[]`, selects all compatible Pod locations:
+Pod-level resources, regular and init container resources, regular/init/ephemeral
+container images, image volumes, and Pod placement fields. Scheduler and QoS
+checks also apply. Profile policies check effective regular, init, and ephemeral
+container profiles. Resource-name compatibility is described under
+[Targeting resource locations](#targeting-resource-locations).
+
+An explicit `targets: [pod]` is narrower than omitted targets: it selects
+Pod-level resources, placement, and security-profile defaults, together with scheduler and QoS checks. It
+does not select container resources or any image references. List the desired
+Pod parts explicitly when narrowing container, image, or profile policies.
+
+For example, deny matching images only in init containers:
+
+```yaml
+rules:
+  - enforce:
+      action: deny
+      workloads:
+        targets: [pod/initcontainers]
+        registries:
+          - exp: "harbor/init-only/.*"
+```
+
+The same image reference in a regular container, ephemeral container, or image
+volume is unaffected by this rule. Combine targets to check multiple locations:
+
+```yaml
+rules:
+  - enforce:
+      action: deny
+      workloads:
+        targets: [pod/containers, pod/ephemeralcontainers]
+        registries:
+          - exp: "debug/.*"
+```
+
+This checks regular and ephemeral container images. It does not check init
+containers or image volumes.
+
+**Targets without policies match the whole kind.** A targets-only rule with
+`targets: [pod/containers]` and `action: deny` rejects Pods, just like
+`targets: [pod]`. A part suffix narrows property checks only when workload
+policies are configured.
+
+#### Target security profiles
+
+This complete Tenant gives namespaces two different profile policies. Namespaces
+labeled `profile-scope: pod-only` require RuntimeDefault in the Pod's security
+context. Namespaces labeled `profile-scope: containers` require RuntimeDefault
+for every effective regular, init, and ephemeral container profile. Namespaces
+with neither label are unaffected by these rules.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          profile-scope: pod-only
+      enforce:
+        action: allow
+        workloads:
+          targets: [pod]
+          seccompProfiles:
+            - types: [RuntimeDefault]
+          appArmorProfiles:
+            - types: [RuntimeDefault]
+    - namespaceSelector:
+        matchLabels:
+          profile-scope: containers
+      enforce:
+        action: allow
+        workloads:
+          targets:
+            - pod/containers
+            - pod/initcontainers
+            - pod/ephemeralcontainers
+          seccompProfiles:
+            - types: [RuntimeDefault]
+          appArmorProfiles:
+            - types: [RuntimeDefault]
+```
+
+These rules supply no defaults. For Linux Pods, each mechanism is checked
+independently:
+
+| Submitted profile configuration | `profile-scope: pod-only` | `profile-scope: containers` |
+|---|---|---|
+| Pod RuntimeDefault; all containers inherit it | ✅ Allowed | ✅ Allowed |
+| Pod RuntimeDefault; regular container overrides it with Unconfined | ✅ Allowed | ❌ Rejected |
+| Pod RuntimeDefault; init container overrides it with Unconfined | ✅ Allowed | ❌ Rejected |
+| Pod RuntimeDefault; ephemeral container overrides it with Unconfined | ✅ Allowed | ❌ Rejected |
+| No Pod profile; every container explicitly uses RuntimeDefault | ❌ Rejected | ✅ Allowed |
+| No profile at either level | ❌ Rejected | ❌ Rejected |
+
+List only `pod/initcontainers` to restrict the profile checks to init containers.
+Combine `pod` with the three container targets to require both an allowed Pod
+default and allowed effective container profiles. Omitting targets checks all
+three container groups without independently requiring a Pod default.
+
+The [security reference](#security-reference) combines Pod-level defaulting with
+container enforcement. A container override survives mutation and must then
+pass the selected enforcement checks, including on `pods/ephemeralcontainers`
+updates.
+
+### Select Workloads
+
+A targets-only `allow` rule establishes an allow-list across the eight supported
+native workload kinds. Other resource kinds remain outside this allow-list.
+Allow controller-created children explicitly:
+
+```yaml
+rules:
+  - enforce:
+      action: allow
+      workloads:
+        targets: [deployment, replicaset, pod]
+```
+
+This allows Deployments, ReplicaSets, and Pods while rejecting the other
+supported native workload kinds. Allowing a Deployment alone does not allow its
+ReplicaSets or Pods: each request is evaluated separately. Kind restrictions
+apply to creation and main-resource updates, not deletion or subresources.
+
+
+#### Deny DaemonSets
+
+Add a targets-only rule under `Tenant.spec.rules` to deny DaemonSets in namespaces
+labeled `env: test`:
+
+```yaml
+rules:
+  - namespaceSelector:
+      matchLabels:
+        env: test
+    enforce:
+      action: deny
+      workloads:
+        targets: [daemonset]
+```
+
+This rejects DaemonSet creation and main-resource updates in the selected
+namespaces. It does not remove existing DaemonSets or block deletion or
+subresources. Other workload kinds and non-selected namespaces are unaffected
+by this rule. To cover all namespaces in the Tenant, omit `namespaceSelector`.
+
+Use `action: audit` to record matching requests without blocking them. For kind
+restrictions, the last matching `allow` or `deny` rule wins; `audit` does not
+change that decision.
+
+## Resource Management
+
+Configure CPU, memory, and other resource requests and limits, together with
+Pod QoS policies.
+
+### Requests and Limits
 
 Resource policies let a Tenant administrator normalize and enforce the
 `requests` and `limits` of Pods created in Tenant namespaces. They cover common
@@ -115,12 +389,12 @@ request, it cannot derive a replacement and the final state violates the
 policy. With `action: deny` the Pod is rejected; with `action: audit` Capsule
 admits it and emits an audit event and admission warning.
 
-### Policy reference
+#### Policy reference
 
 After starting with the common example above, use this reference to
 choose the precise behavior for each request and limit.
 
-#### Requests
+##### Requests
 
 The following policies are supported under `resources.requests`:
 
@@ -169,7 +443,7 @@ Resource names must be valid Kubernetes qualified names. Custom and extended
 resource names can be used for container and init-container policies, subject
 to the normal Kubernetes rules for that resource.
 
-#### Limits
+##### Limits
 
 The following policies are supported under `resources.limits`:
 
@@ -186,7 +460,7 @@ the configured value. Use `MatchRequest` when Capsule should own the limit and
 keep it equal to the request, or `Ratio` when explicit tenant values are allowed
 within a bounded range.
 
-#### Ratio limits
+##### Ratio limits
 
 `Ratio` defines the maximum permitted limit as a multiple of the request. It is
 available only for limits and supports these resource names:
@@ -238,18 +512,12 @@ that the generated limit never exceeds the configured factor. For example, a
 CPU request of `101m` with a ratio of `1.5` produces a limit of `151m`, not
 `152m`.
 
-### Targeting resource locations
+#### Targeting resource locations
 
-Resource policies reuse `enforce.workloads.targets` to select the resource
-locations inside the Pod:
-
-| Target | Resource location | Supported by resource policies |
-|---|---|---|
-| `pod` | Pod-level `spec.resources` | Yes. |
-| `pod/containers` | `spec.containers[].resources` | Yes. |
-| `pod/initcontainers` | `spec.initContainers[].resources` | Yes. |
-| `pod/ephemeralcontainers` | `spec.ephemeralContainers[].resources` | No. Kubernetes does not allow resources to be set on ephemeral containers. |
-| `pod/volumes` | Pod volumes | No. |
+Resource policies reuse `enforce.workloads.targets` to select resource locations.
+See [Pod targets](#pod-targets) for the location table and
+[Workload targets](#workload-targets) for controller targets.
+Ephemeral containers and volumes cannot be selected for resource policies.
 
 When `targets` is omitted or empty, each resource policy applies to every
 compatible location: Pod-level `spec.resources`, regular containers, and init
@@ -376,12 +644,12 @@ rules:
           - exp: "untrusted.example.com/.*"
 ```
 
-### Advanced behavior
+#### Advanced behavior
 
 The following concepts are mainly relevant when combining multiple rules,
 selectors, admission actions, or Kubernetes resource-management components.
 
-#### Admission lifecycle
+##### Admission lifecycle
 
 Resource policy admission has a mutation phase and a validation phase. Knowing
 which phase a policy uses is important when choosing a policy and an action.
@@ -392,26 +660,26 @@ which phase a policy uses is important when choosing a policy and an action.
 | Validation | Pod `CREATE` and normal `UPDATE` | Capsule checks the final resource values for `Remove`, `MatchRequest`, and `Ratio`. `Preserve` and `Default` do not add a validation constraint. |
 | Pod subresources | Any | Resource validation is skipped for Pod subresources, including `ephemeralcontainers`. Resource policies do not mutate ephemeral containers. |
 
-Mutation is intentionally limited to Pod creation. Capsule does not try to
+For Pods, resource mutation is limited to creation. Capsule does not try to
 rewrite resource fields on existing Pods, where Kubernetes immutability rules
 would normally reject the change. Normal Pod updates are still validated so
 that the policy describes the accepted final state.
 
-When a `Deployment`, `StatefulSet`, `Job`, or another workload controller
-creates a Pod, Capsule mutates and validates the resulting Pod. It does not
-rewrite the controller's stored `spec.template`. Consequently, inspecting the
-controller can show the original template while inspecting one of its admitted
-Pods shows the effective resources.
+With omitted targets or Pod targets, Capsule mutates and validates the resulting
+Pods without rewriting controller templates. With explicit controller targets,
+resource request/limit policies also mutate and validate the stored Pod template
+on controller creation and updates. Defaults therefore appear directly in the
+controller. Other workload mutations under `mutate[].workloads` remain Pod-only.
 
 {{% alert title="Important" color="warning" %}}
 The enclosing `action` does not disable mutation. A rule with `action: audit`
-still applies its create-time resource mutation. The action controls the result
+still applies its resource mutation within the supported target and operation. The action controls the result
 of a remaining validation violation. For example, `Ratio` leaves an explicit
 limit unchanged, then `deny` rejects an excessive value while `audit` reports
 it without blocking the Pod.
 {{% /alert %}}
 
-#### Actions and compliance
+##### Actions and compliance
 
 The `action` belongs to the enclosing `enforce` block and applies to
 validation constraints created by `Remove`, `MatchRequest`, and `Ratio`:
@@ -481,7 +749,7 @@ Remember that a missing limit is still defaulted during create. The audit is
 emitted only when the final Pod remains noncompliant, such as when it contains
 an explicit excessive limit or a limit without a positive request.
 
-#### Rule order and policy overrides
+##### Rule order and policy overrides
 
 Rules are processed in declaration order after `namespaceSelector` and
 [audience](/docs/rules/#audience) filtering. Resource policies are resolved independently for every
@@ -527,7 +795,7 @@ fill-only behavior.
 
 For the request identity of controller-created Pods, see [Audience](/docs/rules/#audience).
 
-#### Configuration validation
+##### Configuration validation
 
 Capsule validates resource policy configuration before using it. Invalid rules
 are reported on the RuleStatus and are not silently accepted.
@@ -577,7 +845,7 @@ resources:
       value: "1"
 ```
 
-#### Interaction with Kubernetes resource controls
+##### Interaction with Kubernetes resource controls
 
 Resource policies complement Kubernetes resource controls; they do not replace
 or disable them.
@@ -609,7 +877,7 @@ If admission is denied, Capsule's error identifies the target path, resource
 field, and failed requirement. Audit violations appear as admission warnings
 and Kubernetes events associated with the Pod and Tenant.
 
-## QoS Classes
+### QoS Classes
 
 QoS class enforcement allows administrators to allow, deny, or audit Pods based on their [computed Kubernetes QoS class](https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/).
 
@@ -698,149 +966,572 @@ rules:
 
 Because later matching allow or deny rules take precedence, namespaces labeled `allow-best-effort=true` can run `BestEffort` Pods, while other namespaces cannot.
 
-## Scheduler Names
 
-Scheduler enforcement allows administrators to allow, deny, or audit Pods based on `spec.schedulerName`.
+## Placement
 
-Scheduler rules are configured under `enforce.workloads.schedulers`. Each scheduler matcher uses the common match expression structure with `exact`, `exp`, and optional `negate`.
+Configure placement policies under `spec.rules[].enforce.workloads`. Each property
+has its own matcher list:
 
-To set a scheduler before enforcement, use
-[scheduler mutation](/docs/rules/mutate/workloads/#scheduler). A
-[conditional default](/docs/rules/mutate/workloads/#default-a-scheduler-with-a-condition)
-can replace the built-in scheduler while preserving custom names; enforcement checks the resulting name.
+| Property | Evaluated value | Mutation |
+|---|---|---|
+| [Scheduler names](#scheduler-names) | `spec.schedulerName` | [Set the scheduler](/docs/rules/mutate/workloads/#scheduler) |
+| [Node selectors](#node-selectors) | Each key/value pair in `spec.nodeSelector` | [Set node selectors](/docs/rules/mutate/workloads/#node-selectors) |
+| [Tolerations](#tolerations) | Each complete entry in `spec.tolerations` | [Set tolerations](/docs/rules/mutate/workloads/#tolerations) |
+| [Topology spread constraints](#topology-spread-constraints) | Each complete entry in `spec.topologySpreadConstraints` | [Set spread constraints](/docs/rules/mutate/workloads/#topology-spread-constraints) |
+| [Affinity](#affinity) | Each complete required or preferred affinity term | [Set affinity](/docs/rules/mutate/workloads/#affinity) |
 
-Capsule evaluates `spec.schedulerName` during Pod create and update admission. Kubernetes defaults an omitted or empty name to `default-scheduler` before Pod admission, so enforcement checks that name unless a mutation changes it. The enforcement matcher itself does not fill an empty value.
+Read [Order and scope](/docs/rules/#order-and-scope) for how mutation precedes
+enforcement, and [Conditions](/docs/rules/#enforcement-conditions) to apply checks
+conditionally. The [Reference](#reference) combines all placement policies with
+resource and image rules. To configure mutations alongside enforcement, see the
+[complete mutation example](/docs/rules/mutate/workloads/#complete-placement-example).
 
-Allow only selected explicit schedulers:
+Scheduler policies evaluate one scheduler name. Node selectors, tolerations,
+topology spread constraints, and affinity are evaluated entry by entry. For
+these structured entries, fields within a matcher are combined with AND, and
+entries in the matcher list are alternatives. A match requires one complete
+matcher to match the entry; different matchers cannot authorize separate parts
+of the same affinity term or spread constraint.
+
+The [action rules](/docs/rules/enforcement/#action) apply to each evaluated value:
+`allow` enables an allow-list, `deny` rejects matches, and `audit` only records
+them. The last matching allow or deny wins. Every supplied entry must pass its
+policy; a single rejected entry denies the request. Mutated values and
+Kubernetes-injected values are evaluated in the same way.
+
+Allow rules do not require a placement property to be present. Omitted
+properties and empty lists have no entries to validate. Use
+[workload mutation](/docs/rules/mutate/workloads/) to establish settings before
+enforcement. An omitted policy list or `[]` adds no matchers. For node selectors,
+tolerations, spread constraints, and affinity, `[{}]` matches every present
+entry. Scheduler matchers require a match expression instead.
+
+Those four structured properties use the `pod` target or a whole-controller
+target such as `deployment`. Omitting `targets` includes Pod placement checks;
+selecting only container or volume targets skips them. Scheduler checks apply
+to the whole selected Pod spec even when a part is selected. See
+[Workload targets](#workload-targets) for all target scopes.
+
+For those four properties, main-resource Pod updates check changed values and
+recheck affinity and spread selectors when labels change. Subresources skip
+these checks.
+
+#### Matcher fields
+
+Scheduler matchers and the `key`, `values`, `topologyKey`, and `namespaces` fields
+use the common [match expression structure](/docs/rules/#match-expressions):
+`exact`, `exp`, and optional `negate`.
+
+Omit a matcher field to leave it unrestricted. A supplied expression must contain
+`exact` or `exp`; `key: {}` is invalid. Use `exp: '^$'` to match an empty string.
+The property references below list the additional fields supported by each
+matcher, such as operators, effects, and numeric bounds.
+
+#### Selector policies
+
+Topology-spread and Pod-affinity matchers use the following policy structure for
+`labelSelector` and, where supported, `namespaceSelector`:
+
+| Field | Behavior |
+|---|---|
+| `required` | When `true`, require at least one effective selector requirement. |
+| `requirements` | Allowlist for individual selector requirements. Omission or an empty list leaves requirements unrestricted. |
+
+Each requirement matcher supports `key`, `values`, and `operators`. Label
+selectors support `In`, `NotIn`, `Exists`, and `DoesNotExist`. Every actual
+requirement must match one complete entry, and every supplied value must match
+its `values` expression. `matchLabels` entries are evaluated as singleton `In`
+requirements.
+
+`Exists` and `DoesNotExist` have no values to test. Permitting those operators
+permits their valueless form; use `operators: [In]` when allowed values must
+restrict the selection. A requirement allowlist constrains supplied requirements;
+it does not require every listed key to appear.
+
+Dynamic `matchLabelKeys` and `mismatchLabelKeys` are checked as `In` and `NotIn`
+requirements using the incoming Pod's label values. Missing dynamic labels are
+ignored, matching Kubernetes behavior. `required: true` uses this effective
+selector, including any dynamic requirements.
+
+### Scheduler names
+
+Configure scheduler matchers under `enforce.workloads.schedulers`. Capsule checks
+`spec.schedulerName` during create and update admission.
+
+Kubernetes defaults an omitted or empty name to `default-scheduler` before Pod
+admission. Enforcement checks that name unless a mutation changes it; the
+matcher itself does not fill an empty value. A
+[conditional scheduler default](/docs/rules/mutate/workloads/#default-a-scheduler-with-a-condition)
+can replace the built-in scheduler while preserving custom names.
+
+Allow only these schedulers:
 
 ```yaml
----
+enforce:
+  action: allow
+  workloads:
+    schedulers:
+      - exact: [tenant-scheduler, batch-scheduler]
+```
+
+| Pod scheduler name at enforcement | Result |
+|---|---|
+| `tenant-scheduler` or `batch-scheduler` | Allowed |
+| `other-scheduler` | Denied |
+| `default-scheduler`, including a name defaulted by Kubernetes | Denied |
+
+To allow a scheduler family as well as fixed names, combine `exact` and `exp`.
+Either one can satisfy this matcher:
+
+```yaml
+enforce:
+  action: allow
+  workloads:
+    schedulers:
+      - exact: [default-scheduler, batch-scheduler]
+        exp: '^tenant-[a-z0-9-]+$'
+```
+
+Deny one scheduler while leaving other names unrestricted by this rule:
+
+```yaml
+enforce:
+  action: deny
+  workloads:
+    schedulers:
+      - exact: [unsafe-scheduler]
+```
+
+Alternatively, negate a trusted set to deny all other names:
+
+```yaml
+enforce:
+  action: deny
+  workloads:
+    schedulers:
+      - exact: [default-scheduler, tenant-scheduler]
+        negate: true
+```
+
+To record usage without changing the admission decision, use `audit`:
+
+```yaml
+enforce:
+  action: audit
+  workloads:
+    schedulers:
+      - exact: [custom-scheduler]
+```
+
+This emits an event and an admission warning for `custom-scheduler`. Other
+policies still apply; an audit match cannot satisfy a scheduler allow-list.
+
+### Node selectors
+
+Each matcher evaluates one key/value pair in `spec.nodeSelector`.
+
+| Field | Matches |
+|---|---|
+| `key` | The node-label key. |
+| `values` | The node-label value, including an explicitly empty value. |
+
+```yaml
+enforce:
+  action: allow
+  workloads:
+    nodeSelector:
+      - key:
+          exact: [kubernetes.io/os]
+        values:
+          exact: [linux]
+      - key:
+          exp: '^placement\.example\.com/[a-z0-9-]+$'
+        values:
+          exact: [shared, batch]
+```
+
+This allows `kubernetes.io/os: linux` and keys such as
+`placement.example.com/pool: shared`. It rejects `kubernetes.io/os: windows`,
+`placement.example.com/pool: dedicated`, and unlisted keys. A Pod with no node
+selector is allowed by this rule.
+
+### Tolerations
+
+Each matcher evaluates one complete toleration in `spec.tolerations`.
+
+| Field | Matches |
+|---|---|
+| `key` | Taint key expression. An empty Pod key is a literal empty string. |
+| `values` | Toleration value expression. |
+| `operators` | `Equal` or `Exists`. An omitted Pod operator is `Equal`. |
+| `effects` | `NoSchedule`, `PreferNoSchedule`, `NoExecute`, or the literal empty string `""`. |
+| `tolerationSeconds` | Inclusive `min` and `max` bounds, with optional `allowUnlimited`. |
+
+An empty toleration key or effect has broad Kubernetes semantics. It does not
+match an allowlist of specific keys or effects. To allow an empty effect, include
+`""` explicitly in `effects`.
+
+An absent `tolerationSeconds` means unlimited. Bounds apply to finite durations;
+`allowUnlimited` defaults to `true`. Set it to `false` to require a finite duration:
+
+```yaml
+enforce:
+  action: allow
+  workloads:
+    tolerations:
+      - key:
+          exact: [node.kubernetes.io/not-ready, node.kubernetes.io/unreachable]
+        operators: [Exists]
+        effects: [NoExecute]
+        tolerationSeconds:
+          max: 600
+          allowUnlimited: false
+```
+
+This permits only the two listed NoExecute tolerations, each with a finite
+duration of at most 600 seconds. Add other matchers for any additional tolerations
+needed by your workloads or injected by Kubernetes.
+
+#### Disallow every toleration
+
+```yaml
+enforce:
+  action: deny
+  workloads:
+    tolerations:
+      - {}
+```
+
+The empty matcher rejects every toleration, including injected ones. Kubernetes
+normally adds not-ready and unreachable tolerations, so this rule rejects ordinary
+Pods with those entries too. Use an allowlist when system tolerations must remain
+permitted. A Pod with no tolerations has no entry for this deny rule to match.
+
+### Topology spread constraints
+
+Each matcher evaluates one complete entry in `spec.topologySpreadConstraints`.
+
+| Field | Matches |
+|---|---|
+| `topologyKey` | Topology-key expression. |
+| `whenUnsatisfiable` | List containing `DoNotSchedule` or `ScheduleAnyway`. |
+| `maxSkew` | Inclusive `min` and `max` bounds. |
+| `minDomains` | Inclusive bounds; an omitted Pod value is evaluated as `1`. |
+| `nodeAffinityPolicy` | `Honor` or `Ignore`; an omitted Pod value is `Honor`. |
+| `nodeTaintsPolicy` | `Honor` or `Ignore`; an omitted Pod value is `Ignore`. |
+| `labelSelector` | [Selector policy](#selector-policies) for the Pods counted by the constraint. |
+
+```yaml
+enforce:
+  action: allow
+  workloads:
+    topologySpreadConstraints:
+      - topologyKey:
+          exact: [topology.kubernetes.io/zone, kubernetes.io/hostname]
+        whenUnsatisfiable: [DoNotSchedule, ScheduleAnyway]
+        maxSkew:
+          min: 1
+          max: 3
+        labelSelector:
+          required: true
+          requirements:
+            - key:
+                exact: [app]
+              operators: [In]
+              values:
+                exact: [checkout]
+```
+
+This allows zone or host spreading with a skew of 1–3 and a selector for
+`app: checkout`. A constraint for another topology key, a skew of 4, or a selector
+using another key is rejected. The rule constrains supplied entries; it does not
+add a spread constraint or require one to be present.
+
+### Affinity
+
+All three affinity types use one flat list under `enforce.workloads.affinity`.
+Each matcher evaluates a complete required or preferred term from `spec.affinity`.
+
+| Field | Applies to | Behavior |
+|---|---|---|
+| `types` | All | Select `nodeAffinity`, `podAffinity`, or `podAntiAffinity`. Omission selects all compatible types. |
+| `modes` | All | Select `required`, `preferred`, or both. Omission selects both. |
+| `weight` | Preferred terms | Inclusive `min` and `max` bounds within 1–100. Requires `modes: [preferred]`. |
+| `requirements` | Node affinity | Match `matchExpressions` using key, values, and operators. |
+| `fieldRequirements` | Node affinity | Match `matchFields` using the same requirement structure. |
+| `topologyKey` | Pod affinity and anti-affinity | Topology-key expression. |
+| `labelSelector` | Pod affinity and anti-affinity | [Selector policy](#selector-policies) for matching Pods. |
+| `namespaceScope` | Pod affinity and anti-affinity | `SameNamespace` or `Any`. Omission imposes no scope restriction. |
+| `namespaces` | Pod affinity and anti-affinity | Expression matched against every explicitly supplied namespace. |
+| `namespaceSelector` | Pod affinity and anti-affinity | [Selector policy](#selector-policies) for matching namespaces. |
+
+```yaml
+enforce:
+  action: allow
+  workloads:
+    affinity:
+      - types: [nodeAffinity]
+        modes: [required, preferred]
+        requirements:
+          - key:
+              exact: [topology.kubernetes.io/zone]
+            operators: [In]
+            values:
+              exact: [zone-a, zone-b]
+      - types: [podAffinity, podAntiAffinity]
+        modes: [preferred]
+        topologyKey:
+          exact: [kubernetes.io/hostname]
+        namespaceScope: SameNamespace
+        weight:
+          min: 1
+          max: 100
+```
+
+This allows node affinity using the listed zone requirements and preferred Pod
+affinity or anti-affinity within the Pod's namespace, grouped by host. Required
+Pod affinity and anti-affinity are rejected. The second matcher leaves Pod-label
+selectors unrestricted; add `labelSelector` to constrain them.
+
+Node requirements also support `Gt` and `Lt`. The value matcher checks the
+literal numeric operand; it does not query node labels. When either node
+requirement list constrains a term, requirements from the other source must be
+explicitly allowed if present. For example, `fieldRequirements: [{}]` permits
+any native-valid field requirement alongside constrained `requirements`.
+
+`SameNamespace` permits an omitted `namespaces` list or explicit references to
+the Pod's own namespace, and requires the Pod term's `namespaceSelector` to be
+absent. Even `namespaceSelector: {}` selects more than the current namespace and
+does not match this scope. `Any` leaves namespace scope unrestricted. A
+`namespaces` expression alone does not restrict namespaces selected through a
+`namespaceSelector`.
+
+Type-specific fields only match types on which they are meaningful. Explicitly
+incompatible combinations are rejected when the policy is saved. Matching
+examines the submitted terms without listing nodes, Pods, or namespaces.
+
+## Security
+
+`seccompProfiles` and `appArmorProfiles` allow, deny, or audit profile choices
+for Linux workloads. The [Seccomp](#seccomp) and [AppArmor](#apparmor) sections
+below describe each mechanism and its local-profile matching. Use
+[security mutations](/docs/rules/mutate/workloads/#security) to supply Pod
+defaults before enforcement. These checks complement namespace Pod Security
+labels; they skip Pods and templates declaring `spec.os.name: windows`.
+
+Both matchers use these fields and the usual [rule order](/docs/rules/#order-and-scope):
+
+| Field | Meaning |
+|---|---|
+| `types` | Required list of 1–3 entries containing `RuntimeDefault`, `Localhost`, or `Unconfined`. |
+| `localhostProfiles` | Optional list of up to 64 `exact`, `exp`, and `negate` expressions for local profile paths or names. Requires `Localhost` in `types`. |
+
+Each enforcement rule supports up to 64 `seccompProfiles` matchers and up to
+64 `appArmorProfiles` matchers. Oversized lists are rejected when the policy
+is saved, limiting nested matching work during workload admission.
+
+Multiple matchers are alternatives. The expressions in `localhostProfiles`
+constrain only Localhost; other types in the same matcher still match normally.
+Omitting these expressions permits any non-empty Localhost path or name.
+Audit reports matching admission choices through Capsule events; it does not
+configure kernel syscall logging or AppArmor learning modes.
+
+The shared [workload targets](#pod-targets) select where checks apply. Omitted
+targets check effective profiles for regular, init, and ephemeral containers.
+Explicit `pod` checks only the Pod default, so it does not prevent container
+overrides. Controller targets inspect effective profiles in their templates,
+including CronJobs' nested templates. Targeted templates must declare allowed
+profiles themselves because profile mutation applies only to Pod creation.
+
+Validation runs on Pod and controller create/update requests, and on
+`pods/ephemeralcontainers` updates. It does not run on status, resize, or delete
+requests and does not reconfigure existing containers. Policy changes apply
+to subsequent admissions, so a previously admitted Pod may fail a later update
+under a stricter policy.
+
+### Seccomp
+
+`enforce.workloads.seccompProfiles` evaluates a container's explicit
+`securityContext.seccompProfile`, falling back to the Pod's
+`spec.securityContext.seccompProfile`. Regular containers, init containers
+(including restartable sidecars), and ephemeral containers use this resolution.
+A Pod default is optional when every selected container declares an allowed
+profile of its own.
+
+| Effective type | What the matcher checks |
+|---|---|
+| `RuntimeDefault` | The workload selects the container runtime's default seccomp profile. |
+| `Localhost` | The workload selects a local seccomp file. `localhostProfiles` matches its relative path. |
+| `Unconfined` | The workload explicitly disables seccomp, or the selected container is privileged. |
+
+Privileged containers are evaluated as Unconfined even if their manifest
+names a different profile. When neither the container nor Pod supplies a
+profile, Capsule evaluates it as `Unset`. An allow-list rejects this value;
+Capsule does not infer the kubelet's seccomp default. `Unset` appears only in
+diagnostics and cannot be listed in `types`. A deny rule for Unconfined alone
+therefore permits an unset profile. Pair an allow-list with
+[seccomp mutation](/docs/rules/mutate/workloads/#seccomp) when a declared
+profile is required.
+
+#### Match local seccomp paths
+
+For Localhost, `localhostProfiles` matches the value of `localhostProfile`,
+such as `profiles/solar.json`, relative to the kubelet's seccomp directory.
+It does not match an absolute node path or inspect the file's contents.
+
+This complete Tenant allows RuntimeDefault, the exact local path
+`profiles/solar.json`, and files matching `^profiles/shared/[a-z0-9-]+\.json$`
+in the selected namespaces. A local path outside those matches, Unconfined,
+or an unset effective profile is denied. It does not add defaults; use
+[seccomp mutation](/docs/rules/mutate/workloads/#seccomp) for that.
+
+```yaml
 apiVersion: capsule.clastix.io/v1beta2
 kind: Tenant
 metadata:
   name: solar
 spec:
-  ...
+  owners:
+    - kind: User
+      name: solar-owner
   rules:
-    - enforce:
+    - namespaceSelector:
+        matchLabels:
+          security-profile: confined
+      enforce:
         action: allow
         workloads:
-          schedulers:
-            - exact:
-                - tenant-scheduler
-                - batch-scheduler
+          seccompProfiles:
+            - types: [RuntimeDefault, Localhost]
+              localhostProfiles:
+                - exact: [profiles/solar.json]
+                - exp: '^profiles/shared/[a-z0-9-]+\.json$'
 ```
 
-A Pod using one of the listed schedulers is admitted:
+Admission checks the reference, while nodes apply the actual profile. Install
+approved files on eligible nodes before use. See the
+[Kubernetes seccomp tutorial](https://kubernetes.io/docs/tutorials/security/seccomp/).
+
+### AppArmor
+
+`enforce.workloads.appArmorProfiles` checks effective AppArmor profiles in this
+order: the container's structured `securityContext.appArmorProfile`, a legacy
+per-container AppArmor annotation, then the Pod's
+`spec.securityContext.appArmorProfile`. This also covers init, restartable
+sidecar, and ephemeral containers. A container override therefore remains
+subject to enforcement even when the Pod default is allowed.
+
+| Effective type | What the matcher checks |
+|---|---|
+| `RuntimeDefault` | The workload selects the container runtime's default AppArmor profile. |
+| `Localhost` | The workload selects a loaded AppArmor profile. `localhostProfiles` matches its name. |
+| `Unconfined` | The workload explicitly disables AppArmor, or the selected container is privileged. |
+
+A missing effective profile is reported as `Unset` and fails an allow-list.
+Capsule does not infer a runtime's implicit AppArmor behavior. A deny rule
+matching only Unconfined permits an unset profile. Use
+[AppArmor mutation](/docs/rules/mutate/workloads/#apparmor) with an allow-list
+to require a declared profile. Privileged containers evaluate as Unconfined
+regardless of the profile written in the manifest.
+
+#### Match loaded AppArmor names
+
+`localhostProfiles` matches a loaded profile name such as `solar-confined`.
+The value is not the filesystem path where the AppArmor definition is stored.
+For example, `exact: [solar-confined]` checks the name in `localhostProfile`;
+`exp: '^solar-[a-z0-9-]+$'` would permit any matching name.
+
+This complete Tenant allows RuntimeDefault and only the named local profile
+in selected namespaces. Other Localhost names, Unconfined, and unset effective
+profiles are rejected. It supplies no defaults by itself.
 
 ```yaml
-apiVersion: v1
-kind: Pod
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
 metadata:
-  name: scheduled-by-tenant
+  name: solar
 spec:
-  schedulerName: tenant-scheduler
-  containers:
-    - name: shell
-      image: harbor/platform/debian:latest
-      command: ["sleep", "infinity"]
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          security-profile: apparmor
+      enforce:
+        action: allow
+        workloads:
+          appArmorProfiles:
+            - types: [RuntimeDefault, Localhost]
+              localhostProfiles:
+                - exact: [solar-confined]
 ```
 
-A Pod using another explicit scheduler is denied:
+Capsule does not verify that AppArmor is supported, that the named profile is
+loaded, or that its contents are identical on all nodes. Configure eligible
+nodes before using these profiles. See the
+[Kubernetes AppArmor guide](https://kubernetes.io/docs/tutorials/security/apparmor/).
+
+### Security reference
+
+This complete Tenant defaults both profiles in selected namespaces. It allows
+RuntimeDefault and one approved Localhost profile for each mechanism. The same
+checks apply to explicitly targeted Deployment templates, which must supply
+their own profile configuration. Apply this example only with eligible Linux
+nodes supporting AppArmor and with the custom profiles installed before use.
 
 ```yaml
-apiVersion: v1
-kind: Pod
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
 metadata:
-  name: scheduled-by-other
+  name: solar
 spec:
-  schedulerName: other-scheduler
-  containers:
-    - name: shell
-      image: harbor/platform/debian:latest
-      command: ["sleep", "infinity"]
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          security-profile: confined
+      mutate:
+        - action: merge
+          workloads:
+            seccompProfile:
+              type: RuntimeDefault
+            appArmorProfile:
+              type: RuntimeDefault
+      enforce:
+        action: allow
+        workloads:
+          targets:
+            - pod/containers
+            - pod/initcontainers
+            - pod/ephemeralcontainers
+            - deployment
+          seccompProfiles:
+            - types: [RuntimeDefault, Localhost]
+              localhostProfiles:
+                - exact: [profiles/solar.json]
+          appArmorProfiles:
+            - types: [RuntimeDefault, Localhost]
+              localhostProfiles:
+                - exact: [solar-confined]
 ```
 
-Example rejection:
-
-```bash
-Error from server (Forbidden): error when creating "pod.yaml": admission webhook "pods.projectcapsule.dev" denied the request: scheduler "other-scheduler" at spec.schedulerName is not allowed by namespace rule
-```
-
-Use a regular expression to allow a scheduler family:
-
-```yaml
-rules:
-  - enforce:
-      action: allow
-      workloads:
-        schedulers:
-          - exp: "tenant-[a-z0-9-]+"
-```
-
-Use `exact` and `exp` together to allow a fixed list plus a pattern:
-
-```yaml
-rules:
-  - enforce:
-      action: allow
-      workloads:
-        schedulers:
-          - exact:
-              - default-scheduler
-              - batch-scheduler
-            exp: "tenant-[a-z0-9-]+"
-```
-
-This matcher allows `default-scheduler`, `batch-scheduler`, and scheduler names matching `tenant-[a-z0-9-]+`.
-
-Deny a known unsafe scheduler:
-
-```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        schedulers:
-          - exact:
-              - unsafe-scheduler
-```
-
-Use `negate: true` to deny every explicit scheduler except a trusted set:
-
-```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        schedulers:
-          - exact:
-              - default-scheduler
-              - tenant-scheduler
-            negate: true
-```
-
-Because `negate` applies to `exact`, this rule matches any explicit scheduler name except `default-scheduler` and `tenant-scheduler`.
-
-Audit usage of a custom scheduler:
-
-```yaml
-rules:
-  - enforce:
-      action: audit
-      workloads:
-        schedulers:
-          - exact:
-              - custom-scheduler
-```
-
-A matching Pod is admitted in this audit-only example, but Capsule emits an audit event and returns an admission warning. If a scheduler allow-list is also configured and the scheduler name is not allowed, the Pod is denied while the audit event is still emitted.
+| Container choice | Result |
+|---|---|
+| No override; Pod default is RuntimeDefault | Allowed through inheritance. |
+| Approved Localhost profile | Allowed and preserved by merge. |
+| Unapproved Localhost profile | Denied. |
+| Explicit Unconfined or privileged container | Denied. |
+| No profile at either level in a targeted template | Denied. |
+| Ephemeral container overriding the Pod default with Unconfined | Denied. |
 
 ## OCI Registries
 
 Registry enforcement allows administrators to allow, deny, or audit Pod image references. Registry matchers are evaluated against the full OCI reference string, including registry, repository path, image name, tag, or digest.
 
-Registry rules are configured under `enforce.workloads.registries`. The workload-level `targets` field under `enforce.workloads.targets` controls which Pod image references are validated.
+Registry rules are configured under `enforce.workloads.registries`. The shared [Workload targets](#workload-targets) field under `enforce.workloads.targets` selects image references in Pods or controller templates. See [Pod targets](#pod-targets) for container and image-volume scopes and examples.
 
 Registry matchers use the common match expression structure:
 
@@ -988,40 +1679,6 @@ rules:
 
 A matching reference under `spec.initContainers` is denied. The same reference under `spec.containers` is ignored by this rule.
 
-### Registry exact match examples
-
-Use `exact` when you want to allow or deny a fixed set of complete image references:
-
-```yaml
-rules:
-  - enforce:
-      action: allow
-      workloads:
-        targets:
-          - pod/containers
-        registries:
-          - exact:
-              - harbor/platform/debian:latest
-              - harbor/platform/busybox:1.36
-```
-
-A Pod using `harbor/platform/debian:latest` or `harbor/platform/busybox:1.36` is admitted. A Pod using `harbor/platform/nginx:latest` is denied because an allow rule exists for registry enforcement but does not match that reference.
-
-You can combine `exact` and `exp` in the same registry matcher:
-
-```yaml
-rules:
-  - enforce:
-      action: allow
-      workloads:
-        registries:
-          - exact:
-              - harbor/platform/debian:latest
-            exp: "harbor/shared/.*"
-```
-
-This rule allows the exact Debian image and any image under `harbor/shared/*`.
-
 ### PullPolicy
 
 Define the allowed image pull policies for a matching registry rule. Supported policies are:
@@ -1160,330 +1817,204 @@ rules:
 
 The second rule explicitly allows the trusted references that were excluded from the negated deny rule, which is required when registry allow-list behavior is active. In a namespace labeled `env=prod`, `partner-registry/prod-approved/app:1.0.0` is allowed because the later matching allow rule overrides the earlier negated deny rule.
 
-### Targets
+### OCI Examples
 
-The `targets` field defines which parts of a workload a rule applies to.
+#### Registry exact match examples
 
-Targets are configured under `enforce.workloads.targets` and are authoritative for target-aware workload enforcement. Registry entries do not define their own validation targets.
+Use `exact` when you want to allow or deny a fixed set of complete image references:
 
 ```yaml
 rules:
   - enforce:
-      action: deny
+      action: allow
       workloads:
         targets:
           - pod/containers
         registries:
-          - exp: "harbor/customer/.*"
+          - exact:
+              - harbor/platform/debian:latest
+              - harbor/platform/busybox:1.36
 ```
 
-If `targets` is omitted or empty, the rule applies to all workload targets supported by the matching hook.
+A Pod using `harbor/platform/debian:latest` or `harbor/platform/busybox:1.36` is admitted. A Pod using `harbor/platform/nginx:latest` is denied because an allow rule exists for registry enforcement but does not match that reference.
 
-Supported workload targets are:
-
-| Target | Description |
-|---|---|
-| `pod` | Applies to Pod-level resources under `spec.resources`. Resource policies include this target by default when `targets` is omitted. |
-| `pod/initcontainers` | Applies to images used by `spec.initContainers`. |
-| `pod/containers` | Applies to images used by `spec.containers`. |
-| `pod/ephemeralcontainers` | Applies to images used by `spec.ephemeralContainers`. |
-| `pod/volumes` | Applies to image volumes under `spec.volumes[].image`. |
-
-Targets are currently used only by a subset of workload hooks. For example, the registry enforcement hook uses targets to decide which Pod image references are validated. Other hooks may ignore `targets` until they explicitly support target-aware enforcement.
-
-Examples:
+You can combine `exact` and `exp` in the same registry matcher:
 
 ```yaml
 rules:
   - enforce:
-      action: deny
+      action: allow
       workloads:
-        targets:
-          - pod/initcontainers
         registries:
-          - exp: "harbor/init-only/.*"
+          - exact:
+              - harbor/platform/debian:latest
+            exp: "harbor/shared/.*"
 ```
 
-This rule denies matching images only when they are used by `initContainers`. The same image reference is not denied when used by regular containers, ephemeral containers, or image volumes unless another rule matches those targets.
+This rule allows the exact Debian image and any image under `harbor/shared/*`.
+
+## Reference
+
+This complete Tenant combines workload kind restrictions, resource policies,
+image rules, QoS, and all five placement policies. It applies only to its
+namespaces labeled `example.com/profile: restricted`; other namespaces in the
+Tenant keep their own profiles. Replace `solar-owner` with your owner identity.
+
+The kind rule rejects DaemonSets. The property rules below use Pod targets, so
+they run when Pods are admitted, including Pods created by controllers. See
+[Workload targets](#workload-targets) to also check controller templates.
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        targets:
-          - pod/containers
-          - pod/ephemeralcontainers
-        registries:
-          - exp: "debug/.*"
-```
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    # Keep kind restrictions separate from property policies.
+    - namespaceSelector:
+        matchLabels:
+          example.com/profile: restricted
+      enforce:
+        action: deny
+        workloads:
+          targets: [daemonset]
 
-This rule applies to regular containers and ephemeral containers, but not to
-init containers or image volumes.
+    # Manage resources on regular and init containers.
+    - namespaceSelector:
+        matchLabels:
+          example.com/profile: restricted
+      enforce:
+        action: deny
+        workloads:
+          targets: [pod/containers, pod/initcontainers]
+          resources:
+            requests:
+              cpu:
+                policy: Default
+                value: 100m
+              memory:
+                policy: Default
+                value: 128Mi
+            limits:
+              cpu:
+                policy: Remove
+              memory:
+                policy: Ratio
+                value: "2"
 
-## Placement
-
-Configure placement matchers under `spec.rules[].enforce.workloads`. To set
-placement values before validation, see [workload mutation](/docs/rules/mutate/workloads/),
-including the [complete Tenant example](/docs/rules/mutate/workloads/#complete-placement-example).
-Each property has its own matcher list:
-
-| Property | Evaluated value | Mutation |
-|---|---|---|
-| [Node selectors](#node-selectors) | Each key/value pair in `spec.nodeSelector`. | [Set node selectors](/docs/rules/mutate/workloads/#node-selectors) |
-| [Tolerations](#tolerations) | Each complete entry in `spec.tolerations`. | [Set tolerations](/docs/rules/mutate/workloads/#tolerations) |
-| [Topology spread constraints](#topology-spread-constraints) | Each complete entry in `spec.topologySpreadConstraints`. | [Set spread constraints](/docs/rules/mutate/workloads/#topology-spread-constraints) |
-| [Affinity](#affinity) | Each complete required or preferred affinity term. | [Set affinity](/docs/rules/mutate/workloads/#affinity) |
-
-### How placement matching works
-
-With `action: allow`, every supplied entry must match one complete matcher.
-Fields within a matcher are combined with AND; entries in the matcher list are
-alternatives. Different allow entries cannot authorize separate parts of one
-affinity term or spread constraint.
-
-Allow rules do not require a property to be present. Omitted properties and empty
-lists have no entries to validate. Use [workload mutation](/docs/rules/mutate/workloads/) to establish
-settings before enforcement. An omitted enforcement list or `[]` adds no matchers;
-`[{}]` matches every present entry.
-
-The [action rules](/docs/rules/enforcement/#action) apply per entry: the last
-matching allow or deny wins, and audit does not change the decision. Mutated
-values and Kubernetes-injected values are evaluated in the same way.
-
-Placement uses the `pod` workload target. Omitting `targets` includes placement;
-selecting only container targets skips it. On main-resource Pod updates, Capsule
-checks changed placement properties and rechecks affinity and spread selectors
-when labels change. Subresources skip placement checks. See
-[Conditions](/docs/rules/#enforcement-conditions) for conditional evaluation on updates.
-
-### Matcher fields
-
-`key`, `values`, `topologyKey`, and `namespaces` use the common
-[match expression structure](/docs/rules/#match-expressions).
-
-Omit a matcher field to leave it unrestricted. A supplied expression must contain
-`exact` or `exp`; `key: {}` is invalid. Use `exp: '^$'` to match an empty string.
-An empty complete matcher, `{}`, matches every entry for that property.
-
-### Node selectors
-
-Each matcher evaluates one key/value pair in `spec.nodeSelector`.
-
-| Field | Matches |
-|---|---|
-| `key` | The node-label key. |
-| `values` | The node-label value, including an explicitly empty value. |
-
-```yaml
-enforce:
-  action: allow
-  workloads:
-    nodeSelector:
-      - key:
-          exact: [kubernetes.io/os]
-        values:
-          exact: [linux]
-      - key:
-          exp: '^placement\.example\.com/[a-z0-9-]+$'
-        values:
-          exact: [shared, batch]
-```
-
-This allows `kubernetes.io/os: linux` and keys such as
-`placement.example.com/pool: shared`. It rejects `kubernetes.io/os: windows`,
-`placement.example.com/pool: dedicated`, and unlisted keys. A Pod with no node
-selector is allowed by this rule.
-
-To add or overwrite selector values before this check, use
-[node-selector mutation](/docs/rules/mutate/workloads/#node-selectors).
-
-### Tolerations
-
-Each matcher evaluates one complete toleration in `spec.tolerations`.
-
-| Field | Matches |
-|---|---|
-| `key` | Taint key expression. An empty Pod key is a literal empty string. |
-| `values` | Toleration value expression. |
-| `operators` | `Equal` or `Exists`. An omitted Pod operator is `Equal`. |
-| `effects` | `NoSchedule`, `PreferNoSchedule`, `NoExecute`, or the literal empty string `""`. |
-| `tolerationSeconds` | Inclusive `min` and `max` bounds, with optional `allowUnlimited`. |
-
-An empty toleration key or effect has broad Kubernetes semantics. It does not
-match an allowlist of specific keys or effects. To allow an empty effect, include
-`""` explicitly in `effects`.
-
-An absent `tolerationSeconds` means unlimited. Bounds apply to finite durations;
-`allowUnlimited` defaults to `true`. Set it to `false` to require a finite duration:
-
-```yaml
-enforce:
-  action: allow
-  workloads:
-    tolerations:
-      - key:
-          exact: [node.kubernetes.io/not-ready, node.kubernetes.io/unreachable]
-        operators: [Exists]
-        effects: [NoExecute]
-        tolerationSeconds:
-          max: 600
-          allowUnlimited: false
-```
-
-This permits only the two listed NoExecute tolerations, each with a finite
-duration of at most 600 seconds. Add other matchers for any additional tolerations
-needed by your workloads or injected by Kubernetes.
-
-#### Disallow every toleration
-
-```yaml
-enforce:
-  action: deny
-  workloads:
-    tolerations:
-      - {}
-```
-
-The empty matcher rejects every toleration, including injected ones. Kubernetes
-normally adds not-ready and unreachable tolerations, so this rule rejects ordinary
-Pods with those entries too. Use an allowlist when system tolerations must remain
-permitted. A Pod with no tolerations has no entry for this deny rule to match.
-
-For adding tolerations, changing durations, and replacing lists, see
-[toleration mutation](/docs/rules/mutate/workloads/#tolerations).
-
-### Topology spread constraints
-
-Each matcher evaluates one complete entry in `spec.topologySpreadConstraints`.
-
-| Field | Matches |
-|---|---|
-| `topologyKey` | Topology-key expression. |
-| `whenUnsatisfiable` | List containing `DoNotSchedule` or `ScheduleAnyway`. |
-| `maxSkew` | Inclusive `min` and `max` bounds. |
-| `minDomains` | Inclusive bounds; an omitted Pod value is evaluated as `1`. |
-| `nodeAffinityPolicy` | `Honor` or `Ignore`; an omitted Pod value is `Honor`. |
-| `nodeTaintsPolicy` | `Honor` or `Ignore`; an omitted Pod value is `Ignore`. |
-| `labelSelector` | [Selector policy](#selector-policies) for the Pods counted by the constraint. |
-
-```yaml
-enforce:
-  action: allow
-  workloads:
-    topologySpreadConstraints:
-      - topologyKey:
-          exact: [topology.kubernetes.io/zone, kubernetes.io/hostname]
-        whenUnsatisfiable: [DoNotSchedule, ScheduleAnyway]
-        maxSkew:
-          min: 1
-          max: 3
-        labelSelector:
-          required: true
-          requirements:
+    # Include the whole Pod for placement and its parts for image checks.
+    - namespaceSelector:
+        matchLabels:
+          example.com/profile: restricted
+      enforce:
+        action: allow
+        workloads:
+          targets:
+            - pod
+            - pod/containers
+            - pod/initcontainers
+            - pod/ephemeralcontainers
+            - pod/volumes
+          registries:
+            - exp: '^registry\.example\.com/solar/.+$'
+              policy: [Always, IfNotPresent]
+          qosClasses: [Burstable, Guaranteed]
+          schedulers:
+            - exact: [default-scheduler, batch-scheduler]
+          nodeSelector:
+            - key: {exact: [kubernetes.io/os]}
+              values: {exact: [linux]}
+            - key: {exact: [infrastructure.example.com/pool]}
+              values: {exact: [shared, batch]}
+          tolerations:
+            - key: {exact: [infrastructure.example.com/dedicated]}
+              operators: [Equal]
+              values: {exact: [shared]}
+              effects: [NoSchedule]
             - key:
-                exact: [app]
-              operators: [In]
-              values:
-                exact: [checkout]
+                exact:
+                  - node.kubernetes.io/not-ready
+                  - node.kubernetes.io/unreachable
+              operators: [Exists]
+              effects: [NoExecute]
+              tolerationSeconds:
+                max: 600
+                allowUnlimited: false
+            - key: {exact: [node.kubernetes.io/memory-pressure]}
+              operators: [Exists]
+              effects: [NoSchedule]
+          topologySpreadConstraints:
+            - topologyKey:
+                exact: [topology.kubernetes.io/zone, kubernetes.io/hostname]
+              whenUnsatisfiable: [DoNotSchedule, ScheduleAnyway]
+              maxSkew: {min: 1, max: 3}
+              labelSelector:
+                required: true
+                requirements:
+                  - key: {exact: [app.kubernetes.io/part-of]}
+                    operators: [In]
+                    values: {exact: [solar]}
+          affinity:
+            - types: [nodeAffinity]
+              modes: [required, preferred]
+              requirements:
+                - key: {exact: [topology.kubernetes.io/zone]}
+                  operators: [In]
+                  values: {exact: [zone-a, zone-b]}
+            - types: [podAffinity, podAntiAffinity]
+              modes: [preferred]
+              topologyKey:
+                exact: [topology.kubernetes.io/zone, kubernetes.io/hostname]
+              namespaceScope: SameNamespace
+              weight: {min: 1, max: 100}
+              labelSelector:
+                required: true
+                requirements:
+                  - key: {exact: [app.kubernetes.io/part-of]}
+                    operators: [In]
+                    values: {exact: [solar]}
+
+    # Override the broader registry allow rule for this path.
+    - namespaceSelector:
+        matchLabels:
+          example.com/profile: restricted
+      enforce:
+        action: deny
+        workloads:
+          registries:
+            - exp: '^registry\.example\.com/solar/blocked/.+$'
+
+    - namespaceSelector:
+        matchLabels:
+          example.com/profile: restricted
+      enforce:
+        action: audit
+        workloads:
+          registries:
+            - exp: '^registry\.example\.com/solar/legacy/.+$'
 ```
 
-This allows zone or host spreading with a skew of 1–3 and a selector for
-`app: checkout`. A constraint for another topology key, a skew of 4, or a selector
-using another key is rejected. The rule constrains supplied entries; it does not
-add a spread constraint or require one to be present.
+With this configuration:
 
-For setting constraints and how matching constraints are replaced during merge,
-see [topology-spread mutation](/docs/rules/mutate/workloads/#topology-spread-constraints).
-
-### Affinity
-
-All three affinity types use one flat list under `enforce.workloads.affinity`.
-Each matcher evaluates a complete required or preferred term from `spec.affinity`.
-
-```yaml
-enforce:
-  action: allow
-  workloads:
-    affinity:
-      - types: [nodeAffinity]
-        modes: [required, preferred]
-        requirements:
-          - key:
-              exact: [topology.kubernetes.io/zone]
-            operators: [In]
-            values:
-              exact: [zone-a, zone-b]
-      - types: [podAffinity, podAntiAffinity]
-        modes: [preferred]
-        topologyKey:
-          exact: [kubernetes.io/hostname]
-        namespaceScope: SameNamespace
-        weight:
-          min: 1
-          max: 100
-```
-
-This allows node affinity using the listed zone requirements and preferred Pod
-affinity or anti-affinity within the Pod's namespace, grouped by host. Required
-Pod affinity and anti-affinity are rejected. The second matcher leaves Pod-label
-selectors unrestricted; add `labelSelector` to constrain them.
-
-| Field | Applies to | Behavior |
-|---|---|---|
-| `types` | All | Select `nodeAffinity`, `podAffinity`, or `podAntiAffinity`. Omission selects all compatible types. |
-| `modes` | All | Select `required`, `preferred`, or both. Omission selects both. |
-| `weight` | Preferred terms | Inclusive `min` and `max` bounds within 1–100. Requires `modes: [preferred]`. |
-| `requirements` | Node affinity | Match `matchExpressions` using key, values, and operators. |
-| `fieldRequirements` | Node affinity | Match `matchFields` using the same requirement structure. |
-| `topologyKey` | Pod affinity and anti-affinity | Topology-key expression. |
-| `labelSelector` | Pod affinity and anti-affinity | [Selector policy](#selector-policies) for matching Pods. |
-| `namespaceScope` | Pod affinity and anti-affinity | `SameNamespace` or `Any`. Omission imposes no scope restriction. |
-| `namespaces` | Pod affinity and anti-affinity | Expression matched against every explicitly supplied namespace. |
-| `namespaceSelector` | Pod affinity and anti-affinity | [Selector policy](#selector-policies) for matching namespaces. |
-
-Node requirements also support `Gt` and `Lt`. The value matcher checks the
-literal numeric operand; it does not query node labels. When either node
-requirement list constrains a term, requirements from the other source must be
-explicitly allowed if present. For example, `fieldRequirements: [{}]` permits
-any native-valid field requirement alongside constrained `requirements`.
-
-`SameNamespace` permits an omitted `namespaces` list or explicit references to
-the Pod's own namespace, and requires the Pod term's `namespaceSelector` to be
-absent. Even `namespaceSelector: {}` selects more than the current namespace and
-does not match this scope. `Any` leaves namespace scope unrestricted. A
-`namespaces` expression alone does not restrict namespaces selected through a
-`namespaceSelector`.
-
-Type-specific fields only match types on which they are meaningful. Explicitly
-incompatible combinations are rejected when the policy is saved. Matching
-examines the submitted terms without listing nodes, Pods, or namespaces.
-
-For combining required restrictions, updating preferred weights, and replacing
-all affinity branches, see [affinity mutation](/docs/rules/mutate/workloads/#affinity).
-
-### Selector policies
-
-Topology-spread and Pod-affinity matchers use the following policy structure for
-`labelSelector` and, where supported, `namespaceSelector`:
-
-| Field | Behavior |
-|---|---|
-| `required` | When `true`, require at least one effective selector requirement. |
-| `requirements` | Allowlist for individual selector requirements. Omission or an empty list leaves requirements unrestricted. |
-
-Each requirement matcher supports `key`, `values`, and `operators`. Label
-selectors support `In`, `NotIn`, `Exists`, and `DoesNotExist`. Every actual
-requirement must match one complete entry, and every supplied value must match
-its `values` expression. `matchLabels` entries are evaluated as singleton `In`
-requirements.
-
-`Exists` and `DoesNotExist` have no values to test. Permitting those operators
-permits their valueless form; use `operators: [In]` when allowed values must
-restrict the selection. A requirement allowlist constrains supplied requirements;
-it does not require every listed key to appear.
-
-Dynamic `matchLabelKeys` and `mismatchLabelKeys` are checked as `In` and `NotIn`
-requirements using the incoming Pod's label values. Missing dynamic labels are
-ignored, matching Kubernetes behavior. `required: true` uses this effective
-selector, including any dynamic requirements.
+* DaemonSet creation and main-resource updates are denied in selected namespaces.
+* On Pod creation, missing regular and init container requests default to `100m`
+  CPU and `128Mi` memory. CPU limits are removed. Missing memory limits become
+  twice the corresponding request; explicit limits above that ratio are denied.
+  [Resource admission lifecycle](#admission-lifecycle) describes update behavior.
+* Every selected image reference must use `registry.example.com/solar/` with an
+  allowed pull policy. The later deny rule blocks the `solar/blocked/` path.
+  Images under `solar/legacy/` are audited while the other checks still apply.
+* The resulting Pod must have `Burstable` or `Guaranteed` QoS and use
+  `default-scheduler` or `batch-scheduler`. A custom scheduler must already be
+  installed to schedule Pods assigned to it.
+* Supplied node selectors, tolerations, spread constraints, and affinity terms
+  must match the configured shapes. These allow-lists do not require those
+  properties to be present or populate them. Use
+  [workload mutation](/docs/rules/mutate/workloads/#complete-placement-example)
+  to establish placement settings before enforcement.
+* The toleration list includes common Kubernetes-injected entries. Add any
+  additional tolerations required by your selected workloads or cluster.

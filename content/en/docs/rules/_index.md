@@ -37,7 +37,7 @@ to both mutation and enforcement.
 
 1. **Mutate.** Apply applicable
    [metadata mutations](/docs/rules/enforcement/metadata/), then
-   [resource request/limit mutations](/docs/rules/enforcement/workloads/#resource-requests-and-limits),
+   [resource request/limit mutations](/docs/rules/enforcement/workloads/#requests-and-limits),
    then `mutate` entries in list order within the effective rule order. Each
    entry and its conditions see the object after preceding mutations. When
    entries change the same property, its merge or replacement behavior determines
@@ -59,17 +59,28 @@ uses.
 
 ### Resource scope
 
-`mutate[].workloads` applies only when a Pod is created, including Pods created
-by Deployments, StatefulSets, and other controllers. It does not rewrite
-controller templates or reconcile existing Pods. Updates, deletes, and
-subresources do not run workload mutations. A rule or namespace-label change
-affects new Pods; existing Pods must be recreated to receive the new settings.
+`mutate[].workloads` applies when a Pod is created, including Pods created by
+Deployments, StatefulSets, and other controllers.
+[`readOnlyRootFilesystem`](/docs/rules/mutate/workloads/#read-only-root-filesystem)
+also applies to newly added ephemeral containers on `UPDATE
+pods/ephemeralcontainers`; all other workload mutation properties are skipped
+on that subresource. Controller templates and existing containers are not
+rewritten. Other Pod updates, deletes, and subresources do not run workload
+mutations. Rule or namespace-label changes affect new Pods and new ephemeral
+containers within the property's supported scope.
 Each rule supports up to 64 mutation entries. Placement mutations do not
 accumulate duplicate entries when admission is reinvoked.
 
 Enforcement runs for the resource types and operations supported by each policy.
-`enforce.workloads.targets` selects enforcement locations; it does not control
-workload mutations, which set Pod-level properties. [Conditions](#conditions)
+[`enforce.workloads.targets`](/docs/rules/enforcement/workloads/#workload-targets)
+selects native workload kinds and policy locations. Targets-only entries apply
+the action to the kind; entries with workload policies scope those checks.
+Controller targets explicitly enable template validation and resource
+request/limit mutation on controller creation and updates. Omitted targets
+preserve Pod-only defaults. Enforcement targets do not control
+`mutate[].workloads.targets`, whose separate
+[selection rules](/docs/rules/mutate/workloads/#targets) include all container
+groups when `pod` is selected. [Conditions](#conditions)
 can narrow a policy's scope but cannot expand its supported operations.
 
 ## Audience
@@ -252,9 +263,11 @@ exp: "value-[0-9]+"
 
 | Field | Description |
 |---|---|
-| `exact` | A list of exact values. The matcher succeeds when the evaluated value equals one of the listed values. |
-| `exp` | A Go regular expression matched against the evaluated value. |
+| `exact` | Up to **64 exact values** per matcher. The matcher succeeds when the evaluated value equals one of the listed values. |
+| `exp` | A Go regular expression of up to **4,096 Unicode characters**, matched against the evaluated value. |
 | `negate` | Negates the final match result. This applies to both `exact` and `exp`. |
+
+These limits apply wherever match expressions are used, including placement and localhost profile matchers. Policies exceeding either limit are rejected when saved. Both limits still apply when `exact` and `exp` are used together or `negate` is enabled. Existing policies exceeding these limits must be reduced before they can be updated.
 
 Anchor regular expressions with `^` and `$` to match the whole string.
 
@@ -286,7 +299,7 @@ at `mutate[].conditions` or `enforce.conditions`.
 
 | Location | Scope |
 |---|---|
-| `mutate[].conditions` | The entire mutation entry. Workload mutations apply on Pod creation. |
+| `mutate[].conditions` | The entire mutation entry, within the property's supported targets and operations. |
 | `enforce.conditions` | The entire `enforce` block: workloads, Services, metadata, and ingress, including metadata and resource request/limit mutations. |
 
 A false mutation condition skips only its mutation entry. A false enforcement
@@ -337,8 +350,9 @@ on the sibling `enforce` block do not control these mutations.
 
 Conditions see the current Pod immediately before the mutation entry runs,
 including changes from preceding mutations. They do not see changes from their
-own entry. Workload mutation conditions run only on Pod creation and cannot
-expand that scope. They select mutations; mutation values are supplied by the
+own entry. Conditions run on Pod creation and, for applicable
+`readOnlyRootFilesystem` mutations, when adding ephemeral containers. They cannot
+expand a property's supported targets or operations. They select mutations; mutation values are supplied by the
 workload properties.
 
 #### Set a value only when it is missing
@@ -381,7 +395,7 @@ resource kind is selected by `ingress.types`. Metadata policies can inspect the
 full resource, including its `spec` or `data`.
 
 Conditions under `enforce` also gate metadata defaults, managed metadata, and
-[resource request/limit mutations](/docs/rules/enforcement/workloads/#resource-requests-and-limits).
+[resource request/limit mutations](/docs/rules/enforcement/workloads/#requests-and-limits).
 On Pod creation, applicable enforcement conditions are evaluated against the
 same object before metadata and resource mutations run. Capsule then applies
 metadata mutations, resource policies, and the ordered `mutate` entries.
@@ -390,8 +404,9 @@ admission object. A condition based on a mutated field can therefore have a
 different result in the two phases.
 
 On Pod updates, conditional placement enforcement is reevaluated even when only
-labels or another condition input changes. Pod workload mutation still applies
-only on creation. Conditions do not expand a policy's supported operations or
+labels or another condition input changes. Typed workload mutations apply on
+creation, with the additional `readOnlyRootFilesystem` scope for new ephemeral
+containers. Conditions do not expand a policy's supported operations or
 subresources.
 
 #### Managed metadata
@@ -444,21 +459,6 @@ that handle every selected type, using `has(...)` or `request.kind` as needed.
 
 Skipping an `enforce` block removes it from the ordered allow/deny/audit
 evaluation, including any allow-list requirement it would otherwise introduce.
-
-### Update existing manifests
-
-The former resource-level condition fields have been removed:
-
-| Former location | Current location |
-|---|---|
-| `mutate[].workloads.conditions` | `mutate[].conditions` |
-| `enforce.workloads.conditions` | `enforce.conditions` |
-| `enforce.services.conditions` | `enforce.conditions` |
-
-If workload and Service policies had different conditions in one rule, split
-them into separate rules as shown above. Combining both lists under one
-`enforce.conditions` would require every condition to pass for every applicable
-resource type. Mutation and enforcement conditions remain independent.
 
 ### Find the failing condition
 

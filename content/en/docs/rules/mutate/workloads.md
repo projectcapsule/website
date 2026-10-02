@@ -4,19 +4,19 @@ weight: 1
 aliases:
   - /docs/rules/mutate/placement-example/
 description: >
-  Configure Pod scheduling and security settings with ordered mutations
+  Configure Pod placement and security settings with ordered mutations
 ---
 
 Workload mutations set Pod properties under `spec.rules[].mutate[].workloads`
-using native Kubernetes Pod syntax. Use [scheduling settings](#scheduling) to
+using native Kubernetes Pod syntax. Use [placement settings](#placement) to
 select schedulers, assign node pools, add tolerations, spread workloads across topology domains,
 and configure affinity. Use [security settings](#security) to configure Pod user
-namespaces. [Placement enforcement](/docs/rules/enforcement/workloads/#placement)
-validates the resulting scheduling settings using matchers.
+namespaces, seccomp/AppArmor profiles, and read-only container root filesystems. [Placement enforcement](/docs/rules/enforcement/workloads/#placement)
+validates the resulting placement settings using matchers.
 
-This page covers configuration, mutation behavior, and a
-[complete Tenant example](#complete-placement-example) that combines mutation
-and enforcement.
+This page covers configuration and mutation behavior. The
+[Reference](#reference) provides a complete Tenant combining all workload
+mutation properties with placement and security-profile enforcement.
 
 | Property | Pod field | Enforcement |
 |---|---|---|
@@ -25,6 +25,9 @@ and enforcement.
 | [Tolerations](#tolerations) | `spec.tolerations` | [Toleration matchers](/docs/rules/enforcement/workloads/#tolerations) |
 | [Topology spread constraints](#topology-spread-constraints) | `spec.topologySpreadConstraints` | [Spread matchers](/docs/rules/enforcement/workloads/#topology-spread-constraints) |
 | [Affinity](#affinity) | `spec.affinity` | [Affinity matchers](/docs/rules/enforcement/workloads/#affinity) |
+| [Seccomp](#seccomp) | `spec.securityContext.seccompProfile` | [Seccomp matchers](/docs/rules/enforcement/workloads/#seccomp) |
+| [AppArmor](#apparmor) | `spec.securityContext.appArmorProfile` | [AppArmor matchers](/docs/rules/enforcement/workloads/#apparmor) |
+| [Read-only root filesystem](#read-only-root-filesystem) | Selected containers: `securityContext.readOnlyRootFilesystem` | Mutation only. |
 | [Host user namespace](#host-user-namespace) | `spec.hostUsers` | Mutation only. |
 
 ## Configure workload mutations
@@ -66,11 +69,66 @@ then rejects any additional node-selector entries. `mutate` and `enforce` are
 sibling keys and can be used independently. `enforce.action` does not select or
 disable mutations.
 
-Workload mutations apply only on Pod creation. See
+Workload mutations apply on Pod creation. `readOnlyRootFilesystem` also applies
+to newly added ephemeral containers. See
 [Order and scope](/docs/rules/#order-and-scope) for the mutate-then-enforce
 sequence, rule selection, and supported operations.
 
-## Scheduling
+## Targets
+
+Set `mutate[].workloads.targets` to select where the entry applies. Omitting
+`targets`, using `targets: []`, or selecting `pod` includes all compatible
+locations. **For mutation, `pod` includes every regular, init, and ephemeral
+container.** Native sidecars belong to the init-container group.
+
+The table lists supported mutation targets. ✅ indicates mutation support;
+❌ means that property cannot be mutated through that target. Controller and
+volume targets are supported by [enforcement](/docs/rules/enforcement/workloads/#workload-targets)
+but are rejected by the mutation API.
+
+{{% alert title="Pods created by controllers are still mutated" color="info" %}}
+Every new Pod is evaluated against the applicable Pod mutation rules, whether
+created directly or by a Deployment, StatefulSet, DaemonSet, Job, CronJob, or
+another controller. Stored controller templates remain unchanged.
+**The resulting Pods still receive applicable mutations when they are created.**
+
+Namespace selection, mutation targets, conditions, and [audience](/docs/rules/#audience)
+still determine which mutations apply. Audience matching uses the identity
+creating the Pod, usually the controller's service account.
+{{% /alert %}}
+
+| Target | [Placement](#placement) | [`hostUsers`](#host-user-namespace) | [Seccomp](#seccomp) / [AppArmor](#apparmor) | [`readOnlyRootFilesystem`](#read-only-root-filesystem) |
+|---|---|---|---|---|
+| Omitted, `[]`, or `pod` | ✅ Pod placement fields | ✅ Pod user namespace | ✅ Pod-level profiles only | ✅ All container groups |
+| `pod/containers` | ❌ | ❌ | ❌ | ✅ Regular containers |
+| `pod/initcontainers` | ❌ | ❌ | ❌ | ✅ Init containers and native sidecars |
+| `pod/ephemeralcontainers` | ❌ | ❌ | ❌ | ✅ Newly added ephemeral containers |
+
+Placement includes `scheduler`, `nodeSelector`, `tolerations`,
+`topologySpreadConstraints`, and `affinity`. These properties, `hostUsers`,
+`seccompProfile`, and `appArmorProfile` require `pod` or omitted/empty targets.
+Seccomp and AppArmor mutation preserves explicit container profiles with both
+`merge` and `replace`; container-specific profile mutation is not supported.
+
+Only `readOnlyRootFilesystem` currently supports container-specific mutation
+targets. Use separate mutation entries to combine Pod-level settings with a
+narrower container selection. Controller and volume targets are not supported
+for typed workload mutations.
+
+Targets combine by inclusion: listing `pod` alongside a narrower target still
+selects all groups. A targets-only mutation is invalid because it has no property
+to set. [Enforcement targets](/docs/rules/enforcement/workloads/#pod-targets)
+are configured independently and have property-specific matching semantics.
+
+Regular and init containers are mutated on Pod creation. Ephemeral containers
+are mutated only when newly added through `UPDATE pods/ephemeralcontainers`.
+An existing ephemeral container is left unchanged, even if the rule changed
+since it was added. Other Pod updates, deletes, and subresources do not apply
+these mutations. On an ephemeral update, the entry's conditions see the full
+current Pod, including earlier mutations, but only the new ephemeral containers'
+`readOnlyRootFilesystem` values can change.
+
+## Placement
 
 ### Scheduler
 
@@ -316,19 +374,337 @@ Its matcher syntax uses one flat list across all three affinity types.
 
 ### Complete placement example
 
-This Tenant combines scheduling and security settings with
-[placement enforcement](/docs/rules/enforcement/workloads/#placement). Mutations
-establish the settings, while allow matchers constrain any placement entries
-that remain on the admitted Pod.
+See [Reference](#reference) for a complete Tenant combining placement mutations,
+security defaults, conditional scheduler selection, and enforcement.
 
-The node pool and zone labels used below must exist on the intended nodes.
-`hostUsers: false` also requires
-[user namespace support](#host-user-namespace).
+## Security
 
-This Tenant applies placement settings to namespaces labeled
-`example.com/application: checkout`, then allows only the configured placement
-shapes. Application Pods should carry `app.kubernetes.io/part-of: checkout` so
-the spread and Pod-affinity selectors describe the intended workload.
+Seccomp and AppArmor mutations set only the **Pod-level** profile on creation.
+Use `targets: [pod]` or omit mutation targets for these Pod-level properties.
+`enforce.workloads.targets` selects enforcement locations independently. Both `merge` and `replace`
+preserve explicit regular, init, and ephemeral container profiles. Containers
+without an override inherit the Pod default. See the
+[Pod targets table](/docs/rules/enforcement/workloads/#pod-targets) and
+[profile target example](/docs/rules/enforcement/workloads/#target-security-profiles)
+for how enforcement checks those defaults and overrides.
+
+### Read-only root filesystem
+
+`readOnlyRootFilesystem` sets the Boolean on every selected container's
+`securityContext`. Like `hostUsers`, **both `merge` and `replace` set the supplied
+value**, including an explicit `false`. Omitted or `null` leaves the value
+unchanged. Later matching entries can overwrite earlier values; all other
+container security-context fields are preserved.
+
+This full Tenant makes all container root filesystems read-only in namespaces
+labeled `filesystem-profile: readonly`. Namespaces labeled
+`filesystem-profile: init-only` apply the setting only to init containers,
+including native sidecars. Other namespaces keep their submitted values.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          filesystem-profile: readonly
+      mutate:
+        - action: merge
+          workloads:
+            targets: [pod]
+            readOnlyRootFilesystem: true
+    - namespaceSelector:
+        matchLabels:
+          filesystem-profile: init-only
+      mutate:
+        - action: replace
+          workloads:
+            targets: [pod/initcontainers]
+            readOnlyRootFilesystem: true
+```
+
+In the first profile, `pod` also selects new ephemeral containers. Choose
+`pod/containers` for regular containers only or `pod/ephemeralcontainers` for
+new debug containers only. Neither the rule nor a namespace-label change
+rewrites existing containers. Pods declaring `spec.os.name: windows` are skipped.
+
+A read-only root filesystem does not make mounted volumes read-only. Applications
+that write to paths such as `/tmp` need suitable writable volume mounts. See the
+[Kubernetes security-context documentation](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
+This field is a mutation setting; there is no corresponding
+`enforce.workloads.readOnlyRootFilesystem` matcher.
+
+### Host user namespace
+
+`hostUsers` selects whether the Pod uses the host user namespace.
+
+```yaml
+mutate:
+  - action: merge
+    workloads:
+      hostUsers: false
+```
+
+| Supplied value | Behavior with `merge` or `replace` |
+|---|---|
+| `false` | Request a separate user namespace for the Pod. |
+| `true` | Use the host user namespace. |
+
+Both actions overwrite an existing Boolean. A later entry can change `false`
+to `true` or the reverse. This property is independent of a container's
+`runAsUser` and has no corresponding `enforce.workloads.hostUsers` matcher.
+
+The Kubernetes version, operating system, and container runtime must support
+the requested setting. Kubernetes validates incompatible Pod settings; Capsule
+does not adjust other security or host-namespace fields. See
+[Kubernetes user namespaces](https://kubernetes.io/docs/concepts/workloads/pods/user-namespaces/).
+
+### Seccomp
+
+`seccompProfile` sets `spec.securityContext.seccompProfile` on new Linux Pods.
+Containers inherit this Pod default unless their own security context supplies
+a seccomp profile. This includes regular, init, and ephemeral containers.
+
+| Property | Meaning |
+|---|---|
+| `type: RuntimeDefault` | Use the container runtime's default seccomp profile. Omit `localhostProfile`. |
+| `type: Localhost` | Use a seccomp profile file on the node. Set `localhostProfile` to its relative path. |
+| `type: Unconfined` | Disable seccomp filtering. Omit `localhostProfile`. |
+
+#### Seccomp mutation behavior
+
+| Action | Behavior |
+|---|---|
+| `merge` | Set the configured profile only when the Pod has no `seccompProfile`. Preserve any supplied profile, including its localhost path. |
+| `replace` | Replace the complete Pod profile with the configured type and localhost path. |
+| Property omitted | Preserve the Pod's seccomp profile. |
+
+Merge treats the profile as one property: it does not fill a missing
+`localhostProfile` inside an already supplied profile. A Localhost profile must
+include its path. Replacing Localhost with RuntimeDefault removes the old path.
+
+Other security-context fields and explicit container profiles are preserved.
+Use [seccomp enforcement](/docs/rules/enforcement/workloads/#seccomp) to prevent
+container overrides from bypassing the intended profile. Mutations use the
+existing [conditions and order](/docs/rules/#mutation-conditions), run only on
+Pod creation, and skip Pods declaring `spec.os.name: windows`. They do not
+change running Pods or controller templates.
+
+#### Default to RuntimeDefault
+
+This complete Tenant defaults seccomp in namespaces labeled
+`security-profile: confined`. The allow rule requires every container's
+effective profile to be RuntimeDefault, including containers added later
+through `pods/ephemeralcontainers`.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          security-profile: confined
+      mutate:
+        - action: merge
+          workloads:
+            seccompProfile:
+              type: RuntimeDefault
+      enforce:
+        action: allow
+        workloads:
+          seccompProfiles:
+            - types: [RuntimeDefault]
+```
+
+An explicit container-level Unconfined profile remains unchanged by mutation
+and is rejected by enforcement. Namespaces without the selector label do not
+receive either rule effect.
+
+#### Set a local seccomp path
+
+Set `type: Localhost` together with `localhostProfile`. The path is relative to
+the kubelet's seccomp directory and must not be absolute or contain `..` path
+segments. For example, `profiles/solar.json` refers to
+`/var/lib/kubelet/seccomp/profiles/solar.json` when the kubelet uses its default
+root directory. It is a file on the node, independent of the container's
+filesystem. See the [Kubernetes seccomp tutorial](https://kubernetes.io/docs/tutorials/security/seccomp/).
+
+This Tenant replaces the Pod default with that local profile and allows only
+that profile for the effective container checks:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          security-profile: local-seccomp
+      mutate:
+        - action: replace
+          workloads:
+            seccompProfile:
+              type: Localhost
+              localhostProfile: profiles/solar.json
+      enforce:
+        action: allow
+        workloads:
+          seccompProfiles:
+            - types: [Localhost]
+              localhostProfiles:
+                - exact: [profiles/solar.json]
+```
+
+Use `action: merge` instead to supply this profile only when the Pod profile
+is absent. With the allow-list above, an existing different profile is then
+preserved by merge and rejected by enforcement.
+
+Install the file on every eligible node before using the rule, or combine the
+rule with [placement](#placement) that selects prepared nodes. Capsule writes
+the profile reference; it does not distribute or inspect the file. A Pod can
+pass admission and still fail to start if the profile is unavailable on its node.
+
+### AppArmor
+
+`appArmorProfile` sets `spec.securityContext.appArmorProfile` on new Linux Pods.
+The Pod value supplies the default for containers that have no AppArmor
+override. Use this mutation only for workloads placed on nodes with AppArmor
+support. Explicit RuntimeDefault can prevent a Pod from starting on a node
+without that support. See the [AppArmor prerequisites](https://kubernetes.io/docs/tutorials/security/apparmor/#before-you-begin).
+
+| Property | Meaning |
+|---|---|
+| `type: RuntimeDefault` | Use the container runtime's default AppArmor profile. Omit `localhostProfile`. |
+| `type: Localhost` | Use an AppArmor profile already loaded on the node. Set `localhostProfile` to its loaded name. |
+| `type: Unconfined` | Disable AppArmor confinement. Omit `localhostProfile`. |
+
+#### AppArmor mutation behavior
+
+| Action | Behavior |
+|---|---|
+| `merge` | Set the configured profile only when the Pod has no `appArmorProfile`. Preserve any supplied profile, including its localhost name. |
+| `replace` | Replace the complete Pod profile with the configured type and localhost name. |
+| Property omitted | Preserve the Pod's AppArmor profile. |
+
+Merge does not complete a partially supplied Localhost profile. Replacing a
+Localhost profile with RuntimeDefault removes the old `localhostProfile`.
+Other security-context fields and container overrides, including legacy
+AppArmor annotations, remain unchanged. Pair mutation with
+[AppArmor enforcement](/docs/rules/enforcement/workloads/#apparmor) to validate
+these effective container choices.
+
+The existing [conditions and order](/docs/rules/#mutation-conditions) apply.
+Mutations run only on Pod creation and skip Pods declaring
+`spec.os.name: windows`; they do not change running Pods or controller templates.
+
+#### Default the AppArmor profile
+
+This Tenant supplies RuntimeDefault and requires it for every effective
+container profile in the selected namespaces:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          security-profile: apparmor
+      mutate:
+        - action: merge
+          workloads:
+            appArmorProfile:
+              type: RuntimeDefault
+      enforce:
+        action: allow
+        workloads:
+          appArmorProfiles:
+            - types: [RuntimeDefault]
+```
+
+#### Set a local AppArmor profile
+
+For AppArmor, `localhostProfile` is the **loaded profile name**, such as
+`solar-confined`. It is not a filesystem path to the profile definition.
+The name must match the profile loaded on the node. See
+[Specifying AppArmor confinement](https://kubernetes.io/docs/tutorials/security/apparmor/#specifying-apparmor-confinement).
+
+This Tenant replaces the Pod default with that name and restricts effective
+container profiles to the same choice:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          security-profile: local-apparmor
+      mutate:
+        - action: replace
+          workloads:
+            appArmorProfile:
+              type: Localhost
+              localhostProfile: solar-confined
+      enforce:
+        action: allow
+        workloads:
+          appArmorProfiles:
+            - types: [Localhost]
+              localhostProfiles:
+                - exact: [solar-confined]
+```
+
+Use `action: merge` to preserve an existing Pod profile instead of replacing
+it; the enforcement rule still rejects any different effective profile.
+Load `solar-confined` on every eligible node before applying the rule, or
+restrict placement to prepared nodes. Capsule does not load AppArmor profiles
+or verify that their definitions are consistent across nodes.
+
+## Reference
+
+This complete Tenant combines every supported workload mutation property with
+placement and security-profile enforcement. It selects namespaces labeled
+`example.com/application: checkout` and configures workloads for Linux nodes.
+
+The `tenant-scheduler` scheduler, node pool, and zone labels must exist in the
+cluster. Eligible nodes must support [user namespaces](#host-user-namespace)
+and [AppArmor](#apparmor). Application Pods should carry
+`app.kubernetes.io/part-of: checkout` so the spread and Pod-affinity selectors
+describe the intended workload.
+
+The first mutation entry replaces the built-in scheduler default while
+preserving custom scheduler names. The second entry independently applies the
+remaining placement settings, supplies missing Pod-level security profiles, and
+sets all selected container root filesystems read-only. Provide writable volume
+mounts for application paths that need them.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -344,9 +720,23 @@ spec:
         matchLabels:
           example.com/application: checkout
       mutate:
+        - action: replace
+          conditions:
+            - name: default-scheduler
+              expression: >-
+                !has(object.spec.schedulerName) ||
+                object.spec.schedulerName in ['', 'default-scheduler']
+          workloads:
+            scheduler: tenant-scheduler
         - action: merge
           workloads:
+            targets: [pod]
+            readOnlyRootFilesystem: true
             hostUsers: false
+            seccompProfile:
+              type: RuntimeDefault
+            appArmorProfile:
+              type: RuntimeDefault
             nodeSelector:
               kubernetes.io/os: linux
               infrastructure.example.com/pool: shared
@@ -391,7 +781,15 @@ spec:
       enforce:
         action: allow
         workloads:
-          targets: [pod]
+          targets:
+            - pod
+            - pod/containers
+            - pod/initcontainers
+            - pod/ephemeralcontainers
+          seccompProfiles:
+            - types: [RuntimeDefault]
+          appArmorProfiles:
+            - types: [RuntimeDefault]
           nodeSelector:
             - key: {exact: [kubernetes.io/os]}
               values: {exact: [linux]}
@@ -458,6 +856,23 @@ spec:
                     values: {exact: [api, worker, cache]}
 ```
 
+| Submitted value or scope | Result |
+|---|---|
+| Scheduler omitted or `default-scheduler` | Replaced with `tenant-scheduler`. |
+| Custom scheduler name | Preserved; the placement and security mutations still apply. |
+| Root filesystem flag omitted or `false` | Set to `true` on regular/init containers at creation and newly added ephemeral containers. |
+| Pod seccomp or AppArmor profile omitted | Defaulted to RuntimeDefault. |
+| Explicit Pod or container profile | Preserved by mutation, then rejected unless its effective type is RuntimeDefault. |
+| Existing node selector or required affinity | Combined with the configured restrictions, then checked by the placement allowlists. |
+| Namespace without `example.com/application: checkout` | These rules do not apply. |
+
+Under `enforce`, the `pod` target validates placement and Pod-level profile defaults. The three
+container targets validate effective profiles for regular, init, and ephemeral
+containers, including container overrides. Under `mutate`, `targets: [pod]`
+selects all container groups for the root filesystem flag and Pod-level fields
+for the other properties; profile mutation still writes only Pod-level profiles. An Unconfined override or privileged
+container is rejected after mutation.
+
 The toleration allowlist includes common Kubernetes-injected tolerations.
 Controllers such as DaemonSets may add others; include the entries needed by
 the workloads selected by your rule. The affinity validation uses one flat list
@@ -467,29 +882,8 @@ See the [placement matcher reference](/docs/rules/enforcement/workloads/#placeme
 for regular expressions, empty matchers, durations, selector operators, and
 namespace scope.
 
-## Security
-
-### Host user namespace
-
-`hostUsers` selects whether the Pod uses the host user namespace.
-
-```yaml
-mutate:
-  - action: merge
-    workloads:
-      hostUsers: false
-```
-
-| Supplied value | Behavior with `merge` or `replace` |
-|---|---|
-| `false` | Request a separate user namespace for the Pod. |
-| `true` | Use the host user namespace. |
-
-Both actions overwrite an existing Boolean. A later entry can change `false`
-to `true` or the reverse. This property is independent of a container's
-`runAsUser` and has no corresponding `enforce.workloads.hostUsers` matcher.
-
-The Kubernetes version, operating system, and container runtime must support
-the requested setting. Kubernetes validates incompatible Pod settings; Capsule
-does not adjust other security or host-namespace fields. See
-[Kubernetes user namespaces](https://kubernetes.io/docs/concepts/workloads/pods/user-namespaces/).
+These mutations run on Pod creation. The root filesystem flag also applies to
+new ephemeral containers; the other properties are skipped on that subresource.
+Controller templates and existing containers are not rewritten. Profile enforcement also applies on subsequent Pod updates and
+`pods/ephemeralcontainers` updates. See [Order and scope](/docs/rules/#order-and-scope)
+for rule composition and admission order.

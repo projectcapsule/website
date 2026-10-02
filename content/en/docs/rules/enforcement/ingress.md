@@ -9,29 +9,20 @@ Ingress enforcement allows administrators to allow, deny, or audit hostnames on
 Kubernetes Ingresses, OpenShift Routes, and Gateway API resources in Tenant
 namespaces.
 
-Ingress rules are configured under `spec.rules[].enforce.ingress`. Each rule
-selects one or more resource `types` and defines hostname match expressions.
+Configure ingress rules under `spec.rules[].enforce.ingress`. Use
+[Types](#types) to select the resources to check and [Hostnames](#hostnames) to
+define the matching policy. The [Reference](#reference) combines these settings
+in a complete Tenant.
 
-See [Conditions](/docs/rules/#enforcement-conditions) for conditional ingress policies.
+See [rule order and scope](/docs/rules/#order-and-scope) for namespace selection
+and precedence, and [Conditions](/docs/rules/#enforcement-conditions) for
+conditional ingress policies.
 
-```yaml
-rules:
-  - enforce:
-      action: allow
-      ingress:
-        types:
-          - Ingress
-          - HTTPRoute
-        hostnames:
-          - exact:
-              - internal.example.com
-          - exp: "^[a-z0-9-]+\\.example\\.com$"
-```
+## Types
 
-| Field | Description |
-|---|---|
-| `types` | Resource kinds to which the rule applies. At least one type is required. |
-| `hostnames` | One or more common match expressions using `exact`, `exp`, and optional `negate`. |
+The `types` list selects the resource kinds whose hostnames the rule evaluates.
+Configure at least one type and one hostname expression together. A rule with
+only `types` or only `hostnames` is rejected at admission.
 
 Capsule supports the following resource types and hostname fields:
 
@@ -47,7 +38,27 @@ Capsule supports the following resource types and hostname fields:
 
 Ingress rules are evaluated during create and update admission. A rule only
 participates when its `types` list contains the incoming resource kind. Other
-resource types are unaffected.
+resource types are unaffected. For example, `types: [Ingress, HTTPRoute]`
+applies the hostname policy to those two kinds; it does not prohibit Gateways
+or other omitted kinds. The `action` applies to the selected resources'
+hostnames, not to the resource kinds themselves.
+
+The table lists the API versions handled by Capsule. Gateway API and OpenShift
+resources require their respective APIs to be installed in the cluster.
+
+## Hostnames
+
+The `hostnames` list contains match expressions. Each entry supports:
+
+| Field | Matching behavior |
+|---|---|
+| `exact` | Match one of the listed hostname strings exactly. |
+| `exp` | Match a regular expression. Use `^` and `$` to match the complete hostname. |
+| `negate` | Invert the entry's match result. Defaults to `false`. |
+
+An entry can use `exact`, `exp`, or both. When both are set, either match is
+sufficient before applying `negate`. Multiple entries provide alternative
+matches for the rule's action.
 
 Each hostname on a targeted resource is evaluated independently. The entire
 request is denied if any hostname is denied or does not satisfy an active
@@ -66,19 +77,20 @@ other namespace rules:
   allow or deny rule wins.
 * An audit match does not satisfy an allow-list.
 
-## Allow selected hostnames
+### Allow selected hostnames
 
 The following rule allows one exact hostname and any single-label hostname
 under `example.com` for Kubernetes Ingress and Gateway API HTTPRoute resources:
 
 ```yaml
----
 apiVersion: capsule.clastix.io/v1beta2
 kind: Tenant
 metadata:
   name: solar
 spec:
-  ...
+  owners:
+    - kind: User
+      name: solar-owner
   rules:
     - enforce:
         action: allow
@@ -152,24 +164,32 @@ spec:
       secretName: tenant-api-tls
 ```
 
-## Gateway API and OpenShift Route examples
+### Gateway API and OpenShift Route examples
 
 A single rule can target several supported resource shapes:
 
 ```yaml
-rules:
-  - enforce:
-      action: allow
-      ingress:
-        types:
-          - Route
-          - Gateway
-          - ListenerSet
-          - HTTPRoute
-          - TLSRoute
-          - GRPCRoute
-        hostnames:
-          - exp: "^([a-z0-9-]+\\.)*apps\\.example\\.com$"
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: allow
+        ingress:
+          types:
+            - Route
+            - Gateway
+            - ListenerSet
+            - HTTPRoute
+            - TLSRoute
+            - GRPCRoute
+          hostnames:
+            - exp: "^([a-z0-9-]+\\.)*apps\\.example\\.com$"
 ```
 
 For an `HTTPRoute`, Capsule evaluates every entry in `spec.hostnames`:
@@ -227,87 +247,102 @@ spec:
     name: tenant-api
 ```
 
-## Deny hostnames and add exceptions
+### Deny hostnames and add exceptions
 
-Allow a hostname family, then deny a sensitive hostname with a later rule:
-
-```yaml
-rules:
-  - enforce:
-      action: allow
-      ingress:
-        types:
-          - Ingress
-          - HTTPRoute
-        hostnames:
-          - exp: "^[a-z0-9-]+\\.example\\.com$"
-
-  - enforce:
-      action: deny
-      ingress:
-        types:
-          - Ingress
-          - HTTPRoute
-        hostnames:
-          - exact:
-              - admin.example.com
-```
-
-`api.example.com` is admitted, while `admin.example.com` is denied because the
-later matching deny rule wins.
-
-A still later namespace-specific rule can allow that hostname as an exception:
+This Tenant allows a hostname family, denies a reserved hostname with a later
+rule, and allows that hostname again in namespaces selected by the final rule:
 
 ```yaml
-  - namespaceSelector:
-      matchLabels:
-        ingress-admin: "true"
-    enforce:
-      action: allow
-      ingress:
-        types:
-          - Ingress
-          - HTTPRoute
-        hostnames:
-          - exact:
-              - admin.example.com
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: allow
+        ingress:
+          types: [Ingress, HTTPRoute]
+          hostnames:
+            - exp: '^[a-z0-9-]+\.example\.com$'
+
+    - enforce:
+        action: deny
+        ingress:
+          types: [Ingress, HTTPRoute]
+          hostnames:
+            - exact: [admin.example.com]
+
+    - namespaceSelector:
+        matchLabels:
+          ingress-admin: "true"
+      enforce:
+        action: allow
+        ingress:
+          types: [Ingress, HTTPRoute]
+          hostnames:
+            - exact: [admin.example.com]
 ```
 
-Namespaces labeled `ingress-admin=true` can use `admin.example.com`; the earlier
-deny rule still applies in other namespaces.
+`api.example.com` is admitted in every namespace in this Tenant.
+`admin.example.com` is admitted only in namespaces labeled
+`ingress-admin=true`; the later deny rule blocks it in other namespaces.
+Keep permission to change exception-selecting labels with the administrators
+who manage the policy.
+
+### Negated matches
 
 You can also use negation to deny every hostname outside a trusted suffix:
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      ingress:
-        types:
-          - Ingress
-        hostnames:
-          - exp: "^([a-z0-9-]+\\.)*example\\.com$"
-            negate: true
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        ingress:
+          types:
+            - Ingress
+          hostnames:
+            - exp: "^([a-z0-9-]+\\.)*example\\.com$"
+              negate: true
 ```
 
 This deny rule matches hostnames that do not match the expression. Because it
 does not create an allow-list, matching `example.com` hostnames pass unless
 another rule denies them.
 
-## Audit hostname usage
+### Audit hostname usage
 
 Use `action: audit` to observe selected hostnames without blocking them:
 
 ```yaml
-rules:
-  - enforce:
-      action: audit
-      ingress:
-        types:
-          - Ingress
-          - HTTPRoute
-        hostnames:
-          - exp: "^preview-.*\\.example\\.com$"
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: audit
+        ingress:
+          types:
+            - Ingress
+            - HTTPRoute
+          hostnames:
+            - exp: "^preview-.*\\.example\\.com$"
 ```
 
 A matching hostname is admitted in this audit-only example, and Capsule emits a
@@ -315,7 +350,7 @@ Kubernetes event for it. If an allow-list is also configured and the hostname
 does not match an allow rule, the request is still denied; the audit rule does
 not grant access.
 
-## Missing hostnames
+### Missing hostnames
 
 As soon as at least one `allow` or `deny` hostname rule targets a resource type,
 every expected hostname field on that resource must contain a non-empty value.
@@ -365,3 +400,69 @@ empty hostname detected at spec.listeners[0].hostname for Gateway by audit names
 If audit and `allow` or `deny` rules target the same resource type, Capsule emits
 the empty-hostname audit event and enforces the non-audit rule, which denies the
 request.
+
+## Reference
+
+This complete Tenant allows a hostname family, denies a reserved hostname,
+audits preview hostnames, and grants a namespace-specific exception. Replace
+`solar-owner` with your owner identity. It covers every resource kind listed
+under [Types](#types), including Gateway API and OpenShift resources when those
+APIs are installed.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: allow
+        ingress:
+          types: [Ingress, Route, Gateway, ListenerSet, HTTPRoute, TLSRoute, GRPCRoute]
+          hostnames:
+            - exact: [internal.example.com]
+            - exp: '^[a-z0-9-]+\.solar\.example\.com$'
+
+    - enforce:
+        action: deny
+        ingress:
+          types: [Ingress, Route, Gateway, ListenerSet, HTTPRoute, TLSRoute, GRPCRoute]
+          hostnames:
+            - exact: [admin.solar.example.com]
+
+    - enforce:
+        action: audit
+        ingress:
+          types: [Ingress, Route, Gateway, ListenerSet, HTTPRoute, TLSRoute, GRPCRoute]
+          hostnames:
+            - exp: '^preview-[a-z0-9-]+\.solar\.example\.com$'
+
+    - namespaceSelector:
+        matchLabels:
+          ingress-admin: "true"
+      enforce:
+        action: allow
+        ingress:
+          types: [Ingress, Route, Gateway, ListenerSet, HTTPRoute, TLSRoute, GRPCRoute]
+          hostnames:
+            - exact: [admin.solar.example.com]
+```
+
+Each routing, TLS, or listener hostname is checked independently:
+
+| Hostname | Namespace | Result |
+|---|---|---|
+| `api.solar.example.com` or `internal.example.com` | Any namespace in this Tenant | Allowed |
+| `admin.solar.example.com` | Without `ingress-admin: "true"` | Denied by the later deny rule |
+| `admin.solar.example.com` | With `ingress-admin: "true"` | Allowed by the final exception |
+| `preview-api.solar.example.com` | Any namespace in this Tenant | Allowed and audited |
+| `api.example.net` | Any namespace in this Tenant | Denied because it does not match the allow-list |
+| A required hostname is missing | Any namespace in this Tenant | Denied because non-audit hostname rules target the resource type |
+
+Every hostname on a resource must pass. For example, an Ingress with an allowed
+routing host and a disallowed TLS host is denied. If you narrow the `types`
+lists, omitted resource kinds remain unaffected by these rules.

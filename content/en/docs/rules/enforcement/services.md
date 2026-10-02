@@ -10,6 +10,7 @@ Service enforcement allows administrators to allow, deny, or audit Kubernetes `S
 Service rules are configured under `spec.rules[].enforce.services`. Each rule can define an `action`, a list of allowed or denied Service `types`, constraints for `spec.externalIPs`, and optional type-specific constraints for `LoadBalancer`, `ExternalName`, and `NodePort` Services.
 
 See [Conditions](/docs/rules/#enforcement-conditions) for conditional Service policies.
+See [Reference](#reference) for a complete Tenant combining these policies.
 
 ```yaml
 rules:
@@ -49,7 +50,7 @@ Service enforcement follows the same action and precedence model as other namesp
 
 Service rules are evaluated during Service create and update admission.
 
-## Service Types
+## Types
 
 The `services.types` field controls which Kubernetes Service types are allowed, denied, or audited by a rule.
 
@@ -1104,9 +1105,9 @@ Service enforcement is intentionally explicit. Keep the following behavior in mi
 | Negation applies to the whole matcher                         | `negate: true` inverts the result of both `exact` and `exp`.                                                                                                     |
 | Namespace selectors affect projected rules                    | Rules with `namespaceSelector` only apply to namespaces matching the selector.                                                                                   |
 
-### Complete Service Enforcement Example
+## Reference
 
-The following example combines type enforcement, external IP restrictions, LoadBalancer CIDR restrictions, ExternalName hostname restrictions, NodePort range restrictions, audit rules, and namespace-specific exceptions:
+This complete Tenant combines type enforcement, external IP restrictions, LoadBalancer CIDR restrictions, ExternalName hostname restrictions, NodePort range restrictions, audit rules, and namespace-specific exceptions. Replace `solar-owner` with your owner identity.
 
 ```yaml
 ---
@@ -1115,7 +1116,9 @@ kind: Tenant
 metadata:
   name: solar
 spec:
-  ...
+  owners:
+    - kind: User
+      name: solar-owner
   rules:
     - enforce:
         action: allow

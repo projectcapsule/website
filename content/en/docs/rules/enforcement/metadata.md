@@ -10,6 +10,7 @@ Metadata enforcement allows administrators to allow, deny, or audit Kubernetes o
 Metadata rules are configured under `spec.rules[].enforce.metadata`. They are evaluated by a generic validating webhook and can target one or more Kubernetes kinds. This makes metadata enforcement useful for objects such as `ConfigMap`, `Secret`, `Service`, `Deployment`, custom resources, and other namespaced resources.
 
 See [Conditions](/docs/rules/#enforcement-conditions) for conditional metadata policies.
+See [Reference](#reference) for a complete Tenant combining these policies.
 
 ```yaml
 rules:
@@ -949,9 +950,9 @@ rules:
 
 This rule only applies to namespaces labeled `environment=prod`. In those namespaces, matching `ConfigMap` objects must contain `example.corp/approval=approved`.
 
-### Complete metadata enforcement example
+## Reference
 
-The following example combines required labels, optional annotations, multiple kinds, audit rules, deny rules, and namespace-specific exceptions:
+This complete Tenant combines required labels, optional annotations, multiple kinds, audit rules, deny rules, and namespace-specific exceptions. Replace `solar-owner` with your owner identity.
 
 ```yaml
 ---
@@ -960,13 +961,15 @@ kind: Tenant
 metadata:
   name: solar
 spec:
-  ...
+  owners:
+    - kind: User
+      name: solar-owner
   rules:
     - enforce:
         action: allow
         metadata:
           - apiGroups:
-            - "*"
+              - "*"
             kinds:
               - ConfigMap
               - Service
@@ -1001,7 +1004,7 @@ spec:
         action: audit
         metadata:
           - apiGroups:
-            - "*"
+              - "*"
             kinds:
               - ConfigMap
               - Service
@@ -1028,7 +1031,7 @@ spec:
 
 With this configuration:
 
-* `ConfigMap` and `Service` objects must contain `projectcapsule.dev/tenant=prod` or `projectcapsule.dev/tenant=test`.
+* `ConfigMap` and `Service` objects must contain `corp.com/tenant=prod` or `corp.com/tenant=test`.
 * `example.corp/cost-center` is optional, but if present it must match `^INV-[0-9]{4}$`, `prod`, or `test`.
 * `ConfigMap` objects with `environment=deprecated` are denied unless a later matching allow rule overrides the decision.
 * Objects with `example.corp/audit` values matching `^audit-.*` emit audit events.
