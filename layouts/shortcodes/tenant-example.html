@@ -1,0 +1,110 @@
+{{- $name := .Get "src" -}}
+{{- $source := .Page.Parent.Resources.Get $name -}}
+{{- if not $source -}}
+  {{- errorf "tenant-example: %s not found beside %s" $name .Page.File.Path -}}
+{{- else -}}
+  {{- $tenant := transform.Unmarshal $source.Content -}}
+  {{- $links := dict -}}
+  {{- range transform.Unmarshal .Inner -}}
+    {{- if not (hasPrefix .url "/docs/") -}}
+      {{- errorf "tenant-example: expected a documentation link, got %q" .url -}}
+    {{- end -}}
+    {{- if not .title -}}{{- errorf "tenant-example: missing rule title in %s" $name -}}{{- end -}}
+    {{- $comment := printf "# %s" .comment -}}
+    {{- if index $links $comment -}}
+      {{- errorf "tenant-example: duplicate annotation %q" .comment -}}
+    {{- end -}}
+    {{- $links = merge $links (dict $comment .) -}}
+  {{- end -}}
+
+  {{/* A linked comment introduces a YAML block. Its first property and all
+       deeper-indented lines belong to the link; the next sibling does not. */}}
+  {{- $segments := slice -}}
+  {{- $lines := slice -}}
+  {{- $active := dict -}}
+  {{- $indent := 0 -}}
+  {{- $hasContent := false -}}
+  {{- $seen := slice -}}
+  {{- range split (strings.TrimSuffix "\n" $source.Content) "\n" -}}
+    {{- $text := trim . " \t\r\n" -}}
+    {{- $depth := sub (len .) (len (replaceRE "^ +" "" .)) -}}
+    {{- if and $active $hasContent $text (le $depth $indent) -}}
+      {{- $segments = $segments | append (dict "lines" $lines "link" $active) -}}
+      {{- $lines = slice -}}
+      {{- $active = dict -}}
+    {{- end -}}
+    {{- with index $links $text -}}
+      {{- if or $active (in $seen $text) -}}
+        {{- errorf "tenant-example: nested or repeated annotation %q in %s" $text $name -}}
+      {{- end -}}
+      {{- if $lines -}}
+        {{- $segments = $segments | append (dict "lines" $lines "link" (dict)) -}}
+        {{- $lines = slice -}}
+      {{- end -}}
+      {{- $active = . -}}
+      {{- $indent = $depth -}}
+      {{- $hasContent = false -}}
+      {{- $seen = $seen | append $text -}}
+    {{- end -}}
+    {{- $lines = $lines | append . -}}
+    {{- if and $active $text (not (hasPrefix $text "#")) -}}
+      {{- $hasContent = true -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $segments = $segments | append (dict "lines" $lines "link" $active) -}}
+  {{- if or (ne (len $seen) (len $links)) (ne (len $seen) (len $tenant.spec.rules)) -}}
+    {{- errorf "tenant-example: an annotated comment is missing from %s" $name -}}
+  {{- end -}}
+
+  {{- $id := printf "tenant-example-%d" .Ordinal -}}
+  <section class="tenant-example" aria-label="Tenant configuration example" data-tenant-example>
+    <div class="tenant-example__toolbar">
+      <div class="tenant-example__file">
+        <span class="tenant-example__file-icon" aria-hidden="true">{ }</span>
+        <div><strong>{{ $name }}</strong><span>{{ $tenant.kind }} · {{ $tenant.metadata.name }} · {{ len $tenant.spec.rules }} rules</span></div>
+      </div>
+      <div class="tenant-example__actions">
+        <button type="button" class="btn btn-outline-primary btn-sm" data-copy-tenant hidden>Copy full YAML</button>
+        <a class="btn btn-primary btn-sm" href="{{ $source.RelPermalink }}" download="{{ $name }}">Download YAML</a>
+      </div>
+    </div>
+    <p class="tenant-example__copy-status visually-hidden" role="status" data-copy-status></p>
+    <details class="tenant-example__manifest">
+      <summary>View complete Tenant YAML <span>Owners, priority settings, and all rules</span></summary>
+      <pre tabindex="0" aria-label="Complete Tenant YAML"><code class="language-yaml" data-tenant-source>{{ partial "tenant-example/code.html" $source.Content }}</code></pre>
+    </details>
+    <div class="tenant-example__rule-heading"><span>Namespace rules</span><span>In declaration order</span></div>
+    <div class="tenant-example__rules">
+      {{- $ruleIndex := 0 -}}
+      {{- range $segments -}}
+        {{- $segment := . -}}
+        {{- with .link -}}
+          {{- $rule := index $tenant.spec.rules $ruleIndex -}}
+          {{- $titleID := printf "%s-rule-%d" $id $ruleIndex -}}
+          {{- $chunk := printf "%s\n" (trim (delimit (after 1 $segment.lines) "\n") "\n") -}}
+          {{- $chunk = replaceRE `(?m)^    ` "" $chunk -}}
+          <article class="tenant-rule" aria-labelledby="{{ $titleID }}" data-tenant-rule data-rule-index="{{ $ruleIndex }}">
+            <header class="tenant-rule__header">
+              <span class="tenant-rule__number" aria-hidden="true">{{ printf "%02d" (add $ruleIndex 1) }}</span>
+              <div class="tenant-rule__heading">
+                <span class="tenant-rule__path">spec.rules[{{ $ruleIndex }}]</span>
+                <h4 id="{{ $titleID }}"><a class="tenant-rule__link" href="{{ .url | relURL }}">{{ .title }}</a></h4>
+                <div class="tenant-rule__tags">
+                  {{- if $rule.quota }}<span>Quota</span>{{ end -}}
+                  {{- if $rule.mutate }}<span>Mutate</span>{{ end -}}
+                  {{- with $rule.enforce }}<span>Enforce · {{ .action | default "allow" }}</span>{{ end -}}
+                </div>
+              </div>
+              <span class="tenant-rule__arrow" aria-hidden="true">↗</span>
+            </header>
+            <p class="tenant-rule__description">{{ .comment }}</p>
+            <div class="tenant-rule__body"><pre tabindex="0" aria-label="{{ .title }} YAML"><code class="language-yaml">{{ partial "tenant-example/code.html" $chunk }}</code></pre></div>
+          </article>
+          {{- $ruleIndex = add $ruleIndex 1 -}}
+        {{- end -}}
+      {{- end -}}
+    </div>
+  </section>
+  {{- $script := resources.Get "js/tenant-example.js" | minify | fingerprint -}}
+  <script src="{{ $script.RelPermalink }}" defer></script>
+{{- end -}}

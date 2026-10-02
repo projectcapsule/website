@@ -46,40 +46,51 @@ and [Networking](/docs/operating/best-practices/networking/) into one ordered
 
 ## Reference
 
-Click anywhere in a rule block to open its documentation. Each block highlights
-on hover or keyboard focus; press Enter on a focused block to follow its link.
-The download and displayed example use the same complete Tenant YAML.
+Explore the ordered rules below. Select a card to open its documentation, or
+view, copy, and download the complete Tenant YAML, including ownership and
+PriorityClass settings.
 
-{{< linked-yaml src="tenants.yaml" >}}
-- comment: "Default and allow the tenant-standard PriorityClass."
-  url: /docs/tenants/enforcement/#priorityclasses
+{{< tenant-example src="tenants.yaml" >}}
 - comment: "One shared budget across all namespaces in this Tenant."
+  title: Shared resource budget
   url: /docs/tenants/rules/#quotas
 - comment: "Apply placement and user-namespace settings on Pod creation."
+  title: Placement and user namespaces
   url: /docs/rules/mutate/workloads/#reference
 - comment: "Defaults for application containers, sidecars, and init containers."
+  title: Container resource defaults
   url: /docs/rules/enforcement/workloads/#requests-and-limits
 - comment: "Normalize limits when a workload supplies Pod-level resources."
+  title: Pod-level resource limits
   url: /docs/rules/enforcement/workloads/#targeting-resource-locations
 - comment: "Deny BestEffort Pods after resource mutation."
+  title: Reject BestEffort Pods
   url: /docs/rules/enforcement/workloads/#qos-classes
 - comment: "Reject control-plane and wildcard tolerations."
+  title: Control-plane tolerations
   url: /docs/rules/enforcement/workloads/#tolerations
 - comment: "Check direct assignment only at creation; allow scheduler-bound updates."
+  title: Prevent direct node assignment
   url: /docs/rules/#enforcement-conditions
 - comment: "Keep kind-level denials separate from workload property checks."
+  title: Block DaemonSets
   url: /docs/rules/enforcement/workloads/#deny-daemonsets
 - comment: "Allow approved images with Always pull policy."
+  title: Approved image registries
   url: /docs/rules/enforcement/workloads/#oci-registries
 - comment: "Allow only ClusterIP Services."
+  title: ClusterIP Services only
   url: /docs/rules/enforcement/services/#types
 - comment: "Deny all Service external IPs."
+  title: Block external IPs
   url: /docs/rules/enforcement/services/#denying-all-external-ips
 - comment: "Apply and reconcile Pod Security labels on the Namespace itself."
+  title: Restricted Pod Security labels
   url: /docs/rules/enforcement/metadata/#managed
 - comment: "Reserve this trusted-platform label for administrator-managed namespaces."
+  title: Protect platform trust labels
   url: /docs/rules/enforcement/metadata/#deny-metadata-values
-{{< /linked-yaml >}}
+{{< /tenant-example >}}
 
 ## How the Policies Combine
 
