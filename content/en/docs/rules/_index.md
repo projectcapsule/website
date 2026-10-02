@@ -37,7 +37,11 @@ to both mutation and enforcement.
 
 1. **Mutate.** Apply applicable
    [metadata mutations](/docs/rules/enforcement/metadata/), then
+<<<<<<< HEAD
    [resource request/limit mutations](/docs/rules/enforcement/workloads/#requests-and-limits),
+=======
+   [resource request/limit mutations](/docs/rules/enforcement/workloads/#resource-requests-and-limits),
+>>>>>>> e4277ac9db8e72f0477bc4728c657ca3dc81e71a
    then `mutate` entries in list order within the effective rule order. Each
    entry and its conditions see the object after preceding mutations. When
    entries change the same property, its merge or replacement behavior determines
