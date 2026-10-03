@@ -9,7 +9,7 @@ Workload enforcement is configured under `spec.rules[].enforce.workloads`.
 Use `targets` to select native workload kinds or locations inside their Pod
 specs. A targets-only rule matches the selected kinds themselves. When workload
 policies are present, targets scope those policies: [resource management](#resource-management),
-[OCI registries](#oci-registries), scheduler names, QoS, [placement](#placement),
+[OCI registries](#registries), scheduler names, QoS, [placement](#placement),
 and [security profiles](#security).
 
 See [Conditions](/docs/rules/#enforcement-conditions) for conditional workload policies.
@@ -71,15 +71,24 @@ scheduler and one image in Deployment and CronJob templates while permitting
 compliant ones:
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        targets: [deployment, cronjob]
-        schedulers:
-          - exact: [forbidden-scheduler]
-        registries:
-          - exact: [example.com/blocked/app:v1]
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          targets: [deployment, cronjob]
+          placement:
+            schedulers:
+              - exact: [forbidden-scheduler]
+          registries:
+            - exact: ['example.com/blocked/app:v1']
 ```
 
 A whole-controller target such as `deployment` selects all compatible policy
@@ -129,7 +138,7 @@ complete Tenant and a comparison of these scopes.
 This table describes enforcement. Profile mutations under `mutate[].workloads`
 set Pod-level defaults on Pod creation, using `pod` or omitted mutation targets.
 Neither `merge` nor `replace` modifies container profile overrides. For
-`readOnlyRootFilesystem` mutation, `pod` selects all container groups and
+`security.readOnlyRootFilesystem` and `registries.imagePullPolicy` mutations, `pod` selects all container groups and
 container targets can narrow the selection. See the separate
 [mutation targets table](/docs/rules/mutate/workloads/#targets). Enforcement
 targets do not control mutation.
@@ -154,26 +163,42 @@ Pod parts explicitly when narrowing container, image, or profile policies.
 For example, deny matching images only in init containers:
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        targets: [pod/initcontainers]
-        registries:
-          - exp: "harbor/init-only/.*"
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          targets: [pod/initcontainers]
+          registries:
+            - exp: "harbor/init-only/.*"
 ```
 
 The same image reference in a regular container, ephemeral container, or image
 volume is unaffected by this rule. Combine targets to check multiple locations:
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        targets: [pod/containers, pod/ephemeralcontainers]
-        registries:
-          - exp: "debug/.*"
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          targets: [pod/containers, pod/ephemeralcontainers]
+          registries:
+            - exp: "debug/.*"
 ```
 
 This checks regular and ephemeral container images. It does not check init
@@ -209,10 +234,11 @@ spec:
         action: allow
         workloads:
           targets: [pod]
-          seccompProfiles:
-            - types: [RuntimeDefault]
-          appArmorProfiles:
-            - types: [RuntimeDefault]
+          security:
+            seccompProfiles:
+              - types: [RuntimeDefault]
+            appArmorProfiles:
+              - types: [RuntimeDefault]
     - namespaceSelector:
         matchLabels:
           profile-scope: containers
@@ -223,10 +249,11 @@ spec:
             - pod/containers
             - pod/initcontainers
             - pod/ephemeralcontainers
-          seccompProfiles:
-            - types: [RuntimeDefault]
-          appArmorProfiles:
-            - types: [RuntimeDefault]
+          security:
+            seccompProfiles:
+              - types: [RuntimeDefault]
+            appArmorProfiles:
+              - types: [RuntimeDefault]
 ```
 
 These rules supply no defaults. For Linux Pods, each mechanism is checked
@@ -258,11 +285,19 @@ native workload kinds. Other resource kinds remain outside this allow-list.
 Allow controller-created children explicitly:
 
 ```yaml
-rules:
-  - enforce:
-      action: allow
-      workloads:
-        targets: [deployment, replicaset, pod]
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: allow
+        workloads:
+          targets: [deployment, replicaset, pod]
 ```
 
 This allows Deployments, ReplicaSets, and Pods while rejecting the other
@@ -277,14 +312,22 @@ Add a targets-only rule under `Tenant.spec.rules` to deny DaemonSets in namespac
 labeled `env: test`:
 
 ```yaml
-rules:
-  - namespaceSelector:
-      matchLabels:
-        env: test
-    enforce:
-      action: deny
-      workloads:
-        targets: [daemonset]
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          env: test
+      enforce:
+        action: deny
+        workloads:
+          targets: [daemonset]
 ```
 
 This rejects DaemonSet creation and main-resource updates in the selected
@@ -407,18 +450,26 @@ The following policies are supported under `resources.requests`:
 Default a request without overriding tenant workloads that already specify it:
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        resources:
-          requests:
-            cpu:
-              policy: Default
-              value: 100m
-            memory:
-              policy: Default
-              value: 256Mi
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          resources:
+            requests:
+              cpu:
+                policy: Default
+                value: 100m
+              memory:
+                policy: Default
+                value: 256Mi
 ```
 
 If a container requests `500m` CPU, Capsule preserves `500m`. If the CPU
@@ -427,16 +478,24 @@ request is missing, Capsule adds `100m`.
 Remove an extended resource request:
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        targets:
-          - pod/containers
-        resources:
-          requests:
-            example.com/temporary-device:
-              policy: Remove
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          targets:
+            - pod/containers
+          resources:
+            requests:
+              example.com/temporary-device:
+                policy: Remove
 ```
 
 Resource names must be valid Kubernetes qualified names. Custom and extended
@@ -475,17 +534,25 @@ The ratio must be greater than or equal to `1`. Quote fractional ratios in YAML
 for clarity, for example `"1.5"`.
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        targets:
-          - pod/containers
-        resources:
-          limits:
-            memory:
-              policy: Ratio
-              value: "1.5"
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          targets:
+            - pod/containers
+          resources:
+            limits:
+              memory:
+                policy: Ratio
+                value: "1.5"
 ```
 
 For a memory request of `1Gi`, the maximum limit is `1536Mi`:
@@ -533,74 +600,106 @@ not reject the rule or discard their container policies.
 Only regular containers:
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        targets:
-          - pod/containers
-        resources:
-          limits:
-            cpu:
-              policy: Remove
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          targets:
+            - pod/containers
+          resources:
+            limits:
+              cpu:
+                policy: Remove
 ```
 
 Only init containers:
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        targets:
-          - pod/initcontainers
-        resources:
-          requests:
-            cpu:
-              policy: Default
-              value: 25m
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          targets:
+            - pod/initcontainers
+          resources:
+            requests:
+              cpu:
+                policy: Default
+                value: 25m
 ```
 
 Both regular and init containers, explicitly:
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        targets:
-          - pod/containers
-          - pod/initcontainers
-        resources:
-          limits:
-            memory:
-              policy: MatchRequest
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          targets:
+            - pod/containers
+            - pod/initcontainers
+          resources:
+            limits:
+              memory:
+                policy: MatchRequest
 ```
 
 Only Pod-level resources:
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        targets:
-          - pod
-        resources:
-          requests:
-            cpu:
-              policy: Default
-              value: 500m
-            memory:
-              policy: Default
-              value: 1Gi
-          limits:
-            cpu:
-              policy: Ratio
-              value: "2"
-            memory:
-              policy: Ratio
-              value: "1.5"
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          targets:
+            - pod
+          resources:
+            requests:
+              cpu:
+                policy: Default
+                value: 500m
+              memory:
+                policy: Default
+                value: 1Gi
+            limits:
+              cpu:
+                policy: Ratio
+                value: "2"
+              memory:
+                policy: Ratio
+                value: "1.5"
 ```
 
 The Kubernetes API server must support `spec.resources` for Pod-level resource
@@ -622,26 +721,34 @@ Pod-level location.
 {{% /alert %}}
 
 ```yaml
-# Valid: resource and registry policies use separate target scopes.
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        targets:
-          - pod/containers
-        resources:
-          limits:
-            cpu:
-              policy: Remove
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  # Valid: resource and registry policies use separate target scopes.
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          targets:
+            - pod/containers
+          resources:
+            limits:
+              cpu:
+                policy: Remove
 
-  - enforce:
-      action: deny
-      workloads:
-        targets:
-          - pod/ephemeralcontainers
-          - pod/volumes
-        registries:
-          - exp: "untrusted.example.com/.*"
+    - enforce:
+        action: deny
+        workloads:
+          targets:
+            - pod/ephemeralcontainers
+            - pod/volumes
+          registries:
+            - exp: "untrusted.example.com/.*"
 ```
 
 #### Advanced behavior
@@ -698,31 +805,39 @@ default but permits up to `2` times the request in namespaces labeled
 `burst-memory=true`:
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        targets:
-          - pod/containers
-        resources:
-          limits:
-            memory:
-              policy: Ratio
-              value: "1.5"
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          targets:
+            - pod/containers
+          resources:
+            limits:
+              memory:
+                policy: Ratio
+                value: "1.5"
 
-  - namespaceSelector:
-      matchLabels:
-        burst-memory: "true"
-    enforce:
-      action: allow
-      workloads:
-        targets:
-          - pod/containers
-        resources:
-          limits:
-            memory:
-              policy: Ratio
-              value: "2"
+    - namespaceSelector:
+        matchLabels:
+          burst-memory: "true"
+      enforce:
+        action: allow
+        workloads:
+          targets:
+            - pod/containers
+          resources:
+            limits:
+              memory:
+                policy: Ratio
+                value: "2"
 ```
 
 A container with a `1Gi` request and a `1792Mi` limit violates the first rule
@@ -732,17 +847,25 @@ matches the selector on the second rule.
 Audit explicit ratio violations without rejecting them:
 
 ```yaml
-rules:
-  - enforce:
-      action: audit
-      workloads:
-        targets:
-          - pod/containers
-        resources:
-          limits:
-            ephemeral-storage:
-              policy: Ratio
-              value: "2"
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: audit
+        workloads:
+          targets:
+            - pod/containers
+          resources:
+            limits:
+              ephemeral-storage:
+                policy: Ratio
+                value: "2"
 ```
 
 Remember that a missing limit is still defaulted during create. The audit is
@@ -760,28 +883,36 @@ For mutation, the last applicable policy for a target, resource name, and field
 is effective. A later `Preserve` therefore prevents an earlier mutation:
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        resources:
-          limits:
-            cpu:
-              policy: Remove
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          resources:
+            limits:
+              cpu:
+                policy: Remove
 
-  - namespaceSelector:
-      matchLabels:
-        preserve-cpu-limit: "true"
-    enforce:
-      action: allow
-      workloads:
-        targets:
-          - pod/containers
-          - pod/initcontainers
-        resources:
-          limits:
-            cpu:
-              policy: Preserve
+    - namespaceSelector:
+        matchLabels:
+          preserve-cpu-limit: "true"
+      enforce:
+        action: allow
+        workloads:
+          targets:
+            - pod/containers
+            - pod/initcontainers
+          resources:
+            limits:
+              cpu:
+                policy: Preserve
 ```
 
 In matching namespaces, the later `Preserve` policy leaves CPU limits intact.
@@ -934,12 +1065,20 @@ Error from server (Forbidden): error when creating "pod.yaml": admission webhook
 Audit `Burstable` Pods:
 
 ```yaml
-rules:
-  - enforce:
-      action: audit
-      workloads:
-        qosClasses:
-          - Burstable
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: audit
+        workloads:
+          qosClasses:
+            - Burstable
 ```
 
 A matching Pod is admitted in this audit-only example, but Capsule emits an event and the API server response contains an admission warning. If a QoS allow-list is also configured and the Pod's QoS class is not allowed, the Pod is denied while the audit event is still emitted.
@@ -947,27 +1086,40 @@ A matching Pod is admitted in this audit-only example, but Capsule emits an even
 Allow `BestEffort` only for selected namespaces:
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        qosClasses:
-          - BestEffort
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          qosClasses:
+            - BestEffort
 
-  - namespaceSelector:
-      matchLabels:
-        allow-best-effort: "true"
-    enforce:
-      action: allow
-      workloads:
-        qosClasses:
-          - BestEffort
+    - namespaceSelector:
+        matchLabels:
+          allow-best-effort: "true"
+      enforce:
+        action: allow
+        workloads:
+          qosClasses:
+            - BestEffort
 ```
 
 Because later matching allow or deny rules take precedence, namespaces labeled `allow-best-effort=true` can run `BestEffort` Pods, while other namespaces cannot.
 
 
 ## Placement
+
+Configure scheduling matchers under `enforce.workloads.placement`, including
+`schedulers`, `nodeSelector`, `tolerations`, `topologySpreadConstraints`, and
+`affinity`. `targets` remains at `enforce.workloads.targets` and scopes all
+configured workload policies.
 
 Configure placement policies under `spec.rules[].enforce.workloads`. Each property
 has its own matcher list:
@@ -1055,7 +1207,7 @@ selector, including any dynamic requirements.
 
 ### Scheduler names
 
-Configure scheduler matchers under `enforce.workloads.schedulers`. Capsule checks
+Configure scheduler matchers under `enforce.workloads.placement.schedulers`. Capsule checks
 `spec.schedulerName` during create and update admission.
 
 Kubernetes defaults an omitted or empty name to `default-scheduler` before Pod
@@ -1067,11 +1219,21 @@ can replace the built-in scheduler while preserving custom names.
 Allow only these schedulers:
 
 ```yaml
-enforce:
-  action: allow
-  workloads:
-    schedulers:
-      - exact: [tenant-scheduler, batch-scheduler]
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: allow
+        workloads:
+          placement:
+            schedulers:
+              - exact: [tenant-scheduler, batch-scheduler]
 ```
 
 | Pod scheduler name at enforcement | Result |
@@ -1084,43 +1246,83 @@ To allow a scheduler family as well as fixed names, combine `exact` and `exp`.
 Either one can satisfy this matcher:
 
 ```yaml
-enforce:
-  action: allow
-  workloads:
-    schedulers:
-      - exact: [default-scheduler, batch-scheduler]
-        exp: '^tenant-[a-z0-9-]+$'
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: allow
+        workloads:
+          placement:
+            schedulers:
+              - exact: [default-scheduler, batch-scheduler]
+                exp: '^tenant-[a-z0-9-]+$'
 ```
 
 Deny one scheduler while leaving other names unrestricted by this rule:
 
 ```yaml
-enforce:
-  action: deny
-  workloads:
-    schedulers:
-      - exact: [unsafe-scheduler]
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          placement:
+            schedulers:
+              - exact: [unsafe-scheduler]
 ```
 
 Alternatively, negate a trusted set to deny all other names:
 
 ```yaml
-enforce:
-  action: deny
-  workloads:
-    schedulers:
-      - exact: [default-scheduler, tenant-scheduler]
-        negate: true
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          placement:
+            schedulers:
+              - exact: [default-scheduler, tenant-scheduler]
+                negate: true
 ```
 
 To record usage without changing the admission decision, use `audit`:
 
 ```yaml
-enforce:
-  action: audit
-  workloads:
-    schedulers:
-      - exact: [custom-scheduler]
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: audit
+        workloads:
+          placement:
+            schedulers:
+              - exact: [custom-scheduler]
 ```
 
 This emits an event and an admission warning for `custom-scheduler`. Other
@@ -1136,18 +1338,28 @@ Each matcher evaluates one key/value pair in `spec.nodeSelector`.
 | `values` | The node-label value, including an explicitly empty value. |
 
 ```yaml
-enforce:
-  action: allow
-  workloads:
-    nodeSelector:
-      - key:
-          exact: [kubernetes.io/os]
-        values:
-          exact: [linux]
-      - key:
-          exp: '^placement\.example\.com/[a-z0-9-]+$'
-        values:
-          exact: [shared, batch]
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: allow
+        workloads:
+          placement:
+            nodeSelector:
+              - key:
+                  exact: [kubernetes.io/os]
+                values:
+                  exact: [linux]
+              - key:
+                  exp: '^placement\.example\.com/[a-z0-9-]+$'
+                values:
+                  exact: [shared, batch]
 ```
 
 This allows `kubernetes.io/os: linux` and keys such as
@@ -1175,17 +1387,27 @@ An absent `tolerationSeconds` means unlimited. Bounds apply to finite durations;
 `allowUnlimited` defaults to `true`. Set it to `false` to require a finite duration:
 
 ```yaml
-enforce:
-  action: allow
-  workloads:
-    tolerations:
-      - key:
-          exact: [node.kubernetes.io/not-ready, node.kubernetes.io/unreachable]
-        operators: [Exists]
-        effects: [NoExecute]
-        tolerationSeconds:
-          max: 600
-          allowUnlimited: false
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: allow
+        workloads:
+          placement:
+            tolerations:
+              - key:
+                  exact: [node.kubernetes.io/not-ready, node.kubernetes.io/unreachable]
+                operators: [Exists]
+                effects: [NoExecute]
+                tolerationSeconds:
+                  max: 600
+                  allowUnlimited: false
 ```
 
 This permits only the two listed NoExecute tolerations, each with a finite
@@ -1195,11 +1417,21 @@ needed by your workloads or injected by Kubernetes.
 #### Disallow every toleration
 
 ```yaml
-enforce:
-  action: deny
-  workloads:
-    tolerations:
-      - {}
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          placement:
+            tolerations:
+              - {}
 ```
 
 The empty matcher rejects every toleration, including injected ones. Kubernetes
@@ -1222,24 +1454,34 @@ Each matcher evaluates one complete entry in `spec.topologySpreadConstraints`.
 | `labelSelector` | [Selector policy](#selector-policies) for the Pods counted by the constraint. |
 
 ```yaml
-enforce:
-  action: allow
-  workloads:
-    topologySpreadConstraints:
-      - topologyKey:
-          exact: [topology.kubernetes.io/zone, kubernetes.io/hostname]
-        whenUnsatisfiable: [DoNotSchedule, ScheduleAnyway]
-        maxSkew:
-          min: 1
-          max: 3
-        labelSelector:
-          required: true
-          requirements:
-            - key:
-                exact: [app]
-              operators: [In]
-              values:
-                exact: [checkout]
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: allow
+        workloads:
+          placement:
+            topologySpreadConstraints:
+              - topologyKey:
+                  exact: [topology.kubernetes.io/zone, kubernetes.io/hostname]
+                whenUnsatisfiable: [DoNotSchedule, ScheduleAnyway]
+                maxSkew:
+                  min: 1
+                  max: 3
+                labelSelector:
+                  required: true
+                  requirements:
+                    - key:
+                        exact: [app]
+                      operators: [In]
+                      values:
+                        exact: [checkout]
 ```
 
 This allows zone or host spreading with a skew of 1–3 and a selector for
@@ -1249,7 +1491,7 @@ add a spread constraint or require one to be present.
 
 ### Affinity
 
-All three affinity types use one flat list under `enforce.workloads.affinity`.
+All three affinity types use one flat list under `enforce.workloads.placement.affinity`.
 Each matcher evaluates a complete required or preferred term from `spec.affinity`.
 
 | Field | Applies to | Behavior |
@@ -1266,26 +1508,36 @@ Each matcher evaluates a complete required or preferred term from `spec.affinity
 | `namespaceSelector` | Pod affinity and anti-affinity | [Selector policy](#selector-policies) for matching namespaces. |
 
 ```yaml
-enforce:
-  action: allow
-  workloads:
-    affinity:
-      - types: [nodeAffinity]
-        modes: [required, preferred]
-        requirements:
-          - key:
-              exact: [topology.kubernetes.io/zone]
-            operators: [In]
-            values:
-              exact: [zone-a, zone-b]
-      - types: [podAffinity, podAntiAffinity]
-        modes: [preferred]
-        topologyKey:
-          exact: [kubernetes.io/hostname]
-        namespaceScope: SameNamespace
-        weight:
-          min: 1
-          max: 100
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: allow
+        workloads:
+          placement:
+            affinity:
+              - types: [nodeAffinity]
+                modes: [required, preferred]
+                requirements:
+                  - key:
+                      exact: [topology.kubernetes.io/zone]
+                    operators: [In]
+                    values:
+                      exact: [zone-a, zone-b]
+              - types: [podAffinity, podAntiAffinity]
+                modes: [preferred]
+                topologyKey:
+                  exact: [kubernetes.io/hostname]
+                namespaceScope: SameNamespace
+                weight:
+                  min: 1
+                  max: 100
 ```
 
 This allows node affinity using the listed zone requirements and preferred Pod
@@ -1311,6 +1563,10 @@ incompatible combinations are rejected when the policy is saved. Matching
 examines the submitted terms without listing nodes, Pods, or namespaces.
 
 ## Security
+
+Configure `seccompProfiles` and `appArmorProfiles` under
+`enforce.workloads.security`. The workload-level `targets` field selects the
+Pod or container locations to check.
 
 `seccompProfiles` and `appArmorProfiles` allow, deny, or audit profile choices
 for Linux workloads. The [Seccomp](#seccomp) and [AppArmor](#apparmor) sections
@@ -1351,7 +1607,7 @@ under a stricter policy.
 
 ### Seccomp
 
-`enforce.workloads.seccompProfiles` evaluates a container's explicit
+`enforce.workloads.security.seccompProfiles` evaluates a container's explicit
 `securityContext.seccompProfile`, falling back to the Pod's
 `spec.securityContext.seccompProfile`. Regular containers, init containers
 (including restartable sidecars), and ephemeral containers use this resolution.
@@ -1401,11 +1657,12 @@ spec:
       enforce:
         action: allow
         workloads:
-          seccompProfiles:
-            - types: [RuntimeDefault, Localhost]
-              localhostProfiles:
-                - exact: [profiles/solar.json]
-                - exp: '^profiles/shared/[a-z0-9-]+\.json$'
+          security:
+            seccompProfiles:
+              - types: [RuntimeDefault, Localhost]
+                localhostProfiles:
+                  - exact: [profiles/solar.json]
+                  - exp: '^profiles/shared/[a-z0-9-]+\.json$'
 ```
 
 Admission checks the reference, while nodes apply the actual profile. Install
@@ -1414,7 +1671,7 @@ approved files on eligible nodes before use. See the
 
 ### AppArmor
 
-`enforce.workloads.appArmorProfiles` checks effective AppArmor profiles in this
+`enforce.workloads.security.appArmorProfiles` checks effective AppArmor profiles in this
 order: the container's structured `securityContext.appArmorProfile`, a legacy
 per-container AppArmor annotation, then the Pod's
 `spec.securityContext.appArmorProfile`. This also covers init, restartable
@@ -1461,10 +1718,11 @@ spec:
       enforce:
         action: allow
         workloads:
-          appArmorProfiles:
-            - types: [RuntimeDefault, Localhost]
-              localhostProfiles:
-                - exact: [solar-confined]
+          security:
+            appArmorProfiles:
+              - types: [RuntimeDefault, Localhost]
+                localhostProfiles:
+                  - exact: [solar-confined]
 ```
 
 Capsule does not verify that AppArmor is supported, that the named profile is
@@ -1496,10 +1754,11 @@ spec:
       mutate:
         - action: merge
           workloads:
-            seccompProfile:
-              type: RuntimeDefault
-            appArmorProfile:
-              type: RuntimeDefault
+            security:
+              seccompProfile:
+                type: RuntimeDefault
+              appArmorProfile:
+                type: RuntimeDefault
       enforce:
         action: allow
         workloads:
@@ -1508,14 +1767,15 @@ spec:
             - pod/initcontainers
             - pod/ephemeralcontainers
             - deployment
-          seccompProfiles:
-            - types: [RuntimeDefault, Localhost]
-              localhostProfiles:
-                - exact: [profiles/solar.json]
-          appArmorProfiles:
-            - types: [RuntimeDefault, Localhost]
-              localhostProfiles:
-                - exact: [solar-confined]
+          security:
+            seccompProfiles:
+              - types: [RuntimeDefault, Localhost]
+                localhostProfiles:
+                  - exact: [profiles/solar.json]
+            appArmorProfiles:
+              - types: [RuntimeDefault, Localhost]
+                localhostProfiles:
+                  - exact: [solar-confined]
 ```
 
 | Container choice | Result |
@@ -1527,7 +1787,7 @@ spec:
 | No profile at either level in a targeted template | Denied. |
 | Ephemeral container overriding the Pod default with Unconfined | Denied. |
 
-## OCI Registries
+## Registries
 
 Registry enforcement allows administrators to allow, deny, or audit Pod image references. Registry matchers are evaluated against the full OCI reference string, including registry, repository path, image name, tag, or digest.
 
@@ -1667,14 +1927,22 @@ The request is allowed because the namespace-specific rule matches later and all
 Target-specific registry rules allow different behavior for different parts of the same Pod. For example, this rule denies the registry only for init containers:
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        targets:
-          - pod/initcontainers
-        registries:
-          - exp: "harbor/init-only/.*"
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          targets:
+            - pod/initcontainers
+          registries:
+            - exp: "harbor/init-only/.*"
 ```
 
 A matching reference under `spec.initContainers` is denied. The same reference under `spec.containers` is ignored by this rule.
@@ -1688,6 +1956,10 @@ Define the allowed image pull policies for a matching registry rule. Supported p
 * `Never`: The image is never pulled. If the image is not present on the node, the Pod fails to start.
 
 The `policy` field is optional. If no policy is specified, all image pull policies are accepted for the matching registry rule.
+
+To set the policy before validation, use
+[`mutate[].workloads.registries.imagePullPolicy`](/docs/rules/mutate/workloads/#image-pull-policy).
+The configured mutation must produce a policy accepted by the matching enforcement rule.
 
 ```yaml
 ---
@@ -1711,15 +1983,23 @@ spec:
 If the final matching registry decision is `allow` and that matching registry rule defines `policy`, the Pod must use one of the configured pull policies. For example, this rule allows the registry but only with `Always`:
 
 ```yaml
-rules:
-  - enforce:
-      action: allow
-      workloads:
-        targets:
-          - pod/containers
-        registries:
-          - exp: "harbor/v2/customer-registry/.*"
-            policy: ["Always"]
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: allow
+        workloads:
+          targets:
+            - pod/containers
+          registries:
+            - exp: "harbor/v2/customer-registry/.*"
+              policy: ["Always"]
 ```
 
 A Pod using `imagePullPolicy: Never` for that registry is rejected:
@@ -1763,17 +2043,25 @@ With this rule:
 Negation also applies to exact values:
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        targets:
-          - pod/containers
-        registries:
-          - exact:
-              - trusted/backend/api:1.0.0
-              - trusted/frontend/web:1.0.0
-            negate: true
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          targets:
+            - pod/containers
+          registries:
+            - exact:
+                - trusted/backend/api:1.0.0
+                - trusted/frontend/web:1.0.0
+              negate: true
 ```
 
 This rule denies every explicit container image except the two exact references listed, as long as no separate registry allow-list requires an explicit allow. If an allow rule is configured for the same matcher scope, the excepted references must also match an allow rule.
@@ -1781,38 +2069,46 @@ This rule denies every explicit container image except the two exact references 
 You can combine exact values, regular expressions, negation, namespace selectors, and action precedence. For example, deny all untrusted container images by default, but allow a controlled exception in production namespaces:
 
 ```yaml
-rules:
-  - enforce:
-      action: deny
-      workloads:
-        targets:
-          - pod/containers
-        registries:
-          - exact:
-              - trusted/base/debian:latest
-            exp: "trusted/platform/.*"
-            negate: true
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          targets:
+            - pod/containers
+          registries:
+            - exact:
+                - trusted/base/debian:latest
+              exp: "trusted/platform/.*"
+              negate: true
 
-  - enforce:
-      action: allow
-      workloads:
-        targets:
-          - pod/containers
-        registries:
-          - exact:
-              - trusted/base/debian:latest
-            exp: "trusted/platform/.*"
+    - enforce:
+        action: allow
+        workloads:
+          targets:
+            - pod/containers
+          registries:
+            - exact:
+                - trusted/base/debian:latest
+              exp: "trusted/platform/.*"
 
-  - namespaceSelector:
-      matchLabels:
-        env: prod
-    enforce:
-      action: allow
-      workloads:
-        targets:
-          - pod/containers
-        registries:
-          - exp: "partner-registry/prod-approved/.*"
+    - namespaceSelector:
+        matchLabels:
+          env: prod
+      enforce:
+        action: allow
+        workloads:
+          targets:
+            - pod/containers
+          registries:
+            - exp: "partner-registry/prod-approved/.*"
 ```
 
 The second rule explicitly allows the trusted references that were excluded from the negated deny rule, which is required when registry allow-list behavior is active. In a namespace labeled `env=prod`, `partner-registry/prod-approved/app:1.0.0` is allowed because the later matching allow rule overrides the earlier negated deny rule.
@@ -1824,16 +2120,24 @@ The second rule explicitly allows the trusted references that were excluded from
 Use `exact` when you want to allow or deny a fixed set of complete image references:
 
 ```yaml
-rules:
-  - enforce:
-      action: allow
-      workloads:
-        targets:
-          - pod/containers
-        registries:
-          - exact:
-              - harbor/platform/debian:latest
-              - harbor/platform/busybox:1.36
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: allow
+        workloads:
+          targets:
+            - pod/containers
+          registries:
+            - exact:
+                - harbor/platform/debian:latest
+                - harbor/platform/busybox:1.36
 ```
 
 A Pod using `harbor/platform/debian:latest` or `harbor/platform/busybox:1.36` is admitted. A Pod using `harbor/platform/nginx:latest` is denied because an allow rule exists for registry enforcement but does not match that reference.
@@ -1841,14 +2145,22 @@ A Pod using `harbor/platform/debian:latest` or `harbor/platform/busybox:1.36` is
 You can combine `exact` and `exp` in the same registry matcher:
 
 ```yaml
-rules:
-  - enforce:
-      action: allow
-      workloads:
-        registries:
-          - exact:
-              - harbor/platform/debian:latest
-            exp: "harbor/shared/.*"
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: allow
+        workloads:
+          registries:
+            - exact:
+                - harbor/platform/debian:latest
+              exp: "harbor/shared/.*"
 ```
 
 This rule allows the exact Debian image and any image under `harbor/shared/*`.
@@ -1882,7 +2194,6 @@ spec:
         action: deny
         workloads:
           targets: [daemonset]
-
     # Manage resources on regular and init containers.
     - namespaceSelector:
         matchLabels:
@@ -1905,7 +2216,6 @@ spec:
               memory:
                 policy: Ratio
                 value: "2"
-
     # Include the whole Pod for placement and its parts for image checks.
     - namespaceSelector:
         matchLabels:
@@ -1923,61 +2233,61 @@ spec:
             - exp: '^registry\.example\.com/solar/.+$'
               policy: [Always, IfNotPresent]
           qosClasses: [Burstable, Guaranteed]
-          schedulers:
-            - exact: [default-scheduler, batch-scheduler]
-          nodeSelector:
-            - key: {exact: [kubernetes.io/os]}
-              values: {exact: [linux]}
-            - key: {exact: [infrastructure.example.com/pool]}
-              values: {exact: [shared, batch]}
-          tolerations:
-            - key: {exact: [infrastructure.example.com/dedicated]}
-              operators: [Equal]
-              values: {exact: [shared]}
-              effects: [NoSchedule]
-            - key:
-                exact:
-                  - node.kubernetes.io/not-ready
-                  - node.kubernetes.io/unreachable
-              operators: [Exists]
-              effects: [NoExecute]
-              tolerationSeconds:
-                max: 600
-                allowUnlimited: false
-            - key: {exact: [node.kubernetes.io/memory-pressure]}
-              operators: [Exists]
-              effects: [NoSchedule]
-          topologySpreadConstraints:
-            - topologyKey:
-                exact: [topology.kubernetes.io/zone, kubernetes.io/hostname]
-              whenUnsatisfiable: [DoNotSchedule, ScheduleAnyway]
-              maxSkew: {min: 1, max: 3}
-              labelSelector:
-                required: true
+          placement:
+            schedulers:
+              - exact: [default-scheduler, batch-scheduler]
+            nodeSelector:
+              - key: {exact: [kubernetes.io/os]}
+                values: {exact: [linux]}
+              - key: {exact: [infrastructure.example.com/pool]}
+                values: {exact: [shared, batch]}
+            tolerations:
+              - key: {exact: [infrastructure.example.com/dedicated]}
+                operators: [Equal]
+                values: {exact: [shared]}
+                effects: [NoSchedule]
+              - key:
+                  exact:
+                    - node.kubernetes.io/not-ready
+                    - node.kubernetes.io/unreachable
+                operators: [Exists]
+                effects: [NoExecute]
+                tolerationSeconds:
+                  max: 600
+                  allowUnlimited: false
+              - key: {exact: [node.kubernetes.io/memory-pressure]}
+                operators: [Exists]
+                effects: [NoSchedule]
+            topologySpreadConstraints:
+              - topologyKey:
+                  exact: [topology.kubernetes.io/zone, kubernetes.io/hostname]
+                whenUnsatisfiable: [DoNotSchedule, ScheduleAnyway]
+                maxSkew: {min: 1, max: 3}
+                labelSelector:
+                  required: true
+                  requirements:
+                    - key: {exact: [app.kubernetes.io/part-of]}
+                      operators: [In]
+                      values: {exact: [solar]}
+            affinity:
+              - types: [nodeAffinity]
+                modes: [required, preferred]
                 requirements:
-                  - key: {exact: [app.kubernetes.io/part-of]}
+                  - key: {exact: [topology.kubernetes.io/zone]}
                     operators: [In]
-                    values: {exact: [solar]}
-          affinity:
-            - types: [nodeAffinity]
-              modes: [required, preferred]
-              requirements:
-                - key: {exact: [topology.kubernetes.io/zone]}
-                  operators: [In]
-                  values: {exact: [zone-a, zone-b]}
-            - types: [podAffinity, podAntiAffinity]
-              modes: [preferred]
-              topologyKey:
-                exact: [topology.kubernetes.io/zone, kubernetes.io/hostname]
-              namespaceScope: SameNamespace
-              weight: {min: 1, max: 100}
-              labelSelector:
-                required: true
-                requirements:
-                  - key: {exact: [app.kubernetes.io/part-of]}
-                    operators: [In]
-                    values: {exact: [solar]}
-
+                    values: {exact: [zone-a, zone-b]}
+              - types: [podAffinity, podAntiAffinity]
+                modes: [preferred]
+                topologyKey:
+                  exact: [topology.kubernetes.io/zone, kubernetes.io/hostname]
+                namespaceScope: SameNamespace
+                weight: {min: 1, max: 100}
+                labelSelector:
+                  required: true
+                  requirements:
+                    - key: {exact: [app.kubernetes.io/part-of]}
+                      operators: [In]
+                      values: {exact: [solar]}
     # Override the broader registry allow rule for this path.
     - namespaceSelector:
         matchLabels:
@@ -1987,7 +2297,6 @@ spec:
         workloads:
           registries:
             - exp: '^registry\.example\.com/solar/blocked/.+$'
-
     - namespaceSelector:
         matchLabels:
           example.com/profile: restricted

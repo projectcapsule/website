@@ -1,6 +1,6 @@
 ---
 title: Networking
-weight: 4
+weight: 3
 description: Control Service exposure and network isolation in tenant namespaces
 ---
 

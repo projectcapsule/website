@@ -1,6 +1,6 @@
 ---
 title: Workloads
-weight: 3
+weight: 2
 description: Define workload profiles and plan capacity for resource pressure and eviction
 ---
 
@@ -671,42 +671,42 @@ spec:
     - mutate:
         - action: merge
           workloads:
-            affinity:
-              nodeAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                  nodeSelectorTerms:
-                    - matchExpressions:
-                        - key: node-role.kubernetes.io/control-plane
-                          operator: DoesNotExist
-                        - key: node-role.kubernetes.io/master
-                          operator: DoesNotExist
+            placement:
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                      - matchExpressions:
+                          - key: node-role.kubernetes.io/control-plane
+                            operator: DoesNotExist
+                          - key: node-role.kubernetes.io/master
+                            operator: DoesNotExist
       enforce:
         action: allow
         workloads:
           targets: [pod]
-          schedulers:
-            - exact: [default-scheduler]
-
+          placement:
+            schedulers:
+              - exact: [default-scheduler]
     - enforce:
         action: deny
         workloads:
           targets: [pod]
-          tolerations:
-            - key:
-                exact:
-                  - node-role.kubernetes.io/control-plane
-                  - node-role.kubernetes.io/master
-            # An empty key with Exists tolerates every taint key.
-            - key: {exp: '^$'}
-              operators: [Exists]
-
+          placement:
+            tolerations:
+              - key:
+                  exact:
+                    - node-role.kubernetes.io/control-plane
+                    - node-role.kubernetes.io/master
+              # An empty key with Exists tolerates every taint key.
+              - key: {exp: '^$'}
+                operators: [Exists]
     - enforce:
         action: deny
         conditions:
           - name: direct-node-assignment
             expression: >-
-              request.operation == 'CREATE' &&
-              has(object.spec.nodeName) && object.spec.nodeName != ''
+              request.operation == 'CREATE' && has(object.spec.nodeName) && object.spec.nodeName != ''
         workloads:
           targets: [pod]
 ```
@@ -757,7 +757,8 @@ properties changes targets into policy scopes. See
 
 ### User Namespaces
 
-For supported Linux node pools, `hostUsers: false` maps users inside a Pod to
+For supported Linux node pools, `mutate[].workloads.security.hostUsers: false`
+maps users inside a Pod to
 different host IDs. Root inside the container therefore does not become host
 root. Enable this only after verifying kernel, runtime, and volume filesystem
 support; host namespaces and some volume configurations are incompatible. See
@@ -776,7 +777,8 @@ spec:
     - mutate:
         - action: merge
           workloads:
-            hostUsers: false
+            security:
+              hostUsers: false
 ```
 
 This sets the value on Pod creation, even if the submitted value was `true`.

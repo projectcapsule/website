@@ -116,7 +116,7 @@
   }
 
   &__path { color: var(--bs-secondary-color); font-family: var(--bs-font-monospace); font-size: 0.7rem; }
-  &__heading h4 { margin: 0.15rem 0 0.5rem; padding: 0; font-size: 1rem; line-height: 1.4; }
+  &__heading h3 { margin: 0.15rem 0 0.5rem; padding: 0; font-size: 1rem; line-height: 1.4; }
   &__link { color: var(--bs-heading-color); text-decoration: none; }
   &__link:hover { color: var(--bs-primary); text-decoration: none; }
   &__link:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 3px; border-radius: 2px; }

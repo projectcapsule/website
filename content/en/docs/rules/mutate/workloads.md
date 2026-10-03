@@ -4,36 +4,46 @@ weight: 1
 aliases:
   - /docs/rules/mutate/placement-example/
 description: >
-  Configure Pod placement and security settings with ordered mutations
+  Configure Pod placement, security, and image pull policies with ordered mutations
 ---
 
 Workload mutations set Pod properties under `spec.rules[].mutate[].workloads`
 using native Kubernetes Pod syntax. Use [placement settings](#placement) to
 select schedulers, assign node pools, add tolerations, spread workloads across topology domains,
 and configure affinity. Use [security settings](#security) to configure Pod user
-namespaces, seccomp/AppArmor profiles, and read-only container root filesystems. [Placement enforcement](/docs/rules/enforcement/workloads/#placement)
+namespaces, seccomp/AppArmor profiles, and read-only container root filesystems.
+Use [registry settings](#registries) to configure container image pull policies
+and Pod image pull secret references. [Placement enforcement](/docs/rules/enforcement/workloads/#placement)
 validates the resulting placement settings using matchers.
 
 This page covers configuration and mutation behavior. The
 [Reference](#reference) provides a complete Tenant combining all workload
-mutation properties with placement and security-profile enforcement.
+mutation properties with placement, security-profile, and image pull policy enforcement.
 
-| Property | Pod field | Enforcement |
-|---|---|---|
-| [Scheduler](#scheduler) | `spec.schedulerName` | [Scheduler matchers](/docs/rules/enforcement/workloads/#scheduler-names) |
-| [Node selectors](#node-selectors) | `spec.nodeSelector` | [Node-selector matchers](/docs/rules/enforcement/workloads/#node-selectors) |
-| [Tolerations](#tolerations) | `spec.tolerations` | [Toleration matchers](/docs/rules/enforcement/workloads/#tolerations) |
-| [Topology spread constraints](#topology-spread-constraints) | `spec.topologySpreadConstraints` | [Spread matchers](/docs/rules/enforcement/workloads/#topology-spread-constraints) |
-| [Affinity](#affinity) | `spec.affinity` | [Affinity matchers](/docs/rules/enforcement/workloads/#affinity) |
-| [Seccomp](#seccomp) | `spec.securityContext.seccompProfile` | [Seccomp matchers](/docs/rules/enforcement/workloads/#seccomp) |
-| [AppArmor](#apparmor) | `spec.securityContext.appArmorProfile` | [AppArmor matchers](/docs/rules/enforcement/workloads/#apparmor) |
-| [Read-only root filesystem](#read-only-root-filesystem) | Selected containers: `securityContext.readOnlyRootFilesystem` | Mutation only. |
-| [Host user namespace](#host-user-namespace) | `spec.hostUsers` | Mutation only. |
+| Property | Field under `workloads` | Pod field | Enforcement |
+|---|---|---|---|
+| [Scheduler](#scheduler) | `placement.scheduler` | `spec.schedulerName` | [Scheduler matchers](/docs/rules/enforcement/workloads/#scheduler-names) |
+| [Node selectors](#node-selectors) | `placement.nodeSelector` | `spec.nodeSelector` | [Node-selector matchers](/docs/rules/enforcement/workloads/#node-selectors) |
+| [Tolerations](#tolerations) | `placement.tolerations` | `spec.tolerations` | [Toleration matchers](/docs/rules/enforcement/workloads/#tolerations) |
+| [Topology spread constraints](#topology-spread-constraints) | `placement.topologySpreadConstraints` | `spec.topologySpreadConstraints` | [Spread matchers](/docs/rules/enforcement/workloads/#topology-spread-constraints) |
+| [Affinity](#affinity) | `placement.affinity` | `spec.affinity` | [Affinity matchers](/docs/rules/enforcement/workloads/#affinity) |
+| [Seccomp](#seccomp) | `security.seccompProfile` | `spec.securityContext.seccompProfile` | [Seccomp matchers](/docs/rules/enforcement/workloads/#seccomp) |
+| [AppArmor](#apparmor) | `security.appArmorProfile` | `spec.securityContext.appArmorProfile` | [AppArmor matchers](/docs/rules/enforcement/workloads/#apparmor) |
+| [Read-only root filesystem](#read-only-root-filesystem) | `security.readOnlyRootFilesystem` | Selected containers: `securityContext.readOnlyRootFilesystem` | Mutation only. |
+| [Image pull secrets](#image-pull-secrets) | `registries.imagePullSecrets` | `spec.imagePullSecrets` | Mutation only. |
+| [Image pull policy](#image-pull-policy) | `registries.imagePullPolicy` | Selected containers: `imagePullPolicy` | [Registry pull policies](/docs/rules/enforcement/workloads/#pullpolicy) |
+| [Host user namespace](#host-user-namespace) | `security.hostUsers` | `spec.hostUsers` | Mutation only. |
 
 ## Configure workload mutations
 
 Each mutation entry has an optional [action](/docs/rules/mutate/#action) and a
-`workloads` block containing at least one property to set. For conditional
+`workloads` block containing at least one property to set. Scheduling fields live
+under `workloads.placement`; security fields live under `workloads.security`.
+`targets` stays directly under `workloads` and applies to all configured groups.
+The action applies to each supplied field inside a group: replacing
+`placement.scheduler` preserves an omitted `placement.nodeSelector` and all
+omitted security fields. Empty `placement: {}` or `security: {}` groups supply
+no mutations; use an explicit empty map or list on a supported field to clear it. For conditional
 mutations, see [Conditions](/docs/rules/#mutation-conditions).
 
 ```yaml
@@ -52,16 +62,18 @@ spec:
       mutate:
         - action: merge
           workloads:
-            nodeSelector:
-              kubernetes.io/os: linux
+            placement:
+              nodeSelector:
+                kubernetes.io/os: linux
       enforce:
         action: allow
         workloads:
-          nodeSelector:
-            - key:
-                exact: [kubernetes.io/os]
-              values:
-                exact: [linux]
+          placement:
+            nodeSelector:
+              - key:
+                  exact: [kubernetes.io/os]
+                values:
+                  exact: [linux]
 ```
 
 In selected namespaces, this rule sets the Linux node selector. The allow rule
@@ -69,8 +81,8 @@ then rejects any additional node-selector entries. `mutate` and `enforce` are
 sibling keys and can be used independently. `enforce.action` does not select or
 disable mutations.
 
-Workload mutations apply on Pod creation. `readOnlyRootFilesystem` also applies
-to newly added ephemeral containers. See
+Workload mutations apply on Pod creation. `security.readOnlyRootFilesystem` and
+`registries.imagePullPolicy` also apply to newly added ephemeral containers. See
 [Order and scope](/docs/rules/#order-and-scope) for the mutate-then-enforce
 sequence, rule selection, and supported operations.
 
@@ -97,21 +109,22 @@ still determine which mutations apply. Audience matching uses the identity
 creating the Pod, usually the controller's service account.
 {{% /alert %}}
 
-| Target | [Placement](#placement) | [`hostUsers`](#host-user-namespace) | [Seccomp](#seccomp) / [AppArmor](#apparmor) | [`readOnlyRootFilesystem`](#read-only-root-filesystem) |
+| Target | [Placement](#placement) / [Image pull secrets](#image-pull-secrets) | [`security.hostUsers`](#host-user-namespace) | [Seccomp](#seccomp) / [AppArmor](#apparmor) | [`security.readOnlyRootFilesystem`](#read-only-root-filesystem) / [`registries.imagePullPolicy`](#image-pull-policy) |
 |---|---|---|---|---|
-| Omitted, `[]`, or `pod` | ✅ Pod placement fields | ✅ Pod user namespace | ✅ Pod-level profiles only | ✅ All container groups |
+| Omitted, `[]`, or `pod` | ✅ Pod-level fields | ✅ Pod user namespace | ✅ Pod-level profiles only | ✅ All container groups |
 | `pod/containers` | ❌ | ❌ | ❌ | ✅ Regular containers |
 | `pod/initcontainers` | ❌ | ❌ | ❌ | ✅ Init containers and native sidecars |
 | `pod/ephemeralcontainers` | ❌ | ❌ | ❌ | ✅ Newly added ephemeral containers |
 
-Placement includes `scheduler`, `nodeSelector`, `tolerations`,
-`topologySpreadConstraints`, and `affinity`. These properties, `hostUsers`,
-`seccompProfile`, and `appArmorProfile` require `pod` or omitted/empty targets.
+Placement includes `placement.scheduler`, `placement.nodeSelector`, `placement.tolerations`,
+`placement.topologySpreadConstraints`, and `placement.affinity`. These properties, `security.hostUsers`,
+`security.seccompProfile`, `security.appArmorProfile`, and `registries.imagePullSecrets` require
+`pod` or omitted/empty targets.
 Seccomp and AppArmor mutation preserves explicit container profiles with both
 `merge` and `replace`; container-specific profile mutation is not supported.
 
-Only `readOnlyRootFilesystem` currently supports container-specific mutation
-targets. Use separate mutation entries to combine Pod-level settings with a
+`security.readOnlyRootFilesystem` and `registries.imagePullPolicy` support container-specific
+mutation targets. Use separate mutation entries to combine Pod-level settings with a
 narrower container selection. Controller and volume targets are not supported
 for typed workload mutations.
 
@@ -126,23 +139,33 @@ An existing ephemeral container is left unchanged, even if the rule changed
 since it was added. Other Pod updates, deletes, and subresources do not apply
 these mutations. On an ephemeral update, the entry's conditions see the full
 current Pod, including earlier mutations, but only the new ephemeral containers'
-`readOnlyRootFilesystem` values can change.
+`securityContext.readOnlyRootFilesystem` and `imagePullPolicy` values can change.
 
 ## Placement
 
 ### Scheduler
 
-`scheduler` sets the Pod's `spec.schedulerName`. Use the name of a scheduler
+`placement.scheduler` sets the Pod's `spec.schedulerName`. Use the name of a scheduler
 configured in your cluster; Capsule selects the scheduler but does not deploy it.
 See [Kubernetes multiple schedulers](https://kubernetes.io/docs/tasks/extend-kubernetes/configure-multiple-schedulers/).
 
 To select a scheduler for every new Pod covered by the rule, use `replace`:
 
 ```yaml
-mutate:
-  - action: replace
-    workloads:
-      scheduler: tenant-scheduler
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - mutate:
+        - action: replace
+          workloads:
+            placement:
+              scheduler: tenant-scheduler
 ```
 
 | Action | Behavior |
@@ -150,7 +173,7 @@ mutate:
 | `merge` | Fill an empty `spec.schedulerName`. Preserve every non-empty value, including `default-scheduler`. |
 | `replace` | Set `spec.schedulerName` to the configured value when the entry's conditions match. |
 
-Omitting `scheduler` or setting it to `null` leaves the current value unchanged.
+Omitting `placement.scheduler` or setting it to `null` leaves the current value unchanged.
 An empty or blank configured name is invalid. To select the built-in scheduler,
 set `scheduler: default-scheduler` explicitly.
 
@@ -162,15 +185,24 @@ default while preserving custom scheduler names, combine `replace` with a
 [mutation condition](/docs/rules/#mutation-conditions):
 
 ```yaml
-mutate:
-  - action: replace
-    conditions:
-      - name: default-scheduler
-        expression: >-
-          !has(object.spec.schedulerName) ||
-          object.spec.schedulerName in ['', 'default-scheduler']
-    workloads:
-      scheduler: tenant-scheduler
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - mutate:
+        - action: replace
+          conditions:
+            - name: default-scheduler
+              expression: >-
+                !has(object.spec.schedulerName) || object.spec.schedulerName in ['', 'default-scheduler']
+          workloads:
+            placement:
+              scheduler: tenant-scheduler
 ```
 
 | Scheduler in the submitted Pod | Result with this condition |
@@ -197,15 +229,25 @@ will reject the mutated Pod.
 
 ### Node selectors
 
-`nodeSelector` is a map of node-label keys and values. Every entry must match a
+`placement.nodeSelector` is a map of node-label keys and values. Every entry must match a
 node for the Pod to be scheduled there.
 
 ```yaml
-mutate:
-  - action: merge
-    workloads:
-      nodeSelector:
-        infrastructure.example.com/pool: shared
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - mutate:
+        - action: merge
+          workloads:
+            placement:
+              nodeSelector:
+                infrastructure.example.com/pool: shared
 ```
 
 | Action | Behavior |
@@ -228,20 +270,30 @@ to restrict which keys and values remain on the admitted Pod.
 
 ### Tolerations
 
-`tolerations` is a list of native Pod tolerations. A toleration permits scheduling
+`placement.tolerations` is a list of native Pod tolerations. A toleration permits scheduling
 onto a node with a matching taint; it does not require that node. Use a node
 selector or required node affinity to restrict placement to a node pool.
 
 ```yaml
-mutate:
-  - action: merge
-    workloads:
-      tolerations:
-        - key: infrastructure.example.com/dedicated
-          operator: Equal
-          value: shared
-          effect: NoExecute
-          tolerationSeconds: 60
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - mutate:
+        - action: merge
+          workloads:
+            placement:
+              tolerations:
+                - key: infrastructure.example.com/dedicated
+                  operator: Equal
+                  value: shared
+                  effect: NoExecute
+                  tolerationSeconds: 60
 ```
 
 | Action | Behavior |
@@ -267,20 +319,30 @@ including Kubernetes-injected entries.
 
 ### Topology spread constraints
 
-`topologySpreadConstraints` is a list of native Pod spread constraints. Each
+`placement.topologySpreadConstraints` is a list of native Pod spread constraints. Each
 constraint specifies a topology domain and the Pods to count when spreading.
 
 ```yaml
-mutate:
-  - action: merge
-    workloads:
-      topologySpreadConstraints:
-        - topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          maxSkew: 1
-          labelSelector:
-            matchLabels:
-              app: checkout
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - mutate:
+        - action: merge
+          workloads:
+            placement:
+              topologySpreadConstraints:
+                - topologyKey: kubernetes.io/hostname
+                  whenUnsatisfiable: ScheduleAnyway
+                  maxSkew: 1
+                  labelSelector:
+                    matchLabels:
+                      app: checkout
 ```
 
 This expresses a preference to spread Pods labeled `app: checkout` across hosts.
@@ -304,38 +366,48 @@ operators, see [spread enforcement](/docs/rules/enforcement/workloads/#topology-
 
 ### Affinity
 
-`affinity` uses the native Pod structure with three branches: `nodeAffinity`,
+`placement.affinity` uses the native Pod structure with three branches: `nodeAffinity`,
 `podAffinity`, and `podAntiAffinity`. Each can contain required and preferred
 terms.
 
 ```yaml
-mutate:
-  - action: merge
-    workloads:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: topology.kubernetes.io/zone
-                    operator: In
-                    values: [zone-a, zone-b]
-        podAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 50
-              podAffinityTerm:
-                topologyKey: kubernetes.io/hostname
-                labelSelector:
-                  matchLabels:
-                    app: cache
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              podAffinityTerm:
-                topologyKey: kubernetes.io/hostname
-                labelSelector:
-                  matchLabels:
-                    app: checkout
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - mutate:
+        - action: merge
+          workloads:
+            placement:
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                      - matchExpressions:
+                          - key: topology.kubernetes.io/zone
+                            operator: In
+                            values: [zone-a, zone-b]
+                podAffinity:
+                  preferredDuringSchedulingIgnoredDuringExecution:
+                    - weight: 50
+                      podAffinityTerm:
+                        topologyKey: kubernetes.io/hostname
+                        labelSelector:
+                          matchLabels:
+                            app: cache
+                podAntiAffinity:
+                  preferredDuringSchedulingIgnoredDuringExecution:
+                    - weight: 100
+                      podAffinityTerm:
+                        topologyKey: kubernetes.io/hostname
+                        labelSelector:
+                          matchLabels:
+                            app: checkout
 ```
 
 This requires a node in `zone-a` or `zone-b`, prefers a host with cache Pods, and
@@ -364,7 +436,7 @@ for matching. Supplying the same term with weight 80 updates an existing weight
 
 #### Replace
 
-`replace` replaces **all of `affinity`**, including branches omitted from the
+`replace` replaces **all of `placement.affinity`**, including branches omitted from the
 mutation. Supplying only `nodeAffinity` also removes existing `podAffinity` and
 `podAntiAffinity`. Use `affinity: {}` to clear all three branches.
 
@@ -390,8 +462,8 @@ for how enforcement checks those defaults and overrides.
 
 ### Read-only root filesystem
 
-`readOnlyRootFilesystem` sets the Boolean on every selected container's
-`securityContext`. Like `hostUsers`, **both `merge` and `replace` set the supplied
+`security.readOnlyRootFilesystem` sets the Boolean on every selected container's
+`securityContext`. Like `security.hostUsers`, **both `merge` and `replace` set the supplied
 value**, including an explicit `false`. Omitted or `null` leaves the value
 unchanged. Later matching entries can overwrite earlier values; all other
 container security-context fields are preserved.
@@ -418,7 +490,8 @@ spec:
         - action: merge
           workloads:
             targets: [pod]
-            readOnlyRootFilesystem: true
+            security:
+              readOnlyRootFilesystem: true
     - namespaceSelector:
         matchLabels:
           filesystem-profile: init-only
@@ -426,7 +499,8 @@ spec:
         - action: replace
           workloads:
             targets: [pod/initcontainers]
-            readOnlyRootFilesystem: true
+            security:
+              readOnlyRootFilesystem: true
 ```
 
 In the first profile, `pod` also selects new ephemeral containers. Choose
@@ -438,17 +512,27 @@ A read-only root filesystem does not make mounted volumes read-only. Application
 that write to paths such as `/tmp` need suitable writable volume mounts. See the
 [Kubernetes security-context documentation](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
 This field is a mutation setting; there is no corresponding
-`enforce.workloads.readOnlyRootFilesystem` matcher.
+`enforce.workloads.security.readOnlyRootFilesystem` matcher.
 
 ### Host user namespace
 
-`hostUsers` selects whether the Pod uses the host user namespace.
+`security.hostUsers` selects whether the Pod uses the host user namespace.
 
 ```yaml
-mutate:
-  - action: merge
-    workloads:
-      hostUsers: false
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - mutate:
+        - action: merge
+          workloads:
+            security:
+              hostUsers: false
 ```
 
 | Supplied value | Behavior with `merge` or `replace` |
@@ -458,7 +542,7 @@ mutate:
 
 Both actions overwrite an existing Boolean. A later entry can change `false`
 to `true` or the reverse. This property is independent of a container's
-`runAsUser` and has no corresponding `enforce.workloads.hostUsers` matcher.
+`runAsUser` and has no corresponding `enforce.workloads.security.hostUsers` matcher.
 
 The Kubernetes version, operating system, and container runtime must support
 the requested setting. Kubernetes validates incompatible Pod settings; Capsule
@@ -467,7 +551,7 @@ does not adjust other security or host-namespace fields. See
 
 ### Seccomp
 
-`seccompProfile` sets `spec.securityContext.seccompProfile` on new Linux Pods.
+`security.seccompProfile` sets `spec.securityContext.seccompProfile` on new Linux Pods.
 Containers inherit this Pod default unless their own security context supplies
 a seccomp profile. This includes regular, init, and ephemeral containers.
 
@@ -481,7 +565,7 @@ a seccomp profile. This includes regular, init, and ephemeral containers.
 
 | Action | Behavior |
 |---|---|
-| `merge` | Set the configured profile only when the Pod has no `seccompProfile`. Preserve any supplied profile, including its localhost path. |
+| `merge` | Set the configured profile only when the Pod has no `spec.securityContext.seccompProfile`. Preserve any supplied profile, including its localhost path. |
 | `replace` | Replace the complete Pod profile with the configured type and localhost path. |
 | Property omitted | Preserve the Pod's seccomp profile. |
 
@@ -519,13 +603,15 @@ spec:
       mutate:
         - action: merge
           workloads:
-            seccompProfile:
-              type: RuntimeDefault
+            security:
+              seccompProfile:
+                type: RuntimeDefault
       enforce:
         action: allow
         workloads:
-          seccompProfiles:
-            - types: [RuntimeDefault]
+          security:
+            seccompProfiles:
+              - types: [RuntimeDefault]
 ```
 
 An explicit container-level Unconfined profile remains unchanged by mutation
@@ -560,16 +646,18 @@ spec:
       mutate:
         - action: replace
           workloads:
-            seccompProfile:
-              type: Localhost
-              localhostProfile: profiles/solar.json
+            security:
+              seccompProfile:
+                type: Localhost
+                localhostProfile: profiles/solar.json
       enforce:
         action: allow
         workloads:
-          seccompProfiles:
-            - types: [Localhost]
-              localhostProfiles:
-                - exact: [profiles/solar.json]
+          security:
+            seccompProfiles:
+              - types: [Localhost]
+                localhostProfiles:
+                  - exact: [profiles/solar.json]
 ```
 
 Use `action: merge` instead to supply this profile only when the Pod profile
@@ -583,7 +671,7 @@ pass admission and still fail to start if the profile is unavailable on its node
 
 ### AppArmor
 
-`appArmorProfile` sets `spec.securityContext.appArmorProfile` on new Linux Pods.
+`security.appArmorProfile` sets `spec.securityContext.appArmorProfile` on new Linux Pods.
 The Pod value supplies the default for containers that have no AppArmor
 override. Use this mutation only for workloads placed on nodes with AppArmor
 support. Explicit RuntimeDefault can prevent a Pod from starting on a node
@@ -599,7 +687,7 @@ without that support. See the [AppArmor prerequisites](https://kubernetes.io/doc
 
 | Action | Behavior |
 |---|---|
-| `merge` | Set the configured profile only when the Pod has no `appArmorProfile`. Preserve any supplied profile, including its localhost name. |
+| `merge` | Set the configured profile only when the Pod has no `spec.securityContext.appArmorProfile`. Preserve any supplied profile, including its localhost name. |
 | `replace` | Replace the complete Pod profile with the configured type and localhost name. |
 | Property omitted | Preserve the Pod's AppArmor profile. |
 
@@ -635,13 +723,15 @@ spec:
       mutate:
         - action: merge
           workloads:
-            appArmorProfile:
-              type: RuntimeDefault
+            security:
+              appArmorProfile:
+                type: RuntimeDefault
       enforce:
         action: allow
         workloads:
-          appArmorProfiles:
-            - types: [RuntimeDefault]
+          security:
+            appArmorProfiles:
+              - types: [RuntimeDefault]
 ```
 
 #### Set a local AppArmor profile
@@ -670,16 +760,18 @@ spec:
       mutate:
         - action: replace
           workloads:
-            appArmorProfile:
-              type: Localhost
-              localhostProfile: solar-confined
+            security:
+              appArmorProfile:
+                type: Localhost
+                localhostProfile: solar-confined
       enforce:
         action: allow
         workloads:
-          appArmorProfiles:
-            - types: [Localhost]
-              localhostProfiles:
-                - exact: [solar-confined]
+          security:
+            appArmorProfiles:
+              - types: [Localhost]
+                localhostProfiles:
+                  - exact: [solar-confined]
 ```
 
 Use `action: merge` to preserve an existing Pod profile instead of replacing
@@ -688,23 +780,203 @@ Load `solar-confined` on every eligible node before applying the rule, or
 restrict placement to prepared nodes. Capsule does not load AppArmor profiles
 or verify that their definitions are consistent across nodes.
 
+## Registries
+
+Configure registry-related mutations under
+`mutate[].workloads.registries`. Set `imagePullPolicy` for selected containers
+and `imagePullSecrets` for the Pod. The [targets table](#targets) shows which
+locations support each property. Both settings apply to Linux and Windows Pods.
+
+### Image pull policy
+
+Set `registries.imagePullPolicy` to one of the native Kubernetes values:
+
+| Value | Container image behavior |
+|---|---|
+| `Always` | Resolve the image through the registry at each container start; cached image layers can still be reused. |
+| `IfNotPresent` | Pull the image when it is not already available on the node. |
+| `Never` | Use an image already available on the node; the container cannot start if it is missing. |
+
+See [Kubernetes image pull policies](https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy)
+for runtime behavior. Capsule changes the container's policy; it does not pull
+images or create registry credentials.
+
+| Mutation configuration | Behavior |
+|---|---|
+| `action: merge` or omitted action | Overwrite the selected containers' pull policies. |
+| `action: replace` | Overwrite the selected containers' pull policies. |
+| `registries` or `imagePullPolicy` omitted or `null` | Preserve existing pull policies. |
+| `registries: {}` | Leave pull policies unchanged. The mutation entry still needs a property to set. |
+| Empty string or a value other than `Always`, `IfNotPresent`, or `Never` | Reject the rule configuration. |
+
+Kubernetes fills an omitted pull policy before mutation. Capsule overwrites
+both that default and an explicit user value with either action: `merge` does
+**not** mean "only when unset" for this property. Later applicable mutation
+entries can overwrite it again. [Conditions](/docs/rules/#mutation-conditions)
+gate the whole entry and see changes made by preceding entries.
+
+`registries` is a settings object. The mutation applies the same policy to every
+selected container, regardless of its image registry. To restrict image sources
+or validate the resulting pull policy, use
+[registry enforcement](/docs/rules/enforcement/workloads/#pullpolicy), where
+`registries` is a list of matchers with an optional `policy` allowlist.
+
+#### Apply different namespace profiles
+
+This Tenant uses `Always` for all container groups in namespaces labeled
+`image-profile: always-pull` and allows images only from `registry.k8s.io`.
+Namespaces labeled `image-profile: init-only` receive the mutation only for
+init containers and native sidecars, preserving regular-container policies.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          image-profile: always-pull
+      mutate:
+        - action: replace
+          workloads:
+            targets: [pod]
+            registries:
+              imagePullPolicy: Always
+      enforce:
+        action: allow
+        workloads:
+          targets: [pod/containers, pod/initcontainers, pod/ephemeralcontainers]
+          registries:
+            - exact: [registry.k8s.io]
+              policy: [Always]
+    - namespaceSelector:
+        matchLabels:
+          image-profile: init-only
+      mutate:
+        - action: merge
+          workloads:
+            targets: [pod/initcontainers]
+            registries:
+              imagePullPolicy: Always
+```
+
+| Request | Result from these rules |
+|---|---|
+| New Pod in `always-pull`, with omitted, `Never`, or `IfNotPresent` policies | Regular and init containers receive `Always`; images must pass the registry allowlist. |
+| New ephemeral container in `always-pull` | The new container receives `Always`; registry enforcement still applies. |
+| New Pod in `init-only` | Init containers and native sidecars receive `Always`; regular containers keep their policies. |
+| Namespace with neither profile label | Neither rule applies. |
+
+Existing containers and stored controller templates are unchanged. Pods created
+by controllers receive the mutation when admitted. Ordinary Pod updates do not
+rewrite pull policies, and ephemeral-container updates change only newly added
+containers. Image-volume pull policies are outside the mutation targets.
+
+### Image pull secrets
+
+`registries.imagePullSecrets` sets the Pod's `spec.imagePullSecrets` using a
+list of references with a `name` field. This is a Pod-level setting: use
+`targets: [pod]`, `targets: []`, or omit targets. Container-only targets are
+rejected, including when clearing the list.
+
+| Configuration | Behavior |
+|---|---|
+| `merge` or omitted action | Keep each existing name once, in first-occurrence order, then append missing configured names. |
+| `replace` | Set the complete list to the configured references. |
+| `imagePullSecrets: []` with `replace` | Clear the Pod's image pull secret references. |
+| `imagePullSecrets: []` with `merge` | Remove duplicate references; otherwise preserve the existing list. |
+| Property omitted or `null` | Preserve the list with either action. |
+
+Merge retains each name already supplied on the Pod once, including
+[ServiceAccount defaults](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account).
+Replace can remove those references. Later mutation entries see and can change
+the resulting list. Repeated names on the incoming Pod are removed, and overlapping
+rules or repeated admission do not introduce duplicates. Omitting the property
+leaves the list untouched. Each entry accepts up to 64 references with unique,
+valid Secret names; duplicate configured names are rejected for both actions.
+
+Referenced Secrets must exist in the **Pod's namespace** and contain suitable
+registry credentials. Kubernetes accepts `kubernetes.io/dockerconfigjson` or
+`kubernetes.io/dockercfg` Secrets for this purpose; see
+[image pull secrets](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod).
+Capsule writes only the references: it does not create, copy, read, or verify
+the Secrets. Provision the credentials in each selected namespace separately,
+for example with [TenantResource](/docs/replications/tenant/) or
+[GlobalTenantResource](/docs/replications/global/).
+
+This Tenant adds a shared reference in one namespace profile, replaces the list
+in another, and clears it in a third. Create `platform-registry` or `team-registry`
+in the corresponding namespaces before workloads need to pull private images.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          pull-credentials: shared
+      mutate:
+        - action: merge
+          workloads:
+            targets: [pod]
+            registries:
+              imagePullSecrets:
+                - name: platform-registry
+    - namespaceSelector:
+        matchLabels:
+          pull-credentials: dedicated
+      mutate:
+        - action: replace
+          workloads:
+            registries:
+              imagePullSecrets:
+                - name: team-registry
+    - namespaceSelector:
+        matchLabels:
+          pull-credentials: none
+      mutate:
+        - action: replace
+          workloads:
+            registries:
+              imagePullSecrets: []
+```
+
+These rules apply only when a Pod is created, including Pods created by
+controllers. They do not rewrite controller templates, ServiceAccounts, existing
+Pods, or the secret list when adding ephemeral containers. Configure both
+`imagePullPolicy` and `imagePullSecrets` in one `registries` block when using the
+Pod target. For a container-specific pull policy, use a separate mutation entry.
+
 ## Reference
 
 This complete Tenant combines every supported workload mutation property with
-placement and security-profile enforcement. It selects namespaces labeled
+placement, security-profile, and image pull policy enforcement. It selects namespaces labeled
 `example.com/application: checkout` and configures workloads for Linux nodes.
 
 The `tenant-scheduler` scheduler, node pool, and zone labels must exist in the
 cluster. Eligible nodes must support [user namespaces](#host-user-namespace)
-and [AppArmor](#apparmor). Application Pods should carry
+and [AppArmor](#apparmor). Provision the `checkout-registry` image pull Secret
+in each selected namespace. Application Pods should carry
 `app.kubernetes.io/part-of: checkout` so the spread and Pod-affinity selectors
 describe the intended workload.
 
 The first mutation entry replaces the built-in scheduler default while
 preserving custom scheduler names. The second entry independently applies the
 remaining placement settings, supplies missing Pod-level security profiles, and
-sets all selected container root filesystems read-only. Provide writable volume
-mounts for application paths that need them.
+sets all selected container root filesystems read-only and image pull policies
+to `Always`. It also adds `checkout-registry` to the Pod's image pull secret
+references. Provide writable volume mounts for application paths that need them.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -724,60 +996,66 @@ spec:
           conditions:
             - name: default-scheduler
               expression: >-
-                !has(object.spec.schedulerName) ||
-                object.spec.schedulerName in ['', 'default-scheduler']
+                !has(object.spec.schedulerName) || object.spec.schedulerName in ['', 'default-scheduler']
           workloads:
-            scheduler: tenant-scheduler
+            placement:
+              scheduler: tenant-scheduler
         - action: merge
           workloads:
             targets: [pod]
-            readOnlyRootFilesystem: true
-            hostUsers: false
-            seccompProfile:
-              type: RuntimeDefault
-            appArmorProfile:
-              type: RuntimeDefault
-            nodeSelector:
-              kubernetes.io/os: linux
-              infrastructure.example.com/pool: shared
-            tolerations:
-              - key: infrastructure.example.com/dedicated
-                operator: Equal
-                value: shared
-                effect: NoSchedule
-            # Application Pods must carry app.kubernetes.io/part-of: checkout.
-            topologySpreadConstraints:
-              - topologyKey: topology.kubernetes.io/zone
-                whenUnsatisfiable: DoNotSchedule
-                maxSkew: 1
-                labelSelector:
-                  matchLabels:
-                    app.kubernetes.io/part-of: checkout
-            affinity:
-              nodeAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                  nodeSelectorTerms:
-                    - matchExpressions:
-                        - key: topology.kubernetes.io/zone
-                          operator: In
-                          values: [zone-a, zone-b]
-              podAffinity:
-                preferredDuringSchedulingIgnoredDuringExecution:
-                  - weight: 50
-                    podAffinityTerm:
-                      topologyKey: topology.kubernetes.io/zone
-                      labelSelector:
-                        matchLabels:
-                          app.kubernetes.io/part-of: checkout
-                          app.kubernetes.io/component: cache
-              podAntiAffinity:
-                preferredDuringSchedulingIgnoredDuringExecution:
-                  - weight: 100
-                    podAffinityTerm:
-                      topologyKey: kubernetes.io/hostname
-                      labelSelector:
-                        matchLabels:
-                          app.kubernetes.io/part-of: checkout
+            security:
+              readOnlyRootFilesystem: true
+              hostUsers: false
+              seccompProfile:
+                type: RuntimeDefault
+              appArmorProfile:
+                type: RuntimeDefault
+            registries:
+              imagePullPolicy: Always
+              imagePullSecrets:
+                - name: checkout-registry
+            placement:
+              nodeSelector:
+                kubernetes.io/os: linux
+                infrastructure.example.com/pool: shared
+              tolerations:
+                - key: infrastructure.example.com/dedicated
+                  operator: Equal
+                  value: shared
+                  effect: NoSchedule
+              # Application Pods must carry app.kubernetes.io/part-of: checkout.
+              topologySpreadConstraints:
+                - topologyKey: topology.kubernetes.io/zone
+                  whenUnsatisfiable: DoNotSchedule
+                  maxSkew: 1
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/part-of: checkout
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                      - matchExpressions:
+                          - key: topology.kubernetes.io/zone
+                            operator: In
+                            values: [zone-a, zone-b]
+                podAffinity:
+                  preferredDuringSchedulingIgnoredDuringExecution:
+                    - weight: 50
+                      podAffinityTerm:
+                        topologyKey: topology.kubernetes.io/zone
+                        labelSelector:
+                          matchLabels:
+                            app.kubernetes.io/part-of: checkout
+                            app.kubernetes.io/component: cache
+                podAntiAffinity:
+                  preferredDuringSchedulingIgnoredDuringExecution:
+                    - weight: 100
+                      podAffinityTerm:
+                        topologyKey: kubernetes.io/hostname
+                        labelSelector:
+                          matchLabels:
+                            app.kubernetes.io/part-of: checkout
       enforce:
         action: allow
         workloads:
@@ -786,80 +1064,88 @@ spec:
             - pod/containers
             - pod/initcontainers
             - pod/ephemeralcontainers
-          seccompProfiles:
-            - types: [RuntimeDefault]
-          appArmorProfiles:
-            - types: [RuntimeDefault]
-          nodeSelector:
-            - key: {exact: [kubernetes.io/os]}
-              values: {exact: [linux]}
-            - key: {exact: [infrastructure.example.com/pool]}
-              values: {exact: [shared]}
-            - key: {exp: '^placement\.example\.com/[a-z0-9-]+$'}
-              values: {exp: '^[a-z0-9-]+$'}
-          tolerations:
-            - key: {exact: [infrastructure.example.com/dedicated]}
-              operators: [Equal]
-              values: {exact: [shared]}
-              effects: [NoSchedule]
-            - key:
-                exact:
-                  - node.kubernetes.io/not-ready
-                  - node.kubernetes.io/unreachable
-              operators: [Exists]
-              effects: [NoExecute]
-              tolerationSeconds:
-                max: 600
-                allowUnlimited: false
-            - key: {exact: [node.kubernetes.io/memory-pressure]}
-              operators: [Exists]
-              effects: [NoSchedule]
-          topologySpreadConstraints:
-            - topologyKey:
-                exact: [topology.kubernetes.io/zone, kubernetes.io/hostname]
-              whenUnsatisfiable: [DoNotSchedule, ScheduleAnyway]
-              maxSkew: {min: 1, max: 3}
-              labelSelector:
-                required: true
+          # Allow any image source, but require the mutated pull policy.
+          registries:
+            - exp: '.*'
+              policy: [Always]
+          security:
+            seccompProfiles:
+              - types: [RuntimeDefault]
+            appArmorProfiles:
+              - types: [RuntimeDefault]
+          placement:
+            nodeSelector:
+              - key: {exact: [kubernetes.io/os]}
+                values: {exact: [linux]}
+              - key: {exact: [infrastructure.example.com/pool]}
+                values: {exact: [shared]}
+              - key: {exp: '^placement\.example\.com/[a-z0-9-]+$'}
+                values: {exp: '^[a-z0-9-]+$'}
+            tolerations:
+              - key: {exact: [infrastructure.example.com/dedicated]}
+                operators: [Equal]
+                values: {exact: [shared]}
+                effects: [NoSchedule]
+              - key:
+                  exact:
+                    - node.kubernetes.io/not-ready
+                    - node.kubernetes.io/unreachable
+                operators: [Exists]
+                effects: [NoExecute]
+                tolerationSeconds:
+                  max: 600
+                  allowUnlimited: false
+              - key: {exact: [node.kubernetes.io/memory-pressure]}
+                operators: [Exists]
+                effects: [NoSchedule]
+            topologySpreadConstraints:
+              - topologyKey:
+                  exact: [topology.kubernetes.io/zone, kubernetes.io/hostname]
+                whenUnsatisfiable: [DoNotSchedule, ScheduleAnyway]
+                maxSkew: {min: 1, max: 3}
+                labelSelector:
+                  required: true
+                  requirements:
+                    - key: {exact: [app.kubernetes.io/part-of]}
+                      operators: [In]
+                      values: {exact: [checkout]}
+            affinity:
+              - types: [nodeAffinity]
+                modes: [required]
                 requirements:
-                  - key: {exact: [app.kubernetes.io/part-of]}
+                  - key: {exact: [topology.kubernetes.io/zone]}
                     operators: [In]
-                    values: {exact: [checkout]}
-          affinity:
-            - types: [nodeAffinity]
-              modes: [required]
-              requirements:
-                - key: {exact: [topology.kubernetes.io/zone]}
-                  operators: [In]
-                  values: {exact: [zone-a, zone-b]}
-            - types: [nodeAffinity]
-              modes: [preferred]
-              weight: {min: 1, max: 100}
-              requirements:
-                - key: {exact: [kubernetes.io/arch]}
-                  operators: [In]
-                  values: {exact: [amd64, arm64]}
-            - types: [podAffinity, podAntiAffinity]
-              modes: [preferred]
-              topologyKey:
-                exact: [topology.kubernetes.io/zone, kubernetes.io/hostname]
-              namespaceScope: SameNamespace
-              weight: {min: 1, max: 100}
-              labelSelector:
-                required: true
+                    values: {exact: [zone-a, zone-b]}
+              - types: [nodeAffinity]
+                modes: [preferred]
+                weight: {min: 1, max: 100}
                 requirements:
-                  - key: {exact: [app.kubernetes.io/part-of]}
+                  - key: {exact: [kubernetes.io/arch]}
                     operators: [In]
-                    values: {exact: [checkout]}
-                  - key: {exact: [app.kubernetes.io/component]}
-                    operators: [In, NotIn]
-                    values: {exact: [api, worker, cache]}
+                    values: {exact: [amd64, arm64]}
+              - types: [podAffinity, podAntiAffinity]
+                modes: [preferred]
+                topologyKey:
+                  exact: [topology.kubernetes.io/zone, kubernetes.io/hostname]
+                namespaceScope: SameNamespace
+                weight: {min: 1, max: 100}
+                labelSelector:
+                  required: true
+                  requirements:
+                    - key: {exact: [app.kubernetes.io/part-of]}
+                      operators: [In]
+                      values: {exact: [checkout]}
+                    - key: {exact: [app.kubernetes.io/component]}
+                      operators: [In, NotIn]
+                      values: {exact: [api, worker, cache]}
 ```
 
 | Submitted value or scope | Result |
 |---|---|
 | Scheduler omitted or `default-scheduler` | Replaced with `tenant-scheduler`. |
 | Custom scheduler name | Preserved; the placement and security mutations still apply. |
+| Existing image pull secret references | Each name is kept once in first-occurrence order; `checkout-registry` is appended if absent. |
+| Image pull policy omitted, `IfNotPresent`, or `Never` | Set to `Always` on regular/init containers at creation and newly added ephemeral containers. |
 | Root filesystem flag omitted or `false` | Set to `true` on regular/init containers at creation and newly added ephemeral containers. |
 | Pod seccomp or AppArmor profile omitted | Defaulted to RuntimeDefault. |
 | Explicit Pod or container profile | Preserved by mutation, then rejected unless its effective type is RuntimeDefault. |
@@ -867,10 +1153,11 @@ spec:
 | Namespace without `example.com/application: checkout` | These rules do not apply. |
 
 Under `enforce`, the `pod` target validates placement and Pod-level profile defaults. The three
-container targets validate effective profiles for regular, init, and ephemeral
-containers, including container overrides. Under `mutate`, `targets: [pod]`
-selects all container groups for the root filesystem flag and Pod-level fields
-for the other properties; profile mutation still writes only Pod-level profiles. An Unconfined override or privileged
+container targets validate effective profiles and image pull policies for regular,
+init, and ephemeral containers, including container profile overrides. The registry
+matcher accepts all image sources while requiring `Always`. Under `mutate`, `targets: [pod]`
+selects all container groups for the root filesystem flag and image pull policy,
+and Pod-level fields, including image pull secrets, for the other properties; profile mutation still writes only Pod-level profiles. An Unconfined override or privileged
 container is rejected after mutation.
 
 The toleration allowlist includes common Kubernetes-injected tolerations.
@@ -882,8 +1169,8 @@ See the [placement matcher reference](/docs/rules/enforcement/workloads/#placeme
 for regular expressions, empty matchers, durations, selector operators, and
 namespace scope.
 
-These mutations run on Pod creation. The root filesystem flag also applies to
-new ephemeral containers; the other properties are skipped on that subresource.
+These mutations run on Pod creation. The root filesystem flag and image pull policy
+also apply to new ephemeral containers; the other properties are skipped on that subresource.
 Controller templates and existing containers are not rewritten. Profile enforcement also applies on subsequent Pod updates and
 `pods/ephemeralcontainers` updates. See [Order and scope](/docs/rules/#order-and-scope)
 for rule composition and admission order.

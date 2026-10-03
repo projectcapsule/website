@@ -11,6 +11,7 @@ spec:
     default: tenant-standard
     allowed: [tenant-standard]
   rules:
+
     # One shared budget across all namespaces in this Tenant.
     - quota:
         - name: application-budget
@@ -27,22 +28,25 @@ spec:
     - mutate:
         - action: merge
           workloads:
-            hostUsers: false
-            affinity:
-              nodeAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                  nodeSelectorTerms:
-                    - matchExpressions:
-                        - key: node-role.kubernetes.io/control-plane
-                          operator: DoesNotExist
-                        - key: node-role.kubernetes.io/master
-                          operator: DoesNotExist
+            security:
+              hostUsers: false
+            placement:
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                      - matchExpressions:
+                          - key: node-role.kubernetes.io/control-plane
+                            operator: DoesNotExist
+                          - key: node-role.kubernetes.io/master
+                            operator: DoesNotExist
       enforce:
         action: allow
         workloads:
           targets: [pod]
-          schedulers:
-            - exact: [default-scheduler]
+          placement:
+            schedulers:
+              - exact: [default-scheduler]
 
     # Defaults for application containers, sidecars, and init containers.
     - enforce:
@@ -93,13 +97,14 @@ spec:
         action: deny
         workloads:
           targets: [pod]
-          tolerations:
-            - key:
-                exact:
-                  - node-role.kubernetes.io/control-plane
-                  - node-role.kubernetes.io/master
-            - key: {exp: '^$'}
-              operators: [Exists]
+          placement:
+            tolerations:
+              - key:
+                  exact:
+                    - node-role.kubernetes.io/control-plane
+                    - node-role.kubernetes.io/master
+              - key: {exp: '^$'}
+                operators: [Exists]
 
     # Check direct assignment only at creation; allow scheduler-bound updates.
     - enforce:
@@ -107,8 +112,7 @@ spec:
         conditions:
           - name: direct-node-assignment
             expression: >-
-              request.operation == 'CREATE' &&
-              has(object.spec.nodeName) && object.spec.nodeName != ''
+              request.operation == 'CREATE' && has(object.spec.nodeName) && object.spec.nodeName != ''
         workloads:
           targets: [pod]
 

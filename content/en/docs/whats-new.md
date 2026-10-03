@@ -24,14 +24,22 @@ outputs:
 
 ## Features ✨
 
-* **Capsule**: Ships with diverese improvements to Admission-Time and reconcile time for all components. We are continuing to improve the performance and stability of Capsule, and we are always looking for ways to make it easier to use and more powerful.
-* **Capsule**: Added 1:1 compatible Quota-System for direct migration and functional replacement of the deprecated ResourceQuotas. [Read More](/docs/tenants/rules/#migration)
-* **Capsule**: Added new capabilites to Rules-API:
-   * [Metadata Enforcement](/docs/rules/enforcement/metadata/)
-   * [Service Enforcement](/docs/rules/enforcement/services/)
-   * [Ingress Enforcement](/docs/rules/enforcement/ingress/)
-   * [Workload Enforcement](/docs/rules/enforcement/workloads/)
-* **Proxy**: Added RBAC-Reflection for non Tenant-Owners. [Read More](/docs/proxy/reflection/)
+* **Capsule**: [Resource Permits](/docs/permits/) let users request resources and temporary permissions from reusable [templates](/docs/permits/templates/), with manual or automatic approval and configurable lifetimes.
+* **Capsule**: The rules API now offers more ways to configure and enforce namespace profiles:
+
+   * [Workload Placement Mutation](/docs/rules/mutate/workloads/#placement): Configure schedulers, node selectors, tolerations, affinity, and topology spread constraints on new Pods with merge or replace actions.
+   * [Workload User Namespace Mutation](/docs/rules/mutate/workloads/#host-user-namespace): Request separate user namespaces for new Pods with `security.hostUsers: false`.
+   * [Workload Read-only Root Filesystem Mutation](/docs/rules/mutate/workloads/#read-only-root-filesystem): Set `security.readOnlyRootFilesystem` for selected regular, init, and newly added ephemeral containers.
+   * [Workload Seccomp Mutation](/docs/rules/mutate/workloads/#seccomp): Default or replace Pod-level seccomp profiles, including node-local profile paths.
+   * [Workload AppArmor Mutation](/docs/rules/mutate/workloads/#apparmor): Default or replace Pod-level AppArmor profiles, including named profiles loaded on nodes.
+   * [Mutation Conditions](/docs/rules/#mutation-conditions): Apply individual mutation entries conditionally with CEL expressions that inspect the resource and admission request.
+   * [Workload Placement Enforcement](/docs/rules/enforcement/workloads/#placement): Control which schedulers, node selectors, tolerations, affinity rules, and topology spread constraints workloads may use.
+   * [Workload Type Enforcement](/docs/rules/enforcement/workloads/#select-workloads): Allow, deny, or audit selected workload kinds, such as blocking DaemonSets in application namespaces.
+   * [Workload Seccomp Enforcement](/docs/rules/enforcement/workloads/#seccomp): Restrict effective seccomp profile types and local profile paths across selected Pods and containers.
+   * [Workload AppArmor Enforcement](/docs/rules/enforcement/workloads/#apparmor): Restrict effective AppArmor profiles, including container overrides and named profiles loaded on nodes.
+   * [Enforcement Conditions](/docs/rules/#enforcement-conditions): Apply an enforcement block only to resources and admission requests that match your CEL conditions.
+
+* **Capsule**: [Resource policies](/docs/operating/concepts/managed-resources/#resource-policy) for `TenantResource` and `GlobalTenantResource` add conditional application and control over resource adoption, protection, and cleanup.
 
 ### Deprecations
 
@@ -45,24 +53,22 @@ outputs:
 
   * Announcing deprecation of certain [Namespace Metadata Options](/docs/tenants/metadata/#namespaces). Please migrate to the new [`Metadata Rules`](/docs/rules/enforcement/metadata/#migrate-namespace-metadata) as soon as possible.
 
-## Fixes 🐛
-
-* Fixed PVC-Controller mutating `PersistentVolumes` with empty tenant label value
-* Fixed Helm-Values for [Strict Mode](/docs/operating/setup/installation/#strict-rbac)
 
 ## Documentation 📚
 
 We have added new documentation for a better experience. See the following topics:
 
-* **[Resource Management decision table](/docs/resource-management/)**
-* **[Resource Management for workloads](/docs/operating/best-practices/workloads/#resource-management)**
+* **[Best Practices for Tenants](/docs/operating/best-practices/tenants/)**
+* **[Best Practices for Networking](/docs/operating/best-practices/networking/)**
+* **[Best Practices for Workloads](/docs/operating/best-practices/workloads/)**
 
 ## Ecosystem 🌐
 
 Newly added documentation to integrate Capsule with other applications:
 
+* [Opensearch](/ecosystem/integrations/opensearch/)
+* [External Secrets Operator](/ecosystem/integrations/eso/)
 * [Headlamp Plugin](/ecosystem/integrations/headlamp/#plugins)
-* [Argo CD](/ecosystem/integrations/argocd/)
 
 ## Roadmap 🗺️
 

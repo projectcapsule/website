@@ -1,6 +1,6 @@
 ---
 title: Tenants
-weight: 5
+weight: 1
 aliases:
   - /docs/operating/best-practices/images/
 description: A complete Tenant combining the workload and networking best-practice baseline
@@ -77,7 +77,7 @@ PriorityClass settings.
   url: /docs/rules/enforcement/workloads/#deny-daemonsets
 - comment: "Allow approved images with Always pull policy."
   title: Approved image registries
-  url: /docs/rules/enforcement/workloads/#oci-registries
+  url: /docs/rules/enforcement/workloads/#registries
 - comment: "Allow only ClusterIP Services."
   title: ClusterIP Services only
   url: /docs/rules/enforcement/services/#types

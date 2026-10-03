@@ -88,7 +88,7 @@
               <span class="tenant-rule__number" aria-hidden="true">{{ printf "%02d" (add $ruleIndex 1) }}</span>
               <div class="tenant-rule__heading">
                 <span class="tenant-rule__path">spec.rules[{{ $ruleIndex }}]</span>
-                <h4 id="{{ $titleID }}"><a class="tenant-rule__link" href="{{ .url | relURL }}">{{ .title }}</a></h4>
+                <h3 id="{{ $titleID }}"><a class="tenant-rule__link" href="{{ .url | relURL }}">{{ .title }}</a></h3>
                 <div class="tenant-rule__tags">
                   {{- if $rule.quota }}<span>Quota</span>{{ end -}}
                   {{- if $rule.mutate }}<span>Mutate</span>{{ end -}}

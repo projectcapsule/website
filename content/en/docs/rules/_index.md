@@ -61,8 +61,9 @@ uses.
 
 `mutate[].workloads` applies when a Pod is created, including Pods created by
 Deployments, StatefulSets, and other controllers.
-[`readOnlyRootFilesystem`](/docs/rules/mutate/workloads/#read-only-root-filesystem)
-also applies to newly added ephemeral containers on `UPDATE
+[`security.readOnlyRootFilesystem`](/docs/rules/mutate/workloads/#read-only-root-filesystem)
+and [`registries.imagePullPolicy`](/docs/rules/mutate/workloads/#image-pull-policy)
+also apply to newly added ephemeral containers on `UPDATE
 pods/ephemeralcontainers`; all other workload mutation properties are skipped
 on that subresource. Controller templates and existing containers are not
 rewritten. Other Pod updates, deletes, and subresources do not run workload
@@ -351,7 +352,8 @@ on the sibling `enforce` block do not control these mutations.
 Conditions see the current Pod immediately before the mutation entry runs,
 including changes from preceding mutations. They do not see changes from their
 own entry. Conditions run on Pod creation and, for applicable
-`readOnlyRootFilesystem` mutations, when adding ephemeral containers. They cannot
+`security.readOnlyRootFilesystem` and `registries.imagePullPolicy` mutations, when adding
+ephemeral containers. They cannot
 expand a property's supported targets or operations. They select mutations; mutation values are supplied by the
 workload properties.
 
@@ -366,11 +368,11 @@ mutate:
     conditions:
       - name: missing-os-selector
         expression: >-
-          !has(object.spec.nodeSelector) ||
-          !('kubernetes.io/os' in object.spec.nodeSelector)
+          !has(object.spec.nodeSelector) || !('kubernetes.io/os' in object.spec.nodeSelector)
     workloads:
-      nodeSelector:
-        kubernetes.io/os: linux
+      placement:
+        nodeSelector:
+          kubernetes.io/os: linux
 ```
 
 A Pod with `kubernetes.io/os: windows` keeps its value. A Pod with only another
@@ -378,7 +380,7 @@ selector key receives the Linux selector and retains the other key. If an
 earlier mutation already set the OS selector, this entry is skipped.
 
 A condition gates every property in its mutation entry. For example, adding
-`tolerations` beside `nodeSelector` above would make those tolerations depend on
+`placement.tolerations` beside `placement.nodeSelector` above would make those tolerations depend on
 the OS selector being absent too. Put unconditional changes or changes with
 different conditions in separate entries.
 
@@ -405,8 +407,8 @@ different result in the two phases.
 
 On Pod updates, conditional placement enforcement is reevaluated even when only
 labels or another condition input changes. Typed workload mutations apply on
-creation, with the additional `readOnlyRootFilesystem` scope for new ephemeral
-containers. Conditions do not expand a policy's supported operations or
+creation, with the additional `security.readOnlyRootFilesystem` and
+`registries.imagePullPolicy` scope for new ephemeral containers. Conditions do not expand a policy's supported operations or
 subresources.
 
 #### Managed metadata
@@ -439,9 +441,10 @@ rules:
             'example.com/restricted' in object.metadata.labels &&
             object.metadata.labels['example.com/restricted'] == 'true'
       workloads:
-        nodeSelector:
-          - key: {exact: [infrastructure.example.com/pool]}
-            values: {exact: [dedicated]}
+        placement:
+          nodeSelector:
+            - key: {exact: [infrastructure.example.com/pool]}
+              values: {exact: [dedicated]}
   - enforce:
       action: deny
       conditions:

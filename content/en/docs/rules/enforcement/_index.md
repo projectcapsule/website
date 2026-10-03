@@ -113,9 +113,10 @@ rules:
   - enforce:
       action: audit
       workloads:
-        schedulers:
-          - exact:
-              - custom-scheduler
+        placement:
+          schedulers:
+            - exact:
+                - custom-scheduler
 ```
 
 Applying a Pod with `spec.schedulerName: custom-scheduler` succeeds in this audit-only example because no scheduler allow-list is configured. Capsule emits an audit event and returns an admission warning.
