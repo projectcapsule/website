@@ -15,7 +15,9 @@ force = true
 [context.deploy-preview]
 command = "npm install --save-dev autoprefixer && npm install --save-dev postcss-cli && npm install -D postcss && hugo --gc --minify --baseURL $DEPLOY_PRIME_URL"
 [context.production.environment]
-HUGO_VERSION = "0.145.0"
+# Ignored: npm install puts node_modules/.bin/hugo first on PATH, so the
+# hugo-extended version in package-lock.json is what builds the site.
+HUGO_VERSION = "0.122.0"
 HUGO_ENV = "production"
 HUGO_ENABLEGITINFO = "true"
 GO_VERSION = "1.24.1"
