@@ -1,7 +1,6 @@
 ---
 title: Commitment
 description: "Commitment for the project"
-menu: {main: {weight: 80}}
 type: docs
 weight: 10
 menu:

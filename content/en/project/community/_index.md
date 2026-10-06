@@ -1,6 +1,5 @@
 ---
 title: Community
-menu: {main: {weight: 80}}
 type: community
 weight: 2
 menu:
