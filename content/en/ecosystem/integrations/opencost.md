@@ -1,7 +1,7 @@
 ---
 title: OpenCost
 description: "OpenCost Integration for Tenants"
-logo: https://landscape.cncf.io/logos/ba27e92ddd22f942dde50f20b6d6d3f2ac7a0b78baf2471bdd89eb5d105c708f.svg
+logo: https://raw.githubusercontent.com/cncf/artwork/refs/heads/main/projects/opencost/icon/color/Opencost_Icon_Color.svg
 type: single
 display: true
 integration: true

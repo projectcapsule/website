@@ -1,0 +1,197 @@
+{{- /* A scrolling logo strip, edge to edge. Copy lives in data/homepage.yaml,
+     the roster in data/adopters.yaml.
+
+     The section is a container-fluid rather than a container so the strip can
+     run the full width of the page; the heading and the two lines underneath
+     put the normal container back around themselves. Doing it that way round
+     avoids the 100vw full-bleed trick, which is wrong by the width of the
+     scrollbar and puts a horizontal scrollbar on the whole page.
+
+     The roster is emitted three times and the strip is parked on the middle
+     copy. It is a real scroll container, so the drift is the script nudging
+     scrollLeft rather than a CSS transform: a transform cannot be scrolled by
+     hand, and scrolling by hand is half the point. The copies are identical,
+     so stepping back by exactly one of them is invisible.
+
+     Only the first copy is real to a screen reader or the tab key; the other
+     two are the same seventeen links again, so they are hidden from both. */ -}}
+
+{{- $a := site.Data.homepage.adopters -}}
+{{- $items := sort site.Data.adopters.adopters "name" -}}
+
+<div class="container">
+  <h2 class="home-section__title">{{ $a.title }}</h2>
+</div>
+
+<div class="home-adopters" data-adopters tabindex="0" role="region" aria-label="{{ $a.title }}">
+  <div class="home-adopters__track" data-adopters-track>
+    {{- range $copy := seq 3 }}
+    {{- $dup := ne $copy 1 }}
+    {{- range $items }}
+    {{- if .logo }}
+    <a class="home-adopters__item" href="{{ .link | safeURL }}" target="_blank" rel="noopener"
+       {{- if $dup }} aria-hidden="true" tabindex="-1"{{ else }} title="{{ .name }}"{{ end }}>
+      <img src="{{ .logo | safeURL }}" alt="{{ if $dup }}{{ else }}{{ .name }}{{ end }}" loading="lazy">
+    </a>
+    {{- end }}
+    {{- end }}
+    {{- end }}
+  </div>
+</div>
+
+<div class="container">
+  <p class="home-section__footnote text-body-secondary">{{ $a.caveat | markdownify }}</p>
+</div>
+
+<script>
+  (() => {
+    // Pixels per second. Slow enough to read a logo as it goes past, which is
+    // the only reason the strip moves at all.
+    const SPEED = 32;
+    // How long a nudge by hand buys before the strip starts drifting again.
+    const RESUME_AFTER = 4000;
+    // Every logo is sized to this area rather than to a common height, so a
+    // wide wordmark and a round seal carry the same weight - equal height is
+    // exactly what makes a 5:1 wordmark five times the mark beside it. Given
+    // as the fraction of the box a square logo fills, which is the number
+    // that can actually be pictured.
+    const SQUARE_SIDE = 0.82;
+    // How far by hand the strip may wander off the middle copy before it is
+    // folded back. Generous on purpose: folding mid-gesture would cancel a
+    // phone's momentum scroll, and there is a whole copy of runway either
+    // way before anyone reaches a real edge.
+    const SLACK = 0.25;
+
+    document.querySelectorAll("[data-adopters]:not([data-adopters-ready])").forEach((strip) => {
+      strip.setAttribute("data-adopters-ready", "true");
+
+      const track = strip.querySelector("[data-adopters-track]");
+      const images = Array.from(track.querySelectorAll("img"));
+      const still = window.matchMedia("(prefers-reduced-motion: reduce)");
+      // Only a device that can hover can hold the strip by hovering. A touch
+      // screen fires pointerenter without a matching pointerleave, which
+      // would hold the strip still for the rest of the visit.
+      const hovers = window.matchMedia("(hover: hover)");
+
+      // One copy of the roster. Items are spaced with margin rather than the
+      // track's gap so that a copy is exactly a third of the track and the
+      // step back lands on the same pixel every time.
+      let cycle = track.scrollWidth / 3;
+      // Our own idea of where the strip is. scrollLeft is rounded by the
+      // browser, so keeping the float here is what stops a drift this slow
+      // from being quantised away.
+      let pos = cycle;
+      // The rounded value we last wrote, to tell our scrolling from theirs.
+      let written = -1;
+      let pausedUntil = 0;
+      let held = false;
+
+      // Fit one logo to the shared area, within its box. An image whose
+      // natural size is not known yet keeps the CSS fallback.
+      const fit = (img) => {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        if (!w || !h) return;
+
+        const box = img.parentElement.getBoundingClientRect();
+        const area = Math.pow(box.height * SQUARE_SIDE, 2);
+        const ratio = w / h;
+
+        let height = Math.sqrt(area / ratio);
+        let width = height * ratio;
+
+        // Clamping is where the aspect ratios that cannot be reconciled give
+        // way: a very wide logo runs out of box before it reaches its share
+        // of the area, and a very tall one runs out of height.
+        if (width > box.width) {
+          width = box.width;
+          height = width / ratio;
+        }
+        if (height > box.height) {
+          height = box.height;
+          width = height * ratio;
+        }
+
+        img.style.width = width + "px";
+        img.style.height = height + "px";
+      };
+
+      const fitAll = () => images.forEach(fit);
+
+      images.forEach((img) => {
+        if (img.complete) fit(img);
+        else img.addEventListener("load", () => fit(img), { once: true });
+      });
+
+      // Fold back onto the middle copy. scrollLeft cannot go below zero, so
+      // the wrap has to be a modulo of where we are rather than a test for
+      // having gone past an edge - by the time the browser clamped us at
+      // zero the position to wrap from would be lost.
+      const fold = () => {
+        if (cycle > 0) pos = cycle + ((((pos - cycle) % cycle) + cycle) % cycle);
+      };
+
+      const write = () => {
+        strip.scrollLeft = pos;
+        written = strip.scrollLeft;
+      };
+
+      const pause = () => {
+        pausedUntil = performance.now() + RESUME_AFTER;
+      };
+
+      // A scroll we did not write is one they did, so take their position and
+      // stay out of the way until the pause is up.
+      strip.addEventListener("scroll", () => {
+        if (Math.abs(strip.scrollLeft - written) <= 1) return;
+        pos = strip.scrollLeft;
+        written = strip.scrollLeft;
+        pause();
+      }, { passive: true });
+
+      // Intent, not movement: a wheel against the end of the strip moves
+      // nothing and still means hands off.
+      ["wheel", "touchstart", "pointerdown", "keydown"].forEach((type) => {
+        strip.addEventListener(type, pause, { passive: true });
+      });
+
+      // The logos are links, and a link that is sliding away is hard to hit.
+      if (hovers.matches) {
+        strip.addEventListener("pointerenter", () => { held = true; });
+        strip.addEventListener("pointerleave", () => { held = false; });
+      }
+      strip.addEventListener("focusin", () => { held = true; });
+      strip.addEventListener("focusout", () => { held = false; });
+
+      window.addEventListener("resize", () => {
+        cycle = track.scrollWidth / 3;
+        fitAll();
+      });
+
+      write();
+
+      let last = performance.now();
+      const step = (now) => {
+        // A tab that was in the background hands back a gap of minutes.
+        const dt = Math.min(now - last, 50);
+        last = now;
+        const drifting = !still.matches && !held && now >= pausedUntil;
+
+        if (drifting) {
+          pos += (SPEED * dt) / 1000;
+          if (pos >= cycle * 2) pos -= cycle;
+          write();
+        } else if (pos < cycle * (1 - SLACK) || pos > cycle * (2 + SLACK)) {
+          // Scrolled a long way by hand, and far enough out that carrying on
+          // would reach the end of the track. Fold now, while nothing is
+          // moving, so the seam is never caught mid-gesture.
+          fold();
+          write();
+        }
+
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  })();
+</script>

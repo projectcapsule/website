@@ -13,7 +13,7 @@ adopters:
     logo: https://www.access-board.gov/images/dod-seal.png
   - name: "Die Mobiliar"
     link: https://www.mobiliar.ch/
-    logo: https://mobiliar.rokka.io/dynamic/crop-width-701-height-525-mode-ratio--resize-width-701--options-autoformat-true-optim.quality-4/dfeb319d1c438de49d67799cf87534f3f332f498/logo-der-mobiliar-.jpg
+    logo: https://mobiliar.rokka.io/dynamic/trim--resize-width-701--options-autoformat-true-optim.quality-4/dfeb319d1c438de49d67799cf87534f3f332f498/logo-der-mobiliar-.jpg
   - name: Enreach
     link: https://www.enreach.com/
     logo: https://campaigns.enreach.com/hubfs/Global/logos/Enreach-logo-vertical-indigo.svg
@@ -40,13 +40,13 @@ adopters:
     logo: https://www.reevo.it/hs-fs/hubfs/logo_reevo_azzurro.png?width=95&height=40&name=logo_reevo_azzurro.png
   - name: University of Torino
     link: https://www.unito.it
-    logo: https://images.seeklogo.com/logo-png/50/1/university-of-turin-logo-png_seeklogo-507461.png
+    logo: https://www.unito.it/themes/custom/unito_portale/media/loghi/logo_unito_orizzonatale.svg
   - name: Velocity
     link: https://velocity.tech/
     logo: https://raw.githubusercontent.com/yarelm/velocity-logo/main/velocity.png
   - name: Wargaming.net
     link: https://www.wargaming.net/
-    logo: https://download.logo.wine/logo/Wargaming_(company)/Wargaming_(company)-Logo.wine.png
+    logo: https://upload.wikimedia.org/wikipedia/en/f/fa/Wargaming_logo.svg
   - name: Zynga
     link: https://www.zynga.com/
     logo: https://www.dropbox.com/scl/fo/i9mq9a4ya5mfrdp57mbou/ANkl6ehJRIh0KzfjSi2ZnPc/Main/Zynga_Main_Square_Red.png?rlkey=7djjykvxu15ij8dbs9wnm5sal&st=w1np02z4&raw=1

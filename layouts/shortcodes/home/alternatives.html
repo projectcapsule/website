@@ -1,0 +1,26 @@
+{{- /* The three things people actually do instead, each with its price, then
+     the caveat that bounds them. Copy lives in data/homepage.yaml.
+
+     col-lg-4 rather than col-md-6: at three cards the latter orphans the third
+     on a row of its own. Below lg they stack full width instead. */ -}}
+
+{{- $a := site.Data.homepage.alternatives -}}
+
+<h2 class="home-section__title">{{ $a.title }}</h2>
+
+<div class="row g-4 home-alternatives">
+  {{- range $a.items }}
+  <div class="col-lg-4 d-flex">
+    <div class="card w-100">
+      <div class="card-body">
+        <h3 class="card-title home-card__title">
+          <i class="fas {{ .icon }}" aria-hidden="true"></i>{{ .title }}
+        </h3>
+        <p class="card-text text-body-secondary">{{ .body | markdownify }}</p>
+      </div>
+    </div>
+  </div>
+  {{- end }}
+</div>
+
+<p class="home-alternatives__conclusion home-section__footnote mx-auto text-body-secondary">{{ $a.conclusion | markdownify }}</p>

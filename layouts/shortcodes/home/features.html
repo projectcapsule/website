@@ -1,0 +1,21 @@
+{{- /* Feature links in a two-column grid. Copy lives in data/homepage.yaml. */ -}}
+
+{{- $f := site.Data.homepage.features -}}
+
+<h2 class="home-section__title">{{ $f.title }}</h2>
+
+<div class="row g-4 home-features">
+  {{- range $f.items }}
+  <div class="col-md-6 d-flex">
+    <div class="card w-100">
+      <div class="card-body">
+        <h3 class="card-title home-card__title">
+          <i class="fas {{ .icon }}" aria-hidden="true"></i>{{ .title }}
+        </h3>
+        <p class="card-text">{{ .body | markdownify }}</p>
+        <a class="home-features__link" href="{{ .url }}">{{ .url_text }} <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+      </div>
+    </div>
+  </div>
+  {{- end }}
+</div>

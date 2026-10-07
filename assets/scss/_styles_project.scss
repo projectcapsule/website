@@ -1,40 +1,3 @@
-@keyframes move {
-    0% {
-      transform: translateX(0);
-    }
-    100% {
-      transform: translateX(-100%);
-    }
-  }
-  
-  .scrollmenu {
-    overflow: hidden;
-    white-space: nowrap;
-    position: relative; /* Ensures proper positioning */
-    height: 120px; /* Define an explicit height */
-  }
-  
-  .scrollmenu .slide-track {
-    display: flex;
-    animation: move 60s linear infinite; /* Slower duration for better scrolling */
-  }
-  
-  .scrollmenu:hover .slide-track {
-    animation-play-state: paused; /* Pause on hover */
-  }
-  
-  .scrollmenu img {
-    display: inline-block;
-    height: 100px; /* Ensure full height */
-    width: auto; /* Maintain aspect ratio */
-    padding: 0 15px; /* Add spacing between images */
-    transition: transform 0.3s ease-in-out;
-  }
-  
-  .scrollmenu img:hover {
-    transform: scale(1.1); /* Add slight zoom on hover */
-  }
-
 
   .section-resources {
     .section-label {
@@ -262,5 +225,935 @@
   .resource-card,
   .resource-card__media img {
     transition: none;
+  }
+}
+
+// Footer
+.td-footer.capsule-footer {
+  min-height: 0;
+  // Extend the background through the outer Bootstrap container's gutters.
+  margin-inline: calc(var(--bs-gutter-x, 1.5rem) * -0.5);
+  padding: 0;
+  color: #beb8ca;
+  background: #191322;
+  font-size: 0.875rem;
+  line-height: 1.6;
+
+  .capsule-footer__inner {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  .capsule-footer__main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 2rem;
+    padding: 1.75rem 0;
+  }
+
+  // Once the brand block and the links sit side by side, hang the links off the
+  // top so they read as a row with the wordmark instead of against the middle
+  // of the countries and initiative lines below it.
+  //
+  // The links are 2.75rem tall for the tap target, so their text sits lower in
+  // its box than the wordmark does in its line; lift the nav by half that
+  // difference to put the two first lines on one centre.
+  @media (min-width: 768px) {
+    .capsule-footer__main {
+      align-items: flex-start;
+    }
+
+    .capsule-footer__main nav {
+      margin-top: calc((1.25rem * 1.6 - 2.75rem) / 2);
+    }
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+
+    &:hover {
+      color: #fff;
+      text-decoration: underline;
+      text-underline-offset: 0.25em;
+    }
+
+    &:focus-visible {
+      outline: 2px solid #d9c8f3;
+      outline-offset: 4px;
+      border-radius: 2px;
+    }
+  }
+
+  .capsule-footer__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #fff;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+
+    img {
+      object-fit: contain;
+      filter: brightness(0) invert(1);
+    }
+  }
+
+  .capsule-footer__countries {
+    margin: 0.5rem 0 0;
+    font-size: 0.8rem;
+  }
+
+  .capsule-footer__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2.75rem;
+    }
+  }
+
+  .capsule-footer__bottom {
+    padding: 1.25rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 0.75rem;
+  }
+
+  .capsule-footer__meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem 2rem;
+  }
+
+  // Who started the project, under the countries line: both say where Capsule
+  // comes from, so they read as one block above the rule.
+  //
+  // The wordmark is an inline SVG drawn in currentColor, so it is tinted like
+  // the line it sits on and brightens with it on hover -- no second colour to
+  // keep in step, and nothing to knock out.
+  .capsule-footer__initiative {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.65rem 0 0;
+    font-size: 0.8rem;
+
+    a:hover {
+      color: #fff;
+      text-decoration: none;
+    }
+
+    svg {
+      display: block;
+      width: auto;
+      height: 1.15rem;
+    }
+  }
+
+  .capsule-footer__legal {
+    max-width: 100ch;
+    margin: 0.75rem 0 0;
+
+    a {
+      text-decoration: underline;
+      text-underline-offset: 0.2em;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .capsule-footer__inner {
+      padding: 0 1.5rem;
+    }
+  }
+}
+
+// Homepage
+// Sections are rendered by the shortcodes in layouts/shortcodes/home/.
+
+// Cards and panes sit in the same column and want the same corner. The panes
+// round three corners at a time, so it is a property rather than a number
+// repeated in four places and left to drift.
+:root {
+  --home-radius: 0.7rem;
+}
+
+// Docsy insets every .row inside a .td-box by 5vw, meaning the section's own
+// row. The card grids are nested rows, so they inherit it and come out
+// narrower than the prose and the panes they sit between -- most visibly on a
+// phone, where the cards are stacked full width. Put them back on the edge of
+// the container.
+.td-box {
+  .home-features,
+  .home-alternatives {
+    padding-right: 0;
+    padding-left: 0;
+  }
+}
+
+// The cover photo glows brightest dead centre, behind the text. Docsy tints the
+// cover with rgba($dark, 0.3); a little more darkens the glow itself, which is
+// the only fix that also works on the hard mobile crop where the sphere fills
+// the whole viewport.
+body.td-home .td-overlay--dark::after {
+  background-color: rgba($dark, 0.4);
+}
+
+// Match the headline to Bootstrap's container width without size containment:
+// some browsers make a query container the containing block for the footer.
+body.td-home .td-cover-block h1 {
+  font-size: #{"min(calc((100vw - 3rem) * 0.085), 5rem)"};
+
+  @each $breakpoint, $width in $container-max-widths {
+    @include media-breakpoint-up($breakpoint) {
+      font-size: #{"min(calc((#{$width} - #{$grid-gutter-width}) * 0.085), 5rem)"};
+    }
+  }
+}
+
+// The navbar takes its natural height; the hero fills the remaining screen -- or
+// more than it, when the hero's own content needs the room.
+.home-opening-screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100svh;
+  margin-inline: -($grid-gutter-width * 0.5);
+
+  > header {
+    flex-shrink: 0;
+  }
+}
+
+// Anchor the actions to the bottom of the cover.
+body.td-home .td-cover-block {
+  // Fit the opening screen; crop the background to the viewport's shape.
+  flex: 1;
+  // Drop docsy's --height-full floor of 100vh -- it would always outgrow the
+  // opening screen by the navbar -- for the flex item's content-based minimum:
+  // a hero too tall for the screen then runs past the fold instead of piling up.
+  min-height: auto;
+  margin: 0;
+  padding-bottom: 0;
+
+  // One flex column from the section all the way down to the buttons, so the
+  // actions sit in the hero's flow instead of floating over it.
+  > .col-12,
+  .td-overlay__inner,
+  .text-center,
+  .lead {
+    display: flex;
+    flex-direction: column;
+  }
+
+  // Take the cover's spare height, and pass it down to the spacers.
+  .td-overlay__inner,
+  .text-center,
+  .lead {
+    flex: 1 1 auto;
+  }
+
+  .td-overlay__inner {
+    // As a flex item its z-index still lifts the content above the overlay.
+    position: static;
+  }
+
+  // The cover's head room. Growing out of a zero basis instead of padding is
+  // what makes it optional: it only ever takes space the copy is not using.
+  @include media-breakpoint-up(md) {
+    .text-center::before {
+      content: "";
+      flex: 1 1 0;
+      max-height: 8rem;
+    }
+  }
+}
+
+// The hero's primary button sits in a row with two btn-outline-light siblings.
+// A translucent rim ties it to their border without competing with the label.
+.home-hero__footer .btn-primary {
+  --bs-btn-border-color: rgba(255, 255, 255, 0.55);
+  --bs-btn-hover-border-color: rgba(255, 255, 255, 0.85);
+  --bs-btn-active-border-color: rgba(255, 255, 255, 0.85);
+}
+
+// The auto margin takes up all the slack above the actions, so they ride under
+// the copy at the bottom of the cover.
+.home-hero__footer {
+  margin-top: auto;
+  padding: 0 1.5rem;
+}
+
+// Run-out below the actions, keeping them clear of the link-down arrow -- again
+// made of leftover space only, so a screen that has none simply doesn't get it.
+body.td-home .td-cover-block .lead::after {
+  content: "";
+  flex: 1 1 0;
+  max-height: 20svh;
+}
+
+// Centred without a transform, so the hover lean below can have it. left/right
+// zero plus auto inline margins centres an absolutely positioned box, and a
+// fit-content width keeps that box the size of the glyph rather than the cover.
+body.td-home .td-cover-block .td-link-down {
+  position: absolute;
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  right: 0;
+  width: fit-content;
+  margin-inline: auto;
+  z-index: 10;
+  transition: transform 0.15s ease-out;
+}
+
+// A cursor on it is attention already, so lean the arrow the way it is about to
+// take them. This rides on the anchor while the glide below rides on the icon:
+// one transform each, so neither has to interrupt the other and there is
+// nothing to snap back from when the cursor leaves.
+body.td-home .td-cover-block .td-link-down:hover,
+body.td-home .td-cover-block .td-link-down:focus-visible {
+  transform: translateY(0.25rem);
+}
+
+// The arrow is the only thing saying the page carries on past a full-height
+// cover, so give it a nudge: one glide down and back up, then a second of rest
+// before it comes round again. A single turn is the whole shape -- no second
+// hop to read as a jump -- and over a 3s cycle the thirds put a second on the
+// way down, a second on the way back and a second still.
+//
+// ease-in-out applies per segment, so the glide is already stopped when it
+// reaches the rest and starts from stopped when it leaves: the pause costs
+// nothing in smoothness, it just takes the motion out of the corner of the eye
+// for as long as the hero is on screen.
+@keyframes home-hero-nudge {
+  0%,
+  66.66%,
+  100% {
+    transform: translateY(0);
+  }
+
+  33.33% {
+    transform: translateY(0.4rem);
+  }
+}
+
+body.td-home .td-cover-block .td-link-down i {
+  // inline is not transformable, and the icon is a font glyph in an <i>.
+  display: inline-block;
+  animation: home-hero-nudge 3s ease-in-out infinite;
+}
+
+// The glide has done its job once they are on it, so stop it. Paused rather
+// than removed: dropping the animation would revert the glyph to the base
+// transform, snapping it to the top of the cycle from wherever the glide had it
+// -- and a transition cannot smooth that, since the value it would start from
+// belongs to the animation, not to the element. Pausing holds the glyph exactly
+// where it was and picks the same glide back up on the way out, so neither
+// direction has anything to jump over.
+body.td-home .td-cover-block .td-link-down:hover i,
+body.td-home .td-cover-block .td-link-down:focus-visible i {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.td-home .td-cover-block .td-link-down {
+    transition: none;
+  }
+
+  body.td-home .td-cover-block .td-link-down:hover,
+  body.td-home .td-cover-block .td-link-down:focus-visible {
+    transform: none;
+  }
+
+  body.td-home .td-cover-block .td-link-down i {
+    animation: none;
+  }
+}
+
+@media (max-width: 767.98px) and (max-height: 700px) {
+  body.td-home .td-cover-block {
+    padding-top: 1rem;
+
+    .home-hero__lead {
+      font-size: 1rem;
+      line-height: 1.4;
+    }
+  }
+}
+
+.home-hero__lead {
+  max-width: 44rem;
+  margin: 0 auto;
+  font-size: 1.35rem;
+  line-height: 1.5;
+  // This line sits over the brightest part of the cover photo, so lift it off
+  // the image rather than reaching for a heavier weight: Open Sans is loaded at
+  // 300/400/700 only, and anything in between would be synthesised and blurry.
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+.home-section__title {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+// Only some sections carry an intro. Where one does, it closes the header and
+// owns the gap down to the content; where it doesn't, the title has to, or the
+// header sits twice as close to its content as the next section's does.
+.home-section__title:not(:has(+ .home-section__intro)) {
+  margin-bottom: 3.5rem;
+}
+
+.home-section__intro {
+  max-width: 42rem;
+  margin: 0 auto 3.5rem;
+  color: var(--bs-secondary-color, #6c757d);
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+// Three sections close on a line under their content -- the adopters' invite,
+// the ecosystem link, the alternatives' caveat. It is a footer to the section,
+// not the last line of the grid, so it sits off its content by the same 3.5rem
+// the header sits off it from above.
+.home-section__footnote {
+  margin: 3.5rem 0 0;
+  text-align: center;
+}
+
+// Both card grids are Bootstrap cards; these are the places the homepage wants
+// something other than the default, said in Bootstrap's own tokens rather than
+// restated as a card of our own. Row gutters carry the spacing between them.
+//
+// Set on the card and not the row: `.card` declares every one of these on
+// itself, and an element's own declaration beats one inherited from an ancestor.
+.home-features .card,
+.home-alternatives .card {
+  --bs-card-spacer-x: 1.75rem;
+  --bs-card-spacer-y: 1.5rem;
+  --bs-card-border-color: var(--bs-border-color, #dee2e6);
+  --bs-card-border-radius: var(--home-radius);
+  --bs-card-title-spacer-y: 0.75rem;
+}
+
+// A feature leads with its icon and links onward, so the icon is the section's
+// colour. An alternative is not a straw man: its icon stays as quiet as the
+// prose, and the one case Capsule does not cover is named in the line below.
+.home-features {
+  --home-card-icon: var(--bs-primary, #280c53);
+}
+
+.home-alternatives {
+  --home-card-icon: var(--bs-secondary-color, #6c757d);
+}
+
+.home-card__title {
+  display: flex;
+  gap: 0.6rem;
+  // Not centre: these titles wrap to two lines on a narrow card, and a centred
+  // icon would float between them instead of leading the first.
+  align-items: flex-start;
+  font-size: 1.2rem;
+
+  i {
+    margin-top: 0.15em;
+    color: var(--home-card-icon);
+    font-size: 0.95em;
+  }
+}
+
+.home-alternatives__conclusion {
+  max-width: 38rem;
+  font-size: 1.15rem;
+}
+
+// Docsy pads every <section> inside main by 4-5rem (`.td-default main section`),
+// meaning to space the page's top-level blocks. The story's roles are sections
+// in the semantic sense only: they sit inside one already-padded block and carry
+// their own spacing, so that padding has to come back off.
+.td-default main {
+  .home-story__role,
+  .home-story__enforcement {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
+// Compare roles on an open page; only code examples have window chrome.
+.home-story {
+  &__comparison {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 3rem;
+    row-gap: 1.75rem;
+  }
+
+  &__role {
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-row: span 2;
+    align-items: start;
+  }
+
+  &__heading {
+    h3 {
+      margin-bottom: 0.8rem;
+      font-size: 1.5rem;
+    }
+
+    p {
+      margin: 0;
+      color: var(--bs-secondary-color, #6c757d);
+    }
+  }
+
+  // Beside the pane the heading is short enough that top alignment leaves it
+  // floating against a tall transcript; centred, it reads as the pane's caption.
+  // Stacked, each item is its own row, so this is a no-op there.
+  &__enforcement {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3rem;
+    align-items: center;
+    margin-top: 4.5rem;
+  }
+
+  &__title {
+    margin-bottom: 0.8rem;
+    font-size: 1.35rem;
+  }
+
+  &__body {
+    margin-bottom: 0;
+    color: var(--bs-secondary-color, #6c757d);
+  }
+}
+
+// A dark pane: a terminal transcript, or a highlighted manifest. Both get the
+// same chrome so the story reads as one window the reader is looking over.
+.home-pane {
+  // What a step is told in. Emphasis is carried by brightness, not hue: noise
+  // recedes, the command and the answer come forward. Hue is spent once, on the
+  // one step that is a refusal - a pane that is red is a pane that said no.
+  --pane-accent: #f0f6fc;
+
+  overflow: hidden;
+  width: 100%;
+  margin-bottom: 0;
+
+  &--denied {
+    --pane-accent: #ff7b72;
+  }
+
+  &__title {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    padding: 0.6rem 1rem;
+    color: #cfd4da;
+    background: #2b2f36;
+    border-radius: var(--home-radius) var(--home-radius) 0 0;
+    font-size: 0.85rem;
+  }
+
+  &__dots {
+    flex-shrink: 0;
+    width: 2.6rem;
+    height: 0.6rem;
+    background:
+      radial-gradient(circle 0.3rem at 0.3rem 50%, #ff5f57 98%, transparent) no-repeat,
+      radial-gradient(circle 0.3rem at 1.3rem 50%, #febc2e 98%, transparent) no-repeat,
+      radial-gradient(circle 0.3rem at 2.3rem 50%, #28c840 98%, transparent) no-repeat;
+  }
+
+  &__body {
+    margin: 0;
+    padding: 1.1rem 1rem;
+    overflow-x: auto;
+    // Output sits a step back from white: the command and the answer are what
+    // should carry the pane, and they cannot stand out against a wall of #e6e8eb.
+    color: #aeb7c2;
+    background: #1c1f24;
+    border-radius: 0 0 var(--home-radius) var(--home-radius);
+    font-size: 0.82rem;
+    line-height: 1.6;
+
+    code {
+      color: inherit;
+      background: none;
+    }
+  }
+
+  // What the reader typed.
+  &__cmd {
+    color: #f0f6fc;
+    font-weight: 600;
+  }
+
+  &__prompt {
+    color: #6e7681;
+  }
+
+  // The answer this step exists to show, in the pane's accent.
+  &__key {
+    color: var(--pane-accent);
+    font-weight: 600;
+  }
+
+  &__code {
+    overflow: hidden;
+    border-radius: 0 0 var(--home-radius) var(--home-radius);
+
+    .highlight {
+      position: relative;
+      margin: 0;
+    }
+
+    pre {
+      margin: 0;
+      padding: 1.1rem 1rem;
+      overflow-x: auto;
+      // Chroma writes its theme background inline; override it so a manifest
+      // matches the transcripts it sits above.
+      background: #1c1f24 !important;
+      border-radius: 0;
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+
+    // Line numbers arrive as a two-cell table - a <pre> of digits beside the
+    // <pre> of code - inside a wrapper carrying chroma's own background. Paint
+    // that over, stretch the table so no theme colour shows past it, and close
+    // up the trench the shared pre padding leaves down the middle.
+    .highlight > div {
+      background: #1c1f24 !important;
+    }
+
+    table {
+      width: 100%;
+      margin: 0;
+    }
+
+    td:first-child {
+      border-right: 1px solid rgba(255, 255, 255, 0.07);
+
+      pre {
+        padding-right: 0;
+      }
+    }
+
+    td:last-child pre {
+      padding-left: 0.55rem;
+    }
+  }
+
+  // Docsy only positions its copy button inside .td-content, which the
+  // homepage is not. Place it here instead of leaving it loose in the code.
+  button.td-click-to-copy {
+    position: absolute;
+    top: 0.3rem;
+    right: 0.3rem;
+    padding: 0.15rem 0.45rem;
+    color: #8b949e;
+    background: none;
+    border: 0;
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  &:hover button.td-click-to-copy,
+  button.td-click-to-copy:focus {
+    opacity: 1;
+  }
+}
+
+.home-features__link {
+  font-weight: 600;
+  text-decoration: none;
+
+  i {
+    font-size: 0.8em;
+  }
+
+  &:hover i,
+  &:focus i {
+    margin-left: 0.2rem;
+  }
+}
+
+
+// The adopter logo strip. These logos are other people's files: every aspect
+// ratio, every weight, some with the strapline baked in. The shortcode's
+// script sizes each one to a shared area, so what is set here is the box it
+// gets to do that in, identical for all of them. The max-* pair is the
+// fallback the script overwrites - without JS the strip still reads, it just
+// sizes by the longer side instead of by area.
+//
+// The grey wash is the other half of the levelling: it stops a red logo from
+// reading as a louder endorsement than a black one.
+.home-adopters {
+  overflow-x: auto;
+  // The section is a container-fluid so this can run edge to edge; all that
+  // is left to escape is that container's own gutter.
+  margin-right: calc(var(--bs-gutter-x, 1.5rem) * -0.5);
+  margin-left: calc(var(--bs-gutter-x, 1.5rem) * -0.5);
+  // The strip is scrolled by hand as well as by the script, and a sideways
+  // flick that reaches the end should not be handed to the browser as a
+  // back-navigation gesture.
+  overscroll-behavior-x: contain;
+  // Nothing here reads as a scrollable pane, so the bar would only be chrome;
+  // the fade at both edges is what says there is more. Just wide enough to
+  // keep a logo from being cut off hard at the edge of the page.
+  scrollbar-width: none;
+  mask-image: linear-gradient(90deg, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--bs-primary, #280c53);
+    outline-offset: 4px;
+  }
+
+  &__track {
+    display: flex;
+    width: max-content;
+    flex-wrap: nowrap;
+  }
+
+  &__item {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 11rem;
+    height: 5rem;
+    // Spacing is margin rather than the track's gap so that one copy of the
+    // roster is exactly a third of the track, which is what the script wraps
+    // on. A gap would be one short per copy and the wrap would jump.
+    margin-right: 2.5rem;
+
+    img {
+      max-width: 100%;
+      max-height: 100%;
+      filter: grayscale(1);
+      // Only barely held back: several of these logos are already a light
+      // grey at source, and taking much more off them leaves nothing.
+      opacity: 0.9;
+      transition: filter 160ms ease, opacity 160ms ease;
+    }
+
+    &:hover img,
+    &:focus img {
+      filter: none;
+      opacity: 1;
+    }
+  }
+}
+
+// The integration logos, as a wall rather than a grid of cards: the page
+// already has two card grids above this one, and a third -- twelve small
+// boxes this time -- would read as clutter where this section only has to say
+// "these all work". Taking the boxes away leaves the logos, which is the part
+// anyone actually scans.
+//
+// Other people's logos again, so the same problem the adopter strip has: every
+// aspect ratio, no common baseline. Here the box does the levelling instead of
+// a script. A cell is wider than it is tall, so a square icon is held by its
+// height and a wordmark by its width, and the two come out close enough in
+// weight to sit in one wall. The name underneath is what identifies a cell,
+// which is why the logo does not have to -- and why these stay in colour where
+// the adopter logos are washed out: there the logo is the whole claim, here it
+// is only something to recognise.
+.home-ecosystem {
+  // The cell and the column gap are the two numbers the row width is made of,
+  // so they are named once here and the width below is arithmetic rather than
+  // a fourth place to keep them in step.
+  --home-ecosystem-cell: 7.5rem;
+  --home-ecosystem-gap: 2.5rem;
+
+  // Wrapping flex rather than a grid: the roster grows whenever someone writes
+  // an integration page, and a centred line of leftovers looks deliberate where
+  // a half-empty grid row looks broken.
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2.75rem var(--home-ecosystem-gap);
+
+  // Where there is room for more logos a row than we want, hold the wall to
+  // the width of exactly --home-ecosystem-cols of them, set by the shortcode
+  // at half the roster so the wall comes out as two even rows. Below lg the
+  // container is the narrower of the two and the logos simply wrap to fit.
+  @include media-breakpoint-up(lg) {
+    max-width: calc(
+      var(--home-ecosystem-cols) * var(--home-ecosystem-cell) +
+        (var(--home-ecosystem-cols) - 1) * var(--home-ecosystem-gap)
+    );
+    margin-inline: auto;
+  }
+
+  &__item {
+    display: flex;
+    width: var(--home-ecosystem-cell);
+    flex-direction: column;
+    align-items: center;
+    gap: 0.85rem;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  &__logo {
+    display: flex;
+    width: 100%;
+    height: 3.4rem;
+    align-items: center;
+    justify-content: center;
+
+    img {
+      // Nearly every mark here is square, so the 3.4rem height is what sets
+      // the size of the wall; a wide one -- Rancher's cow -- would otherwise
+      // run the full cell and read as the biggest logo on it. 5rem is the
+      // width that gives a 2:1 mark about as much ink as a square one at full
+      // height, so the two sit level without a per-logo knob.
+      max-width: 5rem;
+      max-height: 100%;
+      transition: transform 160ms ease;
+    }
+  }
+
+  // Nothing here is boxed, so the name carries the whole affordance: it is the
+  // only part that can say this is a link.
+  &__name {
+    color: var(--bs-secondary-color, #6c757d);
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: center;
+    // A long one ("External Secrets Operator") is three words in a 7.5rem
+    // column, so let it wrap to even lines rather than one long and one short.
+    text-wrap: balance;
+    transition: color 160ms ease;
+  }
+
+  &__item:hover,
+  &__item:focus-visible {
+    color: inherit;
+
+    .home-ecosystem__logo img {
+      transform: scale(1.06);
+    }
+
+    .home-ecosystem__name {
+      color: var(--bs-primary, #280c53);
+      text-decoration: underline;
+      text-underline-offset: 0.2em;
+    }
+  }
+}
+
+@media (max-width: 991.98px) {
+  .home-story__comparison,
+  .home-story__enforcement {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.75rem;
+  }
+
+  // Stacked, the enforcement pane follows directly under the roles, so it needs
+  // far less of a run-up than it does beside them.
+  .home-story__enforcement {
+    margin-top: 3.5rem;
+  }
+
+  // Stacked, the gap above is all that separates one role from the one before,
+  // so it has to be bigger than the gap inside a role.
+  .home-story__role + .home-story__role {
+    margin-top: 2.5rem;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .home-hero__lead {
+    font-size: 1.1rem;
+  }
+
+  .home-section__intro {
+    margin-bottom: 2.5rem;
+    font-size: 1rem;
+  }
+
+  .home-section__title:not(:has(+ .home-section__intro)) {
+    margin-bottom: 2.5rem;
+  }
+
+  .home-section__footnote {
+    margin-top: 2.5rem;
+  }
+
+  .home-story__title {
+    font-size: 1.2rem;
+  }
+
+  .home-pane__body,
+  .home-pane__code pre {
+    font-size: 0.75rem;
+  }
+
+  // Keep the line numbers on a phone, but narrow their gutter so they cost the
+  // manifest as little width as possible.
+  .home-pane__code {
+    td:first-child pre {
+      padding-left: 0.65rem;
+    }
+
+    td:last-child pre {
+      padding-left: 0.45rem;
+    }
+  }
+}
+
+@media (max-width: 575.98px) {
+  // A narrower box and a shorter fade, so a phone still gets three logos on
+  // screen at a time rather than one and two halves.
+  .home-adopters {
+    mask-image: linear-gradient(90deg, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
+
+    &__item {
+      width: 7rem;
+      height: 3.75rem;
+      margin-right: 1.25rem;
+    }
+  }
+
+  // Two logos a row on the narrowest phone, so the wall stays a wall. The
+  // column gap has to come down for the second one to fit beside the first.
+  .home-ecosystem {
+    --home-ecosystem-gap: 1.75rem;
+
+    row-gap: 2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-features__link:hover i,
+  .home-features__link:focus i {
+    margin-left: 0;
+  }
+
+  // The name still answers the hover; only the nudge on the logo goes.
+  .home-ecosystem__item:hover .home-ecosystem__logo img,
+  .home-ecosystem__item:focus-visible .home-ecosystem__logo img {
+    transform: none;
   }
 }
