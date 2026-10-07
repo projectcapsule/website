@@ -44,6 +44,14 @@ params:
   copyright:
     authors: Project Capsule Authors | All Rights Reserved
     from_year: 2019
+  # Who started the project. Credited in the footer rather than on the homepage,
+  # because it is provenance and belongs beside the CNCF line on every page.
+  # The logo is assets/icons/clastix.svg rather than a URL: the footer is dark,
+  # and that is their own single-colour variant for a dark background.
+  initiative:
+    label: Project initiative by
+    name: Clastix
+    link: https://clastix.io
   ui:
     breadcrumb_disable: true
     navbar_logo: true
@@ -69,7 +77,7 @@ params:
         url: 'https://github.com/projectcapsule'
         icon: fab fa-github
         desc: Github Organization
-      - name: Linkedin
+      - name: LinkedIn
         url: 'https://www.linkedin.com/company/103417269'
         icon: fab fa-linkedin
         desc: Community Organisation
