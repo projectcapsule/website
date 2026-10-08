@@ -1646,10 +1646,10 @@ GlobalTenantResourceSpec defines the desired state of GlobalTenantResource.
 | :---- | :---- | :----------- | :-------- |
 | **[resources](#globaltenantresourcespecresourcesindex)** | []object | Defines the rules to select targeting Namespace, along with the objects that must be replicated. | true |
 | **resyncPeriod** | string | Define the period of time upon a second reconciliation must be invoked.<br>Keep in mind that any change to the manifests will trigger a new reconciliation.<br/>*Default*: 60s<br/> | true |
-| **[settings](#globaltenantresourcespecsettings)** | object | Provide additional settings<br/>*Default*: map[]<br/> | true |
+| **[settings](#globaltenantresourcespecsettings)** | object | <span style="color:red;font-weight:bold">Deprecated: configure resources[].policy instead. Admission converts Settings<br>into policies for blocks without one. Retained as a compatibility fallback<br>for stored resources that have not passed through admission again.</span><br/>*Default*: map[]<br/> | true |
 | **cordoned** | boolean | When cordoning a replication it will no longer execute any applies or deletions (paused).<br>This is useful for maintenances<br/>*Default*: false<br/> | false |
 | **[dependsOn](#globaltenantresourcespecdependsonindex)** | []object | DependsOn may contain a meta.NamespacedObjectReference slice<br>with references to TenantResource resources that must be ready before this<br>TenantResource can be reconciled. | false |
-| **pruningOnDelete** | boolean | When the replicated resource manifest is deleted, all the objects replicated so far will be automatically deleted.<br>Disable this to keep replicated resources although the deletion of the replication manifest.<br/>*Default*: true<br/> | false |
+| **pruningOnDelete** | boolean | <span style="color:red;font-weight:bold">When the replicated resource manifest is deleted, all the objects replicated so far will be automatically deleted.<br>Disable this to keep replicated resources although the deletion of the replication manifest.<br><br>Deprecated: use resources[].policy.deletion instead. Retained for blocks without a policy.</span><br/>*Default*: true<br/> | false |
 | **scope** | enum | Resource Scope, Can either be<br>- Tenant: Create Resources for each tenant  in selected Tenants<br>- Namespace: Create Resources for each namespace in selected Tenants<br/>*Enum*: Namespace, Tenant, None<br/>*Default*: Namespace<br/> | false |
 | **[serviceAccount](#globaltenantresourcespecserviceaccount)** | object | Local ServiceAccount which will perform all the actions defined in the TenantResource<br>You must provide permissions accordingly to that ServiceAccount | false |
 | **[tenantSelector](#globaltenantresourcespectenantselector)** | object | Defines the Tenant selector used target the tenants on which resources must be propagated. | false |
@@ -1669,6 +1669,7 @@ GlobalTenantResourceSpec defines the desired state of GlobalTenantResource.
 | **[generators](#globaltenantresourcespecresourcesindexgeneratorsindex)** | []object | Templates for advanced use cases | false |
 | **[namespaceSelector](#globaltenantresourcespecresourcesindexnamespaceselector)** | object | Defines the Namespace selector to select the Tenant Namespaces on which the resources must be propagated.<br>In case of nil value, all the Tenant Namespaces are targeted. | false |
 | **[namespacedItems](#globaltenantresourcespecresourcesindexnamespaceditemsindex)** | []object | List of the resources already existing in other Namespaces that must be replicated. | false |
+| **[policy](#globaltenantresourcespecresourcesindexpolicy)** | object | <span style="color:red;font-weight:bold">Policy controls creation, admission protection, SSA conflict ownership,<br>and deletion for every raw item, namespaced item, and generator in this block.<br>An explicit policy replaces the deprecated spec.settings for this block.<br>When omitted, admission converts legacy settings and pruningOnDelete into a policy.</span> | false |
 | **rawItems** | []object | List of raw resources that must be replicated. | false |
 
 
@@ -1832,17 +1833,38 @@ relates the key and values.
 | **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
-### GlobalTenantResource.spec.settings
+### GlobalTenantResource.spec.resources[index].policy
 
 
 
-Provide additional settings
+Policy controls creation, admission protection, SSA conflict ownership,
+and deletion for every raw item, namespaced item, and generator in this block.
+An explicit policy replaces the deprecated spec.settings for this block.
+When omitted, admission converts legacy settings and pruningOnDelete into a policy.
 
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **adopt** | boolean | Enabling this allows TenanResources to interact with objects which were not created by a TenantResource. In this case on prune no deletion of the entire object is made.<br/>*Default*: false<br/> | false |
-| **force** | boolean | Force indicates that in case of conflicts with server-side apply, the client should acquire ownership of the conflicting field.<br>You may create collisions with this.<br/>*Default*: false<br/> | false |
+| **condition** | string | Condition is an optional CEL boolean expression checked before each target<br>is applied. object is the existing destination object, or null when absent;<br>now is the evaluation timestamp. False skips rendered content without<br>pruning or releasing an already managed object. Policy and protection are<br>still reconciled for managed objects. Evaluation errors prevent writes.<br>Rendering still occurs before evaluation. Omitting Condition preserves the<br>existing apply behavior. Conditions do not affect deletion or orphaning. | false |
+| **creation** | enum | Creation controls how an existing target is handled. Owner requires the<br>resource to have been created by the applying controller and otherwise<br>returns an error. Merge adopts an existing resource when possible and<br>creates the resource when it does not exist.<br/>*Enum*: Owner, Merge<br/>*Default*: Owner<br/> | false |
+| **deletion** | enum | Deletion controls what happens when the parent stops managing the target.<br>Remove deletes resources created for the parent and relinquishes adopted<br>resources. Orphan keeps the resource and removes Capsule's lifecycle<br>metadata. Removal is the default.<br/>*Enum*: Remove, Orphan<br/>*Default*: Remove<br/> | false |
+| **force** | boolean | Force allows server-side apply to acquire conflicting field ownership.<br/>*Default*: false<br/> | false |
+| **protect** | boolean | Protect prevents users from changing or deleting the target through<br>admission while it is managed. Protection is enabled by default.<br/>*Default*: true<br/> | false |
+
+
+### GlobalTenantResource.spec.settings
+
+
+
+Deprecated: configure resources[].policy instead. Admission converts Settings
+into policies for blocks without one. Retained as a compatibility fallback
+for stored resources that have not passed through admission again.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **adopt** | boolean | <span style="color:red;font-weight:bold">Enabling this allows TenanResources to interact with objects which were not created by a TenantResource. In this case on prune no deletion of the entire object is made.<br><br>Deprecated: use resources[].policy.creation: Merge instead.</span><br/>*Default*: false<br/> | false |
+| **force** | boolean | <span style="color:red;font-weight:bold">Force indicates that in case of conflicts with server-side apply, the client should acquire ownership of the conflicting field.<br>You may create collisions with this.<br><br>Deprecated: use resources[].policy.force instead.</span><br/>*Default*: false<br/> | false |
 
 
 ### GlobalTenantResource.spec.dependsOn[index]
@@ -1967,6 +1989,26 @@ Advanced Status Item for pin pointing items in tenants/namespaces.
 | **created** | boolean | Indicates wether the resource was created or adopted | false |
 | **lastApply** | string | An opaque value that represents the internal version of this object that can<br>be used by clients to determine when objects have changed. May be used for optimistic<br>concurrency, change detection, and the watch operation on a resource or set of resources.<br>Clients must treat these values as opaque and passed unmodified back to the server.<br>They may only be valid for a particular resource or set of resources.<br><br>Populated by the system.<br>Read-only.<br>Value must be treated as opaque by clients and .<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency<br/>*Format*: date-time<br/> | false |
 | **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | false |
+| **[policy](#globaltenantresourcestatusprocesseditemsindexstatuspolicy)** | object | Policy is a lifecycle snapshot for protection and cleanup. Conditions are<br>evaluated from the source block and omitted here. Failed updates retain the<br>previous snapshot; a first successful content write records its policy even<br>if metadata reconciliation fails, so cleanup respects explicit retention.<br>An absent policy on an already applied item preserves legacy behavior. | false |
+
+
+### GlobalTenantResource.status.processedItems[index].status.policy
+
+
+
+Policy is a lifecycle snapshot for protection and cleanup. Conditions are
+evaluated from the source block and omitted here. Failed updates retain the
+previous snapshot; a first successful content write records its policy even
+if metadata reconciliation fails, so cleanup respects explicit retention.
+An absent policy on an already applied item preserves legacy behavior.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **creation** | enum | Creation controls how an existing target is handled. Owner requires the<br>resource to have been created by the applying controller and otherwise<br>returns an error. Merge adopts an existing resource when possible and<br>creates the resource when it does not exist.<br/>*Enum*: Owner, Merge<br/>*Default*: Owner<br/> | false |
+| **deletion** | enum | Deletion controls what happens when the parent stops managing the target.<br>Remove deletes resources created for the parent and relinquishes adopted<br>resources. Orphan keeps the resource and removes Capsule's lifecycle<br>metadata. Removal is the default.<br/>*Enum*: Remove, Orphan<br/>*Default*: Remove<br/> | false |
+| **force** | boolean | Force allows server-side apply to acquire conflicting field ownership.<br/>*Default*: false<br/> | false |
+| **protect** | boolean | Protect prevents users from changing or deleting the target through<br>admission while it is managed. Protection is enabled by default.<br/>*Default*: true<br/> | false |
 
 
 ### GlobalTenantResource.status.serviceAccount
@@ -2351,6 +2393,26 @@ Advanced Status Item for pin pointing items in tenants/namespaces.
 | **created** | boolean | Indicates wether the resource was created or adopted | false |
 | **lastApply** | string | An opaque value that represents the internal version of this object that can<br>be used by clients to determine when objects have changed. May be used for optimistic<br>concurrency, change detection, and the watch operation on a resource or set of resources.<br>Clients must treat these values as opaque and passed unmodified back to the server.<br>They may only be valid for a particular resource or set of resources.<br><br>Populated by the system.<br>Read-only.<br>Value must be treated as opaque by clients and .<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency<br/>*Format*: date-time<br/> | false |
 | **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | false |
+| **[policy](#resourcepermitstatusprocesseditemsindexstatuspolicy)** | object | Policy is a lifecycle snapshot for protection and cleanup. Conditions are<br>evaluated from the source block and omitted here. Failed updates retain the<br>previous snapshot; a first successful content write records its policy even<br>if metadata reconciliation fails, so cleanup respects explicit retention.<br>An absent policy on an already applied item preserves legacy behavior. | false |
+
+
+### ResourcePermit.status.processedItems[index].status.policy
+
+
+
+Policy is a lifecycle snapshot for protection and cleanup. Conditions are
+evaluated from the source block and omitted here. Failed updates retain the
+previous snapshot; a first successful content write records its policy even
+if metadata reconciliation fails, so cleanup respects explicit retention.
+An absent policy on an already applied item preserves legacy behavior.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **creation** | enum | Creation controls how an existing target is handled. Owner requires the<br>resource to have been created by the applying controller and otherwise<br>returns an error. Merge adopts an existing resource when possible and<br>creates the resource when it does not exist.<br/>*Enum*: Owner, Merge<br/>*Default*: Owner<br/> | false |
+| **deletion** | enum | Deletion controls what happens when the parent stops managing the target.<br>Remove deletes resources created for the parent and relinquishes adopted<br>resources. Orphan keeps the resource and removes Capsule's lifecycle<br>metadata. Removal is the default.<br/>*Enum*: Remove, Orphan<br/>*Default*: Remove<br/> | false |
+| **force** | boolean | Force allows server-side apply to acquire conflicting field ownership.<br/>*Default*: false<br/> | false |
+| **protect** | boolean | Protect prevents users from changing or deleting the target through<br>admission while it is managed. Protection is enabled by default.<br/>*Default*: true<br/> | false |
 
 
 ### ResourcePermit.status.request
@@ -3055,6 +3117,7 @@ For future implementation where users might manage RuleStatus CRs themselves
 | :---- | :---- | :----------- | :-------- |
 | **[audience](#rulestatusspecindexaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#rulestatusspecindexenforce)** | object | Enforcement for given rule | false |
+| **[mutate](#rulestatusspecindexmutateindex)** | []object | Mutate applies ordered typed mutations before enforcement. It shares the<br>rule's namespace selection and audience. Workload mutations apply on Pod creation. | false |
 | **[quota](#rulestatusspecindexquotaindex)** | []object | Quota contains native Kubernetes ResourceQuota specifications shared by<br>all namespaces selected by this rule. Unlike Enforce, quota accounting is<br>independent of the request audience. | false |
 
 
@@ -3081,10 +3144,25 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[conditions](#rulestatusspecindexenforceconditionsindex)** | []object | Conditions gate this entire enforcement rule, including workloads, services,<br>metadata and ingress. All conditions must be true; empty means apply.<br>Conditions run during admission; managed metadata in a conditional rule<br>is applied on matching requests only and is not reconciled in the background. | false |
 | **[ingress](#rulestatusspecindexenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
 | **[metadata](#rulestatusspecindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
 | **[services](#rulestatusspecindexenforceservices)** | object | Enforcement for Services. | false |
-| **[workloads](#rulestatusspecindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+| **[workloads](#rulestatusspecindexenforceworkloads)** | object | Enforcement for native workload kinds and Pod properties. | false |
+
+
+### RuleStatus.spec[index].enforce.conditions[index]
+
+
+
+AdmissionCondition is a Boolean CEL gate for a mutation entry or enforcement rule. It can
+inspect object and request metadata, but cannot generate mutation values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **expression** | string | Expression must evaluate to bool. Any false condition skips this block.<br>An evaluation error rejects the request unless another condition is false. | true |
+| **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
 
 
 ### RuleStatus.spec[index].enforce.ingress
@@ -3286,16 +3364,582 @@ NodePorts defines additional constraints for nodePort values.
 
 
 
-Enforcement for Workloads (Pods)
+Enforcement for native workload kinds and Pod properties.
 
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[placement](#rulestatusspecindexenforceworkloadsplacement)** | object | Placement matches the Pod scheduler and scheduling constraints. | false |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
 | **[registries](#rulestatusspecindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
-| **[resources](#rulestatusspecindexenforceworkloadsresources)** | object | Resources defines mutation and enforcement policies for Pod and container<br>resource requests and limits. The workload targets select where the<br>policies apply. With no targets, resource policies apply to all compatible<br>locations: Pod-level resources, regular containers, and init containers.<br>Resource names unsupported at Pod level still apply to compatible container<br>locations.<br>Mutation is applied when a Pod is created. Remove and MatchRequest manage<br>explicit values, Default fills an absent value, and Ratio fills an absent<br>limit from its request. An explicit Ratio violation is then handled by the<br>enclosing allow, deny, or audit action. | false |
-| **[schedulers](#rulestatusspecindexenforceworkloadsschedulersindex)** | []object | Schedulers defines schedulerName matchers for Pod admission.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
-| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod, pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
+| **[resources](#rulestatusspecindexenforceworkloadsresources)** | object | Resources defines mutation and enforcement policies for Pod and container<br>resource requests and limits. The workload targets select where the<br>policies apply. With no targets, resource policies apply to all compatible<br>locations: Pod-level resources, regular containers, and init containers.<br>Resource names unsupported at Pod level still apply to compatible container<br>locations.<br>Mutation is applied when a Pod is created, or when an explicitly targeted<br>controller is created or updated (to its Pod template). Remove and MatchRequest manage<br>explicit values, Default fills an absent value, and Ratio fills an absent<br>limit from its request. An explicit Ratio violation is then handled by the<br>enclosing allow, deny, or audit action. | false |
+| **[security](#rulestatusspecindexenforceworkloadssecurity)** | object | Security matches effective Pod and container security profiles. | false |
+| **targets** | []string | Targets selects native workloads and, optionally, parts of their Pod specs.<br>With no workload policies, the action matches the selected kinds themselves.<br>With policies, targets scopes those policies; it does not also match the kind.<br>Omitted targets preserve Pod-only defaults. Controller targets are opt-in.<br>Whole-controller targets include every compatible location in the Pod template.<br>Existing pod and pod/* part targets retain their established policy scope. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement
+
+
+
+Placement matches the Pod scheduler and scheduling constraints.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[affinity](#rulestatusspecindexenforceworkloadsplacementaffinityindex)** | []object | Affinity matches each complete required or preferred affinity term. | false |
+| **[nodeSelector](#rulestatusspecindexenforceworkloadsplacementnodeselectorindex)** | []object | NodeSelector matches each node selector entry. Empty matchers match any entry.<br>Placement rules apply to the pod target; allowing an entry does not require it. | false |
+| **[schedulers](#rulestatusspecindexenforceworkloadsplacementschedulersindex)** | []object | Schedulers defines schedulerName matchers for selected Pods and Pod templates.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
+| **[tolerations](#rulestatusspecindexenforceworkloadsplacementtolerationsindex)** | []object | Tolerations matches each toleration, including injected and wildcard tolerations. | false |
+| **[topologySpreadConstraints](#rulestatusspecindexenforceworkloadsplacementtopologyspreadconstraintsindex)** | []object | TopologySpreadConstraints matches each complete spread constraint. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index]
+
+
+
+WorkloadAffinityMatch matches an entire affinity term. Fields are ANDed;
+entries in enforce.workloads.placement.affinity are alternatives. {} matches any term.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[fieldRequirements](#rulestatusspecindexenforceworkloadsplacementaffinityindexfieldrequirementsindex)** | []object | FieldRequirements constrains node matchFields. When Requirements is set,<br>matchFields must be explicitly permitted here to avoid an unchecked path. | false |
+| **[labelSelector](#rulestatusspecindexenforceworkloadsplacementaffinityindexlabelselector)** | object | PlacementLabelSelectorMatch checks every effective selector requirement.<br>matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys<br>are checked as In/NotIn using the incoming Pod's label values. Missing dynamic<br>labels are ignored, matching Kubernetes semantics. | false |
+| **modes** | []enum | Modes defaults to both scheduling modes; it does not require their presence.<br/>*Enum*: required, preferred<br/> | false |
+| **namespaceScope** | enum | SameNamespace requires no namespaceSelector and only the Pod's namespace<br>in namespaces (or an omitted namespaces list). Any imposes no restriction.<br/>*Enum*: SameNamespace, Any<br/> | false |
+| **[namespaceSelector](#rulestatusspecindexenforceworkloadsplacementaffinityindexnamespaceselector)** | object | PlacementLabelSelectorMatch checks every effective selector requirement.<br>matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys<br>are checked as In/NotIn using the incoming Pod's label values. Missing dynamic<br>labels are ignored, matching Kubernetes semantics. | false |
+| **[namespaces](#rulestatusspecindexenforceworkloadsplacementaffinityindexnamespaces)** | object | Namespaces constrains each explicitly supplied namespace. | false |
+| **[requirements](#rulestatusspecindexenforceworkloadsplacementaffinityindexrequirementsindex)** | []object | Requirements constrains node matchExpressions. | false |
+| **[topologyKey](#rulestatusspecindexenforceworkloadsplacementaffinityindextopologykey)** | object | TopologyKey applies to Pod affinity and anti-affinity. | false |
+| **types** | []enum | Types defaults to all types. Type-specific constraints only match the<br>types on which they are meaningful.<br/>*Enum*: nodeAffinity, podAffinity, podAntiAffinity<br/> | false |
+| **[weight](#rulestatusspecindexenforceworkloadsplacementaffinityindexweight)** | object | Weight requires modes: [preferred]. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].fieldRequirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusspecindexenforceworkloadsplacementaffinityindexfieldrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#rulestatusspecindexenforceworkloadsplacementaffinityindexfieldrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].fieldRequirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].fieldRequirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].labelSelector
+
+
+
+PlacementLabelSelectorMatch checks every effective selector requirement.
+matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys
+are checked as In/NotIn using the incoming Pod's label values. Missing dynamic
+labels are ignored, matching Kubernetes semantics.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required requires at least one effective selector requirement. | false |
+| **[requirements](#rulestatusspecindexenforceworkloadsplacementaffinityindexlabelselectorrequirementsindex)** | []object | Requirements is an allowlist within this matcher. If empty, requirements<br>are unrestricted. Each actual requirement must match one complete entry. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].labelSelector.requirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusspecindexenforceworkloadsplacementaffinityindexlabelselectorrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#rulestatusspecindexenforceworkloadsplacementaffinityindexlabelselectorrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].labelSelector.requirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].labelSelector.requirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].namespaceSelector
+
+
+
+PlacementLabelSelectorMatch checks every effective selector requirement.
+matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys
+are checked as In/NotIn using the incoming Pod's label values. Missing dynamic
+labels are ignored, matching Kubernetes semantics.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required requires at least one effective selector requirement. | false |
+| **[requirements](#rulestatusspecindexenforceworkloadsplacementaffinityindexnamespaceselectorrequirementsindex)** | []object | Requirements is an allowlist within this matcher. If empty, requirements<br>are unrestricted. Each actual requirement must match one complete entry. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].namespaceSelector.requirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusspecindexenforceworkloadsplacementaffinityindexnamespaceselectorrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#rulestatusspecindexenforceworkloadsplacementaffinityindexnamespaceselectorrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].namespaceSelector.requirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].namespaceSelector.requirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].namespaces
+
+
+
+Namespaces constrains each explicitly supplied namespace.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].requirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusspecindexenforceworkloadsplacementaffinityindexrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#rulestatusspecindexenforceworkloadsplacementaffinityindexrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].requirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].requirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].topologyKey
+
+
+
+TopologyKey applies to Pod affinity and anti-affinity.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].weight
+
+
+
+Weight requires modes: [preferred].
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.nodeSelector[index]
+
+
+
+WorkloadNodeSelectorMatch matches a nodeSelector key/value pair. Omitted fields
+are unrestricted, so {} matches every entry, including an empty label value.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusspecindexenforceworkloadsplacementnodeselectorindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **[values](#rulestatusspecindexenforceworkloadsplacementnodeselectorindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.nodeSelector[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.nodeSelector[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.schedulers[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.tolerations[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **effects** | []enum | Effects matches the literal effect. An empty effect on a Pod tolerates all<br>effects and does not match an allowlist of individual effects.<br/>*Enum*: NoSchedule, PreferNoSchedule, NoExecute, <br/> | false |
+| **[key](#rulestatusspecindexenforceworkloadsplacementtolerationsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | Operators matches Equal (including an omitted operator) or Exists.<br/>*Enum*: Equal, Exists<br/> | false |
+| **[tolerationSeconds](#rulestatusspecindexenforceworkloadsplacementtolerationsindextolerationseconds)** | object | TolerationDurationMatch treats an absent tolerationSeconds as unlimited. | false |
+| **[values](#rulestatusspecindexenforceworkloadsplacementtolerationsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.tolerations[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.tolerations[index].tolerationSeconds
+
+
+
+TolerationDurationMatch treats an absent tolerationSeconds as unlimited.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **allowUnlimited** | boolean | AllowUnlimited defaults to true. Set false to require a finite duration. | false |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.tolerations[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.topologySpreadConstraints[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[labelSelector](#rulestatusspecindexenforceworkloadsplacementtopologyspreadconstraintsindexlabelselector)** | object | PlacementLabelSelectorMatch checks every effective selector requirement.<br>matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys<br>are checked as In/NotIn using the incoming Pod's label values. Missing dynamic<br>labels are ignored, matching Kubernetes semantics. | false |
+| **[maxSkew](#rulestatusspecindexenforceworkloadsplacementtopologyspreadconstraintsindexmaxskew)** | object | PlacementRange defines inclusive bounds. An omitted bound is unrestricted. | false |
+| **[minDomains](#rulestatusspecindexenforceworkloadsplacementtopologyspreadconstraintsindexmindomains)** | object | MinDomains uses 1 when the Pod omits minDomains. | false |
+| **nodeAffinityPolicy** | []enum | NodeAffinityPolicy uses Honor when the Pod omits the field.<br/>*Enum*: Honor, Ignore<br/> | false |
+| **nodeTaintsPolicy** | []enum | NodeTaintsPolicy uses Ignore when the Pod omits the field.<br/>*Enum*: Honor, Ignore<br/> | false |
+| **[topologyKey](#rulestatusspecindexenforceworkloadsplacementtopologyspreadconstraintsindextopologykey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **whenUnsatisfiable** | []enum | <br/>*Enum*: DoNotSchedule, ScheduleAnyway<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.topologySpreadConstraints[index].labelSelector
+
+
+
+PlacementLabelSelectorMatch checks every effective selector requirement.
+matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys
+are checked as In/NotIn using the incoming Pod's label values. Missing dynamic
+labels are ignored, matching Kubernetes semantics.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required requires at least one effective selector requirement. | false |
+| **[requirements](#rulestatusspecindexenforceworkloadsplacementtopologyspreadconstraintsindexlabelselectorrequirementsindex)** | []object | Requirements is an allowlist within this matcher. If empty, requirements<br>are unrestricted. Each actual requirement must match one complete entry. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.topologySpreadConstraints[index].labelSelector.requirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusspecindexenforceworkloadsplacementtopologyspreadconstraintsindexlabelselectorrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#rulestatusspecindexenforceworkloadsplacementtopologyspreadconstraintsindexlabelselectorrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.topologySpreadConstraints[index].labelSelector.requirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.topologySpreadConstraints[index].labelSelector.requirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.topologySpreadConstraints[index].maxSkew
+
+
+
+PlacementRange defines inclusive bounds. An omitted bound is unrestricted.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.topologySpreadConstraints[index].minDomains
+
+
+
+MinDomains uses 1 when the Pod omits minDomains.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.placement.topologySpreadConstraints[index].topologyKey
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.registries[index]
@@ -3323,7 +3967,8 @@ policies apply. With no targets, resource policies apply to all compatible
 locations: Pod-level resources, regular containers, and init containers.
 Resource names unsupported at Pod level still apply to compatible container
 locations.
-Mutation is applied when a Pod is created. Remove and MatchRequest manage
+Mutation is applied when a Pod is created, or when an explicitly targeted
+controller is created or updated (to its Pod template). Remove and MatchRequest manage
 explicit values, Default fills an absent value, and Ratio fills an absent
 limit from its request. An explicit Ratio violation is then handled by the
 enclosing allow, deny, or audit action.
@@ -3361,7 +4006,34 @@ WorkloadResourceRequestPolicy defines how a resource request is mutated.
 | **value** | int or string | Value is the quantity applied by the Default policy. | false |
 
 
-### RuleStatus.spec[index].enforce.workloads.schedulers[index]
+### RuleStatus.spec[index].enforce.workloads.security
+
+
+
+Security matches effective Pod and container security profiles.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[appArmorProfiles](#rulestatusspecindexenforceworkloadssecurityapparmorprofilesindex)** | []object | AppArmorProfiles matches effective Linux container profiles, including<br>legacy AppArmor annotations before Pod defaults. It uses the same target<br>and missing-profile semantics as SeccompProfiles. Privileged containers are<br>Unconfined. Matching a Localhost name does not verify its installation. | false |
+| **[seccompProfiles](#rulestatusspecindexenforceworkloadssecurityseccompprofilesindex)** | []object | SeccompProfiles matches effective Linux container profiles, resolving<br>container overrides before Pod defaults. Privileged containers are Unconfined.<br>Missing profiles do not match any type, so an allow-list rejects them.<br>Omitted targets check regular, init and ephemeral containers; pod explicitly<br>selects only the Pod default. Controller targets check their Pod templates. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.security.appArmorProfiles[index]
+
+
+
+WorkloadSecurityProfileMatch matches a profile type and optionally its local
+name/path. Entries are alternatives; localhostProfiles constrains only Localhost.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **types** | []enum | Types selects profile types. Missing profiles never match.<br/>*Enum*: RuntimeDefault, Localhost, Unconfined<br/> | true |
+| **[localhostProfiles](#rulestatusspecindexenforceworkloadssecurityapparmorprofilesindexlocalhostprofilesindex)** | []object | LocalhostProfiles matches seccomp paths relative to the kubelet seccomp<br>directory, or loaded AppArmor profile names. Omitted permits any Localhost<br>profile. Requires Localhost in types. Expressions use exact, exp and negate. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.security.appArmorProfiles[index].localhostProfiles[index]
 
 
 
@@ -3374,6 +4046,736 @@ Both may be set together.
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.security.seccompProfiles[index]
+
+
+
+WorkloadSecurityProfileMatch matches a profile type and optionally its local
+name/path. Entries are alternatives; localhostProfiles constrains only Localhost.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **types** | []enum | Types selects profile types. Missing profiles never match.<br/>*Enum*: RuntimeDefault, Localhost, Unconfined<br/> | true |
+| **[localhostProfiles](#rulestatusspecindexenforceworkloadssecurityseccompprofilesindexlocalhostprofilesindex)** | []object | LocalhostProfiles matches seccomp paths relative to the kubelet seccomp<br>directory, or loaded AppArmor profile names. Omitted permits any Localhost<br>profile. Requires Localhost in types. Expressions use exact, exp and negate. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.security.seccompProfiles[index].localhostProfiles[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.spec[index].mutate[index]
+
+
+
+NamespaceRuleMutation applies typed mutations independently of enforce.action.
+Mutated values remain subject to all applicable enforcement rules.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem,<br>and map keys, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, nodeSelector,<br>tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
+| **[conditions](#rulestatusspecindexmutateindexconditionsindex)** | []object | Conditions gate this entire mutation entry and inspect the object after<br>preceding mutations. All conditions must be true; empty means apply. | false |
+| **[workloads](#rulestatusspecindexmutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. ReadOnlyRootFilesystem also applies to newly added<br>ephemeral containers on subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
+
+
+### RuleStatus.spec[index].mutate[index].conditions[index]
+
+
+
+AdmissionCondition is a Boolean CEL gate for a mutation entry or enforcement rule. It can
+inspect object and request metadata, but cannot generate mutation values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **expression** | string | Expression must evaluate to bool. Any false condition skips this block.<br>An evaluation error rejects the request unless another condition is false. | true |
+| **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads
+
+
+
+WorkloadMutation contains typed native Pod values. Empty maps/lists are
+preserved so replace can clear a property; nil means the property is omitted.
+It applies on Pod creation. ReadOnlyRootFilesystem also applies to newly added
+ephemeral containers on subresource updates. Existing containers are never reconciled.
+On merge, later entries override hostUsers, readOnlyRootFilesystem, matching map keys,
+tolerations and spread constraints.
+On merge, required affinity restrictions from applicable entries are ANDed.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[placement](#rulestatusspecindexmutateindexworkloadsplacement)** | object | Placement configures the Pod scheduler and scheduling constraints. | false |
+| **[security](#rulestatusspecindexmutateindexworkloadssecurity)** | object | Security configures Pod and container security settings. | false |
+| **targets** | []enum | Targets selects compatible Pod locations. Omitted or empty selects all<br>compatible locations. The pod target includes Pod-level properties and all<br>container groups; pod/containers, pod/initcontainers and pod/ephemeralcontainers<br>narrow selection to one group. Controller templates and volumes are not supported.<br/>*Enum*: pod, pod/containers, pod/initcontainers, pod/ephemeralcontainers<br/> | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement
+
+
+
+Placement configures the Pod scheduler and scheduling constraints.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[affinity](#rulestatusspecindexmutateindexworkloadsplacementaffinity)** | object | Affinity on merge conjoins required restrictions and upserts preferred terms.<br>Preferred terms match by their complete term, excluding weight and normalized<br>ordering. A different term is added; a matching term gets the supplied weight.<br>Required node affinity is distributed over existing OR alternatives, with<br>at most 256 resulting alternatives. Empty node selector terms match no nodes.<br>Replace replaces all affinity, including any branches omitted from the rule. | false |
+| **nodeSelector** | map[string]string | NodeSelector sets configured keys on merge, or replaces the map on replace. | false |
+| **scheduler** | string | Scheduler sets spec.schedulerName on Pod creation. Merge fills only an empty<br>schedulerName, preserving all non-empty names, including default-scheduler.<br>Kubernetes defaults omitted schedulerName before admission. Use replace with<br>a condition to override default-scheduler while preserving custom schedulers.<br>Replace always overwrites schedulerName when the entry's conditions match.<br>Omitted or null leaves the Pod value unchanged. | false |
+| **[tolerations](#rulestatusspecindexmutateindexworkloadsplacementtolerationsindex)** | []object | Tolerations merges by key, operator (default Equal), value and effect.<br>Changing any identity field adds another toleration, retaining the old one.<br>A matching toleration's duration is replaced; omitting it makes it unlimited.<br>Replace replaces the entire list, including entries with other identities. | false |
+| **[topologySpreadConstraints](#rulestatusspecindexmutateindexworkloadsplacementtopologyspreadconstraintsindex)** | []object | TopologySpreadConstraints merges by topologyKey and whenUnsatisfiable.<br>The entire matching constraint is replaced, including its selector and<br>optional fields; other constraints remain. Replace replaces the entire list. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity
+
+
+
+Affinity on merge conjoins required restrictions and upserts preferred terms.
+Preferred terms match by their complete term, excluding weight and normalized
+ordering. A different term is added; a matching term gets the supplied weight.
+Required node affinity is distributed over existing OR alternatives, with
+at most 256 resulting alternatives. Empty node selector terms match no nodes.
+Replace replaces all affinity, including any branches omitted from the rule.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[nodeAffinity](#rulestatusspecindexmutateindexworkloadsplacementaffinitynodeaffinity)** | object | Describes node affinity scheduling rules for the pod. | false |
+| **[podAffinity](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodaffinity)** | object | Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, zone, etc. as some other pod(s)). | false |
+| **[podAntiAffinity](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodantiaffinity)** | object | Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s)). | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.nodeAffinity
+
+
+
+Describes node affinity scheduling rules for the pod.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[preferredDuringSchedulingIgnoredDuringExecution](#rulestatusspecindexmutateindexworkloadsplacementaffinitynodeaffinitypreferredduringschedulingignoredduringexecutionindex)** | []object | The scheduler will prefer to schedule pods to nodes that satisfy<br>the affinity expressions specified by this field, but it may choose<br>a node that violates one or more of the expressions. The node that is<br>most preferred is the one with the greatest sum of weights, i.e.<br>for each node that meets all of the scheduling requirements (resource<br>request, requiredDuringScheduling affinity expressions, etc.),<br>compute a sum by iterating through the elements of this field and adding<br>"weight" to the sum if the node matches the corresponding matchExpressions; the<br>node(s) with the highest sum are the most preferred. | false |
+| **[requiredDuringSchedulingIgnoredDuringExecution](#rulestatusspecindexmutateindexworkloadsplacementaffinitynodeaffinityrequiredduringschedulingignoredduringexecution)** | object | If the affinity requirements specified by this field are not met at<br>scheduling time, the pod will not be scheduled onto the node.<br>If the affinity requirements specified by this field cease to be met<br>at some point during pod execution (e.g. due to an update), the system<br>may or may not try to eventually evict the pod from its node. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+An empty preferred scheduling term matches all objects with implicit weight 0
+(i.e. it's a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op).
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[preference](#rulestatusspecindexmutateindexworkloadsplacementaffinitynodeaffinitypreferredduringschedulingignoredduringexecutionindexpreference)** | object | A node selector term, associated with the corresponding weight. | true |
+| **weight** | integer | Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.<br/>*Format*: int32<br/> | true |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].preference
+
+
+
+A node selector term, associated with the corresponding weight.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusspecindexmutateindexworkloadsplacementaffinitynodeaffinitypreferredduringschedulingignoredduringexecutionindexpreferencematchexpressionsindex)** | []object | A list of node selector requirements by node's labels. | false |
+| **[matchFields](#rulestatusspecindexmutateindexworkloadsplacementaffinitynodeaffinitypreferredduringschedulingignoredduringexecutionindexpreferencematchfieldsindex)** | []object | A list of node selector requirements by node's fields. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].preference.matchExpressions[index]
+
+
+
+A node selector requirement is a selector that contains values, a key, and an operator
+that relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | The label key that the selector applies to. | true |
+| **operator** | string | Represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. If the operator is Gt or Lt, the values<br>array must have a single element, which will be interpreted as an integer.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].preference.matchFields[index]
+
+
+
+A node selector requirement is a selector that contains values, a key, and an operator
+that relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | The label key that the selector applies to. | true |
+| **operator** | string | Represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. If the operator is Gt or Lt, the values<br>array must have a single element, which will be interpreted as an integer.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution
+
+
+
+If the affinity requirements specified by this field are not met at
+scheduling time, the pod will not be scheduled onto the node.
+If the affinity requirements specified by this field cease to be met
+at some point during pod execution (e.g. due to an update), the system
+may or may not try to eventually evict the pod from its node.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[nodeSelectorTerms](#rulestatusspecindexmutateindexworkloadsplacementaffinitynodeaffinityrequiredduringschedulingignoredduringexecutionnodeselectortermsindex)** | []object | Required. A list of node selector terms. The terms are ORed. | true |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[index]
+
+
+
+A null or empty node selector term matches no objects. The requirements of
+them are ANDed.
+The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusspecindexmutateindexworkloadsplacementaffinitynodeaffinityrequiredduringschedulingignoredduringexecutionnodeselectortermsindexmatchexpressionsindex)** | []object | A list of node selector requirements by node's labels. | false |
+| **[matchFields](#rulestatusspecindexmutateindexworkloadsplacementaffinitynodeaffinityrequiredduringschedulingignoredduringexecutionnodeselectortermsindexmatchfieldsindex)** | []object | A list of node selector requirements by node's fields. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[index].matchExpressions[index]
+
+
+
+A node selector requirement is a selector that contains values, a key, and an operator
+that relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | The label key that the selector applies to. | true |
+| **operator** | string | Represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. If the operator is Gt or Lt, the values<br>array must have a single element, which will be interpreted as an integer.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[index].matchFields[index]
+
+
+
+A node selector requirement is a selector that contains values, a key, and an operator
+that relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | The label key that the selector applies to. | true |
+| **operator** | string | Represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. If the operator is Gt or Lt, the values<br>array must have a single element, which will be interpreted as an integer.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAffinity
+
+
+
+Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, zone, etc. as some other pod(s)).
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[preferredDuringSchedulingIgnoredDuringExecution](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindex)** | []object | The scheduler will prefer to schedule pods to nodes that satisfy<br>the affinity expressions specified by this field, but it may choose<br>a node that violates one or more of the expressions. The node that is<br>most preferred is the one with the greatest sum of weights, i.e.<br>for each node that meets all of the scheduling requirements (resource<br>request, requiredDuringScheduling affinity expressions, etc.),<br>compute a sum by iterating through the elements of this field and adding<br>"weight" to the sum if the node has pods which matches the corresponding podAffinityTerm; the<br>node(s) with the highest sum are the most preferred. | false |
+| **[requiredDuringSchedulingIgnoredDuringExecution](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindex)** | []object | If the affinity requirements specified by this field are not met at<br>scheduling time, the pod will not be scheduled onto the node.<br>If the affinity requirements specified by this field cease to be met<br>at some point during pod execution (e.g. due to a pod label update), the<br>system may or may not try to eventually evict the pod from its node.<br>When there are multiple elements, the lists of nodes corresponding to each<br>podAffinityTerm are intersected, i.e. all terms must be satisfied. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[podAffinityTerm](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinityterm)** | object | Required. A pod affinity term, associated with the corresponding weight. | true |
+| **weight** | integer | weight associated with matching the corresponding podAffinityTerm,<br>in the range 1-100.<br/>*Format*: int32<br/> | true |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm
+
+
+
+Required. A pod affinity term, associated with the corresponding weight.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **topologyKey** | string | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching<br>the labelSelector in the specified namespaces, where co-located is defined as running on a node<br>whose value of the label with key topologyKey matches that of any node on which any of the<br>selected pods is running.<br>Empty topologyKey is not allowed. | true |
+| **[labelSelector](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermlabelselector)** | object | A label query over a set of resources, in this case pods.<br>If it's null, this PodAffinityTerm matches with no Pods. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both matchLabelKeys and labelSelector.<br>Also, matchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **mismatchLabelKeys** | []string | MismatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.<br>Also, mismatchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **[namespaceSelector](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermnamespaceselector)** | object | A label query over the set of namespaces that the term applies to.<br>The term is applied to the union of the namespaces selected by this field<br>and the ones listed in the namespaces field.<br>null selector and null or empty namespaces list means "this pod's namespace".<br>An empty selector ({}) matches all namespaces. | false |
+| **namespaces** | []string | namespaces specifies a static list of namespace names that the term applies to.<br>The term is applied to the union of the namespaces listed in this field<br>and the ones selected by namespaceSelector.<br>null or empty namespaces list and null namespaceSelector means "this pod's namespace". | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.labelSelector
+
+
+
+A label query over a set of resources, in this case pods.
+If it's null, this PodAffinityTerm matches with no Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.namespaceSelector
+
+
+
+A label query over the set of namespaces that the term applies to.
+The term is applied to the union of the namespaces selected by this field
+and the ones listed in the namespaces field.
+null selector and null or empty namespaces list means "this pod's namespace".
+An empty selector ({}) matches all namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+Defines a set of pods (namely those matching the labelSelector
+relative to the given namespace(s)) that this pod should be
+co-located (affinity) or not co-located (anti-affinity) with,
+where co-located is defined as running on a node whose value of
+the label with key <topologyKey> matches that of any node on which
+a pod of the set of pods is running
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **topologyKey** | string | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching<br>the labelSelector in the specified namespaces, where co-located is defined as running on a node<br>whose value of the label with key topologyKey matches that of any node on which any of the<br>selected pods is running.<br>Empty topologyKey is not allowed. | true |
+| **[labelSelector](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindexlabelselector)** | object | A label query over a set of resources, in this case pods.<br>If it's null, this PodAffinityTerm matches with no Pods. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both matchLabelKeys and labelSelector.<br>Also, matchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **mismatchLabelKeys** | []string | MismatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.<br>Also, mismatchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **[namespaceSelector](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindexnamespaceselector)** | object | A label query over the set of namespaces that the term applies to.<br>The term is applied to the union of the namespaces selected by this field<br>and the ones listed in the namespaces field.<br>null selector and null or empty namespaces list means "this pod's namespace".<br>An empty selector ({}) matches all namespaces. | false |
+| **namespaces** | []string | namespaces specifies a static list of namespace names that the term applies to.<br>The term is applied to the union of the namespaces listed in this field<br>and the ones selected by namespaceSelector.<br>null or empty namespaces list and null namespaceSelector means "this pod's namespace". | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].labelSelector
+
+
+
+A label query over a set of resources, in this case pods.
+If it's null, this PodAffinityTerm matches with no Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindexlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].namespaceSelector
+
+
+
+A label query over the set of namespaces that the term applies to.
+The term is applied to the union of the namespaces selected by this field
+and the ones listed in the namespaces field.
+null selector and null or empty namespaces list means "this pod's namespace".
+An empty selector ({}) matches all namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindexnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAntiAffinity
+
+
+
+Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s)).
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[preferredDuringSchedulingIgnoredDuringExecution](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindex)** | []object | The scheduler will prefer to schedule pods to nodes that satisfy<br>the anti-affinity expressions specified by this field, but it may choose<br>a node that violates one or more of the expressions. The node that is<br>most preferred is the one with the greatest sum of weights, i.e.<br>for each node that meets all of the scheduling requirements (resource<br>request, requiredDuringScheduling anti-affinity expressions, etc.),<br>compute a sum by iterating through the elements of this field and subtracting<br>"weight" from the sum if the node has pods which matches the corresponding podAffinityTerm; the<br>node(s) with the highest sum are the most preferred. | false |
+| **[requiredDuringSchedulingIgnoredDuringExecution](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindex)** | []object | If the anti-affinity requirements specified by this field are not met at<br>scheduling time, the pod will not be scheduled onto the node.<br>If the anti-affinity requirements specified by this field cease to be met<br>at some point during pod execution (e.g. due to a pod label update), the<br>system may or may not try to eventually evict the pod from its node.<br>When there are multiple elements, the lists of nodes corresponding to each<br>podAffinityTerm are intersected, i.e. all terms must be satisfied. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[podAffinityTerm](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinityterm)** | object | Required. A pod affinity term, associated with the corresponding weight. | true |
+| **weight** | integer | weight associated with matching the corresponding podAffinityTerm,<br>in the range 1-100.<br/>*Format*: int32<br/> | true |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm
+
+
+
+Required. A pod affinity term, associated with the corresponding weight.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **topologyKey** | string | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching<br>the labelSelector in the specified namespaces, where co-located is defined as running on a node<br>whose value of the label with key topologyKey matches that of any node on which any of the<br>selected pods is running.<br>Empty topologyKey is not allowed. | true |
+| **[labelSelector](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermlabelselector)** | object | A label query over a set of resources, in this case pods.<br>If it's null, this PodAffinityTerm matches with no Pods. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both matchLabelKeys and labelSelector.<br>Also, matchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **mismatchLabelKeys** | []string | MismatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.<br>Also, mismatchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **[namespaceSelector](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermnamespaceselector)** | object | A label query over the set of namespaces that the term applies to.<br>The term is applied to the union of the namespaces selected by this field<br>and the ones listed in the namespaces field.<br>null selector and null or empty namespaces list means "this pod's namespace".<br>An empty selector ({}) matches all namespaces. | false |
+| **namespaces** | []string | namespaces specifies a static list of namespace names that the term applies to.<br>The term is applied to the union of the namespaces listed in this field<br>and the ones selected by namespaceSelector.<br>null or empty namespaces list and null namespaceSelector means "this pod's namespace". | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.labelSelector
+
+
+
+A label query over a set of resources, in this case pods.
+If it's null, this PodAffinityTerm matches with no Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.namespaceSelector
+
+
+
+A label query over the set of namespaces that the term applies to.
+The term is applied to the union of the namespaces selected by this field
+and the ones listed in the namespaces field.
+null selector and null or empty namespaces list means "this pod's namespace".
+An empty selector ({}) matches all namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+Defines a set of pods (namely those matching the labelSelector
+relative to the given namespace(s)) that this pod should be
+co-located (affinity) or not co-located (anti-affinity) with,
+where co-located is defined as running on a node whose value of
+the label with key <topologyKey> matches that of any node on which
+a pod of the set of pods is running
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **topologyKey** | string | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching<br>the labelSelector in the specified namespaces, where co-located is defined as running on a node<br>whose value of the label with key topologyKey matches that of any node on which any of the<br>selected pods is running.<br>Empty topologyKey is not allowed. | true |
+| **[labelSelector](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindexlabelselector)** | object | A label query over a set of resources, in this case pods.<br>If it's null, this PodAffinityTerm matches with no Pods. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both matchLabelKeys and labelSelector.<br>Also, matchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **mismatchLabelKeys** | []string | MismatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.<br>Also, mismatchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **[namespaceSelector](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindexnamespaceselector)** | object | A label query over the set of namespaces that the term applies to.<br>The term is applied to the union of the namespaces selected by this field<br>and the ones listed in the namespaces field.<br>null selector and null or empty namespaces list means "this pod's namespace".<br>An empty selector ({}) matches all namespaces. | false |
+| **namespaces** | []string | namespaces specifies a static list of namespace names that the term applies to.<br>The term is applied to the union of the namespaces listed in this field<br>and the ones selected by namespaceSelector.<br>null or empty namespaces list and null namespaceSelector means "this pod's namespace". | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].labelSelector
+
+
+
+A label query over a set of resources, in this case pods.
+If it's null, this PodAffinityTerm matches with no Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindexlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].namespaceSelector
+
+
+
+A label query over the set of namespaces that the term applies to.
+The term is applied to the union of the namespaces selected by this field
+and the ones listed in the namespaces field.
+null selector and null or empty namespaces list means "this pod's namespace".
+An empty selector ({}) matches all namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusspecindexmutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindexnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.tolerations[index]
+
+
+
+The pod this Toleration is attached to tolerates any taint that matches
+the triple <key,value,effect> using the matching operator <operator>.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **effect** | string | Effect indicates the taint effect to match. Empty means match all taint effects.<br>When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute. | false |
+| **key** | string | Key is the taint key that the toleration applies to. Empty means match all taint keys.<br>If the key is empty, operator must be Exists; this combination means to match all values and all keys. | false |
+| **operator** | string | Operator represents a key's relationship to the value.<br>Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.<br>Exists is equivalent to wildcard for value, so that a pod can<br>tolerate all taints of a particular category.<br>Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators). | false |
+| **tolerationSeconds** | integer | TolerationSeconds represents the period of time the toleration (which must be<br>of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,<br>it is not set, which means tolerate the taint forever (do not evict). Zero and<br>negative values will be treated as 0 (evict immediately) by the system.<br/>*Format*: int64<br/> | false |
+| **value** | string | Value is the taint value the toleration matches to.<br>If the operator is Exists, the value should be empty, otherwise just a regular string. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.topologySpreadConstraints[index]
+
+
+
+TopologySpreadConstraint specifies how to spread matching pods among the given topology.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **maxSkew** | integer | MaxSkew describes the degree to which pods may be unevenly distributed.<br>When `whenUnsatisfiable=DoNotSchedule`, it is the maximum permitted difference<br>between the number of matching pods in the target topology and the global minimum.<br>The global minimum is the minimum number of matching pods in an eligible domain<br>or zero if the number of eligible domains is less than MinDomains.<br>For example, in a 3-zone cluster, MaxSkew is set to 1, and pods with the same<br>labelSelector spread as 2/2/1:<br>In this case, the global minimum is 1.<br>| zone1 | zone2 | zone3 |<br>|  P P  |  P P  |   P   |<br>- if MaxSkew is 1, incoming pod can only be scheduled to zone3 to become 2/2/2;<br>scheduling it onto zone1(zone2) would make the ActualSkew(3-1) on zone1(zone2)<br>violate MaxSkew(1).<br>- if MaxSkew is 2, incoming pod can be scheduled onto any zone.<br>When `whenUnsatisfiable=ScheduleAnyway`, it is used to give higher precedence<br>to topologies that satisfy it.<br>It's a required field. Default value is 1 and 0 is not allowed.<br/>*Format*: int32<br/> | true |
+| **topologyKey** | string | TopologyKey is the key of node labels. Nodes that have a label with this key<br>and identical values are considered to be in the same topology.<br>We consider each <key, value> as a "bucket", and try to put balanced number<br>of pods into each bucket.<br>We define a domain as a particular instance of a topology.<br>Also, we define an eligible domain as a domain whose nodes meet the requirements of<br>nodeAffinityPolicy and nodeTaintsPolicy.<br>e.g. If TopologyKey is "kubernetes.io/hostname", each Node is a domain of that topology.<br>And, if TopologyKey is "topology.kubernetes.io/zone", each zone is a domain of that topology.<br>It's a required field. | true |
+| **whenUnsatisfiable** | string | WhenUnsatisfiable indicates how to deal with a pod if it doesn't satisfy<br>the spread constraint.<br>- DoNotSchedule (default) tells the scheduler not to schedule it.<br>- ScheduleAnyway tells the scheduler to schedule the pod in any location,<br>  but giving higher precedence to topologies that would help reduce the<br>  skew.<br>A constraint is considered "Unsatisfiable" for an incoming pod<br>if and only if every possible node assignment for that pod would violate<br>"MaxSkew" on some topology.<br>For example, in a 3-zone cluster, MaxSkew is set to 1, and pods with the same<br>labelSelector spread as 3/1/1:<br>| zone1 | zone2 | zone3 |<br>| P P P |   P   |   P   |<br>If WhenUnsatisfiable is set to DoNotSchedule, incoming pod can only be scheduled<br>to zone2(zone3) to become 3/2/1(3/1/2) as ActualSkew(2-1) on zone2(zone3) satisfies<br>MaxSkew(1). In other words, the cluster can still be imbalanced, but scheduler<br>won't make it *more* imbalanced.<br>It's a required field. | true |
+| **[labelSelector](#rulestatusspecindexmutateindexworkloadsplacementtopologyspreadconstraintsindexlabelselector)** | object | LabelSelector is used to find matching pods.<br>Pods that match this label selector are counted to determine the number of pods<br>in their corresponding topology domain. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select the pods over which<br>spreading will be calculated. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are ANDed with labelSelector<br>to select the group of existing pods over which spreading will be calculated<br>for the incoming pod. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector.<br>MatchLabelKeys cannot be set when LabelSelector isn't set.<br>Keys that don't exist in the incoming pod labels will<br>be ignored. A null or empty list means only match against labelSelector.<br><br>This is a beta field and requires the MatchLabelKeysInPodTopologySpread feature gate to be enabled (enabled by default). | false |
+| **minDomains** | integer | MinDomains indicates a minimum number of eligible domains.<br>When the number of eligible domains with matching topology keys is less than minDomains,<br>Pod Topology Spread treats "global minimum" as 0, and then the calculation of Skew is performed.<br>And when the number of eligible domains with matching topology keys equals or greater than minDomains,<br>this value has no effect on scheduling.<br>As a result, when the number of eligible domains is less than minDomains,<br>scheduler won't schedule more than maxSkew Pods to those domains.<br>If value is nil, the constraint behaves as if MinDomains is equal to 1.<br>Valid values are integers greater than 0.<br>When value is not nil, WhenUnsatisfiable must be DoNotSchedule.<br><br>For example, in a 3-zone cluster, MaxSkew is set to 2, MinDomains is set to 5 and pods with the same<br>labelSelector spread as 2/2/2:<br>| zone1 | zone2 | zone3 |<br>|  P P  |  P P  |  P P  |<br>The number of domains is less than 5(MinDomains), so "global minimum" is treated as 0.<br>In this situation, new pod with the same labelSelector cannot be scheduled,<br>because computed skew will be 3(3 - 0) if new Pod is scheduled to any of the three zones,<br>it will violate MaxSkew.<br/>*Format*: int32<br/> | false |
+| **nodeAffinityPolicy** | string | NodeAffinityPolicy indicates how we will treat Pod's nodeAffinity/nodeSelector<br>when calculating pod topology spread skew. Options are:<br>- Honor: only nodes matching nodeAffinity/nodeSelector are included in the calculations.<br>- Ignore: nodeAffinity/nodeSelector are ignored. All nodes are included in the calculations.<br><br>If this value is nil, the behavior is equivalent to the Honor policy. | false |
+| **nodeTaintsPolicy** | string | NodeTaintsPolicy indicates how we will treat node taints when calculating<br>pod topology spread skew. Options are:<br>- Honor: nodes without taints, along with tainted nodes for which the incoming pod<br>has a toleration, are included.<br>- Ignore: node taints are ignored. All nodes are included.<br><br>If this value is nil, the behavior is equivalent to the Ignore policy. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.topologySpreadConstraints[index].labelSelector
+
+
+
+LabelSelector is used to find matching pods.
+Pods that match this label selector are counted to determine the number of pods
+in their corresponding topology domain.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusspecindexmutateindexworkloadsplacementtopologyspreadconstraintsindexlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.placement.topologySpreadConstraints[index].labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.security
+
+
+
+Security configures Pod and container security settings.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[appArmorProfile](#rulestatusspecindexmutateindexworkloadssecurityapparmorprofile)** | object | AppArmorProfile supplies the Pod-level securityContext.appArmorProfile on<br>Linux Pod creation. Merge fills an absent profile; replace replaces the<br>complete profile. Explicit container profiles are preserved. Nil omits it.<br>AppArmor and any Localhost profile must be available on eligible nodes. | false |
+| **hostUsers** | boolean | HostUsers sets spec.hostUsers on both merge and replace. False requests a<br>separate user namespace; true uses the host user namespace. Omitted or null<br>leaves the Pod value unchanged. Requires Kubernetes/runtime support. | false |
+| **readOnlyRootFilesystem** | boolean | ReadOnlyRootFilesystem sets securityContext.readOnlyRootFilesystem on every<br>selected regular or init container at Pod creation, and newly added ephemeral<br>containers on subresource updates. Both merge and replace overwrite the value.<br>False is an explicit setting; nil preserves it. Windows Pods are skipped. | false |
+| **[seccompProfile](#rulestatusspecindexmutateindexworkloadssecurityseccompprofile)** | object | SeccompProfile supplies the Pod-level securityContext.seccompProfile on<br>Linux Pod creation. Merge fills an absent profile; replace replaces the<br>complete profile. Explicit container profiles are preserved. Nil omits it. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.security.appArmorProfile
+
+
+
+AppArmorProfile supplies the Pod-level securityContext.appArmorProfile on
+Linux Pod creation. Merge fills an absent profile; replace replaces the
+complete profile. Explicit container profiles are preserved. Nil omits it.
+AppArmor and any Localhost profile must be available on eligible nodes.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **type** | string | type indicates which kind of AppArmor profile will be applied.<br>Valid options are:<br>  Localhost - a profile pre-loaded on the node.<br>  RuntimeDefault - the container runtime's default profile.<br>  Unconfined - no AppArmor enforcement. | true |
+| **localhostProfile** | string | localhostProfile indicates a profile loaded on the node that should be used.<br>The profile must be preconfigured on the node to work.<br>Must match the loaded name of the profile.<br>Must be set if and only if type is "Localhost". | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.security.seccompProfile
+
+
+
+SeccompProfile supplies the Pod-level securityContext.seccompProfile on
+Linux Pod creation. Merge fills an absent profile; replace replaces the
+complete profile. Explicit container profiles are preserved. Nil omits it.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **type** | string | type indicates which kind of seccomp profile will be applied.<br>Valid options are:<br><br>Localhost - a profile defined in a file on the node should be used.<br>RuntimeDefault - the container runtime default profile should be used.<br>Unconfined - no profile should be applied. | true |
+| **localhostProfile** | string | localhostProfile indicates a profile defined in a file on the node should be used.<br>The profile must be preconfigured on the node to work.<br>Must be a descending path, relative to the kubelet's configured seccomp profile location.<br>Must be set if type is "Localhost". Must NOT be set for any other type. | false |
 
 
 ### RuleStatus.spec[index].quota[index]
@@ -3466,6 +4868,7 @@ Rule contains a legacy flattened view and cannot fully represent action-aware ru
 | :---- | :---- | :----------- | :-------- |
 | **[audience](#rulestatusstatusruleaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#rulestatusstatusruleenforce)** | object | Enforcement for given rule | false |
+| **[mutate](#rulestatusstatusrulemutateindex)** | []object | Mutate applies ordered typed mutations before enforcement. It shares the<br>rule's namespace selection and audience. Workload mutations apply on Pod creation. | false |
 | **[quota](#rulestatusstatusrulequotaindex)** | []object | Quota contains native Kubernetes ResourceQuota specifications shared by<br>all namespaces selected by this rule. Unlike Enforce, quota accounting is<br>independent of the request audience. | false |
 
 
@@ -3492,10 +4895,25 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[conditions](#rulestatusstatusruleenforceconditionsindex)** | []object | Conditions gate this entire enforcement rule, including workloads, services,<br>metadata and ingress. All conditions must be true; empty means apply.<br>Conditions run during admission; managed metadata in a conditional rule<br>is applied on matching requests only and is not reconciled in the background. | false |
 | **[ingress](#rulestatusstatusruleenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
 | **[metadata](#rulestatusstatusruleenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
 | **[services](#rulestatusstatusruleenforceservices)** | object | Enforcement for Services. | false |
-| **[workloads](#rulestatusstatusruleenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+| **[workloads](#rulestatusstatusruleenforceworkloads)** | object | Enforcement for native workload kinds and Pod properties. | false |
+
+
+### RuleStatus.status.rule.enforce.conditions[index]
+
+
+
+AdmissionCondition is a Boolean CEL gate for a mutation entry or enforcement rule. It can
+inspect object and request metadata, but cannot generate mutation values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **expression** | string | Expression must evaluate to bool. Any false condition skips this block.<br>An evaluation error rejects the request unless another condition is false. | true |
+| **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
 
 
 ### RuleStatus.status.rule.enforce.ingress
@@ -3697,16 +5115,582 @@ NodePorts defines additional constraints for nodePort values.
 
 
 
-Enforcement for Workloads (Pods)
+Enforcement for native workload kinds and Pod properties.
 
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[placement](#rulestatusstatusruleenforceworkloadsplacement)** | object | Placement matches the Pod scheduler and scheduling constraints. | false |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
 | **[registries](#rulestatusstatusruleenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
-| **[resources](#rulestatusstatusruleenforceworkloadsresources)** | object | Resources defines mutation and enforcement policies for Pod and container<br>resource requests and limits. The workload targets select where the<br>policies apply. With no targets, resource policies apply to all compatible<br>locations: Pod-level resources, regular containers, and init containers.<br>Resource names unsupported at Pod level still apply to compatible container<br>locations.<br>Mutation is applied when a Pod is created. Remove and MatchRequest manage<br>explicit values, Default fills an absent value, and Ratio fills an absent<br>limit from its request. An explicit Ratio violation is then handled by the<br>enclosing allow, deny, or audit action. | false |
-| **[schedulers](#rulestatusstatusruleenforceworkloadsschedulersindex)** | []object | Schedulers defines schedulerName matchers for Pod admission.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
-| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod, pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
+| **[resources](#rulestatusstatusruleenforceworkloadsresources)** | object | Resources defines mutation and enforcement policies for Pod and container<br>resource requests and limits. The workload targets select where the<br>policies apply. With no targets, resource policies apply to all compatible<br>locations: Pod-level resources, regular containers, and init containers.<br>Resource names unsupported at Pod level still apply to compatible container<br>locations.<br>Mutation is applied when a Pod is created, or when an explicitly targeted<br>controller is created or updated (to its Pod template). Remove and MatchRequest manage<br>explicit values, Default fills an absent value, and Ratio fills an absent<br>limit from its request. An explicit Ratio violation is then handled by the<br>enclosing allow, deny, or audit action. | false |
+| **[security](#rulestatusstatusruleenforceworkloadssecurity)** | object | Security matches effective Pod and container security profiles. | false |
+| **targets** | []string | Targets selects native workloads and, optionally, parts of their Pod specs.<br>With no workload policies, the action matches the selected kinds themselves.<br>With policies, targets scopes those policies; it does not also match the kind.<br>Omitted targets preserve Pod-only defaults. Controller targets are opt-in.<br>Whole-controller targets include every compatible location in the Pod template.<br>Existing pod and pod/* part targets retain their established policy scope. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement
+
+
+
+Placement matches the Pod scheduler and scheduling constraints.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[affinity](#rulestatusstatusruleenforceworkloadsplacementaffinityindex)** | []object | Affinity matches each complete required or preferred affinity term. | false |
+| **[nodeSelector](#rulestatusstatusruleenforceworkloadsplacementnodeselectorindex)** | []object | NodeSelector matches each node selector entry. Empty matchers match any entry.<br>Placement rules apply to the pod target; allowing an entry does not require it. | false |
+| **[schedulers](#rulestatusstatusruleenforceworkloadsplacementschedulersindex)** | []object | Schedulers defines schedulerName matchers for selected Pods and Pod templates.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
+| **[tolerations](#rulestatusstatusruleenforceworkloadsplacementtolerationsindex)** | []object | Tolerations matches each toleration, including injected and wildcard tolerations. | false |
+| **[topologySpreadConstraints](#rulestatusstatusruleenforceworkloadsplacementtopologyspreadconstraintsindex)** | []object | TopologySpreadConstraints matches each complete spread constraint. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index]
+
+
+
+WorkloadAffinityMatch matches an entire affinity term. Fields are ANDed;
+entries in enforce.workloads.placement.affinity are alternatives. {} matches any term.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[fieldRequirements](#rulestatusstatusruleenforceworkloadsplacementaffinityindexfieldrequirementsindex)** | []object | FieldRequirements constrains node matchFields. When Requirements is set,<br>matchFields must be explicitly permitted here to avoid an unchecked path. | false |
+| **[labelSelector](#rulestatusstatusruleenforceworkloadsplacementaffinityindexlabelselector)** | object | PlacementLabelSelectorMatch checks every effective selector requirement.<br>matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys<br>are checked as In/NotIn using the incoming Pod's label values. Missing dynamic<br>labels are ignored, matching Kubernetes semantics. | false |
+| **modes** | []enum | Modes defaults to both scheduling modes; it does not require their presence.<br/>*Enum*: required, preferred<br/> | false |
+| **namespaceScope** | enum | SameNamespace requires no namespaceSelector and only the Pod's namespace<br>in namespaces (or an omitted namespaces list). Any imposes no restriction.<br/>*Enum*: SameNamespace, Any<br/> | false |
+| **[namespaceSelector](#rulestatusstatusruleenforceworkloadsplacementaffinityindexnamespaceselector)** | object | PlacementLabelSelectorMatch checks every effective selector requirement.<br>matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys<br>are checked as In/NotIn using the incoming Pod's label values. Missing dynamic<br>labels are ignored, matching Kubernetes semantics. | false |
+| **[namespaces](#rulestatusstatusruleenforceworkloadsplacementaffinityindexnamespaces)** | object | Namespaces constrains each explicitly supplied namespace. | false |
+| **[requirements](#rulestatusstatusruleenforceworkloadsplacementaffinityindexrequirementsindex)** | []object | Requirements constrains node matchExpressions. | false |
+| **[topologyKey](#rulestatusstatusruleenforceworkloadsplacementaffinityindextopologykey)** | object | TopologyKey applies to Pod affinity and anti-affinity. | false |
+| **types** | []enum | Types defaults to all types. Type-specific constraints only match the<br>types on which they are meaningful.<br/>*Enum*: nodeAffinity, podAffinity, podAntiAffinity<br/> | false |
+| **[weight](#rulestatusstatusruleenforceworkloadsplacementaffinityindexweight)** | object | Weight requires modes: [preferred]. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].fieldRequirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusstatusruleenforceworkloadsplacementaffinityindexfieldrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#rulestatusstatusruleenforceworkloadsplacementaffinityindexfieldrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].fieldRequirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].fieldRequirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].labelSelector
+
+
+
+PlacementLabelSelectorMatch checks every effective selector requirement.
+matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys
+are checked as In/NotIn using the incoming Pod's label values. Missing dynamic
+labels are ignored, matching Kubernetes semantics.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required requires at least one effective selector requirement. | false |
+| **[requirements](#rulestatusstatusruleenforceworkloadsplacementaffinityindexlabelselectorrequirementsindex)** | []object | Requirements is an allowlist within this matcher. If empty, requirements<br>are unrestricted. Each actual requirement must match one complete entry. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].labelSelector.requirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusstatusruleenforceworkloadsplacementaffinityindexlabelselectorrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#rulestatusstatusruleenforceworkloadsplacementaffinityindexlabelselectorrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].labelSelector.requirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].labelSelector.requirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].namespaceSelector
+
+
+
+PlacementLabelSelectorMatch checks every effective selector requirement.
+matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys
+are checked as In/NotIn using the incoming Pod's label values. Missing dynamic
+labels are ignored, matching Kubernetes semantics.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required requires at least one effective selector requirement. | false |
+| **[requirements](#rulestatusstatusruleenforceworkloadsplacementaffinityindexnamespaceselectorrequirementsindex)** | []object | Requirements is an allowlist within this matcher. If empty, requirements<br>are unrestricted. Each actual requirement must match one complete entry. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].namespaceSelector.requirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusstatusruleenforceworkloadsplacementaffinityindexnamespaceselectorrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#rulestatusstatusruleenforceworkloadsplacementaffinityindexnamespaceselectorrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].namespaceSelector.requirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].namespaceSelector.requirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].namespaces
+
+
+
+Namespaces constrains each explicitly supplied namespace.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].requirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusstatusruleenforceworkloadsplacementaffinityindexrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#rulestatusstatusruleenforceworkloadsplacementaffinityindexrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].requirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].requirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].topologyKey
+
+
+
+TopologyKey applies to Pod affinity and anti-affinity.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].weight
+
+
+
+Weight requires modes: [preferred].
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.nodeSelector[index]
+
+
+
+WorkloadNodeSelectorMatch matches a nodeSelector key/value pair. Omitted fields
+are unrestricted, so {} matches every entry, including an empty label value.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusstatusruleenforceworkloadsplacementnodeselectorindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **[values](#rulestatusstatusruleenforceworkloadsplacementnodeselectorindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.nodeSelector[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.nodeSelector[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.schedulers[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.tolerations[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **effects** | []enum | Effects matches the literal effect. An empty effect on a Pod tolerates all<br>effects and does not match an allowlist of individual effects.<br/>*Enum*: NoSchedule, PreferNoSchedule, NoExecute, <br/> | false |
+| **[key](#rulestatusstatusruleenforceworkloadsplacementtolerationsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | Operators matches Equal (including an omitted operator) or Exists.<br/>*Enum*: Equal, Exists<br/> | false |
+| **[tolerationSeconds](#rulestatusstatusruleenforceworkloadsplacementtolerationsindextolerationseconds)** | object | TolerationDurationMatch treats an absent tolerationSeconds as unlimited. | false |
+| **[values](#rulestatusstatusruleenforceworkloadsplacementtolerationsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.tolerations[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.tolerations[index].tolerationSeconds
+
+
+
+TolerationDurationMatch treats an absent tolerationSeconds as unlimited.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **allowUnlimited** | boolean | AllowUnlimited defaults to true. Set false to require a finite duration. | false |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.tolerations[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.topologySpreadConstraints[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[labelSelector](#rulestatusstatusruleenforceworkloadsplacementtopologyspreadconstraintsindexlabelselector)** | object | PlacementLabelSelectorMatch checks every effective selector requirement.<br>matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys<br>are checked as In/NotIn using the incoming Pod's label values. Missing dynamic<br>labels are ignored, matching Kubernetes semantics. | false |
+| **[maxSkew](#rulestatusstatusruleenforceworkloadsplacementtopologyspreadconstraintsindexmaxskew)** | object | PlacementRange defines inclusive bounds. An omitted bound is unrestricted. | false |
+| **[minDomains](#rulestatusstatusruleenforceworkloadsplacementtopologyspreadconstraintsindexmindomains)** | object | MinDomains uses 1 when the Pod omits minDomains. | false |
+| **nodeAffinityPolicy** | []enum | NodeAffinityPolicy uses Honor when the Pod omits the field.<br/>*Enum*: Honor, Ignore<br/> | false |
+| **nodeTaintsPolicy** | []enum | NodeTaintsPolicy uses Ignore when the Pod omits the field.<br/>*Enum*: Honor, Ignore<br/> | false |
+| **[topologyKey](#rulestatusstatusruleenforceworkloadsplacementtopologyspreadconstraintsindextopologykey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **whenUnsatisfiable** | []enum | <br/>*Enum*: DoNotSchedule, ScheduleAnyway<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.topologySpreadConstraints[index].labelSelector
+
+
+
+PlacementLabelSelectorMatch checks every effective selector requirement.
+matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys
+are checked as In/NotIn using the incoming Pod's label values. Missing dynamic
+labels are ignored, matching Kubernetes semantics.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required requires at least one effective selector requirement. | false |
+| **[requirements](#rulestatusstatusruleenforceworkloadsplacementtopologyspreadconstraintsindexlabelselectorrequirementsindex)** | []object | Requirements is an allowlist within this matcher. If empty, requirements<br>are unrestricted. Each actual requirement must match one complete entry. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.topologySpreadConstraints[index].labelSelector.requirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusstatusruleenforceworkloadsplacementtopologyspreadconstraintsindexlabelselectorrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#rulestatusstatusruleenforceworkloadsplacementtopologyspreadconstraintsindexlabelselectorrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.topologySpreadConstraints[index].labelSelector.requirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.topologySpreadConstraints[index].labelSelector.requirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.topologySpreadConstraints[index].maxSkew
+
+
+
+PlacementRange defines inclusive bounds. An omitted bound is unrestricted.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.topologySpreadConstraints[index].minDomains
+
+
+
+MinDomains uses 1 when the Pod omits minDomains.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.placement.topologySpreadConstraints[index].topologyKey
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.registries[index]
@@ -3734,7 +5718,8 @@ policies apply. With no targets, resource policies apply to all compatible
 locations: Pod-level resources, regular containers, and init containers.
 Resource names unsupported at Pod level still apply to compatible container
 locations.
-Mutation is applied when a Pod is created. Remove and MatchRequest manage
+Mutation is applied when a Pod is created, or when an explicitly targeted
+controller is created or updated (to its Pod template). Remove and MatchRequest manage
 explicit values, Default fills an absent value, and Ratio fills an absent
 limit from its request. An explicit Ratio violation is then handled by the
 enclosing allow, deny, or audit action.
@@ -3772,7 +5757,34 @@ WorkloadResourceRequestPolicy defines how a resource request is mutated.
 | **value** | int or string | Value is the quantity applied by the Default policy. | false |
 
 
-### RuleStatus.status.rule.enforce.workloads.schedulers[index]
+### RuleStatus.status.rule.enforce.workloads.security
+
+
+
+Security matches effective Pod and container security profiles.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[appArmorProfiles](#rulestatusstatusruleenforceworkloadssecurityapparmorprofilesindex)** | []object | AppArmorProfiles matches effective Linux container profiles, including<br>legacy AppArmor annotations before Pod defaults. It uses the same target<br>and missing-profile semantics as SeccompProfiles. Privileged containers are<br>Unconfined. Matching a Localhost name does not verify its installation. | false |
+| **[seccompProfiles](#rulestatusstatusruleenforceworkloadssecurityseccompprofilesindex)** | []object | SeccompProfiles matches effective Linux container profiles, resolving<br>container overrides before Pod defaults. Privileged containers are Unconfined.<br>Missing profiles do not match any type, so an allow-list rejects them.<br>Omitted targets check regular, init and ephemeral containers; pod explicitly<br>selects only the Pod default. Controller targets check their Pod templates. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.security.appArmorProfiles[index]
+
+
+
+WorkloadSecurityProfileMatch matches a profile type and optionally its local
+name/path. Entries are alternatives; localhostProfiles constrains only Localhost.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **types** | []enum | Types selects profile types. Missing profiles never match.<br/>*Enum*: RuntimeDefault, Localhost, Unconfined<br/> | true |
+| **[localhostProfiles](#rulestatusstatusruleenforceworkloadssecurityapparmorprofilesindexlocalhostprofilesindex)** | []object | LocalhostProfiles matches seccomp paths relative to the kubelet seccomp<br>directory, or loaded AppArmor profile names. Omitted permits any Localhost<br>profile. Requires Localhost in types. Expressions use exact, exp and negate. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.security.appArmorProfiles[index].localhostProfiles[index]
 
 
 
@@ -3785,6 +5797,736 @@ Both may be set together.
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.security.seccompProfiles[index]
+
+
+
+WorkloadSecurityProfileMatch matches a profile type and optionally its local
+name/path. Entries are alternatives; localhostProfiles constrains only Localhost.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **types** | []enum | Types selects profile types. Missing profiles never match.<br/>*Enum*: RuntimeDefault, Localhost, Unconfined<br/> | true |
+| **[localhostProfiles](#rulestatusstatusruleenforceworkloadssecurityseccompprofilesindexlocalhostprofilesindex)** | []object | LocalhostProfiles matches seccomp paths relative to the kubelet seccomp<br>directory, or loaded AppArmor profile names. Omitted permits any Localhost<br>profile. Requires Localhost in types. Expressions use exact, exp and negate. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.security.seccompProfiles[index].localhostProfiles[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rule.mutate[index]
+
+
+
+NamespaceRuleMutation applies typed mutations independently of enforce.action.
+Mutated values remain subject to all applicable enforcement rules.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem,<br>and map keys, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, nodeSelector,<br>tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
+| **[conditions](#rulestatusstatusrulemutateindexconditionsindex)** | []object | Conditions gate this entire mutation entry and inspect the object after<br>preceding mutations. All conditions must be true; empty means apply. | false |
+| **[workloads](#rulestatusstatusrulemutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. ReadOnlyRootFilesystem also applies to newly added<br>ephemeral containers on subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
+
+
+### RuleStatus.status.rule.mutate[index].conditions[index]
+
+
+
+AdmissionCondition is a Boolean CEL gate for a mutation entry or enforcement rule. It can
+inspect object and request metadata, but cannot generate mutation values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **expression** | string | Expression must evaluate to bool. Any false condition skips this block.<br>An evaluation error rejects the request unless another condition is false. | true |
+| **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads
+
+
+
+WorkloadMutation contains typed native Pod values. Empty maps/lists are
+preserved so replace can clear a property; nil means the property is omitted.
+It applies on Pod creation. ReadOnlyRootFilesystem also applies to newly added
+ephemeral containers on subresource updates. Existing containers are never reconciled.
+On merge, later entries override hostUsers, readOnlyRootFilesystem, matching map keys,
+tolerations and spread constraints.
+On merge, required affinity restrictions from applicable entries are ANDed.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[placement](#rulestatusstatusrulemutateindexworkloadsplacement)** | object | Placement configures the Pod scheduler and scheduling constraints. | false |
+| **[security](#rulestatusstatusrulemutateindexworkloadssecurity)** | object | Security configures Pod and container security settings. | false |
+| **targets** | []enum | Targets selects compatible Pod locations. Omitted or empty selects all<br>compatible locations. The pod target includes Pod-level properties and all<br>container groups; pod/containers, pod/initcontainers and pod/ephemeralcontainers<br>narrow selection to one group. Controller templates and volumes are not supported.<br/>*Enum*: pod, pod/containers, pod/initcontainers, pod/ephemeralcontainers<br/> | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement
+
+
+
+Placement configures the Pod scheduler and scheduling constraints.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[affinity](#rulestatusstatusrulemutateindexworkloadsplacementaffinity)** | object | Affinity on merge conjoins required restrictions and upserts preferred terms.<br>Preferred terms match by their complete term, excluding weight and normalized<br>ordering. A different term is added; a matching term gets the supplied weight.<br>Required node affinity is distributed over existing OR alternatives, with<br>at most 256 resulting alternatives. Empty node selector terms match no nodes.<br>Replace replaces all affinity, including any branches omitted from the rule. | false |
+| **nodeSelector** | map[string]string | NodeSelector sets configured keys on merge, or replaces the map on replace. | false |
+| **scheduler** | string | Scheduler sets spec.schedulerName on Pod creation. Merge fills only an empty<br>schedulerName, preserving all non-empty names, including default-scheduler.<br>Kubernetes defaults omitted schedulerName before admission. Use replace with<br>a condition to override default-scheduler while preserving custom schedulers.<br>Replace always overwrites schedulerName when the entry's conditions match.<br>Omitted or null leaves the Pod value unchanged. | false |
+| **[tolerations](#rulestatusstatusrulemutateindexworkloadsplacementtolerationsindex)** | []object | Tolerations merges by key, operator (default Equal), value and effect.<br>Changing any identity field adds another toleration, retaining the old one.<br>A matching toleration's duration is replaced; omitting it makes it unlimited.<br>Replace replaces the entire list, including entries with other identities. | false |
+| **[topologySpreadConstraints](#rulestatusstatusrulemutateindexworkloadsplacementtopologyspreadconstraintsindex)** | []object | TopologySpreadConstraints merges by topologyKey and whenUnsatisfiable.<br>The entire matching constraint is replaced, including its selector and<br>optional fields; other constraints remain. Replace replaces the entire list. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity
+
+
+
+Affinity on merge conjoins required restrictions and upserts preferred terms.
+Preferred terms match by their complete term, excluding weight and normalized
+ordering. A different term is added; a matching term gets the supplied weight.
+Required node affinity is distributed over existing OR alternatives, with
+at most 256 resulting alternatives. Empty node selector terms match no nodes.
+Replace replaces all affinity, including any branches omitted from the rule.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[nodeAffinity](#rulestatusstatusrulemutateindexworkloadsplacementaffinitynodeaffinity)** | object | Describes node affinity scheduling rules for the pod. | false |
+| **[podAffinity](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodaffinity)** | object | Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, zone, etc. as some other pod(s)). | false |
+| **[podAntiAffinity](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodantiaffinity)** | object | Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s)). | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.nodeAffinity
+
+
+
+Describes node affinity scheduling rules for the pod.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[preferredDuringSchedulingIgnoredDuringExecution](#rulestatusstatusrulemutateindexworkloadsplacementaffinitynodeaffinitypreferredduringschedulingignoredduringexecutionindex)** | []object | The scheduler will prefer to schedule pods to nodes that satisfy<br>the affinity expressions specified by this field, but it may choose<br>a node that violates one or more of the expressions. The node that is<br>most preferred is the one with the greatest sum of weights, i.e.<br>for each node that meets all of the scheduling requirements (resource<br>request, requiredDuringScheduling affinity expressions, etc.),<br>compute a sum by iterating through the elements of this field and adding<br>"weight" to the sum if the node matches the corresponding matchExpressions; the<br>node(s) with the highest sum are the most preferred. | false |
+| **[requiredDuringSchedulingIgnoredDuringExecution](#rulestatusstatusrulemutateindexworkloadsplacementaffinitynodeaffinityrequiredduringschedulingignoredduringexecution)** | object | If the affinity requirements specified by this field are not met at<br>scheduling time, the pod will not be scheduled onto the node.<br>If the affinity requirements specified by this field cease to be met<br>at some point during pod execution (e.g. due to an update), the system<br>may or may not try to eventually evict the pod from its node. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+An empty preferred scheduling term matches all objects with implicit weight 0
+(i.e. it's a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op).
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[preference](#rulestatusstatusrulemutateindexworkloadsplacementaffinitynodeaffinitypreferredduringschedulingignoredduringexecutionindexpreference)** | object | A node selector term, associated with the corresponding weight. | true |
+| **weight** | integer | Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.<br/>*Format*: int32<br/> | true |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].preference
+
+
+
+A node selector term, associated with the corresponding weight.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulemutateindexworkloadsplacementaffinitynodeaffinitypreferredduringschedulingignoredduringexecutionindexpreferencematchexpressionsindex)** | []object | A list of node selector requirements by node's labels. | false |
+| **[matchFields](#rulestatusstatusrulemutateindexworkloadsplacementaffinitynodeaffinitypreferredduringschedulingignoredduringexecutionindexpreferencematchfieldsindex)** | []object | A list of node selector requirements by node's fields. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].preference.matchExpressions[index]
+
+
+
+A node selector requirement is a selector that contains values, a key, and an operator
+that relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | The label key that the selector applies to. | true |
+| **operator** | string | Represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. If the operator is Gt or Lt, the values<br>array must have a single element, which will be interpreted as an integer.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].preference.matchFields[index]
+
+
+
+A node selector requirement is a selector that contains values, a key, and an operator
+that relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | The label key that the selector applies to. | true |
+| **operator** | string | Represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. If the operator is Gt or Lt, the values<br>array must have a single element, which will be interpreted as an integer.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution
+
+
+
+If the affinity requirements specified by this field are not met at
+scheduling time, the pod will not be scheduled onto the node.
+If the affinity requirements specified by this field cease to be met
+at some point during pod execution (e.g. due to an update), the system
+may or may not try to eventually evict the pod from its node.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[nodeSelectorTerms](#rulestatusstatusrulemutateindexworkloadsplacementaffinitynodeaffinityrequiredduringschedulingignoredduringexecutionnodeselectortermsindex)** | []object | Required. A list of node selector terms. The terms are ORed. | true |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[index]
+
+
+
+A null or empty node selector term matches no objects. The requirements of
+them are ANDed.
+The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulemutateindexworkloadsplacementaffinitynodeaffinityrequiredduringschedulingignoredduringexecutionnodeselectortermsindexmatchexpressionsindex)** | []object | A list of node selector requirements by node's labels. | false |
+| **[matchFields](#rulestatusstatusrulemutateindexworkloadsplacementaffinitynodeaffinityrequiredduringschedulingignoredduringexecutionnodeselectortermsindexmatchfieldsindex)** | []object | A list of node selector requirements by node's fields. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[index].matchExpressions[index]
+
+
+
+A node selector requirement is a selector that contains values, a key, and an operator
+that relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | The label key that the selector applies to. | true |
+| **operator** | string | Represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. If the operator is Gt or Lt, the values<br>array must have a single element, which will be interpreted as an integer.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[index].matchFields[index]
+
+
+
+A node selector requirement is a selector that contains values, a key, and an operator
+that relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | The label key that the selector applies to. | true |
+| **operator** | string | Represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. If the operator is Gt or Lt, the values<br>array must have a single element, which will be interpreted as an integer.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAffinity
+
+
+
+Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, zone, etc. as some other pod(s)).
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[preferredDuringSchedulingIgnoredDuringExecution](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindex)** | []object | The scheduler will prefer to schedule pods to nodes that satisfy<br>the affinity expressions specified by this field, but it may choose<br>a node that violates one or more of the expressions. The node that is<br>most preferred is the one with the greatest sum of weights, i.e.<br>for each node that meets all of the scheduling requirements (resource<br>request, requiredDuringScheduling affinity expressions, etc.),<br>compute a sum by iterating through the elements of this field and adding<br>"weight" to the sum if the node has pods which matches the corresponding podAffinityTerm; the<br>node(s) with the highest sum are the most preferred. | false |
+| **[requiredDuringSchedulingIgnoredDuringExecution](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindex)** | []object | If the affinity requirements specified by this field are not met at<br>scheduling time, the pod will not be scheduled onto the node.<br>If the affinity requirements specified by this field cease to be met<br>at some point during pod execution (e.g. due to a pod label update), the<br>system may or may not try to eventually evict the pod from its node.<br>When there are multiple elements, the lists of nodes corresponding to each<br>podAffinityTerm are intersected, i.e. all terms must be satisfied. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[podAffinityTerm](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinityterm)** | object | Required. A pod affinity term, associated with the corresponding weight. | true |
+| **weight** | integer | weight associated with matching the corresponding podAffinityTerm,<br>in the range 1-100.<br/>*Format*: int32<br/> | true |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm
+
+
+
+Required. A pod affinity term, associated with the corresponding weight.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **topologyKey** | string | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching<br>the labelSelector in the specified namespaces, where co-located is defined as running on a node<br>whose value of the label with key topologyKey matches that of any node on which any of the<br>selected pods is running.<br>Empty topologyKey is not allowed. | true |
+| **[labelSelector](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermlabelselector)** | object | A label query over a set of resources, in this case pods.<br>If it's null, this PodAffinityTerm matches with no Pods. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both matchLabelKeys and labelSelector.<br>Also, matchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **mismatchLabelKeys** | []string | MismatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.<br>Also, mismatchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **[namespaceSelector](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermnamespaceselector)** | object | A label query over the set of namespaces that the term applies to.<br>The term is applied to the union of the namespaces selected by this field<br>and the ones listed in the namespaces field.<br>null selector and null or empty namespaces list means "this pod's namespace".<br>An empty selector ({}) matches all namespaces. | false |
+| **namespaces** | []string | namespaces specifies a static list of namespace names that the term applies to.<br>The term is applied to the union of the namespaces listed in this field<br>and the ones selected by namespaceSelector.<br>null or empty namespaces list and null namespaceSelector means "this pod's namespace". | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.labelSelector
+
+
+
+A label query over a set of resources, in this case pods.
+If it's null, this PodAffinityTerm matches with no Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.namespaceSelector
+
+
+
+A label query over the set of namespaces that the term applies to.
+The term is applied to the union of the namespaces selected by this field
+and the ones listed in the namespaces field.
+null selector and null or empty namespaces list means "this pod's namespace".
+An empty selector ({}) matches all namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+Defines a set of pods (namely those matching the labelSelector
+relative to the given namespace(s)) that this pod should be
+co-located (affinity) or not co-located (anti-affinity) with,
+where co-located is defined as running on a node whose value of
+the label with key <topologyKey> matches that of any node on which
+a pod of the set of pods is running
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **topologyKey** | string | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching<br>the labelSelector in the specified namespaces, where co-located is defined as running on a node<br>whose value of the label with key topologyKey matches that of any node on which any of the<br>selected pods is running.<br>Empty topologyKey is not allowed. | true |
+| **[labelSelector](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindexlabelselector)** | object | A label query over a set of resources, in this case pods.<br>If it's null, this PodAffinityTerm matches with no Pods. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both matchLabelKeys and labelSelector.<br>Also, matchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **mismatchLabelKeys** | []string | MismatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.<br>Also, mismatchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **[namespaceSelector](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindexnamespaceselector)** | object | A label query over the set of namespaces that the term applies to.<br>The term is applied to the union of the namespaces selected by this field<br>and the ones listed in the namespaces field.<br>null selector and null or empty namespaces list means "this pod's namespace".<br>An empty selector ({}) matches all namespaces. | false |
+| **namespaces** | []string | namespaces specifies a static list of namespace names that the term applies to.<br>The term is applied to the union of the namespaces listed in this field<br>and the ones selected by namespaceSelector.<br>null or empty namespaces list and null namespaceSelector means "this pod's namespace". | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].labelSelector
+
+
+
+A label query over a set of resources, in this case pods.
+If it's null, this PodAffinityTerm matches with no Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindexlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].namespaceSelector
+
+
+
+A label query over the set of namespaces that the term applies to.
+The term is applied to the union of the namespaces selected by this field
+and the ones listed in the namespaces field.
+null selector and null or empty namespaces list means "this pod's namespace".
+An empty selector ({}) matches all namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindexnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAntiAffinity
+
+
+
+Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s)).
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[preferredDuringSchedulingIgnoredDuringExecution](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindex)** | []object | The scheduler will prefer to schedule pods to nodes that satisfy<br>the anti-affinity expressions specified by this field, but it may choose<br>a node that violates one or more of the expressions. The node that is<br>most preferred is the one with the greatest sum of weights, i.e.<br>for each node that meets all of the scheduling requirements (resource<br>request, requiredDuringScheduling anti-affinity expressions, etc.),<br>compute a sum by iterating through the elements of this field and subtracting<br>"weight" from the sum if the node has pods which matches the corresponding podAffinityTerm; the<br>node(s) with the highest sum are the most preferred. | false |
+| **[requiredDuringSchedulingIgnoredDuringExecution](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindex)** | []object | If the anti-affinity requirements specified by this field are not met at<br>scheduling time, the pod will not be scheduled onto the node.<br>If the anti-affinity requirements specified by this field cease to be met<br>at some point during pod execution (e.g. due to a pod label update), the<br>system may or may not try to eventually evict the pod from its node.<br>When there are multiple elements, the lists of nodes corresponding to each<br>podAffinityTerm are intersected, i.e. all terms must be satisfied. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[podAffinityTerm](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinityterm)** | object | Required. A pod affinity term, associated with the corresponding weight. | true |
+| **weight** | integer | weight associated with matching the corresponding podAffinityTerm,<br>in the range 1-100.<br/>*Format*: int32<br/> | true |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm
+
+
+
+Required. A pod affinity term, associated with the corresponding weight.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **topologyKey** | string | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching<br>the labelSelector in the specified namespaces, where co-located is defined as running on a node<br>whose value of the label with key topologyKey matches that of any node on which any of the<br>selected pods is running.<br>Empty topologyKey is not allowed. | true |
+| **[labelSelector](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermlabelselector)** | object | A label query over a set of resources, in this case pods.<br>If it's null, this PodAffinityTerm matches with no Pods. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both matchLabelKeys and labelSelector.<br>Also, matchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **mismatchLabelKeys** | []string | MismatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.<br>Also, mismatchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **[namespaceSelector](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermnamespaceselector)** | object | A label query over the set of namespaces that the term applies to.<br>The term is applied to the union of the namespaces selected by this field<br>and the ones listed in the namespaces field.<br>null selector and null or empty namespaces list means "this pod's namespace".<br>An empty selector ({}) matches all namespaces. | false |
+| **namespaces** | []string | namespaces specifies a static list of namespace names that the term applies to.<br>The term is applied to the union of the namespaces listed in this field<br>and the ones selected by namespaceSelector.<br>null or empty namespaces list and null namespaceSelector means "this pod's namespace". | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.labelSelector
+
+
+
+A label query over a set of resources, in this case pods.
+If it's null, this PodAffinityTerm matches with no Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.namespaceSelector
+
+
+
+A label query over the set of namespaces that the term applies to.
+The term is applied to the union of the namespaces selected by this field
+and the ones listed in the namespaces field.
+null selector and null or empty namespaces list means "this pod's namespace".
+An empty selector ({}) matches all namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+Defines a set of pods (namely those matching the labelSelector
+relative to the given namespace(s)) that this pod should be
+co-located (affinity) or not co-located (anti-affinity) with,
+where co-located is defined as running on a node whose value of
+the label with key <topologyKey> matches that of any node on which
+a pod of the set of pods is running
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **topologyKey** | string | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching<br>the labelSelector in the specified namespaces, where co-located is defined as running on a node<br>whose value of the label with key topologyKey matches that of any node on which any of the<br>selected pods is running.<br>Empty topologyKey is not allowed. | true |
+| **[labelSelector](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindexlabelselector)** | object | A label query over a set of resources, in this case pods.<br>If it's null, this PodAffinityTerm matches with no Pods. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both matchLabelKeys and labelSelector.<br>Also, matchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **mismatchLabelKeys** | []string | MismatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.<br>Also, mismatchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **[namespaceSelector](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindexnamespaceselector)** | object | A label query over the set of namespaces that the term applies to.<br>The term is applied to the union of the namespaces selected by this field<br>and the ones listed in the namespaces field.<br>null selector and null or empty namespaces list means "this pod's namespace".<br>An empty selector ({}) matches all namespaces. | false |
+| **namespaces** | []string | namespaces specifies a static list of namespace names that the term applies to.<br>The term is applied to the union of the namespaces listed in this field<br>and the ones selected by namespaceSelector.<br>null or empty namespaces list and null namespaceSelector means "this pod's namespace". | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].labelSelector
+
+
+
+A label query over a set of resources, in this case pods.
+If it's null, this PodAffinityTerm matches with no Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindexlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].namespaceSelector
+
+
+
+A label query over the set of namespaces that the term applies to.
+The term is applied to the union of the namespaces selected by this field
+and the ones listed in the namespaces field.
+null selector and null or empty namespaces list means "this pod's namespace".
+An empty selector ({}) matches all namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulemutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindexnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.tolerations[index]
+
+
+
+The pod this Toleration is attached to tolerates any taint that matches
+the triple <key,value,effect> using the matching operator <operator>.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **effect** | string | Effect indicates the taint effect to match. Empty means match all taint effects.<br>When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute. | false |
+| **key** | string | Key is the taint key that the toleration applies to. Empty means match all taint keys.<br>If the key is empty, operator must be Exists; this combination means to match all values and all keys. | false |
+| **operator** | string | Operator represents a key's relationship to the value.<br>Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.<br>Exists is equivalent to wildcard for value, so that a pod can<br>tolerate all taints of a particular category.<br>Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators). | false |
+| **tolerationSeconds** | integer | TolerationSeconds represents the period of time the toleration (which must be<br>of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,<br>it is not set, which means tolerate the taint forever (do not evict). Zero and<br>negative values will be treated as 0 (evict immediately) by the system.<br/>*Format*: int64<br/> | false |
+| **value** | string | Value is the taint value the toleration matches to.<br>If the operator is Exists, the value should be empty, otherwise just a regular string. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.topologySpreadConstraints[index]
+
+
+
+TopologySpreadConstraint specifies how to spread matching pods among the given topology.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **maxSkew** | integer | MaxSkew describes the degree to which pods may be unevenly distributed.<br>When `whenUnsatisfiable=DoNotSchedule`, it is the maximum permitted difference<br>between the number of matching pods in the target topology and the global minimum.<br>The global minimum is the minimum number of matching pods in an eligible domain<br>or zero if the number of eligible domains is less than MinDomains.<br>For example, in a 3-zone cluster, MaxSkew is set to 1, and pods with the same<br>labelSelector spread as 2/2/1:<br>In this case, the global minimum is 1.<br>| zone1 | zone2 | zone3 |<br>|  P P  |  P P  |   P   |<br>- if MaxSkew is 1, incoming pod can only be scheduled to zone3 to become 2/2/2;<br>scheduling it onto zone1(zone2) would make the ActualSkew(3-1) on zone1(zone2)<br>violate MaxSkew(1).<br>- if MaxSkew is 2, incoming pod can be scheduled onto any zone.<br>When `whenUnsatisfiable=ScheduleAnyway`, it is used to give higher precedence<br>to topologies that satisfy it.<br>It's a required field. Default value is 1 and 0 is not allowed.<br/>*Format*: int32<br/> | true |
+| **topologyKey** | string | TopologyKey is the key of node labels. Nodes that have a label with this key<br>and identical values are considered to be in the same topology.<br>We consider each <key, value> as a "bucket", and try to put balanced number<br>of pods into each bucket.<br>We define a domain as a particular instance of a topology.<br>Also, we define an eligible domain as a domain whose nodes meet the requirements of<br>nodeAffinityPolicy and nodeTaintsPolicy.<br>e.g. If TopologyKey is "kubernetes.io/hostname", each Node is a domain of that topology.<br>And, if TopologyKey is "topology.kubernetes.io/zone", each zone is a domain of that topology.<br>It's a required field. | true |
+| **whenUnsatisfiable** | string | WhenUnsatisfiable indicates how to deal with a pod if it doesn't satisfy<br>the spread constraint.<br>- DoNotSchedule (default) tells the scheduler not to schedule it.<br>- ScheduleAnyway tells the scheduler to schedule the pod in any location,<br>  but giving higher precedence to topologies that would help reduce the<br>  skew.<br>A constraint is considered "Unsatisfiable" for an incoming pod<br>if and only if every possible node assignment for that pod would violate<br>"MaxSkew" on some topology.<br>For example, in a 3-zone cluster, MaxSkew is set to 1, and pods with the same<br>labelSelector spread as 3/1/1:<br>| zone1 | zone2 | zone3 |<br>| P P P |   P   |   P   |<br>If WhenUnsatisfiable is set to DoNotSchedule, incoming pod can only be scheduled<br>to zone2(zone3) to become 3/2/1(3/1/2) as ActualSkew(2-1) on zone2(zone3) satisfies<br>MaxSkew(1). In other words, the cluster can still be imbalanced, but scheduler<br>won't make it *more* imbalanced.<br>It's a required field. | true |
+| **[labelSelector](#rulestatusstatusrulemutateindexworkloadsplacementtopologyspreadconstraintsindexlabelselector)** | object | LabelSelector is used to find matching pods.<br>Pods that match this label selector are counted to determine the number of pods<br>in their corresponding topology domain. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select the pods over which<br>spreading will be calculated. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are ANDed with labelSelector<br>to select the group of existing pods over which spreading will be calculated<br>for the incoming pod. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector.<br>MatchLabelKeys cannot be set when LabelSelector isn't set.<br>Keys that don't exist in the incoming pod labels will<br>be ignored. A null or empty list means only match against labelSelector.<br><br>This is a beta field and requires the MatchLabelKeysInPodTopologySpread feature gate to be enabled (enabled by default). | false |
+| **minDomains** | integer | MinDomains indicates a minimum number of eligible domains.<br>When the number of eligible domains with matching topology keys is less than minDomains,<br>Pod Topology Spread treats "global minimum" as 0, and then the calculation of Skew is performed.<br>And when the number of eligible domains with matching topology keys equals or greater than minDomains,<br>this value has no effect on scheduling.<br>As a result, when the number of eligible domains is less than minDomains,<br>scheduler won't schedule more than maxSkew Pods to those domains.<br>If value is nil, the constraint behaves as if MinDomains is equal to 1.<br>Valid values are integers greater than 0.<br>When value is not nil, WhenUnsatisfiable must be DoNotSchedule.<br><br>For example, in a 3-zone cluster, MaxSkew is set to 2, MinDomains is set to 5 and pods with the same<br>labelSelector spread as 2/2/2:<br>| zone1 | zone2 | zone3 |<br>|  P P  |  P P  |  P P  |<br>The number of domains is less than 5(MinDomains), so "global minimum" is treated as 0.<br>In this situation, new pod with the same labelSelector cannot be scheduled,<br>because computed skew will be 3(3 - 0) if new Pod is scheduled to any of the three zones,<br>it will violate MaxSkew.<br/>*Format*: int32<br/> | false |
+| **nodeAffinityPolicy** | string | NodeAffinityPolicy indicates how we will treat Pod's nodeAffinity/nodeSelector<br>when calculating pod topology spread skew. Options are:<br>- Honor: only nodes matching nodeAffinity/nodeSelector are included in the calculations.<br>- Ignore: nodeAffinity/nodeSelector are ignored. All nodes are included in the calculations.<br><br>If this value is nil, the behavior is equivalent to the Honor policy. | false |
+| **nodeTaintsPolicy** | string | NodeTaintsPolicy indicates how we will treat node taints when calculating<br>pod topology spread skew. Options are:<br>- Honor: nodes without taints, along with tainted nodes for which the incoming pod<br>has a toleration, are included.<br>- Ignore: node taints are ignored. All nodes are included.<br><br>If this value is nil, the behavior is equivalent to the Ignore policy. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.topologySpreadConstraints[index].labelSelector
+
+
+
+LabelSelector is used to find matching pods.
+Pods that match this label selector are counted to determine the number of pods
+in their corresponding topology domain.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulemutateindexworkloadsplacementtopologyspreadconstraintsindexlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.placement.topologySpreadConstraints[index].labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.security
+
+
+
+Security configures Pod and container security settings.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[appArmorProfile](#rulestatusstatusrulemutateindexworkloadssecurityapparmorprofile)** | object | AppArmorProfile supplies the Pod-level securityContext.appArmorProfile on<br>Linux Pod creation. Merge fills an absent profile; replace replaces the<br>complete profile. Explicit container profiles are preserved. Nil omits it.<br>AppArmor and any Localhost profile must be available on eligible nodes. | false |
+| **hostUsers** | boolean | HostUsers sets spec.hostUsers on both merge and replace. False requests a<br>separate user namespace; true uses the host user namespace. Omitted or null<br>leaves the Pod value unchanged. Requires Kubernetes/runtime support. | false |
+| **readOnlyRootFilesystem** | boolean | ReadOnlyRootFilesystem sets securityContext.readOnlyRootFilesystem on every<br>selected regular or init container at Pod creation, and newly added ephemeral<br>containers on subresource updates. Both merge and replace overwrite the value.<br>False is an explicit setting; nil preserves it. Windows Pods are skipped. | false |
+| **[seccompProfile](#rulestatusstatusrulemutateindexworkloadssecurityseccompprofile)** | object | SeccompProfile supplies the Pod-level securityContext.seccompProfile on<br>Linux Pod creation. Merge fills an absent profile; replace replaces the<br>complete profile. Explicit container profiles are preserved. Nil omits it. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.security.appArmorProfile
+
+
+
+AppArmorProfile supplies the Pod-level securityContext.appArmorProfile on
+Linux Pod creation. Merge fills an absent profile; replace replaces the
+complete profile. Explicit container profiles are preserved. Nil omits it.
+AppArmor and any Localhost profile must be available on eligible nodes.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **type** | string | type indicates which kind of AppArmor profile will be applied.<br>Valid options are:<br>  Localhost - a profile pre-loaded on the node.<br>  RuntimeDefault - the container runtime's default profile.<br>  Unconfined - no AppArmor enforcement. | true |
+| **localhostProfile** | string | localhostProfile indicates a profile loaded on the node that should be used.<br>The profile must be preconfigured on the node to work.<br>Must match the loaded name of the profile.<br>Must be set if and only if type is "Localhost". | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.security.seccompProfile
+
+
+
+SeccompProfile supplies the Pod-level securityContext.seccompProfile on
+Linux Pod creation. Merge fills an absent profile; replace replaces the
+complete profile. Explicit container profiles are preserved. Nil omits it.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **type** | string | type indicates which kind of seccomp profile will be applied.<br>Valid options are:<br><br>Localhost - a profile defined in a file on the node should be used.<br>RuntimeDefault - the container runtime default profile should be used.<br>Unconfined - no profile should be applied. | true |
+| **localhostProfile** | string | localhostProfile indicates a profile defined in a file on the node should be used.<br>The profile must be preconfigured on the node to work.<br>Must be a descending path, relative to the kubelet's configured seccomp profile location.<br>Must be set if type is "Localhost". Must NOT be set for any other type. | false |
 
 
 ### RuleStatus.status.rule.quota[index]
@@ -3844,6 +6586,7 @@ For future implementation where users might manage RuleStatus CRs themselves
 | :---- | :---- | :----------- | :-------- |
 | **[audience](#rulestatusstatusrulesindexaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#rulestatusstatusrulesindexenforce)** | object | Enforcement for given rule | false |
+| **[mutate](#rulestatusstatusrulesindexmutateindex)** | []object | Mutate applies ordered typed mutations before enforcement. It shares the<br>rule's namespace selection and audience. Workload mutations apply on Pod creation. | false |
 | **[quota](#rulestatusstatusrulesindexquotaindex)** | []object | Quota contains native Kubernetes ResourceQuota specifications shared by<br>all namespaces selected by this rule. Unlike Enforce, quota accounting is<br>independent of the request audience. | false |
 
 
@@ -3870,10 +6613,25 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[conditions](#rulestatusstatusrulesindexenforceconditionsindex)** | []object | Conditions gate this entire enforcement rule, including workloads, services,<br>metadata and ingress. All conditions must be true; empty means apply.<br>Conditions run during admission; managed metadata in a conditional rule<br>is applied on matching requests only and is not reconciled in the background. | false |
 | **[ingress](#rulestatusstatusrulesindexenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
 | **[metadata](#rulestatusstatusrulesindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
 | **[services](#rulestatusstatusrulesindexenforceservices)** | object | Enforcement for Services. | false |
-| **[workloads](#rulestatusstatusrulesindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+| **[workloads](#rulestatusstatusrulesindexenforceworkloads)** | object | Enforcement for native workload kinds and Pod properties. | false |
+
+
+### RuleStatus.status.rules[index].enforce.conditions[index]
+
+
+
+AdmissionCondition is a Boolean CEL gate for a mutation entry or enforcement rule. It can
+inspect object and request metadata, but cannot generate mutation values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **expression** | string | Expression must evaluate to bool. Any false condition skips this block.<br>An evaluation error rejects the request unless another condition is false. | true |
+| **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.ingress
@@ -4075,16 +6833,582 @@ NodePorts defines additional constraints for nodePort values.
 
 
 
-Enforcement for Workloads (Pods)
+Enforcement for native workload kinds and Pod properties.
 
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[placement](#rulestatusstatusrulesindexenforceworkloadsplacement)** | object | Placement matches the Pod scheduler and scheduling constraints. | false |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
 | **[registries](#rulestatusstatusrulesindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
-| **[resources](#rulestatusstatusrulesindexenforceworkloadsresources)** | object | Resources defines mutation and enforcement policies for Pod and container<br>resource requests and limits. The workload targets select where the<br>policies apply. With no targets, resource policies apply to all compatible<br>locations: Pod-level resources, regular containers, and init containers.<br>Resource names unsupported at Pod level still apply to compatible container<br>locations.<br>Mutation is applied when a Pod is created. Remove and MatchRequest manage<br>explicit values, Default fills an absent value, and Ratio fills an absent<br>limit from its request. An explicit Ratio violation is then handled by the<br>enclosing allow, deny, or audit action. | false |
-| **[schedulers](#rulestatusstatusrulesindexenforceworkloadsschedulersindex)** | []object | Schedulers defines schedulerName matchers for Pod admission.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
-| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod, pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
+| **[resources](#rulestatusstatusrulesindexenforceworkloadsresources)** | object | Resources defines mutation and enforcement policies for Pod and container<br>resource requests and limits. The workload targets select where the<br>policies apply. With no targets, resource policies apply to all compatible<br>locations: Pod-level resources, regular containers, and init containers.<br>Resource names unsupported at Pod level still apply to compatible container<br>locations.<br>Mutation is applied when a Pod is created, or when an explicitly targeted<br>controller is created or updated (to its Pod template). Remove and MatchRequest manage<br>explicit values, Default fills an absent value, and Ratio fills an absent<br>limit from its request. An explicit Ratio violation is then handled by the<br>enclosing allow, deny, or audit action. | false |
+| **[security](#rulestatusstatusrulesindexenforceworkloadssecurity)** | object | Security matches effective Pod and container security profiles. | false |
+| **targets** | []string | Targets selects native workloads and, optionally, parts of their Pod specs.<br>With no workload policies, the action matches the selected kinds themselves.<br>With policies, targets scopes those policies; it does not also match the kind.<br>Omitted targets preserve Pod-only defaults. Controller targets are opt-in.<br>Whole-controller targets include every compatible location in the Pod template.<br>Existing pod and pod/* part targets retain their established policy scope. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement
+
+
+
+Placement matches the Pod scheduler and scheduling constraints.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[affinity](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindex)** | []object | Affinity matches each complete required or preferred affinity term. | false |
+| **[nodeSelector](#rulestatusstatusrulesindexenforceworkloadsplacementnodeselectorindex)** | []object | NodeSelector matches each node selector entry. Empty matchers match any entry.<br>Placement rules apply to the pod target; allowing an entry does not require it. | false |
+| **[schedulers](#rulestatusstatusrulesindexenforceworkloadsplacementschedulersindex)** | []object | Schedulers defines schedulerName matchers for selected Pods and Pod templates.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
+| **[tolerations](#rulestatusstatusrulesindexenforceworkloadsplacementtolerationsindex)** | []object | Tolerations matches each toleration, including injected and wildcard tolerations. | false |
+| **[topologySpreadConstraints](#rulestatusstatusrulesindexenforceworkloadsplacementtopologyspreadconstraintsindex)** | []object | TopologySpreadConstraints matches each complete spread constraint. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index]
+
+
+
+WorkloadAffinityMatch matches an entire affinity term. Fields are ANDed;
+entries in enforce.workloads.placement.affinity are alternatives. {} matches any term.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[fieldRequirements](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindexfieldrequirementsindex)** | []object | FieldRequirements constrains node matchFields. When Requirements is set,<br>matchFields must be explicitly permitted here to avoid an unchecked path. | false |
+| **[labelSelector](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindexlabelselector)** | object | PlacementLabelSelectorMatch checks every effective selector requirement.<br>matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys<br>are checked as In/NotIn using the incoming Pod's label values. Missing dynamic<br>labels are ignored, matching Kubernetes semantics. | false |
+| **modes** | []enum | Modes defaults to both scheduling modes; it does not require their presence.<br/>*Enum*: required, preferred<br/> | false |
+| **namespaceScope** | enum | SameNamespace requires no namespaceSelector and only the Pod's namespace<br>in namespaces (or an omitted namespaces list). Any imposes no restriction.<br/>*Enum*: SameNamespace, Any<br/> | false |
+| **[namespaceSelector](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindexnamespaceselector)** | object | PlacementLabelSelectorMatch checks every effective selector requirement.<br>matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys<br>are checked as In/NotIn using the incoming Pod's label values. Missing dynamic<br>labels are ignored, matching Kubernetes semantics. | false |
+| **[namespaces](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindexnamespaces)** | object | Namespaces constrains each explicitly supplied namespace. | false |
+| **[requirements](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindexrequirementsindex)** | []object | Requirements constrains node matchExpressions. | false |
+| **[topologyKey](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindextopologykey)** | object | TopologyKey applies to Pod affinity and anti-affinity. | false |
+| **types** | []enum | Types defaults to all types. Type-specific constraints only match the<br>types on which they are meaningful.<br/>*Enum*: nodeAffinity, podAffinity, podAntiAffinity<br/> | false |
+| **[weight](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindexweight)** | object | Weight requires modes: [preferred]. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].fieldRequirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindexfieldrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindexfieldrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].fieldRequirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].fieldRequirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].labelSelector
+
+
+
+PlacementLabelSelectorMatch checks every effective selector requirement.
+matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys
+are checked as In/NotIn using the incoming Pod's label values. Missing dynamic
+labels are ignored, matching Kubernetes semantics.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required requires at least one effective selector requirement. | false |
+| **[requirements](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindexlabelselectorrequirementsindex)** | []object | Requirements is an allowlist within this matcher. If empty, requirements<br>are unrestricted. Each actual requirement must match one complete entry. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].labelSelector.requirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindexlabelselectorrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindexlabelselectorrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].labelSelector.requirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].labelSelector.requirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].namespaceSelector
+
+
+
+PlacementLabelSelectorMatch checks every effective selector requirement.
+matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys
+are checked as In/NotIn using the incoming Pod's label values. Missing dynamic
+labels are ignored, matching Kubernetes semantics.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required requires at least one effective selector requirement. | false |
+| **[requirements](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindexnamespaceselectorrequirementsindex)** | []object | Requirements is an allowlist within this matcher. If empty, requirements<br>are unrestricted. Each actual requirement must match one complete entry. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].namespaceSelector.requirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindexnamespaceselectorrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindexnamespaceselectorrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].namespaceSelector.requirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].namespaceSelector.requirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].namespaces
+
+
+
+Namespaces constrains each explicitly supplied namespace.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].requirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindexrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#rulestatusstatusrulesindexenforceworkloadsplacementaffinityindexrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].requirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].requirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].topologyKey
+
+
+
+TopologyKey applies to Pod affinity and anti-affinity.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].weight
+
+
+
+Weight requires modes: [preferred].
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.nodeSelector[index]
+
+
+
+WorkloadNodeSelectorMatch matches a nodeSelector key/value pair. Omitted fields
+are unrestricted, so {} matches every entry, including an empty label value.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusstatusrulesindexenforceworkloadsplacementnodeselectorindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **[values](#rulestatusstatusrulesindexenforceworkloadsplacementnodeselectorindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.nodeSelector[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.nodeSelector[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.schedulers[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.tolerations[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **effects** | []enum | Effects matches the literal effect. An empty effect on a Pod tolerates all<br>effects and does not match an allowlist of individual effects.<br/>*Enum*: NoSchedule, PreferNoSchedule, NoExecute, <br/> | false |
+| **[key](#rulestatusstatusrulesindexenforceworkloadsplacementtolerationsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | Operators matches Equal (including an omitted operator) or Exists.<br/>*Enum*: Equal, Exists<br/> | false |
+| **[tolerationSeconds](#rulestatusstatusrulesindexenforceworkloadsplacementtolerationsindextolerationseconds)** | object | TolerationDurationMatch treats an absent tolerationSeconds as unlimited. | false |
+| **[values](#rulestatusstatusrulesindexenforceworkloadsplacementtolerationsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.tolerations[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.tolerations[index].tolerationSeconds
+
+
+
+TolerationDurationMatch treats an absent tolerationSeconds as unlimited.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **allowUnlimited** | boolean | AllowUnlimited defaults to true. Set false to require a finite duration. | false |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.tolerations[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.topologySpreadConstraints[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[labelSelector](#rulestatusstatusrulesindexenforceworkloadsplacementtopologyspreadconstraintsindexlabelselector)** | object | PlacementLabelSelectorMatch checks every effective selector requirement.<br>matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys<br>are checked as In/NotIn using the incoming Pod's label values. Missing dynamic<br>labels are ignored, matching Kubernetes semantics. | false |
+| **[maxSkew](#rulestatusstatusrulesindexenforceworkloadsplacementtopologyspreadconstraintsindexmaxskew)** | object | PlacementRange defines inclusive bounds. An omitted bound is unrestricted. | false |
+| **[minDomains](#rulestatusstatusrulesindexenforceworkloadsplacementtopologyspreadconstraintsindexmindomains)** | object | MinDomains uses 1 when the Pod omits minDomains. | false |
+| **nodeAffinityPolicy** | []enum | NodeAffinityPolicy uses Honor when the Pod omits the field.<br/>*Enum*: Honor, Ignore<br/> | false |
+| **nodeTaintsPolicy** | []enum | NodeTaintsPolicy uses Ignore when the Pod omits the field.<br/>*Enum*: Honor, Ignore<br/> | false |
+| **[topologyKey](#rulestatusstatusrulesindexenforceworkloadsplacementtopologyspreadconstraintsindextopologykey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **whenUnsatisfiable** | []enum | <br/>*Enum*: DoNotSchedule, ScheduleAnyway<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].labelSelector
+
+
+
+PlacementLabelSelectorMatch checks every effective selector requirement.
+matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys
+are checked as In/NotIn using the incoming Pod's label values. Missing dynamic
+labels are ignored, matching Kubernetes semantics.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required requires at least one effective selector requirement. | false |
+| **[requirements](#rulestatusstatusrulesindexenforceworkloadsplacementtopologyspreadconstraintsindexlabelselectorrequirementsindex)** | []object | Requirements is an allowlist within this matcher. If empty, requirements<br>are unrestricted. Each actual requirement must match one complete entry. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].labelSelector.requirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#rulestatusstatusrulesindexenforceworkloadsplacementtopologyspreadconstraintsindexlabelselectorrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#rulestatusstatusrulesindexenforceworkloadsplacementtopologyspreadconstraintsindexlabelselectorrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].labelSelector.requirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].labelSelector.requirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].maxSkew
+
+
+
+PlacementRange defines inclusive bounds. An omitted bound is unrestricted.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].minDomains
+
+
+
+MinDomains uses 1 when the Pod omits minDomains.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].topologyKey
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.registries[index]
@@ -4112,7 +7436,8 @@ policies apply. With no targets, resource policies apply to all compatible
 locations: Pod-level resources, regular containers, and init containers.
 Resource names unsupported at Pod level still apply to compatible container
 locations.
-Mutation is applied when a Pod is created. Remove and MatchRequest manage
+Mutation is applied when a Pod is created, or when an explicitly targeted
+controller is created or updated (to its Pod template). Remove and MatchRequest manage
 explicit values, Default fills an absent value, and Ratio fills an absent
 limit from its request. An explicit Ratio violation is then handled by the
 enclosing allow, deny, or audit action.
@@ -4150,7 +7475,34 @@ WorkloadResourceRequestPolicy defines how a resource request is mutated.
 | **value** | int or string | Value is the quantity applied by the Default policy. | false |
 
 
-### RuleStatus.status.rules[index].enforce.workloads.schedulers[index]
+### RuleStatus.status.rules[index].enforce.workloads.security
+
+
+
+Security matches effective Pod and container security profiles.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[appArmorProfiles](#rulestatusstatusrulesindexenforceworkloadssecurityapparmorprofilesindex)** | []object | AppArmorProfiles matches effective Linux container profiles, including<br>legacy AppArmor annotations before Pod defaults. It uses the same target<br>and missing-profile semantics as SeccompProfiles. Privileged containers are<br>Unconfined. Matching a Localhost name does not verify its installation. | false |
+| **[seccompProfiles](#rulestatusstatusrulesindexenforceworkloadssecurityseccompprofilesindex)** | []object | SeccompProfiles matches effective Linux container profiles, resolving<br>container overrides before Pod defaults. Privileged containers are Unconfined.<br>Missing profiles do not match any type, so an allow-list rejects them.<br>Omitted targets check regular, init and ephemeral containers; pod explicitly<br>selects only the Pod default. Controller targets check their Pod templates. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.security.appArmorProfiles[index]
+
+
+
+WorkloadSecurityProfileMatch matches a profile type and optionally its local
+name/path. Entries are alternatives; localhostProfiles constrains only Localhost.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **types** | []enum | Types selects profile types. Missing profiles never match.<br/>*Enum*: RuntimeDefault, Localhost, Unconfined<br/> | true |
+| **[localhostProfiles](#rulestatusstatusrulesindexenforceworkloadssecurityapparmorprofilesindexlocalhostprofilesindex)** | []object | LocalhostProfiles matches seccomp paths relative to the kubelet seccomp<br>directory, or loaded AppArmor profile names. Omitted permits any Localhost<br>profile. Requires Localhost in types. Expressions use exact, exp and negate. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.security.appArmorProfiles[index].localhostProfiles[index]
 
 
 
@@ -4163,6 +7515,736 @@ Both may be set together.
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.security.seccompProfiles[index]
+
+
+
+WorkloadSecurityProfileMatch matches a profile type and optionally its local
+name/path. Entries are alternatives; localhostProfiles constrains only Localhost.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **types** | []enum | Types selects profile types. Missing profiles never match.<br/>*Enum*: RuntimeDefault, Localhost, Unconfined<br/> | true |
+| **[localhostProfiles](#rulestatusstatusrulesindexenforceworkloadssecurityseccompprofilesindexlocalhostprofilesindex)** | []object | LocalhostProfiles matches seccomp paths relative to the kubelet seccomp<br>directory, or loaded AppArmor profile names. Omitted permits any Localhost<br>profile. Requires Localhost in types. Expressions use exact, exp and negate. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.security.seccompProfiles[index].localhostProfiles[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### RuleStatus.status.rules[index].mutate[index]
+
+
+
+NamespaceRuleMutation applies typed mutations independently of enforce.action.
+Mutated values remain subject to all applicable enforcement rules.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem,<br>and map keys, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, nodeSelector,<br>tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
+| **[conditions](#rulestatusstatusrulesindexmutateindexconditionsindex)** | []object | Conditions gate this entire mutation entry and inspect the object after<br>preceding mutations. All conditions must be true; empty means apply. | false |
+| **[workloads](#rulestatusstatusrulesindexmutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. ReadOnlyRootFilesystem also applies to newly added<br>ephemeral containers on subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].conditions[index]
+
+
+
+AdmissionCondition is a Boolean CEL gate for a mutation entry or enforcement rule. It can
+inspect object and request metadata, but cannot generate mutation values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **expression** | string | Expression must evaluate to bool. Any false condition skips this block.<br>An evaluation error rejects the request unless another condition is false. | true |
+| **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads
+
+
+
+WorkloadMutation contains typed native Pod values. Empty maps/lists are
+preserved so replace can clear a property; nil means the property is omitted.
+It applies on Pod creation. ReadOnlyRootFilesystem also applies to newly added
+ephemeral containers on subresource updates. Existing containers are never reconciled.
+On merge, later entries override hostUsers, readOnlyRootFilesystem, matching map keys,
+tolerations and spread constraints.
+On merge, required affinity restrictions from applicable entries are ANDed.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[placement](#rulestatusstatusrulesindexmutateindexworkloadsplacement)** | object | Placement configures the Pod scheduler and scheduling constraints. | false |
+| **[security](#rulestatusstatusrulesindexmutateindexworkloadssecurity)** | object | Security configures Pod and container security settings. | false |
+| **targets** | []enum | Targets selects compatible Pod locations. Omitted or empty selects all<br>compatible locations. The pod target includes Pod-level properties and all<br>container groups; pod/containers, pod/initcontainers and pod/ephemeralcontainers<br>narrow selection to one group. Controller templates and volumes are not supported.<br/>*Enum*: pod, pod/containers, pod/initcontainers, pod/ephemeralcontainers<br/> | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement
+
+
+
+Placement configures the Pod scheduler and scheduling constraints.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[affinity](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinity)** | object | Affinity on merge conjoins required restrictions and upserts preferred terms.<br>Preferred terms match by their complete term, excluding weight and normalized<br>ordering. A different term is added; a matching term gets the supplied weight.<br>Required node affinity is distributed over existing OR alternatives, with<br>at most 256 resulting alternatives. Empty node selector terms match no nodes.<br>Replace replaces all affinity, including any branches omitted from the rule. | false |
+| **nodeSelector** | map[string]string | NodeSelector sets configured keys on merge, or replaces the map on replace. | false |
+| **scheduler** | string | Scheduler sets spec.schedulerName on Pod creation. Merge fills only an empty<br>schedulerName, preserving all non-empty names, including default-scheduler.<br>Kubernetes defaults omitted schedulerName before admission. Use replace with<br>a condition to override default-scheduler while preserving custom schedulers.<br>Replace always overwrites schedulerName when the entry's conditions match.<br>Omitted or null leaves the Pod value unchanged. | false |
+| **[tolerations](#rulestatusstatusrulesindexmutateindexworkloadsplacementtolerationsindex)** | []object | Tolerations merges by key, operator (default Equal), value and effect.<br>Changing any identity field adds another toleration, retaining the old one.<br>A matching toleration's duration is replaced; omitting it makes it unlimited.<br>Replace replaces the entire list, including entries with other identities. | false |
+| **[topologySpreadConstraints](#rulestatusstatusrulesindexmutateindexworkloadsplacementtopologyspreadconstraintsindex)** | []object | TopologySpreadConstraints merges by topologyKey and whenUnsatisfiable.<br>The entire matching constraint is replaced, including its selector and<br>optional fields; other constraints remain. Replace replaces the entire list. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity
+
+
+
+Affinity on merge conjoins required restrictions and upserts preferred terms.
+Preferred terms match by their complete term, excluding weight and normalized
+ordering. A different term is added; a matching term gets the supplied weight.
+Required node affinity is distributed over existing OR alternatives, with
+at most 256 resulting alternatives. Empty node selector terms match no nodes.
+Replace replaces all affinity, including any branches omitted from the rule.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[nodeAffinity](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitynodeaffinity)** | object | Describes node affinity scheduling rules for the pod. | false |
+| **[podAffinity](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodaffinity)** | object | Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, zone, etc. as some other pod(s)). | false |
+| **[podAntiAffinity](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodantiaffinity)** | object | Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s)). | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity
+
+
+
+Describes node affinity scheduling rules for the pod.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[preferredDuringSchedulingIgnoredDuringExecution](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitynodeaffinitypreferredduringschedulingignoredduringexecutionindex)** | []object | The scheduler will prefer to schedule pods to nodes that satisfy<br>the affinity expressions specified by this field, but it may choose<br>a node that violates one or more of the expressions. The node that is<br>most preferred is the one with the greatest sum of weights, i.e.<br>for each node that meets all of the scheduling requirements (resource<br>request, requiredDuringScheduling affinity expressions, etc.),<br>compute a sum by iterating through the elements of this field and adding<br>"weight" to the sum if the node matches the corresponding matchExpressions; the<br>node(s) with the highest sum are the most preferred. | false |
+| **[requiredDuringSchedulingIgnoredDuringExecution](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitynodeaffinityrequiredduringschedulingignoredduringexecution)** | object | If the affinity requirements specified by this field are not met at<br>scheduling time, the pod will not be scheduled onto the node.<br>If the affinity requirements specified by this field cease to be met<br>at some point during pod execution (e.g. due to an update), the system<br>may or may not try to eventually evict the pod from its node. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+An empty preferred scheduling term matches all objects with implicit weight 0
+(i.e. it's a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op).
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[preference](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitynodeaffinitypreferredduringschedulingignoredduringexecutionindexpreference)** | object | A node selector term, associated with the corresponding weight. | true |
+| **weight** | integer | Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.<br/>*Format*: int32<br/> | true |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].preference
+
+
+
+A node selector term, associated with the corresponding weight.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitynodeaffinitypreferredduringschedulingignoredduringexecutionindexpreferencematchexpressionsindex)** | []object | A list of node selector requirements by node's labels. | false |
+| **[matchFields](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitynodeaffinitypreferredduringschedulingignoredduringexecutionindexpreferencematchfieldsindex)** | []object | A list of node selector requirements by node's fields. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].preference.matchExpressions[index]
+
+
+
+A node selector requirement is a selector that contains values, a key, and an operator
+that relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | The label key that the selector applies to. | true |
+| **operator** | string | Represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. If the operator is Gt or Lt, the values<br>array must have a single element, which will be interpreted as an integer.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].preference.matchFields[index]
+
+
+
+A node selector requirement is a selector that contains values, a key, and an operator
+that relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | The label key that the selector applies to. | true |
+| **operator** | string | Represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. If the operator is Gt or Lt, the values<br>array must have a single element, which will be interpreted as an integer.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution
+
+
+
+If the affinity requirements specified by this field are not met at
+scheduling time, the pod will not be scheduled onto the node.
+If the affinity requirements specified by this field cease to be met
+at some point during pod execution (e.g. due to an update), the system
+may or may not try to eventually evict the pod from its node.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[nodeSelectorTerms](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitynodeaffinityrequiredduringschedulingignoredduringexecutionnodeselectortermsindex)** | []object | Required. A list of node selector terms. The terms are ORed. | true |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[index]
+
+
+
+A null or empty node selector term matches no objects. The requirements of
+them are ANDed.
+The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitynodeaffinityrequiredduringschedulingignoredduringexecutionnodeselectortermsindexmatchexpressionsindex)** | []object | A list of node selector requirements by node's labels. | false |
+| **[matchFields](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitynodeaffinityrequiredduringschedulingignoredduringexecutionnodeselectortermsindexmatchfieldsindex)** | []object | A list of node selector requirements by node's fields. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[index].matchExpressions[index]
+
+
+
+A node selector requirement is a selector that contains values, a key, and an operator
+that relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | The label key that the selector applies to. | true |
+| **operator** | string | Represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. If the operator is Gt or Lt, the values<br>array must have a single element, which will be interpreted as an integer.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[index].matchFields[index]
+
+
+
+A node selector requirement is a selector that contains values, a key, and an operator
+that relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | The label key that the selector applies to. | true |
+| **operator** | string | Represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. If the operator is Gt or Lt, the values<br>array must have a single element, which will be interpreted as an integer.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAffinity
+
+
+
+Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, zone, etc. as some other pod(s)).
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[preferredDuringSchedulingIgnoredDuringExecution](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindex)** | []object | The scheduler will prefer to schedule pods to nodes that satisfy<br>the affinity expressions specified by this field, but it may choose<br>a node that violates one or more of the expressions. The node that is<br>most preferred is the one with the greatest sum of weights, i.e.<br>for each node that meets all of the scheduling requirements (resource<br>request, requiredDuringScheduling affinity expressions, etc.),<br>compute a sum by iterating through the elements of this field and adding<br>"weight" to the sum if the node has pods which matches the corresponding podAffinityTerm; the<br>node(s) with the highest sum are the most preferred. | false |
+| **[requiredDuringSchedulingIgnoredDuringExecution](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindex)** | []object | If the affinity requirements specified by this field are not met at<br>scheduling time, the pod will not be scheduled onto the node.<br>If the affinity requirements specified by this field cease to be met<br>at some point during pod execution (e.g. due to a pod label update), the<br>system may or may not try to eventually evict the pod from its node.<br>When there are multiple elements, the lists of nodes corresponding to each<br>podAffinityTerm are intersected, i.e. all terms must be satisfied. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[podAffinityTerm](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinityterm)** | object | Required. A pod affinity term, associated with the corresponding weight. | true |
+| **weight** | integer | weight associated with matching the corresponding podAffinityTerm,<br>in the range 1-100.<br/>*Format*: int32<br/> | true |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm
+
+
+
+Required. A pod affinity term, associated with the corresponding weight.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **topologyKey** | string | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching<br>the labelSelector in the specified namespaces, where co-located is defined as running on a node<br>whose value of the label with key topologyKey matches that of any node on which any of the<br>selected pods is running.<br>Empty topologyKey is not allowed. | true |
+| **[labelSelector](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermlabelselector)** | object | A label query over a set of resources, in this case pods.<br>If it's null, this PodAffinityTerm matches with no Pods. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both matchLabelKeys and labelSelector.<br>Also, matchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **mismatchLabelKeys** | []string | MismatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.<br>Also, mismatchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **[namespaceSelector](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermnamespaceselector)** | object | A label query over the set of namespaces that the term applies to.<br>The term is applied to the union of the namespaces selected by this field<br>and the ones listed in the namespaces field.<br>null selector and null or empty namespaces list means "this pod's namespace".<br>An empty selector ({}) matches all namespaces. | false |
+| **namespaces** | []string | namespaces specifies a static list of namespace names that the term applies to.<br>The term is applied to the union of the namespaces listed in this field<br>and the ones selected by namespaceSelector.<br>null or empty namespaces list and null namespaceSelector means "this pod's namespace". | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.labelSelector
+
+
+
+A label query over a set of resources, in this case pods.
+If it's null, this PodAffinityTerm matches with no Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.namespaceSelector
+
+
+
+A label query over the set of namespaces that the term applies to.
+The term is applied to the union of the namespaces selected by this field
+and the ones listed in the namespaces field.
+null selector and null or empty namespaces list means "this pod's namespace".
+An empty selector ({}) matches all namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+Defines a set of pods (namely those matching the labelSelector
+relative to the given namespace(s)) that this pod should be
+co-located (affinity) or not co-located (anti-affinity) with,
+where co-located is defined as running on a node whose value of
+the label with key <topologyKey> matches that of any node on which
+a pod of the set of pods is running
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **topologyKey** | string | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching<br>the labelSelector in the specified namespaces, where co-located is defined as running on a node<br>whose value of the label with key topologyKey matches that of any node on which any of the<br>selected pods is running.<br>Empty topologyKey is not allowed. | true |
+| **[labelSelector](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindexlabelselector)** | object | A label query over a set of resources, in this case pods.<br>If it's null, this PodAffinityTerm matches with no Pods. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both matchLabelKeys and labelSelector.<br>Also, matchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **mismatchLabelKeys** | []string | MismatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.<br>Also, mismatchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **[namespaceSelector](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindexnamespaceselector)** | object | A label query over the set of namespaces that the term applies to.<br>The term is applied to the union of the namespaces selected by this field<br>and the ones listed in the namespaces field.<br>null selector and null or empty namespaces list means "this pod's namespace".<br>An empty selector ({}) matches all namespaces. | false |
+| **namespaces** | []string | namespaces specifies a static list of namespace names that the term applies to.<br>The term is applied to the union of the namespaces listed in this field<br>and the ones selected by namespaceSelector.<br>null or empty namespaces list and null namespaceSelector means "this pod's namespace". | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].labelSelector
+
+
+
+A label query over a set of resources, in this case pods.
+If it's null, this PodAffinityTerm matches with no Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindexlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].namespaceSelector
+
+
+
+A label query over the set of namespaces that the term applies to.
+The term is applied to the union of the namespaces selected by this field
+and the ones listed in the namespaces field.
+null selector and null or empty namespaces list means "this pod's namespace".
+An empty selector ({}) matches all namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindexnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity
+
+
+
+Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s)).
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[preferredDuringSchedulingIgnoredDuringExecution](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindex)** | []object | The scheduler will prefer to schedule pods to nodes that satisfy<br>the anti-affinity expressions specified by this field, but it may choose<br>a node that violates one or more of the expressions. The node that is<br>most preferred is the one with the greatest sum of weights, i.e.<br>for each node that meets all of the scheduling requirements (resource<br>request, requiredDuringScheduling anti-affinity expressions, etc.),<br>compute a sum by iterating through the elements of this field and subtracting<br>"weight" from the sum if the node has pods which matches the corresponding podAffinityTerm; the<br>node(s) with the highest sum are the most preferred. | false |
+| **[requiredDuringSchedulingIgnoredDuringExecution](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindex)** | []object | If the anti-affinity requirements specified by this field are not met at<br>scheduling time, the pod will not be scheduled onto the node.<br>If the anti-affinity requirements specified by this field cease to be met<br>at some point during pod execution (e.g. due to a pod label update), the<br>system may or may not try to eventually evict the pod from its node.<br>When there are multiple elements, the lists of nodes corresponding to each<br>podAffinityTerm are intersected, i.e. all terms must be satisfied. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[podAffinityTerm](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinityterm)** | object | Required. A pod affinity term, associated with the corresponding weight. | true |
+| **weight** | integer | weight associated with matching the corresponding podAffinityTerm,<br>in the range 1-100.<br/>*Format*: int32<br/> | true |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm
+
+
+
+Required. A pod affinity term, associated with the corresponding weight.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **topologyKey** | string | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching<br>the labelSelector in the specified namespaces, where co-located is defined as running on a node<br>whose value of the label with key topologyKey matches that of any node on which any of the<br>selected pods is running.<br>Empty topologyKey is not allowed. | true |
+| **[labelSelector](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermlabelselector)** | object | A label query over a set of resources, in this case pods.<br>If it's null, this PodAffinityTerm matches with no Pods. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both matchLabelKeys and labelSelector.<br>Also, matchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **mismatchLabelKeys** | []string | MismatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.<br>Also, mismatchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **[namespaceSelector](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermnamespaceselector)** | object | A label query over the set of namespaces that the term applies to.<br>The term is applied to the union of the namespaces selected by this field<br>and the ones listed in the namespaces field.<br>null selector and null or empty namespaces list means "this pod's namespace".<br>An empty selector ({}) matches all namespaces. | false |
+| **namespaces** | []string | namespaces specifies a static list of namespace names that the term applies to.<br>The term is applied to the union of the namespaces listed in this field<br>and the ones selected by namespaceSelector.<br>null or empty namespaces list and null namespaceSelector means "this pod's namespace". | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.labelSelector
+
+
+
+A label query over a set of resources, in this case pods.
+If it's null, this PodAffinityTerm matches with no Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.namespaceSelector
+
+
+
+A label query over the set of namespaces that the term applies to.
+The term is applied to the union of the namespaces selected by this field
+and the ones listed in the namespaces field.
+null selector and null or empty namespaces list means "this pod's namespace".
+An empty selector ({}) matches all namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+Defines a set of pods (namely those matching the labelSelector
+relative to the given namespace(s)) that this pod should be
+co-located (affinity) or not co-located (anti-affinity) with,
+where co-located is defined as running on a node whose value of
+the label with key <topologyKey> matches that of any node on which
+a pod of the set of pods is running
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **topologyKey** | string | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching<br>the labelSelector in the specified namespaces, where co-located is defined as running on a node<br>whose value of the label with key topologyKey matches that of any node on which any of the<br>selected pods is running.<br>Empty topologyKey is not allowed. | true |
+| **[labelSelector](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindexlabelselector)** | object | A label query over a set of resources, in this case pods.<br>If it's null, this PodAffinityTerm matches with no Pods. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both matchLabelKeys and labelSelector.<br>Also, matchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **mismatchLabelKeys** | []string | MismatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.<br>Also, mismatchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **[namespaceSelector](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindexnamespaceselector)** | object | A label query over the set of namespaces that the term applies to.<br>The term is applied to the union of the namespaces selected by this field<br>and the ones listed in the namespaces field.<br>null selector and null or empty namespaces list means "this pod's namespace".<br>An empty selector ({}) matches all namespaces. | false |
+| **namespaces** | []string | namespaces specifies a static list of namespace names that the term applies to.<br>The term is applied to the union of the namespaces listed in this field<br>and the ones selected by namespaceSelector.<br>null or empty namespaces list and null namespaceSelector means "this pod's namespace". | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].labelSelector
+
+
+
+A label query over a set of resources, in this case pods.
+If it's null, this PodAffinityTerm matches with no Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindexlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].namespaceSelector
+
+
+
+A label query over the set of namespaces that the term applies to.
+The term is applied to the union of the namespaces selected by this field
+and the ones listed in the namespaces field.
+null selector and null or empty namespaces list means "this pod's namespace".
+An empty selector ({}) matches all namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulesindexmutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindexnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.tolerations[index]
+
+
+
+The pod this Toleration is attached to tolerates any taint that matches
+the triple <key,value,effect> using the matching operator <operator>.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **effect** | string | Effect indicates the taint effect to match. Empty means match all taint effects.<br>When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute. | false |
+| **key** | string | Key is the taint key that the toleration applies to. Empty means match all taint keys.<br>If the key is empty, operator must be Exists; this combination means to match all values and all keys. | false |
+| **operator** | string | Operator represents a key's relationship to the value.<br>Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.<br>Exists is equivalent to wildcard for value, so that a pod can<br>tolerate all taints of a particular category.<br>Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators). | false |
+| **tolerationSeconds** | integer | TolerationSeconds represents the period of time the toleration (which must be<br>of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,<br>it is not set, which means tolerate the taint forever (do not evict). Zero and<br>negative values will be treated as 0 (evict immediately) by the system.<br/>*Format*: int64<br/> | false |
+| **value** | string | Value is the taint value the toleration matches to.<br>If the operator is Exists, the value should be empty, otherwise just a regular string. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.topologySpreadConstraints[index]
+
+
+
+TopologySpreadConstraint specifies how to spread matching pods among the given topology.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **maxSkew** | integer | MaxSkew describes the degree to which pods may be unevenly distributed.<br>When `whenUnsatisfiable=DoNotSchedule`, it is the maximum permitted difference<br>between the number of matching pods in the target topology and the global minimum.<br>The global minimum is the minimum number of matching pods in an eligible domain<br>or zero if the number of eligible domains is less than MinDomains.<br>For example, in a 3-zone cluster, MaxSkew is set to 1, and pods with the same<br>labelSelector spread as 2/2/1:<br>In this case, the global minimum is 1.<br>| zone1 | zone2 | zone3 |<br>|  P P  |  P P  |   P   |<br>- if MaxSkew is 1, incoming pod can only be scheduled to zone3 to become 2/2/2;<br>scheduling it onto zone1(zone2) would make the ActualSkew(3-1) on zone1(zone2)<br>violate MaxSkew(1).<br>- if MaxSkew is 2, incoming pod can be scheduled onto any zone.<br>When `whenUnsatisfiable=ScheduleAnyway`, it is used to give higher precedence<br>to topologies that satisfy it.<br>It's a required field. Default value is 1 and 0 is not allowed.<br/>*Format*: int32<br/> | true |
+| **topologyKey** | string | TopologyKey is the key of node labels. Nodes that have a label with this key<br>and identical values are considered to be in the same topology.<br>We consider each <key, value> as a "bucket", and try to put balanced number<br>of pods into each bucket.<br>We define a domain as a particular instance of a topology.<br>Also, we define an eligible domain as a domain whose nodes meet the requirements of<br>nodeAffinityPolicy and nodeTaintsPolicy.<br>e.g. If TopologyKey is "kubernetes.io/hostname", each Node is a domain of that topology.<br>And, if TopologyKey is "topology.kubernetes.io/zone", each zone is a domain of that topology.<br>It's a required field. | true |
+| **whenUnsatisfiable** | string | WhenUnsatisfiable indicates how to deal with a pod if it doesn't satisfy<br>the spread constraint.<br>- DoNotSchedule (default) tells the scheduler not to schedule it.<br>- ScheduleAnyway tells the scheduler to schedule the pod in any location,<br>  but giving higher precedence to topologies that would help reduce the<br>  skew.<br>A constraint is considered "Unsatisfiable" for an incoming pod<br>if and only if every possible node assignment for that pod would violate<br>"MaxSkew" on some topology.<br>For example, in a 3-zone cluster, MaxSkew is set to 1, and pods with the same<br>labelSelector spread as 3/1/1:<br>| zone1 | zone2 | zone3 |<br>| P P P |   P   |   P   |<br>If WhenUnsatisfiable is set to DoNotSchedule, incoming pod can only be scheduled<br>to zone2(zone3) to become 3/2/1(3/1/2) as ActualSkew(2-1) on zone2(zone3) satisfies<br>MaxSkew(1). In other words, the cluster can still be imbalanced, but scheduler<br>won't make it *more* imbalanced.<br>It's a required field. | true |
+| **[labelSelector](#rulestatusstatusrulesindexmutateindexworkloadsplacementtopologyspreadconstraintsindexlabelselector)** | object | LabelSelector is used to find matching pods.<br>Pods that match this label selector are counted to determine the number of pods<br>in their corresponding topology domain. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select the pods over which<br>spreading will be calculated. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are ANDed with labelSelector<br>to select the group of existing pods over which spreading will be calculated<br>for the incoming pod. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector.<br>MatchLabelKeys cannot be set when LabelSelector isn't set.<br>Keys that don't exist in the incoming pod labels will<br>be ignored. A null or empty list means only match against labelSelector.<br><br>This is a beta field and requires the MatchLabelKeysInPodTopologySpread feature gate to be enabled (enabled by default). | false |
+| **minDomains** | integer | MinDomains indicates a minimum number of eligible domains.<br>When the number of eligible domains with matching topology keys is less than minDomains,<br>Pod Topology Spread treats "global minimum" as 0, and then the calculation of Skew is performed.<br>And when the number of eligible domains with matching topology keys equals or greater than minDomains,<br>this value has no effect on scheduling.<br>As a result, when the number of eligible domains is less than minDomains,<br>scheduler won't schedule more than maxSkew Pods to those domains.<br>If value is nil, the constraint behaves as if MinDomains is equal to 1.<br>Valid values are integers greater than 0.<br>When value is not nil, WhenUnsatisfiable must be DoNotSchedule.<br><br>For example, in a 3-zone cluster, MaxSkew is set to 2, MinDomains is set to 5 and pods with the same<br>labelSelector spread as 2/2/2:<br>| zone1 | zone2 | zone3 |<br>|  P P  |  P P  |  P P  |<br>The number of domains is less than 5(MinDomains), so "global minimum" is treated as 0.<br>In this situation, new pod with the same labelSelector cannot be scheduled,<br>because computed skew will be 3(3 - 0) if new Pod is scheduled to any of the three zones,<br>it will violate MaxSkew.<br/>*Format*: int32<br/> | false |
+| **nodeAffinityPolicy** | string | NodeAffinityPolicy indicates how we will treat Pod's nodeAffinity/nodeSelector<br>when calculating pod topology spread skew. Options are:<br>- Honor: only nodes matching nodeAffinity/nodeSelector are included in the calculations.<br>- Ignore: nodeAffinity/nodeSelector are ignored. All nodes are included in the calculations.<br><br>If this value is nil, the behavior is equivalent to the Honor policy. | false |
+| **nodeTaintsPolicy** | string | NodeTaintsPolicy indicates how we will treat node taints when calculating<br>pod topology spread skew. Options are:<br>- Honor: nodes without taints, along with tainted nodes for which the incoming pod<br>has a toleration, are included.<br>- Ignore: node taints are ignored. All nodes are included.<br><br>If this value is nil, the behavior is equivalent to the Ignore policy. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.topologySpreadConstraints[index].labelSelector
+
+
+
+LabelSelector is used to find matching pods.
+Pods that match this label selector are counted to determine the number of pods
+in their corresponding topology domain.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulesindexmutateindexworkloadsplacementtopologyspreadconstraintsindexlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.placement.topologySpreadConstraints[index].labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.security
+
+
+
+Security configures Pod and container security settings.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[appArmorProfile](#rulestatusstatusrulesindexmutateindexworkloadssecurityapparmorprofile)** | object | AppArmorProfile supplies the Pod-level securityContext.appArmorProfile on<br>Linux Pod creation. Merge fills an absent profile; replace replaces the<br>complete profile. Explicit container profiles are preserved. Nil omits it.<br>AppArmor and any Localhost profile must be available on eligible nodes. | false |
+| **hostUsers** | boolean | HostUsers sets spec.hostUsers on both merge and replace. False requests a<br>separate user namespace; true uses the host user namespace. Omitted or null<br>leaves the Pod value unchanged. Requires Kubernetes/runtime support. | false |
+| **readOnlyRootFilesystem** | boolean | ReadOnlyRootFilesystem sets securityContext.readOnlyRootFilesystem on every<br>selected regular or init container at Pod creation, and newly added ephemeral<br>containers on subresource updates. Both merge and replace overwrite the value.<br>False is an explicit setting; nil preserves it. Windows Pods are skipped. | false |
+| **[seccompProfile](#rulestatusstatusrulesindexmutateindexworkloadssecurityseccompprofile)** | object | SeccompProfile supplies the Pod-level securityContext.seccompProfile on<br>Linux Pod creation. Merge fills an absent profile; replace replaces the<br>complete profile. Explicit container profiles are preserved. Nil omits it. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.security.appArmorProfile
+
+
+
+AppArmorProfile supplies the Pod-level securityContext.appArmorProfile on
+Linux Pod creation. Merge fills an absent profile; replace replaces the
+complete profile. Explicit container profiles are preserved. Nil omits it.
+AppArmor and any Localhost profile must be available on eligible nodes.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **type** | string | type indicates which kind of AppArmor profile will be applied.<br>Valid options are:<br>  Localhost - a profile pre-loaded on the node.<br>  RuntimeDefault - the container runtime's default profile.<br>  Unconfined - no AppArmor enforcement. | true |
+| **localhostProfile** | string | localhostProfile indicates a profile loaded on the node that should be used.<br>The profile must be preconfigured on the node to work.<br>Must match the loaded name of the profile.<br>Must be set if and only if type is "Localhost". | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.security.seccompProfile
+
+
+
+SeccompProfile supplies the Pod-level securityContext.seccompProfile on
+Linux Pod creation. Merge fills an absent profile; replace replaces the
+complete profile. Explicit container profiles are preserved. Nil omits it.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **type** | string | type indicates which kind of seccomp profile will be applied.<br>Valid options are:<br><br>Localhost - a profile defined in a file on the node should be used.<br>RuntimeDefault - the container runtime default profile should be used.<br>Unconfined - no profile should be applied. | true |
+| **localhostProfile** | string | localhostProfile indicates a profile defined in a file on the node should be used.<br>The profile must be preconfigured on the node to work.<br>Must be a descending path, relative to the kubelet's configured seccomp profile location.<br>Must be set if type is "Localhost". Must NOT be set for any other type. | false |
 
 
 ### RuleStatus.status.rules[index].quota[index]
@@ -4306,10 +8388,10 @@ TenantResourceSpec defines the desired state of TenantResource.
 | :---- | :---- | :----------- | :-------- |
 | **[resources](#tenantresourcespecresourcesindex)** | []object | Defines the rules to select targeting Namespace, along with the objects that must be replicated. | true |
 | **resyncPeriod** | string | Define the period of time upon a second reconciliation must be invoked.<br>Keep in mind that any change to the manifests will trigger a new reconciliation.<br/>*Default*: 60s<br/> | true |
-| **[settings](#tenantresourcespecsettings)** | object | Provide additional settings<br/>*Default*: map[]<br/> | true |
+| **[settings](#tenantresourcespecsettings)** | object | <span style="color:red;font-weight:bold">Deprecated: configure resources[].policy instead. Admission converts Settings<br>into policies for blocks without one. Retained as a compatibility fallback<br>for stored resources that have not passed through admission again.</span><br/>*Default*: map[]<br/> | true |
 | **cordoned** | boolean | When cordoning a replication it will no longer execute any applies or deletions (paused).<br>This is useful for maintenances<br/>*Default*: false<br/> | false |
 | **[dependsOn](#tenantresourcespecdependsonindex)** | []object | DependsOn may contain a meta.NamespacedObjectReference slice<br>with references to TenantResource resources that must be ready before this<br>TenantResource can be reconciled. | false |
-| **pruningOnDelete** | boolean | When the replicated resource manifest is deleted, all the objects replicated so far will be automatically deleted.<br>Disable this to keep replicated resources although the deletion of the replication manifest.<br/>*Default*: true<br/> | false |
+| **pruningOnDelete** | boolean | <span style="color:red;font-weight:bold">When the replicated resource manifest is deleted, all the objects replicated so far will be automatically deleted.<br>Disable this to keep replicated resources although the deletion of the replication manifest.<br><br>Deprecated: use resources[].policy.deletion instead. Retained for blocks without a policy.</span><br/>*Default*: true<br/> | false |
 | **[serviceAccount](#tenantresourcespecserviceaccount)** | object | Local ServiceAccount which will perform all the actions defined in the TenantResource<br>You must provide permissions accordingly to that ServiceAccount | false |
 
 
@@ -4327,6 +8409,7 @@ TenantResourceSpec defines the desired state of TenantResource.
 | **[generators](#tenantresourcespecresourcesindexgeneratorsindex)** | []object | Templates for advanced use cases | false |
 | **[namespaceSelector](#tenantresourcespecresourcesindexnamespaceselector)** | object | Defines the Namespace selector to select the Tenant Namespaces on which the resources must be propagated.<br>In case of nil value, all the Tenant Namespaces are targeted. | false |
 | **[namespacedItems](#tenantresourcespecresourcesindexnamespaceditemsindex)** | []object | List of the resources already existing in other Namespaces that must be replicated. | false |
+| **[policy](#tenantresourcespecresourcesindexpolicy)** | object | <span style="color:red;font-weight:bold">Policy controls creation, admission protection, SSA conflict ownership,<br>and deletion for every raw item, namespaced item, and generator in this block.<br>An explicit policy replaces the deprecated spec.settings for this block.<br>When omitted, admission converts legacy settings and pruningOnDelete into a policy.</span> | false |
 | **rawItems** | []object | List of raw resources that must be replicated. | false |
 
 
@@ -4490,17 +8573,38 @@ relates the key and values.
 | **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
-### TenantResource.spec.settings
+### TenantResource.spec.resources[index].policy
 
 
 
-Provide additional settings
+Policy controls creation, admission protection, SSA conflict ownership,
+and deletion for every raw item, namespaced item, and generator in this block.
+An explicit policy replaces the deprecated spec.settings for this block.
+When omitted, admission converts legacy settings and pruningOnDelete into a policy.
 
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **adopt** | boolean | Enabling this allows TenanResources to interact with objects which were not created by a TenantResource. In this case on prune no deletion of the entire object is made.<br/>*Default*: false<br/> | false |
-| **force** | boolean | Force indicates that in case of conflicts with server-side apply, the client should acquire ownership of the conflicting field.<br>You may create collisions with this.<br/>*Default*: false<br/> | false |
+| **condition** | string | Condition is an optional CEL boolean expression checked before each target<br>is applied. object is the existing destination object, or null when absent;<br>now is the evaluation timestamp. False skips rendered content without<br>pruning or releasing an already managed object. Policy and protection are<br>still reconciled for managed objects. Evaluation errors prevent writes.<br>Rendering still occurs before evaluation. Omitting Condition preserves the<br>existing apply behavior. Conditions do not affect deletion or orphaning. | false |
+| **creation** | enum | Creation controls how an existing target is handled. Owner requires the<br>resource to have been created by the applying controller and otherwise<br>returns an error. Merge adopts an existing resource when possible and<br>creates the resource when it does not exist.<br/>*Enum*: Owner, Merge<br/>*Default*: Owner<br/> | false |
+| **deletion** | enum | Deletion controls what happens when the parent stops managing the target.<br>Remove deletes resources created for the parent and relinquishes adopted<br>resources. Orphan keeps the resource and removes Capsule's lifecycle<br>metadata. Removal is the default.<br/>*Enum*: Remove, Orphan<br/>*Default*: Remove<br/> | false |
+| **force** | boolean | Force allows server-side apply to acquire conflicting field ownership.<br/>*Default*: false<br/> | false |
+| **protect** | boolean | Protect prevents users from changing or deleting the target through<br>admission while it is managed. Protection is enabled by default.<br/>*Default*: true<br/> | false |
+
+
+### TenantResource.spec.settings
+
+
+
+Deprecated: configure resources[].policy instead. Admission converts Settings
+into policies for blocks without one. Retained as a compatibility fallback
+for stored resources that have not passed through admission again.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **adopt** | boolean | <span style="color:red;font-weight:bold">Enabling this allows TenanResources to interact with objects which were not created by a TenantResource. In this case on prune no deletion of the entire object is made.<br><br>Deprecated: use resources[].policy.creation: Merge instead.</span><br/>*Default*: false<br/> | false |
+| **force** | boolean | <span style="color:red;font-weight:bold">Force indicates that in case of conflicts with server-side apply, the client should acquire ownership of the conflicting field.<br>You may create collisions with this.<br><br>Deprecated: use resources[].policy.force instead.</span><br/>*Default*: false<br/> | false |
 
 
 ### TenantResource.spec.dependsOn[index]
@@ -4595,6 +8699,26 @@ Advanced Status Item for pin pointing items in tenants/namespaces.
 | **created** | boolean | Indicates wether the resource was created or adopted | false |
 | **lastApply** | string | An opaque value that represents the internal version of this object that can<br>be used by clients to determine when objects have changed. May be used for optimistic<br>concurrency, change detection, and the watch operation on a resource or set of resources.<br>Clients must treat these values as opaque and passed unmodified back to the server.<br>They may only be valid for a particular resource or set of resources.<br><br>Populated by the system.<br>Read-only.<br>Value must be treated as opaque by clients and .<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency<br/>*Format*: date-time<br/> | false |
 | **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | false |
+| **[policy](#tenantresourcestatusprocesseditemsindexstatuspolicy)** | object | Policy is a lifecycle snapshot for protection and cleanup. Conditions are<br>evaluated from the source block and omitted here. Failed updates retain the<br>previous snapshot; a first successful content write records its policy even<br>if metadata reconciliation fails, so cleanup respects explicit retention.<br>An absent policy on an already applied item preserves legacy behavior. | false |
+
+
+### TenantResource.status.processedItems[index].status.policy
+
+
+
+Policy is a lifecycle snapshot for protection and cleanup. Conditions are
+evaluated from the source block and omitted here. Failed updates retain the
+previous snapshot; a first successful content write records its policy even
+if metadata reconciliation fails, so cleanup respects explicit retention.
+An absent policy on an already applied item preserves legacy behavior.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **creation** | enum | Creation controls how an existing target is handled. Owner requires the<br>resource to have been created by the applying controller and otherwise<br>returns an error. Merge adopts an existing resource when possible and<br>creates the resource when it does not exist.<br/>*Enum*: Owner, Merge<br/>*Default*: Owner<br/> | false |
+| **deletion** | enum | Deletion controls what happens when the parent stops managing the target.<br>Remove deletes resources created for the parent and relinquishes adopted<br>resources. Orphan keeps the resource and removes Capsule's lifecycle<br>metadata. Removal is the default.<br/>*Enum*: Remove, Orphan<br/>*Default*: Remove<br/> | false |
+| **force** | boolean | Force allows server-side apply to acquire conflicting field ownership.<br/>*Default*: false<br/> | false |
+| **protect** | boolean | Protect prevents users from changing or deleting the target through<br>admission while it is managed. Protection is enabled by default.<br/>*Default*: true<br/> | false |
 
 
 ### TenantResource.status.serviceAccount
@@ -5520,6 +9644,7 @@ Rules Distributed via Tenants
 | :---- | :---- | :----------- | :-------- |
 | **[audience](#tenantspecrulesindexaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#tenantspecrulesindexenforce)** | object | Enforcement for given rule | false |
+| **[mutate](#tenantspecrulesindexmutateindex)** | []object | Mutate applies ordered typed mutations before enforcement. It shares the<br>rule's namespace selection and audience. Workload mutations apply on Pod creation. | false |
 | **[namespaceSelector](#tenantspecrulesindexnamespaceselector)** | object | Select namespaces which are going to be targeted with this rule | false |
 | **[permissions](#tenantspecrulesindexpermissions)** | object | Permissions for given rule | false |
 | **[quota](#tenantspecrulesindexquotaindex)** | []object | Quota contains native Kubernetes ResourceQuota specifications shared by<br>all namespaces selected by this rule. Unlike Enforce, quota accounting is<br>independent of the request audience. | false |
@@ -5548,10 +9673,25 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
+| **[conditions](#tenantspecrulesindexenforceconditionsindex)** | []object | Conditions gate this entire enforcement rule, including workloads, services,<br>metadata and ingress. All conditions must be true; empty means apply.<br>Conditions run during admission; managed metadata in a conditional rule<br>is applied on matching requests only and is not reconciled in the background. | false |
 | **[ingress](#tenantspecrulesindexenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
 | **[metadata](#tenantspecrulesindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
 | **[services](#tenantspecrulesindexenforceservices)** | object | Enforcement for Services. | false |
-| **[workloads](#tenantspecrulesindexenforceworkloads)** | object | Enforcement for Workloads (Pods) | false |
+| **[workloads](#tenantspecrulesindexenforceworkloads)** | object | Enforcement for native workload kinds and Pod properties. | false |
+
+
+### Tenant.spec.rules[index].enforce.conditions[index]
+
+
+
+AdmissionCondition is a Boolean CEL gate for a mutation entry or enforcement rule. It can
+inspect object and request metadata, but cannot generate mutation values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **expression** | string | Expression must evaluate to bool. Any false condition skips this block.<br>An evaluation error rejects the request unless another condition is false. | true |
+| **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
 
 
 ### Tenant.spec.rules[index].enforce.ingress
@@ -5753,16 +9893,582 @@ NodePorts defines additional constraints for nodePort values.
 
 
 
-Enforcement for Workloads (Pods)
+Enforcement for native workload kinds and Pod properties.
 
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[placement](#tenantspecrulesindexenforceworkloadsplacement)** | object | Placement matches the Pod scheduler and scheduling constraints. | false |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
 | **[registries](#tenantspecrulesindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
-| **[resources](#tenantspecrulesindexenforceworkloadsresources)** | object | Resources defines mutation and enforcement policies for Pod and container<br>resource requests and limits. The workload targets select where the<br>policies apply. With no targets, resource policies apply to all compatible<br>locations: Pod-level resources, regular containers, and init containers.<br>Resource names unsupported at Pod level still apply to compatible container<br>locations.<br>Mutation is applied when a Pod is created. Remove and MatchRequest manage<br>explicit values, Default fills an absent value, and Ratio fills an absent<br>limit from its request. An explicit Ratio violation is then handled by the<br>enclosing allow, deny, or audit action. | false |
-| **[schedulers](#tenantspecrulesindexenforceworkloadsschedulersindex)** | []object | Schedulers defines schedulerName matchers for Pod admission.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
-| **targets** | []enum | Define the enforcement targets this rule applies to.<br>If empty, each webhook applies its own backwards-compatible default.<br/>*Enum*: pod, pod/initcontainers, pod/ephemeralcontainers, pod/containers, pod/volumes<br/> | false |
+| **[resources](#tenantspecrulesindexenforceworkloadsresources)** | object | Resources defines mutation and enforcement policies for Pod and container<br>resource requests and limits. The workload targets select where the<br>policies apply. With no targets, resource policies apply to all compatible<br>locations: Pod-level resources, regular containers, and init containers.<br>Resource names unsupported at Pod level still apply to compatible container<br>locations.<br>Mutation is applied when a Pod is created, or when an explicitly targeted<br>controller is created or updated (to its Pod template). Remove and MatchRequest manage<br>explicit values, Default fills an absent value, and Ratio fills an absent<br>limit from its request. An explicit Ratio violation is then handled by the<br>enclosing allow, deny, or audit action. | false |
+| **[security](#tenantspecrulesindexenforceworkloadssecurity)** | object | Security matches effective Pod and container security profiles. | false |
+| **targets** | []string | Targets selects native workloads and, optionally, parts of their Pod specs.<br>With no workload policies, the action matches the selected kinds themselves.<br>With policies, targets scopes those policies; it does not also match the kind.<br>Omitted targets preserve Pod-only defaults. Controller targets are opt-in.<br>Whole-controller targets include every compatible location in the Pod template.<br>Existing pod and pod/* part targets retain their established policy scope. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement
+
+
+
+Placement matches the Pod scheduler and scheduling constraints.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[affinity](#tenantspecrulesindexenforceworkloadsplacementaffinityindex)** | []object | Affinity matches each complete required or preferred affinity term. | false |
+| **[nodeSelector](#tenantspecrulesindexenforceworkloadsplacementnodeselectorindex)** | []object | NodeSelector matches each node selector entry. Empty matchers match any entry.<br>Placement rules apply to the pod target; allowing an entry does not require it. | false |
+| **[schedulers](#tenantspecrulesindexenforceworkloadsplacementschedulersindex)** | []object | Schedulers defines schedulerName matchers for selected Pods and Pod templates.<br><br>The rule is evaluated against pod.spec.schedulerName.<br>Empty schedulerName is ignored and is not normalized to default-scheduler. | false |
+| **[tolerations](#tenantspecrulesindexenforceworkloadsplacementtolerationsindex)** | []object | Tolerations matches each toleration, including injected and wildcard tolerations. | false |
+| **[topologySpreadConstraints](#tenantspecrulesindexenforceworkloadsplacementtopologyspreadconstraintsindex)** | []object | TopologySpreadConstraints matches each complete spread constraint. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index]
+
+
+
+WorkloadAffinityMatch matches an entire affinity term. Fields are ANDed;
+entries in enforce.workloads.placement.affinity are alternatives. {} matches any term.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[fieldRequirements](#tenantspecrulesindexenforceworkloadsplacementaffinityindexfieldrequirementsindex)** | []object | FieldRequirements constrains node matchFields. When Requirements is set,<br>matchFields must be explicitly permitted here to avoid an unchecked path. | false |
+| **[labelSelector](#tenantspecrulesindexenforceworkloadsplacementaffinityindexlabelselector)** | object | PlacementLabelSelectorMatch checks every effective selector requirement.<br>matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys<br>are checked as In/NotIn using the incoming Pod's label values. Missing dynamic<br>labels are ignored, matching Kubernetes semantics. | false |
+| **modes** | []enum | Modes defaults to both scheduling modes; it does not require their presence.<br/>*Enum*: required, preferred<br/> | false |
+| **namespaceScope** | enum | SameNamespace requires no namespaceSelector and only the Pod's namespace<br>in namespaces (or an omitted namespaces list). Any imposes no restriction.<br/>*Enum*: SameNamespace, Any<br/> | false |
+| **[namespaceSelector](#tenantspecrulesindexenforceworkloadsplacementaffinityindexnamespaceselector)** | object | PlacementLabelSelectorMatch checks every effective selector requirement.<br>matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys<br>are checked as In/NotIn using the incoming Pod's label values. Missing dynamic<br>labels are ignored, matching Kubernetes semantics. | false |
+| **[namespaces](#tenantspecrulesindexenforceworkloadsplacementaffinityindexnamespaces)** | object | Namespaces constrains each explicitly supplied namespace. | false |
+| **[requirements](#tenantspecrulesindexenforceworkloadsplacementaffinityindexrequirementsindex)** | []object | Requirements constrains node matchExpressions. | false |
+| **[topologyKey](#tenantspecrulesindexenforceworkloadsplacementaffinityindextopologykey)** | object | TopologyKey applies to Pod affinity and anti-affinity. | false |
+| **types** | []enum | Types defaults to all types. Type-specific constraints only match the<br>types on which they are meaningful.<br/>*Enum*: nodeAffinity, podAffinity, podAntiAffinity<br/> | false |
+| **[weight](#tenantspecrulesindexenforceworkloadsplacementaffinityindexweight)** | object | Weight requires modes: [preferred]. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].fieldRequirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#tenantspecrulesindexenforceworkloadsplacementaffinityindexfieldrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#tenantspecrulesindexenforceworkloadsplacementaffinityindexfieldrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].fieldRequirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].fieldRequirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].labelSelector
+
+
+
+PlacementLabelSelectorMatch checks every effective selector requirement.
+matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys
+are checked as In/NotIn using the incoming Pod's label values. Missing dynamic
+labels are ignored, matching Kubernetes semantics.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required requires at least one effective selector requirement. | false |
+| **[requirements](#tenantspecrulesindexenforceworkloadsplacementaffinityindexlabelselectorrequirementsindex)** | []object | Requirements is an allowlist within this matcher. If empty, requirements<br>are unrestricted. Each actual requirement must match one complete entry. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].labelSelector.requirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#tenantspecrulesindexenforceworkloadsplacementaffinityindexlabelselectorrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#tenantspecrulesindexenforceworkloadsplacementaffinityindexlabelselectorrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].labelSelector.requirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].labelSelector.requirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].namespaceSelector
+
+
+
+PlacementLabelSelectorMatch checks every effective selector requirement.
+matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys
+are checked as In/NotIn using the incoming Pod's label values. Missing dynamic
+labels are ignored, matching Kubernetes semantics.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required requires at least one effective selector requirement. | false |
+| **[requirements](#tenantspecrulesindexenforceworkloadsplacementaffinityindexnamespaceselectorrequirementsindex)** | []object | Requirements is an allowlist within this matcher. If empty, requirements<br>are unrestricted. Each actual requirement must match one complete entry. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].namespaceSelector.requirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#tenantspecrulesindexenforceworkloadsplacementaffinityindexnamespaceselectorrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#tenantspecrulesindexenforceworkloadsplacementaffinityindexnamespaceselectorrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].namespaceSelector.requirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].namespaceSelector.requirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].namespaces
+
+
+
+Namespaces constrains each explicitly supplied namespace.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].requirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#tenantspecrulesindexenforceworkloadsplacementaffinityindexrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#tenantspecrulesindexenforceworkloadsplacementaffinityindexrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].requirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].requirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].topologyKey
+
+
+
+TopologyKey applies to Pod affinity and anti-affinity.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].weight
+
+
+
+Weight requires modes: [preferred].
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.nodeSelector[index]
+
+
+
+WorkloadNodeSelectorMatch matches a nodeSelector key/value pair. Omitted fields
+are unrestricted, so {} matches every entry, including an empty label value.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#tenantspecrulesindexenforceworkloadsplacementnodeselectorindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **[values](#tenantspecrulesindexenforceworkloadsplacementnodeselectorindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.nodeSelector[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.nodeSelector[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.schedulers[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.tolerations[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **effects** | []enum | Effects matches the literal effect. An empty effect on a Pod tolerates all<br>effects and does not match an allowlist of individual effects.<br/>*Enum*: NoSchedule, PreferNoSchedule, NoExecute, <br/> | false |
+| **[key](#tenantspecrulesindexenforceworkloadsplacementtolerationsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | Operators matches Equal (including an omitted operator) or Exists.<br/>*Enum*: Equal, Exists<br/> | false |
+| **[tolerationSeconds](#tenantspecrulesindexenforceworkloadsplacementtolerationsindextolerationseconds)** | object | TolerationDurationMatch treats an absent tolerationSeconds as unlimited. | false |
+| **[values](#tenantspecrulesindexenforceworkloadsplacementtolerationsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.tolerations[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.tolerations[index].tolerationSeconds
+
+
+
+TolerationDurationMatch treats an absent tolerationSeconds as unlimited.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **allowUnlimited** | boolean | AllowUnlimited defaults to true. Set false to require a finite duration. | false |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.tolerations[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.topologySpreadConstraints[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[labelSelector](#tenantspecrulesindexenforceworkloadsplacementtopologyspreadconstraintsindexlabelselector)** | object | PlacementLabelSelectorMatch checks every effective selector requirement.<br>matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys<br>are checked as In/NotIn using the incoming Pod's label values. Missing dynamic<br>labels are ignored, matching Kubernetes semantics. | false |
+| **[maxSkew](#tenantspecrulesindexenforceworkloadsplacementtopologyspreadconstraintsindexmaxskew)** | object | PlacementRange defines inclusive bounds. An omitted bound is unrestricted. | false |
+| **[minDomains](#tenantspecrulesindexenforceworkloadsplacementtopologyspreadconstraintsindexmindomains)** | object | MinDomains uses 1 when the Pod omits minDomains. | false |
+| **nodeAffinityPolicy** | []enum | NodeAffinityPolicy uses Honor when the Pod omits the field.<br/>*Enum*: Honor, Ignore<br/> | false |
+| **nodeTaintsPolicy** | []enum | NodeTaintsPolicy uses Ignore when the Pod omits the field.<br/>*Enum*: Honor, Ignore<br/> | false |
+| **[topologyKey](#tenantspecrulesindexenforceworkloadsplacementtopologyspreadconstraintsindextopologykey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **whenUnsatisfiable** | []enum | <br/>*Enum*: DoNotSchedule, ScheduleAnyway<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].labelSelector
+
+
+
+PlacementLabelSelectorMatch checks every effective selector requirement.
+matchLabels is normalized to In, and dynamic matchLabelKeys/mismatchLabelKeys
+are checked as In/NotIn using the incoming Pod's label values. Missing dynamic
+labels are ignored, matching Kubernetes semantics.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **required** | boolean | Required requires at least one effective selector requirement. | false |
+| **[requirements](#tenantspecrulesindexenforceworkloadsplacementtopologyspreadconstraintsindexlabelselectorrequirementsindex)** | []object | Requirements is an allowlist within this matcher. If empty, requirements<br>are unrestricted. Each actual requirement must match one complete entry. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].labelSelector.requirements[index]
+
+
+
+PlacementRequirementMatch matches one selector requirement. Every supplied
+value must match Values. Operators that have no values remain valid when
+explicitly permitted. Node selectors additionally support Gt and Lt.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[key](#tenantspecrulesindexenforceworkloadsplacementtopologyspreadconstraintsindexlabelselectorrequirementsindexkey)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+| **operators** | []enum | <br/>*Enum*: In, NotIn, Exists, DoesNotExist, Gt, Lt<br/> | false |
+| **[values](#tenantspecrulesindexenforceworkloadsplacementtopologyspreadconstraintsindexlabelselectorrequirementsindexvalues)** | object | PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.<br>The rule admission validator requires exact or exp. Keeping this check out of<br>CEL avoids multiplying its estimated cost across the nested placement lists<br>and the three representations of namespace rules in RuleStatus. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].labelSelector.requirements[index].key
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].labelSelector.requirements[index].values
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].maxSkew
+
+
+
+PlacementRange defines inclusive bounds. An omitted bound is unrestricted.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].minDomains
+
+
+
+MinDomains uses 1 when the Pod omits minDomains.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].topologyKey
+
+
+
+PlacementExpressionMatch uses the shared exact/exp/negate matching semantics.
+The rule admission validator requires exact or exp. Keeping this check out of
+CEL avoids multiplying its estimated cost across the nested placement lists
+and the three representations of namespace rules in RuleStatus.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.registries[index]
@@ -5790,7 +10496,8 @@ policies apply. With no targets, resource policies apply to all compatible
 locations: Pod-level resources, regular containers, and init containers.
 Resource names unsupported at Pod level still apply to compatible container
 locations.
-Mutation is applied when a Pod is created. Remove and MatchRequest manage
+Mutation is applied when a Pod is created, or when an explicitly targeted
+controller is created or updated (to its Pod template). Remove and MatchRequest manage
 explicit values, Default fills an absent value, and Ratio fills an absent
 limit from its request. An explicit Ratio violation is then handled by the
 enclosing allow, deny, or audit action.
@@ -5828,7 +10535,34 @@ WorkloadResourceRequestPolicy defines how a resource request is mutated.
 | **value** | int or string | Value is the quantity applied by the Default policy. | false |
 
 
-### Tenant.spec.rules[index].enforce.workloads.schedulers[index]
+### Tenant.spec.rules[index].enforce.workloads.security
+
+
+
+Security matches effective Pod and container security profiles.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[appArmorProfiles](#tenantspecrulesindexenforceworkloadssecurityapparmorprofilesindex)** | []object | AppArmorProfiles matches effective Linux container profiles, including<br>legacy AppArmor annotations before Pod defaults. It uses the same target<br>and missing-profile semantics as SeccompProfiles. Privileged containers are<br>Unconfined. Matching a Localhost name does not verify its installation. | false |
+| **[seccompProfiles](#tenantspecrulesindexenforceworkloadssecurityseccompprofilesindex)** | []object | SeccompProfiles matches effective Linux container profiles, resolving<br>container overrides before Pod defaults. Privileged containers are Unconfined.<br>Missing profiles do not match any type, so an allow-list rejects them.<br>Omitted targets check regular, init and ephemeral containers; pod explicitly<br>selects only the Pod default. Controller targets check their Pod templates. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.security.appArmorProfiles[index]
+
+
+
+WorkloadSecurityProfileMatch matches a profile type and optionally its local
+name/path. Entries are alternatives; localhostProfiles constrains only Localhost.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **types** | []enum | Types selects profile types. Missing profiles never match.<br/>*Enum*: RuntimeDefault, Localhost, Unconfined<br/> | true |
+| **[localhostProfiles](#tenantspecrulesindexenforceworkloadssecurityapparmorprofilesindexlocalhostprofilesindex)** | []object | LocalhostProfiles matches seccomp paths relative to the kubelet seccomp<br>directory, or loaded AppArmor profile names. Omitted permits any Localhost<br>profile. Requires Localhost in types. Expressions use exact, exp and negate. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.security.appArmorProfiles[index].localhostProfiles[index]
 
 
 
@@ -5841,6 +10575,736 @@ Both may be set together.
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.security.seccompProfiles[index]
+
+
+
+WorkloadSecurityProfileMatch matches a profile type and optionally its local
+name/path. Entries are alternatives; localhostProfiles constrains only Localhost.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **types** | []enum | Types selects profile types. Missing profiles never match.<br/>*Enum*: RuntimeDefault, Localhost, Unconfined<br/> | true |
+| **[localhostProfiles](#tenantspecrulesindexenforceworkloadssecurityseccompprofilesindexlocalhostprofilesindex)** | []object | LocalhostProfiles matches seccomp paths relative to the kubelet seccomp<br>directory, or loaded AppArmor profile names. Omitted permits any Localhost<br>profile. Requires Localhost in types. Expressions use exact, exp and negate. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.security.seccompProfiles[index].localhostProfiles[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
+### Tenant.spec.rules[index].mutate[index]
+
+
+
+NamespaceRuleMutation applies typed mutations independently of enforce.action.
+Mutated values remain subject to all applicable enforcement rules.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem,<br>and map keys, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, nodeSelector,<br>tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
+| **[conditions](#tenantspecrulesindexmutateindexconditionsindex)** | []object | Conditions gate this entire mutation entry and inspect the object after<br>preceding mutations. All conditions must be true; empty means apply. | false |
+| **[workloads](#tenantspecrulesindexmutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. ReadOnlyRootFilesystem also applies to newly added<br>ephemeral containers on subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].conditions[index]
+
+
+
+AdmissionCondition is a Boolean CEL gate for a mutation entry or enforcement rule. It can
+inspect object and request metadata, but cannot generate mutation values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **expression** | string | Expression must evaluate to bool. Any false condition skips this block.<br>An evaluation error rejects the request unless another condition is false. | true |
+| **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads
+
+
+
+WorkloadMutation contains typed native Pod values. Empty maps/lists are
+preserved so replace can clear a property; nil means the property is omitted.
+It applies on Pod creation. ReadOnlyRootFilesystem also applies to newly added
+ephemeral containers on subresource updates. Existing containers are never reconciled.
+On merge, later entries override hostUsers, readOnlyRootFilesystem, matching map keys,
+tolerations and spread constraints.
+On merge, required affinity restrictions from applicable entries are ANDed.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[placement](#tenantspecrulesindexmutateindexworkloadsplacement)** | object | Placement configures the Pod scheduler and scheduling constraints. | false |
+| **[security](#tenantspecrulesindexmutateindexworkloadssecurity)** | object | Security configures Pod and container security settings. | false |
+| **targets** | []enum | Targets selects compatible Pod locations. Omitted or empty selects all<br>compatible locations. The pod target includes Pod-level properties and all<br>container groups; pod/containers, pod/initcontainers and pod/ephemeralcontainers<br>narrow selection to one group. Controller templates and volumes are not supported.<br/>*Enum*: pod, pod/containers, pod/initcontainers, pod/ephemeralcontainers<br/> | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement
+
+
+
+Placement configures the Pod scheduler and scheduling constraints.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[affinity](#tenantspecrulesindexmutateindexworkloadsplacementaffinity)** | object | Affinity on merge conjoins required restrictions and upserts preferred terms.<br>Preferred terms match by their complete term, excluding weight and normalized<br>ordering. A different term is added; a matching term gets the supplied weight.<br>Required node affinity is distributed over existing OR alternatives, with<br>at most 256 resulting alternatives. Empty node selector terms match no nodes.<br>Replace replaces all affinity, including any branches omitted from the rule. | false |
+| **nodeSelector** | map[string]string | NodeSelector sets configured keys on merge, or replaces the map on replace. | false |
+| **scheduler** | string | Scheduler sets spec.schedulerName on Pod creation. Merge fills only an empty<br>schedulerName, preserving all non-empty names, including default-scheduler.<br>Kubernetes defaults omitted schedulerName before admission. Use replace with<br>a condition to override default-scheduler while preserving custom schedulers.<br>Replace always overwrites schedulerName when the entry's conditions match.<br>Omitted or null leaves the Pod value unchanged. | false |
+| **[tolerations](#tenantspecrulesindexmutateindexworkloadsplacementtolerationsindex)** | []object | Tolerations merges by key, operator (default Equal), value and effect.<br>Changing any identity field adds another toleration, retaining the old one.<br>A matching toleration's duration is replaced; omitting it makes it unlimited.<br>Replace replaces the entire list, including entries with other identities. | false |
+| **[topologySpreadConstraints](#tenantspecrulesindexmutateindexworkloadsplacementtopologyspreadconstraintsindex)** | []object | TopologySpreadConstraints merges by topologyKey and whenUnsatisfiable.<br>The entire matching constraint is replaced, including its selector and<br>optional fields; other constraints remain. Replace replaces the entire list. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity
+
+
+
+Affinity on merge conjoins required restrictions and upserts preferred terms.
+Preferred terms match by their complete term, excluding weight and normalized
+ordering. A different term is added; a matching term gets the supplied weight.
+Required node affinity is distributed over existing OR alternatives, with
+at most 256 resulting alternatives. Empty node selector terms match no nodes.
+Replace replaces all affinity, including any branches omitted from the rule.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[nodeAffinity](#tenantspecrulesindexmutateindexworkloadsplacementaffinitynodeaffinity)** | object | Describes node affinity scheduling rules for the pod. | false |
+| **[podAffinity](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodaffinity)** | object | Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, zone, etc. as some other pod(s)). | false |
+| **[podAntiAffinity](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodantiaffinity)** | object | Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s)). | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity
+
+
+
+Describes node affinity scheduling rules for the pod.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[preferredDuringSchedulingIgnoredDuringExecution](#tenantspecrulesindexmutateindexworkloadsplacementaffinitynodeaffinitypreferredduringschedulingignoredduringexecutionindex)** | []object | The scheduler will prefer to schedule pods to nodes that satisfy<br>the affinity expressions specified by this field, but it may choose<br>a node that violates one or more of the expressions. The node that is<br>most preferred is the one with the greatest sum of weights, i.e.<br>for each node that meets all of the scheduling requirements (resource<br>request, requiredDuringScheduling affinity expressions, etc.),<br>compute a sum by iterating through the elements of this field and adding<br>"weight" to the sum if the node matches the corresponding matchExpressions; the<br>node(s) with the highest sum are the most preferred. | false |
+| **[requiredDuringSchedulingIgnoredDuringExecution](#tenantspecrulesindexmutateindexworkloadsplacementaffinitynodeaffinityrequiredduringschedulingignoredduringexecution)** | object | If the affinity requirements specified by this field are not met at<br>scheduling time, the pod will not be scheduled onto the node.<br>If the affinity requirements specified by this field cease to be met<br>at some point during pod execution (e.g. due to an update), the system<br>may or may not try to eventually evict the pod from its node. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+An empty preferred scheduling term matches all objects with implicit weight 0
+(i.e. it's a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op).
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[preference](#tenantspecrulesindexmutateindexworkloadsplacementaffinitynodeaffinitypreferredduringschedulingignoredduringexecutionindexpreference)** | object | A node selector term, associated with the corresponding weight. | true |
+| **weight** | integer | Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.<br/>*Format*: int32<br/> | true |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].preference
+
+
+
+A node selector term, associated with the corresponding weight.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecrulesindexmutateindexworkloadsplacementaffinitynodeaffinitypreferredduringschedulingignoredduringexecutionindexpreferencematchexpressionsindex)** | []object | A list of node selector requirements by node's labels. | false |
+| **[matchFields](#tenantspecrulesindexmutateindexworkloadsplacementaffinitynodeaffinitypreferredduringschedulingignoredduringexecutionindexpreferencematchfieldsindex)** | []object | A list of node selector requirements by node's fields. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].preference.matchExpressions[index]
+
+
+
+A node selector requirement is a selector that contains values, a key, and an operator
+that relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | The label key that the selector applies to. | true |
+| **operator** | string | Represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. If the operator is Gt or Lt, the values<br>array must have a single element, which will be interpreted as an integer.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].preference.matchFields[index]
+
+
+
+A node selector requirement is a selector that contains values, a key, and an operator
+that relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | The label key that the selector applies to. | true |
+| **operator** | string | Represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. If the operator is Gt or Lt, the values<br>array must have a single element, which will be interpreted as an integer.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution
+
+
+
+If the affinity requirements specified by this field are not met at
+scheduling time, the pod will not be scheduled onto the node.
+If the affinity requirements specified by this field cease to be met
+at some point during pod execution (e.g. due to an update), the system
+may or may not try to eventually evict the pod from its node.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[nodeSelectorTerms](#tenantspecrulesindexmutateindexworkloadsplacementaffinitynodeaffinityrequiredduringschedulingignoredduringexecutionnodeselectortermsindex)** | []object | Required. A list of node selector terms. The terms are ORed. | true |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[index]
+
+
+
+A null or empty node selector term matches no objects. The requirements of
+them are ANDed.
+The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecrulesindexmutateindexworkloadsplacementaffinitynodeaffinityrequiredduringschedulingignoredduringexecutionnodeselectortermsindexmatchexpressionsindex)** | []object | A list of node selector requirements by node's labels. | false |
+| **[matchFields](#tenantspecrulesindexmutateindexworkloadsplacementaffinitynodeaffinityrequiredduringschedulingignoredduringexecutionnodeselectortermsindexmatchfieldsindex)** | []object | A list of node selector requirements by node's fields. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[index].matchExpressions[index]
+
+
+
+A node selector requirement is a selector that contains values, a key, and an operator
+that relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | The label key that the selector applies to. | true |
+| **operator** | string | Represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. If the operator is Gt or Lt, the values<br>array must have a single element, which will be interpreted as an integer.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[index].matchFields[index]
+
+
+
+A node selector requirement is a selector that contains values, a key, and an operator
+that relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | The label key that the selector applies to. | true |
+| **operator** | string | Represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt. | true |
+| **values** | []string | An array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. If the operator is Gt or Lt, the values<br>array must have a single element, which will be interpreted as an integer.<br>This array is replaced during a strategic merge patch. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAffinity
+
+
+
+Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, zone, etc. as some other pod(s)).
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[preferredDuringSchedulingIgnoredDuringExecution](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindex)** | []object | The scheduler will prefer to schedule pods to nodes that satisfy<br>the affinity expressions specified by this field, but it may choose<br>a node that violates one or more of the expressions. The node that is<br>most preferred is the one with the greatest sum of weights, i.e.<br>for each node that meets all of the scheduling requirements (resource<br>request, requiredDuringScheduling affinity expressions, etc.),<br>compute a sum by iterating through the elements of this field and adding<br>"weight" to the sum if the node has pods which matches the corresponding podAffinityTerm; the<br>node(s) with the highest sum are the most preferred. | false |
+| **[requiredDuringSchedulingIgnoredDuringExecution](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindex)** | []object | If the affinity requirements specified by this field are not met at<br>scheduling time, the pod will not be scheduled onto the node.<br>If the affinity requirements specified by this field cease to be met<br>at some point during pod execution (e.g. due to a pod label update), the<br>system may or may not try to eventually evict the pod from its node.<br>When there are multiple elements, the lists of nodes corresponding to each<br>podAffinityTerm are intersected, i.e. all terms must be satisfied. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[podAffinityTerm](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinityterm)** | object | Required. A pod affinity term, associated with the corresponding weight. | true |
+| **weight** | integer | weight associated with matching the corresponding podAffinityTerm,<br>in the range 1-100.<br/>*Format*: int32<br/> | true |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm
+
+
+
+Required. A pod affinity term, associated with the corresponding weight.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **topologyKey** | string | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching<br>the labelSelector in the specified namespaces, where co-located is defined as running on a node<br>whose value of the label with key topologyKey matches that of any node on which any of the<br>selected pods is running.<br>Empty topologyKey is not allowed. | true |
+| **[labelSelector](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermlabelselector)** | object | A label query over a set of resources, in this case pods.<br>If it's null, this PodAffinityTerm matches with no Pods. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both matchLabelKeys and labelSelector.<br>Also, matchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **mismatchLabelKeys** | []string | MismatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.<br>Also, mismatchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **[namespaceSelector](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermnamespaceselector)** | object | A label query over the set of namespaces that the term applies to.<br>The term is applied to the union of the namespaces selected by this field<br>and the ones listed in the namespaces field.<br>null selector and null or empty namespaces list means "this pod's namespace".<br>An empty selector ({}) matches all namespaces. | false |
+| **namespaces** | []string | namespaces specifies a static list of namespace names that the term applies to.<br>The term is applied to the union of the namespaces listed in this field<br>and the ones selected by namespaceSelector.<br>null or empty namespaces list and null namespaceSelector means "this pod's namespace". | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.labelSelector
+
+
+
+A label query over a set of resources, in this case pods.
+If it's null, this PodAffinityTerm matches with no Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.namespaceSelector
+
+
+
+A label query over the set of namespaces that the term applies to.
+The term is applied to the union of the namespaces selected by this field
+and the ones listed in the namespaces field.
+null selector and null or empty namespaces list means "this pod's namespace".
+An empty selector ({}) matches all namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+Defines a set of pods (namely those matching the labelSelector
+relative to the given namespace(s)) that this pod should be
+co-located (affinity) or not co-located (anti-affinity) with,
+where co-located is defined as running on a node whose value of
+the label with key <topologyKey> matches that of any node on which
+a pod of the set of pods is running
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **topologyKey** | string | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching<br>the labelSelector in the specified namespaces, where co-located is defined as running on a node<br>whose value of the label with key topologyKey matches that of any node on which any of the<br>selected pods is running.<br>Empty topologyKey is not allowed. | true |
+| **[labelSelector](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindexlabelselector)** | object | A label query over a set of resources, in this case pods.<br>If it's null, this PodAffinityTerm matches with no Pods. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both matchLabelKeys and labelSelector.<br>Also, matchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **mismatchLabelKeys** | []string | MismatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.<br>Also, mismatchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **[namespaceSelector](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindexnamespaceselector)** | object | A label query over the set of namespaces that the term applies to.<br>The term is applied to the union of the namespaces selected by this field<br>and the ones listed in the namespaces field.<br>null selector and null or empty namespaces list means "this pod's namespace".<br>An empty selector ({}) matches all namespaces. | false |
+| **namespaces** | []string | namespaces specifies a static list of namespace names that the term applies to.<br>The term is applied to the union of the namespaces listed in this field<br>and the ones selected by namespaceSelector.<br>null or empty namespaces list and null namespaceSelector means "this pod's namespace". | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].labelSelector
+
+
+
+A label query over a set of resources, in this case pods.
+If it's null, this PodAffinityTerm matches with no Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindexlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].namespaceSelector
+
+
+
+A label query over the set of namespaces that the term applies to.
+The term is applied to the union of the namespaces selected by this field
+and the ones listed in the namespaces field.
+null selector and null or empty namespaces list means "this pod's namespace".
+An empty selector ({}) matches all namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodaffinityrequiredduringschedulingignoredduringexecutionindexnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity
+
+
+
+Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s)).
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[preferredDuringSchedulingIgnoredDuringExecution](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindex)** | []object | The scheduler will prefer to schedule pods to nodes that satisfy<br>the anti-affinity expressions specified by this field, but it may choose<br>a node that violates one or more of the expressions. The node that is<br>most preferred is the one with the greatest sum of weights, i.e.<br>for each node that meets all of the scheduling requirements (resource<br>request, requiredDuringScheduling anti-affinity expressions, etc.),<br>compute a sum by iterating through the elements of this field and subtracting<br>"weight" from the sum if the node has pods which matches the corresponding podAffinityTerm; the<br>node(s) with the highest sum are the most preferred. | false |
+| **[requiredDuringSchedulingIgnoredDuringExecution](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindex)** | []object | If the anti-affinity requirements specified by this field are not met at<br>scheduling time, the pod will not be scheduled onto the node.<br>If the anti-affinity requirements specified by this field cease to be met<br>at some point during pod execution (e.g. due to a pod label update), the<br>system may or may not try to eventually evict the pod from its node.<br>When there are multiple elements, the lists of nodes corresponding to each<br>podAffinityTerm are intersected, i.e. all terms must be satisfied. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[podAffinityTerm](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinityterm)** | object | Required. A pod affinity term, associated with the corresponding weight. | true |
+| **weight** | integer | weight associated with matching the corresponding podAffinityTerm,<br>in the range 1-100.<br/>*Format*: int32<br/> | true |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm
+
+
+
+Required. A pod affinity term, associated with the corresponding weight.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **topologyKey** | string | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching<br>the labelSelector in the specified namespaces, where co-located is defined as running on a node<br>whose value of the label with key topologyKey matches that of any node on which any of the<br>selected pods is running.<br>Empty topologyKey is not allowed. | true |
+| **[labelSelector](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermlabelselector)** | object | A label query over a set of resources, in this case pods.<br>If it's null, this PodAffinityTerm matches with no Pods. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both matchLabelKeys and labelSelector.<br>Also, matchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **mismatchLabelKeys** | []string | MismatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.<br>Also, mismatchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **[namespaceSelector](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermnamespaceselector)** | object | A label query over the set of namespaces that the term applies to.<br>The term is applied to the union of the namespaces selected by this field<br>and the ones listed in the namespaces field.<br>null selector and null or empty namespaces list means "this pod's namespace".<br>An empty selector ({}) matches all namespaces. | false |
+| **namespaces** | []string | namespaces specifies a static list of namespace names that the term applies to.<br>The term is applied to the union of the namespaces listed in this field<br>and the ones selected by namespaceSelector.<br>null or empty namespaces list and null namespaceSelector means "this pod's namespace". | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.labelSelector
+
+
+
+A label query over a set of resources, in this case pods.
+If it's null, this PodAffinityTerm matches with no Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.namespaceSelector
+
+
+
+A label query over the set of namespaces that the term applies to.
+The term is applied to the union of the namespaces selected by this field
+and the ones listed in the namespaces field.
+null selector and null or empty namespaces list means "this pod's namespace".
+An empty selector ({}) matches all namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodantiaffinitypreferredduringschedulingignoredduringexecutionindexpodaffinitytermnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[index].podAffinityTerm.namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index]
+
+
+
+Defines a set of pods (namely those matching the labelSelector
+relative to the given namespace(s)) that this pod should be
+co-located (affinity) or not co-located (anti-affinity) with,
+where co-located is defined as running on a node whose value of
+the label with key <topologyKey> matches that of any node on which
+a pod of the set of pods is running
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **topologyKey** | string | This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching<br>the labelSelector in the specified namespaces, where co-located is defined as running on a node<br>whose value of the label with key topologyKey matches that of any node on which any of the<br>selected pods is running.<br>Empty topologyKey is not allowed. | true |
+| **[labelSelector](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindexlabelselector)** | object | A label query over a set of resources, in this case pods.<br>If it's null, this PodAffinityTerm matches with no Pods. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key in (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both matchLabelKeys and labelSelector.<br>Also, matchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **mismatchLabelKeys** | []string | MismatchLabelKeys is a set of pod label keys to select which pods will<br>be taken into consideration. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are merged with `labelSelector` as `key notin (value)`<br>to select the group of existing pods which pods will be taken into consideration<br>for the incoming pod's pod (anti) affinity. Keys that don't exist in the incoming<br>pod labels will be ignored. The default value is empty.<br>The same key is forbidden to exist in both mismatchLabelKeys and labelSelector.<br>Also, mismatchLabelKeys cannot be set when labelSelector isn't set. | false |
+| **[namespaceSelector](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindexnamespaceselector)** | object | A label query over the set of namespaces that the term applies to.<br>The term is applied to the union of the namespaces selected by this field<br>and the ones listed in the namespaces field.<br>null selector and null or empty namespaces list means "this pod's namespace".<br>An empty selector ({}) matches all namespaces. | false |
+| **namespaces** | []string | namespaces specifies a static list of namespace names that the term applies to.<br>The term is applied to the union of the namespaces listed in this field<br>and the ones selected by namespaceSelector.<br>null or empty namespaces list and null namespaceSelector means "this pod's namespace". | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].labelSelector
+
+
+
+A label query over a set of resources, in this case pods.
+If it's null, this PodAffinityTerm matches with no Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindexlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].namespaceSelector
+
+
+
+A label query over the set of namespaces that the term applies to.
+The term is applied to the union of the namespaces selected by this field
+and the ones listed in the namespaces field.
+null selector and null or empty namespaces list means "this pod's namespace".
+An empty selector ({}) matches all namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecrulesindexmutateindexworkloadsplacementaffinitypodantiaffinityrequiredduringschedulingignoredduringexecutionindexnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[index].namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.tolerations[index]
+
+
+
+The pod this Toleration is attached to tolerates any taint that matches
+the triple <key,value,effect> using the matching operator <operator>.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **effect** | string | Effect indicates the taint effect to match. Empty means match all taint effects.<br>When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute. | false |
+| **key** | string | Key is the taint key that the toleration applies to. Empty means match all taint keys.<br>If the key is empty, operator must be Exists; this combination means to match all values and all keys. | false |
+| **operator** | string | Operator represents a key's relationship to the value.<br>Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.<br>Exists is equivalent to wildcard for value, so that a pod can<br>tolerate all taints of a particular category.<br>Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators). | false |
+| **tolerationSeconds** | integer | TolerationSeconds represents the period of time the toleration (which must be<br>of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,<br>it is not set, which means tolerate the taint forever (do not evict). Zero and<br>negative values will be treated as 0 (evict immediately) by the system.<br/>*Format*: int64<br/> | false |
+| **value** | string | Value is the taint value the toleration matches to.<br>If the operator is Exists, the value should be empty, otherwise just a regular string. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.topologySpreadConstraints[index]
+
+
+
+TopologySpreadConstraint specifies how to spread matching pods among the given topology.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **maxSkew** | integer | MaxSkew describes the degree to which pods may be unevenly distributed.<br>When `whenUnsatisfiable=DoNotSchedule`, it is the maximum permitted difference<br>between the number of matching pods in the target topology and the global minimum.<br>The global minimum is the minimum number of matching pods in an eligible domain<br>or zero if the number of eligible domains is less than MinDomains.<br>For example, in a 3-zone cluster, MaxSkew is set to 1, and pods with the same<br>labelSelector spread as 2/2/1:<br>In this case, the global minimum is 1.<br>| zone1 | zone2 | zone3 |<br>|  P P  |  P P  |   P   |<br>- if MaxSkew is 1, incoming pod can only be scheduled to zone3 to become 2/2/2;<br>scheduling it onto zone1(zone2) would make the ActualSkew(3-1) on zone1(zone2)<br>violate MaxSkew(1).<br>- if MaxSkew is 2, incoming pod can be scheduled onto any zone.<br>When `whenUnsatisfiable=ScheduleAnyway`, it is used to give higher precedence<br>to topologies that satisfy it.<br>It's a required field. Default value is 1 and 0 is not allowed.<br/>*Format*: int32<br/> | true |
+| **topologyKey** | string | TopologyKey is the key of node labels. Nodes that have a label with this key<br>and identical values are considered to be in the same topology.<br>We consider each <key, value> as a "bucket", and try to put balanced number<br>of pods into each bucket.<br>We define a domain as a particular instance of a topology.<br>Also, we define an eligible domain as a domain whose nodes meet the requirements of<br>nodeAffinityPolicy and nodeTaintsPolicy.<br>e.g. If TopologyKey is "kubernetes.io/hostname", each Node is a domain of that topology.<br>And, if TopologyKey is "topology.kubernetes.io/zone", each zone is a domain of that topology.<br>It's a required field. | true |
+| **whenUnsatisfiable** | string | WhenUnsatisfiable indicates how to deal with a pod if it doesn't satisfy<br>the spread constraint.<br>- DoNotSchedule (default) tells the scheduler not to schedule it.<br>- ScheduleAnyway tells the scheduler to schedule the pod in any location,<br>  but giving higher precedence to topologies that would help reduce the<br>  skew.<br>A constraint is considered "Unsatisfiable" for an incoming pod<br>if and only if every possible node assignment for that pod would violate<br>"MaxSkew" on some topology.<br>For example, in a 3-zone cluster, MaxSkew is set to 1, and pods with the same<br>labelSelector spread as 3/1/1:<br>| zone1 | zone2 | zone3 |<br>| P P P |   P   |   P   |<br>If WhenUnsatisfiable is set to DoNotSchedule, incoming pod can only be scheduled<br>to zone2(zone3) to become 3/2/1(3/1/2) as ActualSkew(2-1) on zone2(zone3) satisfies<br>MaxSkew(1). In other words, the cluster can still be imbalanced, but scheduler<br>won't make it *more* imbalanced.<br>It's a required field. | true |
+| **[labelSelector](#tenantspecrulesindexmutateindexworkloadsplacementtopologyspreadconstraintsindexlabelselector)** | object | LabelSelector is used to find matching pods.<br>Pods that match this label selector are counted to determine the number of pods<br>in their corresponding topology domain. | false |
+| **matchLabelKeys** | []string | MatchLabelKeys is a set of pod label keys to select the pods over which<br>spreading will be calculated. The keys are used to lookup values from the<br>incoming pod labels, those key-value labels are ANDed with labelSelector<br>to select the group of existing pods over which spreading will be calculated<br>for the incoming pod. The same key is forbidden to exist in both MatchLabelKeys and LabelSelector.<br>MatchLabelKeys cannot be set when LabelSelector isn't set.<br>Keys that don't exist in the incoming pod labels will<br>be ignored. A null or empty list means only match against labelSelector.<br><br>This is a beta field and requires the MatchLabelKeysInPodTopologySpread feature gate to be enabled (enabled by default). | false |
+| **minDomains** | integer | MinDomains indicates a minimum number of eligible domains.<br>When the number of eligible domains with matching topology keys is less than minDomains,<br>Pod Topology Spread treats "global minimum" as 0, and then the calculation of Skew is performed.<br>And when the number of eligible domains with matching topology keys equals or greater than minDomains,<br>this value has no effect on scheduling.<br>As a result, when the number of eligible domains is less than minDomains,<br>scheduler won't schedule more than maxSkew Pods to those domains.<br>If value is nil, the constraint behaves as if MinDomains is equal to 1.<br>Valid values are integers greater than 0.<br>When value is not nil, WhenUnsatisfiable must be DoNotSchedule.<br><br>For example, in a 3-zone cluster, MaxSkew is set to 2, MinDomains is set to 5 and pods with the same<br>labelSelector spread as 2/2/2:<br>| zone1 | zone2 | zone3 |<br>|  P P  |  P P  |  P P  |<br>The number of domains is less than 5(MinDomains), so "global minimum" is treated as 0.<br>In this situation, new pod with the same labelSelector cannot be scheduled,<br>because computed skew will be 3(3 - 0) if new Pod is scheduled to any of the three zones,<br>it will violate MaxSkew.<br/>*Format*: int32<br/> | false |
+| **nodeAffinityPolicy** | string | NodeAffinityPolicy indicates how we will treat Pod's nodeAffinity/nodeSelector<br>when calculating pod topology spread skew. Options are:<br>- Honor: only nodes matching nodeAffinity/nodeSelector are included in the calculations.<br>- Ignore: nodeAffinity/nodeSelector are ignored. All nodes are included in the calculations.<br><br>If this value is nil, the behavior is equivalent to the Honor policy. | false |
+| **nodeTaintsPolicy** | string | NodeTaintsPolicy indicates how we will treat node taints when calculating<br>pod topology spread skew. Options are:<br>- Honor: nodes without taints, along with tainted nodes for which the incoming pod<br>has a toleration, are included.<br>- Ignore: node taints are ignored. All nodes are included.<br><br>If this value is nil, the behavior is equivalent to the Ignore policy. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.topologySpreadConstraints[index].labelSelector
+
+
+
+LabelSelector is used to find matching pods.
+Pods that match this label selector are counted to determine the number of pods
+in their corresponding topology domain.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecrulesindexmutateindexworkloadsplacementtopologyspreadconstraintsindexlabelselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.placement.topologySpreadConstraints[index].labelSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.security
+
+
+
+Security configures Pod and container security settings.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[appArmorProfile](#tenantspecrulesindexmutateindexworkloadssecurityapparmorprofile)** | object | AppArmorProfile supplies the Pod-level securityContext.appArmorProfile on<br>Linux Pod creation. Merge fills an absent profile; replace replaces the<br>complete profile. Explicit container profiles are preserved. Nil omits it.<br>AppArmor and any Localhost profile must be available on eligible nodes. | false |
+| **hostUsers** | boolean | HostUsers sets spec.hostUsers on both merge and replace. False requests a<br>separate user namespace; true uses the host user namespace. Omitted or null<br>leaves the Pod value unchanged. Requires Kubernetes/runtime support. | false |
+| **readOnlyRootFilesystem** | boolean | ReadOnlyRootFilesystem sets securityContext.readOnlyRootFilesystem on every<br>selected regular or init container at Pod creation, and newly added ephemeral<br>containers on subresource updates. Both merge and replace overwrite the value.<br>False is an explicit setting; nil preserves it. Windows Pods are skipped. | false |
+| **[seccompProfile](#tenantspecrulesindexmutateindexworkloadssecurityseccompprofile)** | object | SeccompProfile supplies the Pod-level securityContext.seccompProfile on<br>Linux Pod creation. Merge fills an absent profile; replace replaces the<br>complete profile. Explicit container profiles are preserved. Nil omits it. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.security.appArmorProfile
+
+
+
+AppArmorProfile supplies the Pod-level securityContext.appArmorProfile on
+Linux Pod creation. Merge fills an absent profile; replace replaces the
+complete profile. Explicit container profiles are preserved. Nil omits it.
+AppArmor and any Localhost profile must be available on eligible nodes.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **type** | string | type indicates which kind of AppArmor profile will be applied.<br>Valid options are:<br>  Localhost - a profile pre-loaded on the node.<br>  RuntimeDefault - the container runtime's default profile.<br>  Unconfined - no AppArmor enforcement. | true |
+| **localhostProfile** | string | localhostProfile indicates a profile loaded on the node that should be used.<br>The profile must be preconfigured on the node to work.<br>Must match the loaded name of the profile.<br>Must be set if and only if type is "Localhost". | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.security.seccompProfile
+
+
+
+SeccompProfile supplies the Pod-level securityContext.seccompProfile on
+Linux Pod creation. Merge fills an absent profile; replace replaces the
+complete profile. Explicit container profiles are preserved. Nil omits it.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **type** | string | type indicates which kind of seccomp profile will be applied.<br>Valid options are:<br><br>Localhost - a profile defined in a file on the node should be used.<br>RuntimeDefault - the container runtime default profile should be used.<br>Unconfined - no profile should be applied. | true |
+| **localhostProfile** | string | localhostProfile indicates a profile defined in a file on the node should be used.<br>The profile must be preconfigured on the node to work.<br>Must be a descending path, relative to the kubelet's configured seccomp profile location.<br>Must be set if type is "Localhost". Must NOT be set for any other type. | false |
 
 
 ### Tenant.spec.rules[index].namespaceSelector

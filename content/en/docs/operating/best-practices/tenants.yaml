@@ -1,0 +1,197 @@
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  # Default and allow the tenant-standard PriorityClass.
+  priorityClasses:
+    default: tenant-standard
+    allowed: [tenant-standard]
+  rules:
+
+    # One shared budget across all namespaces in this Tenant.
+    - quota:
+        - name: application-budget
+          hard:
+            requests.cpu: "20"
+            requests.memory: 40Gi
+            limits.memory: 40Gi
+            requests.ephemeral-storage: 100Gi
+            limits.ephemeral-storage: 200Gi
+            pods: "100"
+            services: "100"
+
+    # Apply placement and user-namespace settings on Pod creation.
+    - mutate:
+        - action: merge
+          workloads:
+            security:
+              hostUsers: false
+            placement:
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                      - matchExpressions:
+                          - key: node-role.kubernetes.io/control-plane
+                            operator: DoesNotExist
+                          - key: node-role.kubernetes.io/master
+                            operator: DoesNotExist
+      enforce:
+        action: allow
+        workloads:
+          targets: [pod]
+          placement:
+            schedulers:
+              - exact: [default-scheduler]
+
+    # Defaults for application containers, sidecars, and init containers.
+    - enforce:
+        action: deny
+        workloads:
+          targets: [pod/containers, pod/initcontainers]
+          resources:
+            requests:
+              cpu:
+                policy: Default
+                value: 250m
+              memory:
+                policy: Default
+                value: 512Mi
+              ephemeral-storage:
+                policy: Default
+                value: 1Gi
+            limits:
+              cpu:
+                policy: Remove
+              memory:
+                policy: MatchRequest
+              ephemeral-storage:
+                policy: Default
+                value: 2Gi
+
+    # Normalize limits when a workload supplies Pod-level resources.
+    - enforce:
+        action: deny
+        workloads:
+          targets: [pod]
+          resources:
+            limits:
+              cpu:
+                policy: Remove
+              memory:
+                policy: MatchRequest
+
+    # Deny BestEffort Pods after resource mutation.
+    - enforce:
+        action: deny
+        workloads:
+          targets: [pod]
+          qosClasses: [BestEffort]
+
+    # Reject control-plane and wildcard tolerations.
+    - enforce:
+        action: deny
+        workloads:
+          targets: [pod]
+          placement:
+            tolerations:
+              - key:
+                  exact:
+                    - node-role.kubernetes.io/control-plane
+                    - node-role.kubernetes.io/master
+              - key: {exp: '^$'}
+                operators: [Exists]
+
+    # Check direct assignment only at creation; allow scheduler-bound updates.
+    - enforce:
+        action: deny
+        conditions:
+          - name: direct-node-assignment
+            expression: >-
+              request.operation == 'CREATE' && has(object.spec.nodeName) && object.spec.nodeName != ''
+        workloads:
+          targets: [pod]
+
+    # Keep kind-level denials separate from workload property checks.
+    - enforce:
+        action: deny
+        workloads:
+          targets: [daemonset]
+
+    # Allow approved images with Always pull policy.
+    - enforce:
+        action: allow
+        workloads:
+          targets:
+            - pod/containers
+            - pod/initcontainers
+            - pod/ephemeralcontainers
+            - pod/volumes
+          registries:
+            - exp: '^registry\.example\.com/solar/.+$'
+              policy: [Always]
+
+    # Allow only ClusterIP Services.
+    - enforce:
+        action: allow
+        services:
+          types: [ClusterIP]
+
+    # Deny all Service external IPs.
+    - enforce:
+        action: deny
+        services:
+          externalIPs: {}
+
+    # Apply and reconcile Pod Security labels on the Namespace itself.
+    - enforce:
+        action: allow
+        metadata:
+          - apiGroups: [v1]
+            kinds: [Namespace]
+            labels:
+              pod-security.kubernetes.io/enforce:
+                managed: restricted
+                required: true
+                values:
+                  - exact: [restricted]
+              pod-security.kubernetes.io/enforce-version:
+                managed: v1.36
+                required: true
+                values:
+                  - exact: [v1.36]
+              pod-security.kubernetes.io/warn:
+                managed: restricted
+                required: true
+                values:
+                  - exact: [restricted]
+              pod-security.kubernetes.io/warn-version:
+                managed: v1.36
+                required: true
+                values:
+                  - exact: [v1.36]
+              pod-security.kubernetes.io/audit:
+                managed: restricted
+                required: true
+                values:
+                  - exact: [restricted]
+              pod-security.kubernetes.io/audit-version:
+                managed: v1.36
+                required: true
+                values:
+                  - exact: [v1.36]
+
+    # Reserve this trusted-platform label for administrator-managed namespaces.
+    - enforce:
+        action: deny
+        metadata:
+          - apiGroups: [v1]
+            kinds: [Namespace]
+            labels:
+              company.com/system:
+                values:
+                  - exp: ".*"

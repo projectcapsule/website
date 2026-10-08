@@ -1,0 +1,8 @@
+{{- $source := string . -}}
+{{- $html := highlight $source "yaml" "hl_inline=true" | replaceRE `^<code[^>]*>|</code>$` "" -}}
+{{/* Older Chroma versions can alter folded scalar whitespace. Copyable YAML
+     must preserve the source, even when that requires plain escaped text. */}}
+{{- if ne (htmlUnescape (replaceRE `<[^>]*>` "" $html)) $source -}}
+  {{- $html = htmlEscape $source -}}
+{{- end -}}
+{{- $html | safeHTML -}}
