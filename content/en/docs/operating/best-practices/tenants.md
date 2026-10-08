@@ -80,10 +80,10 @@ PriorityClass settings.
   url: /docs/rules/enforcement/workloads/#registries
 - comment: "Allow only ClusterIP Services."
   title: ClusterIP Services only
-  url: /docs/rules/enforcement/services/#types
+  url: /docs/rules/enforcement/network/#types
 - comment: "Deny all Service external IPs."
   title: Block external IPs
-  url: /docs/rules/enforcement/services/#denying-all-external-ips
+  url: /docs/rules/enforcement/network/#denying-all-external-ips
 - comment: "Apply and reconcile Pod Security labels on the Namespace itself."
   title: Restricted Pod Security labels
   url: /docs/rules/enforcement/metadata/#managed

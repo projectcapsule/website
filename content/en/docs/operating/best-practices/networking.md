@@ -9,7 +9,7 @@ description: Control Service exposure and network isolation in tenant namespaces
 For ordinary application namespaces, start with `ClusterIP` Services and expose
 applications through a platform-managed Gateway or Ingress. Give namespaces
 that need other Service types an explicit profile through
-[Service enforcement rules](/docs/rules/enforcement/services/).
+[Service enforcement rules](/docs/rules/enforcement/network/#services).
 
 See the [combined Tenant baseline](/docs/operating/best-practices/tenants/#reference)
 for Service restrictions together with workload and namespace policies.
@@ -143,7 +143,7 @@ namespace profile, with a reviewed provider configuration:
 * **Require the intended client networks.** Use explicit
   `spec.loadBalancerSourceRanges` and verify the provider enforces them; an
   unsupported provider can ignore this field. Capsule's
-  [LoadBalancer CIDR checks](/docs/rules/enforcement/services/#loadbalancer)
+  [LoadBalancer CIDR checks](/docs/rules/enforcement/network/#loadbalancer)
   validate both `spec.loadBalancerIP` and `spec.loadBalancerSourceRanges`.
   They do not require source ranges specifically when `loadBalancerIP` is
   present, so use a condition-based deny rule if missing source ranges must be
@@ -173,7 +173,7 @@ Also review these paths outside the Service type rules:
   restrict these Pod settings.
 * Control who can publish Gateway routes or Ingresses and which hosts they may
   use. A permitted `ClusterIP` backend can still be deliberately published by
-  those controllers; see [Ingress enforcement](/docs/rules/enforcement/ingress/).
+  those controllers; see [Ingress enforcement](/docs/rules/enforcement/network/#ingress).
 
 ## Network-Policies
 

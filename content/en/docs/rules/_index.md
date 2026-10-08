@@ -2,7 +2,6 @@
 title: Rules
 weight: 5
 aliases:
-  - /docs/tenants/rules/
   - /docs/rules/conditions/
 description: >
   Configure policies and restrictions on a per-Namespace basis with Rules
@@ -17,7 +16,7 @@ Rules cover two areas:
 
 - **[Mutate](/docs/rules/mutate/)**: apply typed workload settings to new Pods in selected namespaces.
 
-- **[Enforcement](/docs/rules/enforcement/)**: control allowed workloads, ingress hostnames, service types, and namespace metadata.
+- **[Enforcement](/docs/rules/enforcement/)**: control allowed workloads, ingress hostnames, service types, NetworkPolicy egress CIDRs, and namespace metadata.
 
 See [Conditions](#conditions) for conditional mutation and enforcement.
 
@@ -301,7 +300,7 @@ at `mutate[].conditions` or `enforce.conditions`.
 | Location | Scope |
 |---|---|
 | `mutate[].conditions` | The entire mutation entry, within the property's supported targets and operations. |
-| `enforce.conditions` | The entire `enforce` block: workloads, Services, metadata, and ingress, including metadata and resource request/limit mutations. |
+| `enforce.conditions` | The entire `enforce` block: workloads, Services, metadata, ingress, and storage, including metadata and resource request/limit mutations. |
 
 A false mutation condition skips only its mutation entry. A false enforcement
 condition skips that `enforce` block, while sibling `mutate` entries and other
@@ -326,6 +325,7 @@ rules are validated and cached for reuse.
 |---|---|
 | `object` | The current resource, using its Kubernetes field structure. Metadata conditions can inspect the full object, including fields such as `spec` or ConfigMap `data`. |
 | `request` | Admission metadata, such as `operation`, `namespace`, `name`, `userInfo`, `kind`, `resource`, `subResource`, and `dryRun`. Raw objects and admission options are not exposed here. |
+| `volume` | The referenced PersistentVolume during [additional volume access evaluation](/docs/rules/enforcement/storage/#conditions); `null` for other condition consumers. The snapshot is read-only. |
 
 Check absent fields with `has(...)` and map membership with `in`. The
 [missing-value example](#set-a-value-only-when-it-is-missing) demonstrates both.
@@ -395,6 +395,12 @@ preserving custom scheduler names.
 block. For ingress policies, the conditions are evaluated only when the incoming
 resource kind is selected by `ingress.types`. Metadata policies can inspect the
 full resource, including its `spec` or `data`.
+
+For [storage volume rules](/docs/rules/enforcement/storage/), `object` is the
+incoming PVC and `volume` is the referenced PV. These conditions govern
+additional access to PVs without a Tenant label; they do not revoke existing
+Tenant-owned volume access. Keep volume-specific conditions in their own
+storage block because other condition consumers see `volume` as `null`.
 
 Conditions under `enforce` also gate metadata defaults, managed metadata, and
 [resource request/limit mutations](/docs/rules/enforcement/workloads/#requests-and-limits).

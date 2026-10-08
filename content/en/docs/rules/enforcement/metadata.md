@@ -5,56 +5,48 @@ description: >
   Metadata Enforcement
 ---
 
-Metadata enforcement allows administrators to allow, deny, or audit Kubernetes object labels and annotations for namespaced resources.
+Metadata enforcement is configured under `spec.rules[].enforce.metadata`.
+Use [Metadata Targets](#target-resources) to select resource kinds, then configure
+[labels and annotations](#labels-and-annotations), including defaults, managed
+values, required keys, and value validation. [Migration](#migration) covers the
+legacy Namespace, Pod, and Service metadata options.
 
-Metadata rules are configured under `spec.rules[].enforce.metadata`. They are evaluated by a generic validating webhook and can target one or more Kubernetes kinds. This makes metadata enforcement useful for objects such as `ConfigMap`, `Secret`, `Service`, `Deployment`, custom resources, and other namespaced resources.
+Rules use the shared [namespace selection](/docs/tenants/rules/),
+[audiences](/docs/rules/#audience),
+[conditions](/docs/rules/#enforcement-conditions), and
+[actions and order](/docs/rules/enforcement/#action).
+See [Reference](#reference) for a complete Tenant example.
 
-See [Conditions](/docs/rules/#enforcement-conditions) for conditional metadata policies.
-See [Reference](#reference) for a complete Tenant combining these policies.
+## Rule Composition
 
-```yaml
-rules:
-  - enforce:
-      action: allow
-      metadata:
-        - apiGroups:
-            - "*"
-          kinds:
-            - ConfigMap
-            - Service
-          labels:
-            corp.com/tenant:
-              required: true
-              values:
-                - exact:
-                    - prod
-                    - test
-          annotations:
-            example.corp/cost-center:
-              required: false
-              values:
-                - exp: "^INV-[0-9]{4}$"
-                  exact:
-                    - prod
-                    - test
-```
+<span id="advanced"></span>
 
-Metadata enforcement follows the same action and precedence model as other namespace rules:
+### Actions and order
 
-* `allow` creates an allow-list for the evaluated metadata key.
-* `deny` denies matching metadata values.
-* `audit` emits Kubernetes events and admission warnings but does not allow or deny the request.
-* If multiple `allow` or `deny` rules match the same metadata key and value, the last matching allow or deny rule wins.
-* If at least one `allow` rule exists for a metadata key and the object contains that key with a value that does not match any allow or deny rule, Capsule denies the request.
-* Audit rules never satisfy allow-list behavior.
-* Missing optional metadata keys are ignored.
+Metadata rules are evaluated in declaration order after namespace selection,
+audience, and condition filtering. The last matching `allow` or `deny` wins for
+each metadata key and value.
 
-Metadata rules are evaluated during create and update admission. Metadata enforcement is intentionally generic and conservative. Keep the following behavior in mind:
+| Action | Behavior |
+|---|---|
+| `allow` | Creates an allow-list for the evaluated metadata key. A present value with no matching allow or deny decision is rejected when an allow-list is active. |
+| `deny` | Rejects matching metadata values. A later matching allow rule can override that decision. |
+| `audit` | Emits Kubernetes events and admission warnings without allowing or denying the request. Audit matches never satisfy an allow-list. |
+
+If `action` is omitted, it defaults to `deny`. Each label and annotation key
+is evaluated independently; allowing one key does not authorize another.
+
+### Admission scope and limits
+
+Metadata rules are evaluated during create and update admission. On creation,
+all present controlled keys are checked. On update, unchanged values skip value
+matching, while required keys must still be present. Keep the following scope
+and limits in mind:
 
 | Behavior | Explanation |
 |---|---|
 | Namespaced resources and explicitly selected Namespaces are evaluated | Metadata rules normally target resources inside Tenant namespaces. `Namespace` is the only supported cluster-scoped kind, and it must be selected explicitly with `kinds: ["Namespace"]`. |
-| Controller-managed objects can be skipped | Objects labeled `managed-by=controller` are ignored by generic metadata validation. This prevents controllers from being blocked when reconciling managed objects. The skip check is exact and case-sensitive. |
+| Managed objects remain subject to enforcement | Setting `managed-by=controller` does not bypass metadata validation. Capsule-managed resources retain their separate protection against unauthorized edits. |
 | Capsule-managed metadata is ignored | Built-in Capsule labels and annotations are treated as managed metadata and are ignored by metadata validation. Do not rely on metadata rules to validate Capsule-owned keys. |
 | Managed annotation prefixes are ignored | Capsule-managed annotation prefixes such as resource quota and resource usage annotations are ignored. |
 | Missing optional metadata is ignored | If `required: false`, the key is only evaluated when it is present. |
@@ -68,7 +60,7 @@ Capsule-managed labels include labels used to track Tenant ownership, resource p
 
 Because these keys are owned by Capsule, metadata rules that reference them are ignored by default. Use application-specific labels and annotations for Tenant policy enforcement.
 
-## Target resources
+## Metadata Targets {#target-resources}
 
 Each metadata rule defines which resource kinds it applies to:
 
@@ -186,7 +178,7 @@ metadata:
 In short, both conditions must be true: `apiGroups` must match core `v1`, and
 `kinds` must contain a dedicated `Namespace` entry.
 
-### Important `apiGroups` behavior
+### API group selection {#important-apigroups-behavior}
 
 Omitted or empty `apiGroups` does **not** mean all API groups and versions. It
 means the core Kubernetes API version `v1`.
@@ -222,7 +214,39 @@ metadata:
       - Deployment
 ```
 
-## Label rules
+## Labels and Annotations
+
+The following rule requires an approved Tenant label and validates an optional
+cost-center annotation on ConfigMaps and Services:
+
+```yaml
+rules:
+  - enforce:
+      action: allow
+      metadata:
+        - apiGroups:
+            - "*"
+          kinds:
+            - ConfigMap
+            - Service
+          labels:
+            corp.com/tenant:
+              required: true
+              values:
+                - exact:
+                    - prod
+                    - test
+          annotations:
+            example.corp/cost-center:
+              required: false
+              values:
+                - exp: "^INV-[0-9]{4}$"
+                  exact:
+                    - prod
+                    - test
+```
+
+### Label rules
 
 Label rules are configured under `metadata[].labels`. Each map key is the label key to validate.
 
@@ -287,7 +311,7 @@ Example rejection:
 Error from server (Forbidden): error when creating "configmap.yaml": admission webhook "rules.generic.projectcapsule.dev" denied the request: metadata label "env" is required at metadata.labels["env"]
 ```
 
-## Annotation rules
+### Annotation rules
 
 Annotation rules are configured under `metadata[].annotations`. Each map key is the annotation key to validate.
 
@@ -361,7 +385,7 @@ data:
   key: value
 ```
 
-## Default
+### Default
 
 The `default` field provides a value for coressponding field should no value be provided by the user. This is only applied at admission time and does not enforce the value to be present in the object.
 
@@ -381,7 +405,7 @@ rules:
 
 Default values still validate against the configured `values` matchers. If the default value does not match any allow or deny rule, the request is denied.
 
-## Managed
+### Managed
 
 Managed values set metadata to the configured value during admission,
 overwriting an existing value. For background reconciliation behavior, see
@@ -405,7 +429,7 @@ rules:
               managed: "INV-10"
 ```
 
-## Required
+### Required
 
 The `required` field controls whether the metadata key must be present.
 
@@ -445,7 +469,7 @@ data:
 
 If the label is missing, the request is denied.
 
-## Validation
+### Validation
 
 The `values` field uses the common match expression structure with `exact`, `exp`, and optional `negate`.
 
@@ -494,6 +518,225 @@ With this rule:
 * `team=untrusted` is denied.
 
 If an allow-list also exists for the same metadata key, values excluded from a negated deny rule still need a matching allow rule.
+
+### Allow-list behavior for metadata
+
+An `allow` rule creates an allow-list for the specific metadata key it controls.
+
+```yaml
+rules:
+  - enforce:
+      action: allow
+      metadata:
+        - kinds:
+            - ConfigMap
+          labels:
+            env:
+              required: true
+              values:
+                - exact:
+                    - prod
+                    - test
+```
+
+With this rule:
+
+| Object label | Result |
+|---|---|
+| `env=prod` | Allowed |
+| `env=test` | Allowed |
+| `env=stage` | Denied |
+| missing `env` | Denied because `required: true` |
+
+If `required` is `false`, missing metadata is ignored:
+
+```yaml
+rules:
+  - enforce:
+      action: allow
+      metadata:
+        - kinds:
+            - ConfigMap
+          labels:
+            env:
+              required: false
+              values:
+                - exact:
+                    - prod
+                    - test
+```
+
+With this rule:
+
+| Object label | Result |
+|---|---|
+| `env=prod` | Allowed |
+| `env=test` | Allowed |
+| `env=stage` | Denied |
+| missing `env` | Allowed |
+
+Allow-list behavior is evaluated per metadata key. A matching value for one key does not satisfy another required key.
+
+For example:
+
+```yaml
+rules:
+  - enforce:
+      action: allow
+      metadata:
+        - kinds:
+            - ConfigMap
+          labels:
+            env:
+              required: true
+              values:
+                - exact:
+                    - prod
+            team:
+              required: true
+              values:
+                - exact:
+                    - platform
+```
+
+The object must contain both `env=prod` and `team=platform`.
+
+### Deny metadata values
+
+Use `action: deny` to reject specific metadata values.
+
+```yaml
+rules:
+  - enforce:
+      action: deny
+      metadata:
+        - kinds:
+            - ConfigMap
+          labels:
+            environment:
+              values:
+                - exact:
+                    - deprecated
+```
+
+This `ConfigMap` is denied:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  labels:
+    environment: deprecated
+data:
+  key: value
+```
+
+A later matching `allow` rule can override an earlier `deny` rule:
+
+```yaml
+rules:
+  - enforce:
+      action: deny
+      metadata:
+        - kinds:
+            - ConfigMap
+          labels:
+            environment:
+              values:
+                - exact:
+                    - deprecated
+
+  - namespaceSelector:
+      matchLabels:
+        allow-deprecated: "true"
+    enforce:
+      action: allow
+      metadata:
+        - kinds:
+            - ConfigMap
+          labels:
+            environment:
+              required: true
+              values:
+                - exact:
+                    - deprecated
+```
+
+In namespaces labeled `allow-deprecated=true`, `environment=deprecated` is admitted because the later namespace-specific allow rule matches.
+
+### Audit metadata values
+
+Use `action: audit` to observe metadata usage without blocking the request.
+
+```yaml
+rules:
+  - enforce:
+      action: audit
+      metadata:
+        - apiGroups:
+            - "*"
+          kinds:
+            - ConfigMap
+            - Service
+          labels:
+            example.corp/audit:
+              values:
+                - exp: "^audit-.*"
+```
+
+A matching object is admitted in this audit-only example, but Capsule emits an audit event and returns an admission warning.
+
+If an allow-list also exists for the same metadata key, audit does not satisfy that allow-list. The metadata value must still match an `allow` rule.
+
+### Multiple resource kinds
+
+A single metadata rule can target multiple kinds:
+
+```yaml
+rules:
+  - enforce:
+      action: allow
+      metadata:
+        - apiGroups:
+            - "*"
+          kinds:
+            - ConfigMap
+            - Service
+          labels:
+            corp.com/tenant:
+              required: true
+              values:
+                - exact:
+                    - prod
+                    - test
+```
+
+With this rule, both matching `ConfigMap` and `Service` objects must contain `corp.com/tenant=prod` or `corp.com/tenant=test`.
+
+### Namespace-specific metadata rules
+
+Metadata enforcement supports `namespaceSelector` like other namespace rules.
+
+```yaml
+rules:
+  - namespaceSelector:
+      matchLabels:
+        environment: prod
+    enforce:
+      action: allow
+      metadata:
+        - kinds:
+            - ConfigMap
+          annotations:
+            example.corp/approval:
+              required: true
+              values:
+                - exact:
+                    - approved
+```
+
+This rule only applies to namespaces labeled `environment=prod`. In those namespaces, matching `ConfigMap` objects must contain `example.corp/approval=approved`.
 
 ## Migration
 
@@ -728,227 +971,6 @@ rules:
             customer.corp/network-tenant:
               managed: "{{ .tenant.metadata.name }}"
 ```
-
-## Advanced
-
-### Allow-list behavior for metadata
-
-An `allow` rule creates an allow-list for the specific metadata key it controls.
-
-```yaml
-rules:
-  - enforce:
-      action: allow
-      metadata:
-        - kinds:
-            - ConfigMap
-          labels:
-            env:
-              required: true
-              values:
-                - exact:
-                    - prod
-                    - test
-```
-
-With this rule:
-
-| Object label | Result |
-|---|---|
-| `env=prod` | Allowed |
-| `env=test` | Allowed |
-| `env=stage` | Denied |
-| missing `env` | Denied because `required: true` |
-
-If `required` is `false`, missing metadata is ignored:
-
-```yaml
-rules:
-  - enforce:
-      action: allow
-      metadata:
-        - kinds:
-            - ConfigMap
-          labels:
-            env:
-              required: false
-              values:
-                - exact:
-                    - prod
-                    - test
-```
-
-With this rule:
-
-| Object label | Result |
-|---|---|
-| `env=prod` | Allowed |
-| `env=test` | Allowed |
-| `env=stage` | Denied |
-| missing `env` | Allowed |
-
-Allow-list behavior is evaluated per metadata key. A matching value for one key does not satisfy another required key.
-
-For example:
-
-```yaml
-rules:
-  - enforce:
-      action: allow
-      metadata:
-        - kinds:
-            - ConfigMap
-          labels:
-            env:
-              required: true
-              values:
-                - exact:
-                    - prod
-            team:
-              required: true
-              values:
-                - exact:
-                    - platform
-```
-
-The object must contain both `env=prod` and `team=platform`.
-
-### Deny metadata values
-
-Use `action: deny` to reject specific metadata values.
-
-```yaml
-rules:
-  - enforce:
-      action: deny
-      metadata:
-        - kinds:
-            - ConfigMap
-          labels:
-            environment:
-              values:
-                - exact:
-                    - deprecated
-```
-
-This `ConfigMap` is denied:
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: app-config
-  labels:
-    environment: deprecated
-data:
-  key: value
-```
-
-A later matching `allow` rule can override an earlier `deny` rule:
-
-```yaml
-rules:
-  - enforce:
-      action: deny
-      metadata:
-        - kinds:
-            - ConfigMap
-          labels:
-            environment:
-              values:
-                - exact:
-                    - deprecated
-
-  - namespaceSelector:
-      matchLabels:
-        allow-deprecated: "true"
-    enforce:
-      action: allow
-      metadata:
-        - kinds:
-            - ConfigMap
-          labels:
-            environment:
-              required: true
-              values:
-                - exact:
-                    - deprecated
-```
-
-In namespaces labeled `allow-deprecated=true`, `environment=deprecated` is admitted because the later namespace-specific allow rule matches.
-
-### Audit metadata values
-
-Use `action: audit` to observe metadata usage without blocking the request.
-
-```yaml
-rules:
-  - enforce:
-      action: audit
-      metadata:
-        - apiGroups:
-            - "*"
-          kinds:
-            - ConfigMap
-            - Service
-          labels:
-            example.corp/audit:
-              values:
-                - exp: "^audit-.*"
-```
-
-A matching object is admitted in this audit-only example, but Capsule emits an audit event and returns an admission warning.
-
-If an allow-list also exists for the same metadata key, audit does not satisfy that allow-list. The metadata value must still match an `allow` rule.
-
-### Multiple resource kinds
-
-A single metadata rule can target multiple kinds:
-
-```yaml
-rules:
-  - enforce:
-      action: allow
-      metadata:
-        - apiGroups:
-            - "*"
-          kinds:
-            - ConfigMap
-            - Service
-          labels:
-            corp.com/tenant:
-              required: true
-              values:
-                - exact:
-                    - prod
-                    - test
-```
-
-With this rule, both matching `ConfigMap` and `Service` objects must contain `corp.com/tenant=prod` or `corp.com/tenant=test`.
-
-### Namespace-specific metadata rules
-
-Metadata enforcement supports `namespaceSelector` like other namespace rules.
-
-```yaml
-rules:
-  - namespaceSelector:
-      matchLabels:
-        environment: prod
-    enforce:
-      action: allow
-      metadata:
-        - kinds:
-            - ConfigMap
-          annotations:
-            example.corp/approval:
-              required: true
-              values:
-                - exact:
-                    - approved
-```
-
-This rule only applies to namespaces labeled `environment=prod`. In those namespaces, matching `ConfigMap` objects must contain `example.corp/approval=approved`.
 
 ## Reference
 

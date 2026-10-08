@@ -10,29 +10,74 @@ Use `targets` to select native workload kinds or locations inside their Pod
 specs. A targets-only rule matches the selected kinds themselves. When workload
 policies are present, targets scope those policies: [resource management](#resource-management),
 [OCI registries](#registries), scheduler names, QoS, [placement](#placement),
-and [security profiles](#security).
+[security profiles](#security), and [PodDisruptionBudgets](#pod-disruption-budgets).
 
-See [Conditions](/docs/rules/#enforcement-conditions) for conditional workload policies.
-See [Reference](#reference) for a complete Tenant combining workload policies.
+Rules use the shared [namespace selection](/docs/tenants/rules/),
+[audiences](/docs/rules/#audience),
+[conditions](/docs/rules/#enforcement-conditions), and
+[actions and order](/docs/rules/enforcement/#action).
+See [Reference](#reference) for a complete Tenant example.
 
-```yaml
-apiVersion: capsule.clastix.io/v1beta2
-kind: Tenant
-metadata:
-  name: solar
-spec:
-  rules:
-    - enforce:
-        action: deny
-        workloads:
-          qosClasses:
-            - BestEffort
-```
+## Rule Composition
+
+### Actions and order
+
+Rules are evaluated in declaration order after namespace selection, audience,
+and condition filtering. The last matching `allow` or `deny` decision wins for
+each evaluated value. An omitted action defaults to `deny`.
+
+| Action | Behavior |
+|---|---|
+| `allow` | Creates an allow-list for the evaluated matcher. A value must match an applicable allow or deny rule; otherwise an active allow-list rejects it. |
+| `deny` | Rejects matching values, unless a later matching allow rule overrides the decision. |
+| `audit` | Reports matches without allowing or denying them. Audit matches never satisfy an allow-list. |
+
+Each policy and value is evaluated independently. Allowing a registry does not
+bypass a scheduler, security, placement, or other applicable constraint.
+
+For constraints on [requests and limits](#actions-and-compliance) and
+[PodDisruptionBudgets](#evaluation), `deny` rejects violations and `allow`
+requires compliance. Their policy sections explain which values constitute a
+match and how audit events and admission warnings are reported.
+
+Resource policies also have a mutation phase. The last applicable policy is
+effective for each target, resource, and request or limit field. The enclosing
+`action: audit` **does not disable resource mutation**. See
+[Rule order and policy overrides](#rule-order-and-policy-overrides) for how
+`Preserve` and `Default` reset earlier constraints.
+
+### Admission scope and limits
+
+Workload rules govern admission of the selected resources and Pod-spec
+locations. [Workload Targets](#workload-targets) maps kinds to their Pod specs;
+the [controller](#controller-targets) and [Pod](#pod-targets) tables show where
+each policy takes effect.
+
+| Scope | Behavior |
+|---|---|
+| Targets omitted | Policies use their supported Pod locations. Controller templates require explicit controller targets. |
+| Creation and updates | Validation checks the incoming resource on supported write paths. Policy-specific subresource handling is described below. |
+| Resource mutation | Request and limit policies mutate Pods on creation only. With explicit controller targets, they also mutate controller templates on creation and update. |
+| Pod subresources | Resource validation skips Pod subresources, including `ephemeralcontainers`. Registry and security policies use their supported container targets. |
+| PDB relationships | Checks can run on workload writes, PDB writes, and supported controller replica changes, including `/scale`. See [Evaluation](#evaluation) for triggers and limits. |
+| Existing resources | Rule or namespace-profile changes affect subsequent relevant admissions; they do not rewrite existing workloads. |
+
+A controller write and the Pods it later creates are separate admissions, often
+with different callers. Include the required targets and
+[audiences](/docs/rules/#audience) for both paths. Conditions inspect the actual
+incoming resource, which can also be a PDB or a Scale object.
+
+Kubernetes validation, LimitRanges, ResourceQuotas, and other admission policies
+still apply after Capsule's checks. See
+[Admission lifecycle](#admission-lifecycle) for the resource policy stages and
+[Interaction with Kubernetes resource controls](#interaction-with-kubernetes-resource-controls)
+for their combined behavior.
 
 ## Workload Targets
 
 Configure targets under `spec.rules[].enforce.workloads.targets`. The same list
-selects workloads for resource, registry, scheduler, QoS, placement, and security policies;
+selects workloads for resource, registry, scheduler, QoS, placement, security, and
+[PodDisruptionBudget policies](#pod-disruption-budgets);
 individual policies do not have separate target lists.
 
 * With no workload policies, targets apply the rule's `action` to the selected
@@ -47,28 +92,90 @@ Omitted or empty targets preserve the default Pod scopes described below and do
 not enable controller checks. An empty workload block has no effect. Namespace
 selectors, audiences, and `enforce.conditions` apply to both forms.
 
-Supported native workload kinds are:
+Each target selects the **object being admitted**. With workload policies
+configured, Capsule reads the Pod spec at the following location:
 
-| Target | Native API group / kind |
-|---|---|
-| `pod` | core / Pod |
-| `deployment` | apps / Deployment |
-| `statefulset` | apps / StatefulSet |
-| `daemonset` | apps / DaemonSet |
-| `replicaset` | apps / ReplicaSet |
-| `replicationcontroller` | core / ReplicationController |
-| `job` | batch / Job |
-| `cronjob` | batch / CronJob |
+| Target | Native API group / kind | Pod spec evaluated on that object |
+|---|---|---|
+| `pod` | core / Pod | `spec` |
+| `deployment` | apps / Deployment | `spec.template.spec` |
+| `statefulset` | apps / StatefulSet | `spec.template.spec` |
+| `daemonset` | apps / DaemonSet | `spec.template.spec` |
+| `replicaset` | apps / ReplicaSet | `spec.template.spec` |
+| `replicationcontroller` | core / ReplicationController | `spec.template.spec` |
+| `job` | batch / Job | `spec.template.spec` |
+| `cronjob` | batch / CronJob | `spec.jobTemplate.spec.template.spec` |
+
+For example, `cronjob/containers` checks regular containers at
+`spec.jobTemplate.spec.template.spec.containers[]` on the CronJob itself.
+It does not select a Job or Pod by following its CronJob owner.
 
 Requests match their own API group and kind, without following owner references.
 A custom resource named `DaemonSet` in another API group is not a native target.
 Targets use the exact lowercase values shown here; wildcards such as `pod/*`,
 `deployment/*`, and `*` are not supported.
 
-Controller targets validate the Pod template during controller creation and
-updates, including nested CronJob templates. For example, this denies one
-scheduler and one image in Deployment and CronJob templates while permitting
-compliant ones:
+**Migration:** targets-only rules previously had no effect. They now apply the
+action to the selected kinds, and an omitted action defaults to `deny`. Remove
+unused targets-only entries before upgrading if they were placeholders.
+
+### Controller targets
+
+Controller targets check the stored Pod template during controller creation and
+main-resource updates. They do not wait for a Pod to be created. A denial rejects
+the controller write; an accepted template supplies the values Kubernetes later
+uses to create child workloads. Existing children are not rewritten by admission.
+
+The table uses `cronjob` as an example. The same suffixes and policy scopes apply
+to every controller kind listed above, using that kind's Pod-spec path.
+Paths in this table are relative to `spec.jobTemplate.spec.template.spec`.
+✅ indicates support; ❌ means the policy does not apply to that target.
+Only policies configured in the rule are evaluated.
+
+| Policy | `cronjob` | `cronjob/containers` | `cronjob/initcontainers` | `cronjob/volumes` |
+|---|---|---|---|---|
+| Resource policies | ✅ Pod-level resources and regular/init-container resources | ✅ `containers[].resources` | ✅ `initContainers[].resources` | ❌ |
+| Registry policies | ✅ Regular/init-container images and image volumes | ✅ Regular container images | ✅ Init container images | ✅ Image volumes under `volumes[].image` |
+| Placement policies | ✅ Pod placement fields | ❌ | ❌ | ❌ |
+| [Seccomp / AppArmor](#security) | ✅ Effective regular/init-container profiles | ✅ Effective regular-container profiles | ✅ Effective init-container profiles | ❌ |
+| [PDB policies](#pod-disruption-budgets) | ✅ Template labels: overlap and unhealthy eviction policy | ❌ | ❌ | ❌ |
+
+For example, `deployment/initcontainers` has the same scope as
+`cronjob/initcontainers`, but reads `spec.template.spec.initContainers[]`.
+Controller templates do not support `/ephemeralcontainers`. Resource policies
+cannot be combined with volume targets.
+
+The placement row covers node selectors, tolerations, topology spread, and
+affinity. **Scheduler and QoS policies always evaluate the whole selected Pod
+spec**, even with a container or volume suffix. For example,
+`cronjob/initcontainers` with a scheduler policy checks
+`spec.jobTemplate.spec.template.spec.schedulerName`.
+
+A whole-controller target includes container resources and image references;
+the explicit `pod` target has the narrower scope in the [Pod table](#pod-targets).
+For security profiles, the effective value is the container override or its
+inherited Pod default. A whole-controller target does not independently require
+a Pod-level default when every container supplies its own allowed profile.
+
+Whole-controller PDB checks use the Pod template's **labels** to find matching
+budgets. CronJobs, Jobs, and DaemonSets support overlap and unhealthy eviction
+policy checks, but not `evictableReplicas`. See the
+[PDB target table](#pod-disruption-budgets) for the complete mapping.
+
+Resource request/limit policies also mutate the selected template locations on
+controller creation and updates. Targets do not extend `mutate[].workloads` to
+controllers; mutations configured there remain limited to Pod creation. See
+[Admission lifecycle](#admission-lifecycle).
+
+Conditions see the whole admitted controller: use `object.spec.template.spec`
+for a Deployment and `object.spec.jobTemplate.spec.template.spec` for a CronJob.
+Events concern that controller object. Namespace selection, audiences, and
+conditions must match each request independently.
+
+#### Example: CronJob admission
+
+This rule denies a forbidden scheduler or image in Deployment and CronJob
+templates while permitting compliant ones:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -91,43 +198,38 @@ spec:
             - exact: ['example.com/blocked/app:v1']
 ```
 
-A whole-controller target such as `deployment` selects all compatible policy
-locations in its Pod template. Append `/containers`, `/initcontainers`, or
-`/volumes` to narrow resource, registry, or security-profile checks, for example
-`deployment/containers` or `cronjob/initcontainers`. These parts have the same
-policy scopes as their Pod equivalents in the [Pod targets table](#pod-targets). Controller templates
-do not support `/ephemeralcontainers`, and resource policies do not support
-`/volumes`. Security-profile checks support container and init-container parts,
-not volume parts.
+For the CronJob path, assuming the namespace, audience, and conditions match:
 
-Scheduler and QoS policies apply to the selected workload's whole Pod spec,
-including when a part is selected. Placement checks require a whole-controller
-target; selecting only controller parts skips them. Unlike `pod`, a
-whole-controller target also includes container resources and image references.
+| Admission request | Does this rule run? | Effect |
+|---|---|---|
+| Create or update the CronJob | ✅ `cronjob` is selected | Checks the scheduler and image references under `spec.jobTemplate.spec.template.spec`. A match rejects the CronJob write. |
+| The CronJob controller creates a Job | ❌ `job` is not selected | The Job inherits the template, but this rule does not check its admission. Add `job` to check it. |
+| The Job controller creates a Pod | ❌ No Pod target is selected | The Pod inherits the template, but this rule does not check its admission. Add the relevant Pod targets to check it. |
 
-Conditions see the whole admitted controller: use `object.spec.template.spec`
-for a Deployment and `object.spec.jobTemplate.spec.template.spec` for a CronJob.
-Events concern the controller object. Policies on controller templates do not
-imply policies on the resulting Pods; include Pod targets where those checks
-are needed. Targets do not extend `mutate[].workloads` to controllers; workload
-mutation there remains limited to Pod creation.
+To check all three stages, include `cronjob`, `job`, and the Pod targets needed
+for the policy. For registry checks, use `pod/containers`,
+`pod/initcontainers`, `pod/ephemeralcontainers`, and/or `pod/volumes` for the image
+locations you want to cover; `pod` alone does not select images. Controller-created
+Jobs and Pods can have different callers, so include those identities in any
+[audience filter](/docs/rules/#audience).
 
-**Migration:** targets-only rules previously had no effect. They now apply the
-action to the selected kinds, and an omitted action defaults to `deny`. Remove
-unused targets-only entries before upgrading if they were placeholders.
+With **no workload policies**, `targets: [cronjob]` instead acts on the kind:
+`deny` rejects CronJobs, while `allow` establishes a workload-kind allow-list.
+A targets-only allow-list must also allow `job` and `pod` for scheduled workloads
+to run. See [Select Workloads](#select-workloads).
 
 ### Pod targets
 
 When workload policies are present, Pod targets select these locations.
 ✅ indicates support; ❌ means the policy does not apply to that target.
 
-| Target | Resource policies | Registry policies | Placement policies | [Seccomp / AppArmor](#security) |
-|---|---|---|---|---|
-| `pod` | ✅ Pod-level `spec.resources` | ❌ | ✅ Pod placement fields | ✅ Pod default only |
-| `pod/containers` | ✅ `spec.containers[].resources` | ✅ Regular container images | ❌ | ✅ Effective regular-container profiles |
-| `pod/initcontainers` | ✅ `spec.initContainers[].resources` | ✅ Init container images | ❌ | ✅ Effective init-container profiles |
-| `pod/ephemeralcontainers` | ❌ | ✅ Ephemeral container images | ❌ | ✅ Effective ephemeral-container profiles |
-| `pod/volumes` | ❌ | ✅ Image volumes under `spec.volumes[].image` | ❌ | ❌ |
+| Target | Resource policies | Registry policies | Placement policies | [Seccomp / AppArmor](#security) | [PDB policies](#pod-disruption-budgets) |
+|---|---|---|---|---|---|
+| `pod` | ✅ Pod-level `spec.resources` | ❌ | ✅ Pod placement fields | ✅ Pod default only | ✅ Overlap and unhealthy eviction policy |
+| `pod/containers` | ✅ `spec.containers[].resources` | ✅ Regular container images | ❌ | ✅ Effective regular-container profiles | ❌ |
+| `pod/initcontainers` | ✅ `spec.initContainers[].resources` | ✅ Init container images | ❌ | ✅ Effective init-container profiles | ❌ |
+| `pod/ephemeralcontainers` | ❌ | ✅ Ephemeral container images | ❌ | ✅ Effective ephemeral-container profiles | ❌ |
+| `pod/volumes` | ❌ | ✅ Image volumes under `spec.volumes[].image` | ❌ | ❌ | ❌ |
 
 For seccomp and AppArmor, an **effective profile** resolves a container override
 before the Pod default. Init containers include restartable sidecars.
@@ -152,7 +254,9 @@ Omitting `targets`, or setting it to `[]`, selects all compatible Pod locations:
 Pod-level resources, regular and init container resources, regular/init/ephemeral
 container images, image volumes, and Pod placement fields. Scheduler and QoS
 checks also apply. Profile policies check effective regular, init, and ephemeral
-container profiles. Resource-name compatibility is described under
+container profiles. PDB overlap and unhealthy eviction policies check the Pod;
+eviction-count bounds require an explicit supported controller target.
+Resource-name compatibility is described under
 [Targeting resource locations](#targeting-resource-locations).
 
 An explicit `targets: [pod]` is narrower than omitted targets: it selects
@@ -1010,6 +1114,22 @@ and Kubernetes events associated with the Pod and Tenant.
 
 ### QoS Classes
 
+For example, reject BestEffort Pods in the Tenant namespaces:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          qosClasses:
+            - BestEffort
+```
+
 QoS class enforcement allows administrators to allow, deny, or audit Pods based on their [computed Kubernetes QoS class](https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/).
 
 QoS rules are configured under `enforce.workloads.qosClasses`.
@@ -1136,7 +1256,7 @@ Read [Order and scope](/docs/rules/#order-and-scope) for how mutation precedes
 enforcement, and [Conditions](/docs/rules/#enforcement-conditions) to apply checks
 conditionally. The [Reference](#reference) combines all placement policies with
 resource and image rules. To configure mutations alongside enforcement, see the
-[complete mutation example](/docs/rules/mutate/workloads/#complete-placement-example).
+[complete mutation example](/docs/rules/mutate/workloads/#reference).
 
 Scheduler policies evaluate one scheduler name. Node selectors, tolerations,
 topology spread constraints, and affinity are evaluated entry by entry. For
@@ -1168,7 +1288,7 @@ For those four properties, main-resource Pod updates check changed values and
 recheck affinity and spread selectors when labels change. Subresources skip
 these checks.
 
-#### Matcher fields
+### Matcher fields
 
 Scheduler matchers and the `key`, `values`, `topologyKey`, and `namespaces` fields
 use the common [match expression structure](/docs/rules/#match-expressions):
@@ -1179,7 +1299,7 @@ Omit a matcher field to leave it unrestricted. A supplied expression must contai
 The property references below list the additional fields supported by each
 matcher, such as operators, effects, and numeric bounds.
 
-#### Selector policies
+### Selector policies
 
 Topology-spread and Pod-affinity matchers use the following policy structure for
 `labelSelector` and, where supported, `namespaceSelector`:
@@ -1561,6 +1681,200 @@ does not match this scope. `Any` leaves namespace scope unrestricted. A
 Type-specific fields only match types on which they are meaningful. Explicitly
 incompatible combinations are rejected when the policy is saved. Matching
 examines the submitted terms without listing nodes, Pods, or namespaces.
+
+
+## Pod Disruption Budgets
+
+Use `enforce.workloads.disruptionBudgets` to constrain PodDisruptionBudgets (PDBs)
+covering selected workloads in a namespace. These policies can prevent overlapping
+budgets, require room for voluntary disruption at the desired replica count, and
+allow eviction of unhealthy Pods during maintenance.
+
+The policies check existing PDBs; they do not create a PDB or require one to exist.
+
+For example, require matching PDBs to leave room for at least one voluntary
+eviction per Deployment or StatefulSet with a nonzero desired replica count.
+This rule applies to every namespace in the Tenant:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: allow
+        workloads:
+          targets: [deployment, statefulset]
+          disruptionBudgets:
+            evictableReplicas:
+              min: 1
+```
+
+For three desired replicas, a PDB with `minAvailable: 2` passes, while
+`minAvailable: 3` is rejected. This checks the configured allowance; actual
+eviction still depends on workload health.
+
+The [Reference](#reference) includes all three properties in the combined Tenant.
+For maintenance scenarios, see [workload best practices](/docs/operating/best-practices/workloads/#pod-disruption).
+
+The shared `workloads.targets` list selects the Pods and controller templates
+whose PDBs are checked. Capsule also checks PDB writes that affect those workloads
+in the same namespace. A controller need not have running Pods for its template
+to be checked.
+
+| Target | `allowOverlap` | `unhealthyPodEvictionPolicies` | `evictableReplicas` |
+|---|---|---|---|
+| Omitted or `pod` | ✅ Pod labels | ✅ PDBs selecting the Pod | ❌ |
+| `deployment`, `statefulset`, `replicaset`, `replicationcontroller` | ✅ Template labels | ✅ PDBs selecting the template | ✅ Desired `spec.replicas`, including `/scale` |
+| `daemonset`, `job`, `cronjob` | ✅ Template labels | ✅ PDBs selecting the template | ❌ No supported desired replica count |
+| Container or volume part targets | ❌ | ❌ | ❌ |
+
+Controller targets are explicit opt-ins. Include `pod` as well to check labels on
+actual Pods, including those created by controllers. CronJobs use the Pod template
+inside their Job template. Part targets such as `pod/containers` and
+`deployment/containers` do not participate in PDB checks.
+
+An `evictableReplicas` policy must explicitly select at least one of the four
+supported controller targets. Other targets in the same rule still participate
+in overlap and unhealthy-policy checks.
+
+### Evictable replicas
+
+`evictableReplicas.min` and `.max` define inclusive bounds on the configured
+number of replicas that a PDB would allow to be evicted from a selected controller
+at its desired size, assuming those replicas are healthy. Both bounds are
+nonnegative integers. An omitted bound is unrestricted; for example, `min: 1`
+requires room for at least one disruption without setting an upper limit.
+
+Capsule calculates this allowance from the PDB and the controller's desired
+`spec.replicas`:
+
+| PDB size field | Configured allowance |
+|---|---|
+| Integer `minAvailable` | Desired replicas minus `minAvailable`, with a minimum of zero |
+| Percentage `minAvailable` | Desired replicas minus the rounded-up percentage of desired replicas, with a minimum of zero |
+| Integer `maxUnavailable` | `maxUnavailable`, capped at the desired replica count |
+| Percentage `maxUnavailable` | Rounded-up percentage of desired replicas, capped at the desired replica count |
+| Both size fields omitted | Zero |
+
+Both percentage forms use [Kubernetes' upward rounding](https://kubernetes.io/docs/tasks/run-application/configure-pdb/#rounding-logic-when-specifying-percentages).
+For an allow rule with `evictableReplicas.min: 1`:
+
+| PDB configuration | Desired replicas | Allowance | Admission |
+|---|---:|---:|---|
+| `minAvailable: "75%"` | 3 | 0 | ❌ Rejected |
+| `minAvailable: "75%"` | 4 | 1 | ✅ Allowed |
+| `minAvailable: 2` | 3 | 1 | ✅ Allowed |
+| `maxUnavailable: "25%"` | 1 | 1 | ✅ Allowed; the only replica can be evicted |
+| `maxUnavailable: 0` | 4 | 0 | ❌ Rejected |
+
+Replica changes are checked through both the controller resource and its `/scale`
+subresource, including requests from `kubectl scale` and autoscalers. With the
+first two rows above, scaling from four replicas down to three is rejected.
+
+**Zero replicas are exempt from the replica-count check.** Scaling a controller
+to zero remains possible. Scaling back above zero checks the resulting allowance.
+Overlap and unhealthy-policy checks still apply to zero-replica templates.
+
+Each matching PDB is checked against each selected controller independently.
+Capsule does not add replicas from multiple controllers or calculate a combined
+live PDB allowance. This can be stricter than Kubernetes for a PDB that covers
+multiple workloads. The `max` bound applies to this per-controller calculation;
+it does not cap aggregate live disruptions across multiple controllers. Use a PDB
+selector that covers the complete intended controller rather than an arbitrary
+subset of its Pods.
+
+{{% alert title="Configured allowance and live eviction" color="info" %}}
+These checks use desired replicas, not `status.disruptionsAllowed`. Pending,
+unhealthy, missing or terminating Pods and rollout state can still prevent an
+eviction. A compliant configuration does not guarantee that a drain will finish.
+PDBs also do not limit direct Pod deletion or controller scale-down.
+{{% /alert %}}
+
+### Unhealthy Pods
+
+`unhealthyPodEvictionPolicies` matches the effective value of the PDB's
+`spec.unhealthyPodEvictionPolicy`:
+
+| Value | Behavior for unhealthy Running Pods |
+|---|---|
+| `IfHealthyBudget` | Eviction requires the application's healthy Pod count to satisfy its budget. This is also the effective value when the PDB omits the field. |
+| `AlwaysAllow` | Unhealthy Running Pods may be evicted even when the healthy budget is not satisfied. Healthy Pods still obey the PDB. |
+
+An allow rule listing only `AlwaysAllow` rejects a matching PDB that omits this
+field or sets `IfHealthyBudget`. Alternatively, a deny rule listing
+`IfHealthyBudget` rejects that value, including omission. An omitted or empty
+policy list adds no restriction. These rules validate the field; they do not
+populate it. See [Kubernetes' unhealthy Pod eviction policies](https://kubernetes.io/docs/tasks/run-application/configure-pdb/#unhealthy-pod-eviction-policy)
+for their effect during a drain.
+
+### Overlap
+
+`allowOverlap: false` requires at most one PDB to select each Pod or selected
+controller template. Kubernetes accepts overlapping PDBs, but an eviction can
+fail when more than one PDB selects the Pod. See [API-initiated eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/#how-api-initiated-eviction-works).
+
+Matching uses Pod or Pod-template labels and each PDB's `matchLabels` and
+`matchExpressions` in the same namespace. With `policy/v1`, a null selector
+matches no Pods, while an empty selector `{}` matches every Pod in the namespace.
+An omitted `allowOverlap` field adds no constraint. A later allow rule with
+`allowOverlap: true` can permit overlap, but it does not change Kubernetes'
+eviction behavior.
+
+For example, two PDBs selecting `app: frontend` can be created before any matching
+Pod or selected controller template exists. Creating a matching workload is then
+rejected. If the workload already exists, creating the second PDB is rejected
+instead. Deleting a conflicting PDB or changing selectors to remove the overlap
+allows subsequent writes.
+
+### Evaluation
+
+Checks run on both sides of the relationship:
+
+| Request | PDB checks |
+|---|---|
+| Selected Pod creation or changed labels | Matching PDB overlap and unhealthy eviction policies; label changes through Pod `/status` are also checked |
+| Selected controller creation or changed template labels | Matching PDB policies for that controller target |
+| Supported controller replica change with an applicable `evictableReplicas` policy, including `/scale` | Resulting configured eviction allowance and the other applicable PDB policies |
+| PDB creation or relevant spec change | Policies for existing selected Pods and controller templates that its selector matches |
+| Unchanged relevant fields | No new PDB check |
+| Deletion | Allowed by these policies, so a conflicting PDB can be removed |
+
+A PDB with no matching selected workload can be created. The workload is checked
+when it is later admitted, allowing either creation order without making PDB
+existence a requirement.
+
+Actions differ between numeric/boolean constraints and the list of policy values:
+
+| Property | `allow` | `deny` | `audit` |
+|---|---|---|---|
+| `allowOverlap` and `evictableReplicas` | Requires compliance | Rejects violations | Reports violations |
+| `unhealthyPodEvictionPolicies` | Accepts listed values | Rejects listed values | Reports listed values |
+
+An omitted action defaults to `deny`. Normal [rule ordering](/docs/rules/#order-and-scope)
+applies independently to each property: the last matching allow/deny decision
+wins. Allowing one property does not bypass a failure of another. Audit rules
+emit events without changing the admission decision. Omitted properties never
+override an earlier rule.
+
+[Namespace selection, audiences](/docs/rules/), and
+[enforcement conditions](/docs/rules/#enforcement-conditions) use the usual rules
+scope. Conditions inspect the actual incoming object: a PDB during a PDB write,
+a controller during a controller write, and an `autoscaling/v1` Scale during a
+`/scale` update. Include all relevant actors and write paths when using these
+gates; a condition restricted to Pod creation does not protect controller, PDB,
+or scale updates.
+
+Changing a rule or namespace profile affects subsequent relevant admissions; it
+does not repair existing PDBs or immediately revalidate stored workloads.
+Concurrent PDB and workload writes can race because admission across separate
+resources is not atomic. Monitor actual PDB status and workload health when
+planning maintenance.
 
 ## Security
 
@@ -2168,13 +2482,15 @@ This rule allows the exact Debian image and any image under `harbor/shared/*`.
 ## Reference
 
 This complete Tenant combines workload kind restrictions, resource policies,
-image rules, QoS, and all five placement policies. It applies only to its
-namespaces labeled `example.com/profile: restricted`; other namespaces in the
+image rules, QoS, all five placement policies, and PDB constraints. It applies
+only to its namespaces labeled `example.com/profile: restricted`; other namespaces in the
 Tenant keep their own profiles. Replace `solar-owner` with your owner identity.
 
-The kind rule rejects DaemonSets. The property rules below use Pod targets, so
-they run when Pods are admitted, including Pods created by controllers. See
-[Workload targets](#workload-targets) to also check controller templates.
+The kind rule rejects DaemonSets. Resource, image, QoS, and placement policies
+use Pod targets and run when Pods are admitted, including controller-created
+Pods. The PDB rule also selects Deployment and StatefulSet templates, covering
+PDB writes and replica changes. See [Workload targets](#workload-targets) to
+expand the scope of individual policies.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -2288,6 +2604,21 @@ spec:
                     - key: {exact: [app.kubernetes.io/part-of]}
                       operators: [In]
                       values: {exact: [solar]}
+    # Keep selected workloads compatible with voluntary maintenance.
+    - namespaceSelector:
+        matchLabels:
+          example.com/profile: restricted
+      enforce:
+        action: allow
+        workloads:
+          targets: [pod, deployment, statefulset]
+          disruptionBudgets:
+            allowOverlap: false
+            evictableReplicas:
+              min: 1
+              max: 2
+            unhealthyPodEvictionPolicies:
+              - AlwaysAllow
     # Override the broader registry allow rule for this path.
     - namespaceSelector:
         matchLabels:
@@ -2323,7 +2654,12 @@ With this configuration:
 * Supplied node selectors, tolerations, spread constraints, and affinity terms
   must match the configured shapes. These allow-lists do not require those
   properties to be present or populate them. Use
-  [workload mutation](/docs/rules/mutate/workloads/#complete-placement-example)
+  [workload mutation](/docs/rules/mutate/workloads/#reference)
   to establish placement settings before enforcement.
 * The toleration list includes common Kubernetes-injected entries. Add any
   additional tolerations required by your selected workloads or cluster.
+* Matching PDBs must not overlap and must use `AlwaysAllow` for unhealthy Pod
+  eviction. Each selected Deployment or StatefulSet must have one to two
+  configured evictions available at its desired replica count when a PDB
+  covers it; zero replicas are exempt. Remove `max: 2` if only a minimum is
+  needed. These checks neither require a PDB nor guarantee live drain progress.

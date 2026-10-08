@@ -444,11 +444,6 @@ For allowed types, required/preferred modes, selector requirements, and namespac
 scope, see [affinity enforcement](/docs/rules/enforcement/workloads/#affinity).
 Its matcher syntax uses one flat list across all three affinity types.
 
-### Complete placement example
-
-See [Reference](#reference) for a complete Tenant combining placement mutations,
-security defaults, conditional scheduler selection, and enforcement.
-
 ## Security
 
 Seccomp and AppArmor mutations set only the **Pod-level** profile on creation.

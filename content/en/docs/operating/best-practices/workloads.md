@@ -13,7 +13,9 @@ Namespace selectors can give different namespaces different profiles; keep the
 labels selecting mandatory profiles under platform control.
 
 See the [combined Tenant baseline](/docs/operating/best-practices/tenants/#reference)
-for these policies together with the networking restrictions.
+for resource, placement, image, and networking policies together. Add the
+[PDB policy](#pod-disruption-budgets) below for namespace profiles that must
+support routine maintenance.
 
 ## Resource Management
 
@@ -555,7 +557,8 @@ API](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/), whi
 checks PodDisruptionBudgets. Kubelet node-pressure eviction does not honor a
 PDB; hard thresholds can terminate immediately. A PDB limits some voluntary
 disruptions and creates no spare capacity. See [disruption
-budgets](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/).
+budgets](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/) and
+the [PDB maintenance policy](#pod-disruption-budgets) below.
 
 #### Why the pressure signal matters more than QoS
 
@@ -645,6 +648,98 @@ policies cannot target Pod-level `spec.resources`.
 * **Diagnose the actual signal.** Use Pod events/status and node conditions to
   distinguish `Evicted`, `OOMKilled`, and `FailedScheduling`. `kubectl top`
   covers CPU/memory usage; it does not establish disk, inode, or PID headroom.
+
+## Pod Disruption
+
+A PodDisruptionBudget (PDB) protects application availability during voluntary
+evictions. An overly restrictive budget can also stop a shared node from being
+emptied, delaying node upgrades or replacement. One tenant's Pod can therefore
+hold up maintenance affecting other tenants. PDBs also constrain
+[Cluster Autoscaler scale-down](https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/FAQ.md#does-ca-work-with-poddisruptionbudget-in-scale-down),
+so a blocked eviction can leave otherwise removable nodes running.
+
+Common causes and the corresponding Capsule policies are:
+
+| Cause | Operational effect | Capsule policy |
+|---|---|---|
+| `maxUnavailable: 0`, `minAvailable: "100%"`, or an integer minimum equal to the replica count | No healthy replica can be voluntarily evicted | Require `evictableReplicas.min: 1` |
+| Scaling down makes a percentage budget round up to all replicas | A previously usable budget permits no disruption; for example, `minAvailable: "75%"` allows one at four replicas but none at three | Check replica changes on the controller and `/scale` against the same minimum |
+| Multiple PDBs select a Pod | The Eviction API can reject the request with HTTP 500 | Set `allowOverlap: false` |
+| An unhealthy Running Pod is covered by `IfHealthyBudget` while its application is already below budget | An unhealthy Pod can hold up a drain | Allow only `AlwaysAllow` in `unhealthyPodEvictionPolicies` |
+
+The [Eviction API](https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/#how-api-initiated-eviction-works)
+checks the live budget. `AlwaysAllow` permits unhealthy Running Pods to leave
+even when that budget is unsatisfied; healthy Pods still obey it. An omitted
+PDB eviction policy means `IfHealthyBudget`. See the
+[Kubernetes unhealthy eviction policies](https://kubernetes.io/docs/tasks/run-application/configure-pdb/#unhealthy-pod-eviction-policy).
+
+For a namespace profile that must support routine maintenance, use this complete
+Tenant example. It checks Pods and Deployment/StatefulSet templates, including
+PDB writes and supported replica changes:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          example.com/profile: production
+      enforce:
+        action: allow
+        workloads:
+          targets:
+            - pod
+            - deployment
+            - statefulset
+          disruptionBudgets:
+            allowOverlap: false
+            evictableReplicas:
+              min: 1
+            unhealthyPodEvictionPolicies:
+              - AlwaysAllow
+```
+
+The rule applies only to namespaces labeled `example.com/profile: production`.
+Keep that label under platform control; omit `namespaceSelector` to apply the
+policy throughout the Tenant. PDB authors must explicitly set
+`unhealthyPodEvictionPolicy: AlwaysAllow`; Capsule validates it without adding
+the field. No PDB is required or created. For the complete field and target
+reference, see [PDB enforcement](/docs/rules/enforcement/workloads/#pod-disruption-budgets).
+
+Choose disruption allowances with the application owner. `min: 1` permits the
+only replica of a singleton to be evicted when its PDB allows that, so it cannot
+promise uninterrupted service. Run enough replicas and place them across the
+failure domains you need to tolerate. Add `evictableReplicas.max` only when you
+also need an upper bound on the per-controller configured allowance. Scaling
+to zero is exempt from the replica-count check; this policy does not impose a
+minimum workload size.
+
+{{% alert title="Capacity still matters" color="info" %}}
+Capsule checks configuration at the desired replica count, not the live
+`status.disruptionsAllowed`. After an eviction, a replacement may remain Pending
+because of capacity, affinity, taints, or volume placement. Further evictions can
+then be blocked despite a compliant policy. Reserve [headroom](#cluster-headroom)
+and test recovery on the nodes that will remain available.
+{{% /alert %}}
+
+Before maintenance, inspect PDB `currentHealthy`, `desiredHealthy`, and
+`disruptionsAllowed` alongside Pod readiness and scheduling events. Review all
+matching selectors when an eviction fails. A policy change does not repair
+existing objects, and concurrent admissions across separate resources can race.
+Coordinate an application or budget repair with its owner when necessary;
+deleting a conflicting PDB remains possible.
+
+PDBs cover voluntary API evictions. Kubelet
+[node-pressure eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/)
+does not honor them, including under disk pressure. Keep resource sizing and
+[eviction planning](#eviction-and-capacity-planning) alongside these policies;
+a PDB does not provide spare resources or protect a node from exhaustion.
 
 ## Placement Constraints
 
