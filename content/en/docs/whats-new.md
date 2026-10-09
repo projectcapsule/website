@@ -15,12 +15,14 @@ outputs:
 
 ## Security 🔒
 
+* Advisory [GHSA-pvhj-cqh2-rpq8](https://github.com/projectcapsule/capsule-proxy/security/advisories/GHSA-pvhj-cqh2-rpq8) - **High** - Tenant Owners could grant themselves cross-tenant and cluster-scoped read access through `clusterResources` in a namespaced `ProxySetting`. Affects Capsule Proxy `<= 0.14.1`.
 * **(Enterprise)**: Projectcapsule is now providing their releases on an immutable OCI registry, which allows users to verify the integrity of the images and provides a more secure way to distribute the images. Which is not possible on GHCR due to the fact that GHCR does not support immutability of images.
 * [OpenShift] Added documentation showing how to prevent CapsuleUsers from modifying OpenShift-managed namespace labels and annotations, including `openshift.io/run-level`, to help prevent SecurityContextConstraints bypasses. [Read More](/docs/operating/setup/openshift/#example-tenant-and-tenantowners)
 
 ## Breaking Changes ⚠️
 
 * For [`TenantResource`](/docs/replications/tenant/) the [impersonation](/docs/replications/tenant/#impersonation) is now configured by default, always using the `default` `ServiceAccount` of the target namespace. This change is to ensure that the `TenantResource` can be used in a more secure way, without the need to configure impersonation manually. If you are using `TenantResource` with impersonation, you will need to update your configuration to use the `default` `ServiceAccount` of the target namespace.
+* **Proxy**: A namespaced [`ProxySetting`](/docs/proxy/proxysettings/#proxysetting) can no longer grant `clusterResources`. Move existing grants to a [`GlobalProxySettings`](/docs/proxy/proxysettings/#globalproxysettings), which requires the `ProxyClusterScoped` feature gate.
 
 ## Features ✨
 
