@@ -1,0 +1,28 @@
+{{- /* Compare the two roles, then show Capsule enforcing their boundary. */ -}}
+{{- $s := site.Data.homepage.story -}}
+
+<h2 class="home-section__title">{{ $s.title }}</h2>
+<p class="home-section__intro">{{ $s.intro | markdownify }}</p>
+
+<div class="home-story">
+  <div class="home-story__comparison">
+    {{- range $s.roles }}
+    <section class="home-story__role" aria-labelledby="story-{{ .id }}">
+      <header class="home-story__heading">
+        <h3 id="story-{{ .id }}">{{ .title }}</h3>
+        <p>{{ .body | markdownify }}</p>
+      </header>
+      {{ partial "home/pane.html" . }}
+    </section>
+    {{- end }}
+  </div>
+  {{- with $s.enforcement }}
+  <section class="home-story__enforcement" aria-labelledby="story-enforcement">
+    <div>
+      <h3 class="home-story__title" id="story-enforcement">{{ .title }}</h3>
+      <p class="home-story__body">{{ .body | markdownify }}</p>
+    </div>
+    {{ partial "home/pane.html" . }}
+  </section>
+  {{- end }}
+</div>

@@ -1,0 +1,18 @@
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: alice
+  forceTenantPrefix: true
+  rules:
+    - enforce:
+        action: allow
+        workloads:
+          targets:
+            - pod/containers
+          registries:
+            - exact:
+                - registry.example.com

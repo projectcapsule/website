@@ -1,0 +1,18 @@
+<!doctype html>
+<html itemscope itemtype="http://schema.org/WebPage"
+    {{- with .Site.Language.LanguageDirection }} dir="{{ . }}" {{- end -}}
+    {{ with .Site.Language.Lang }} lang="{{ . }}" {{- end }}
+    class="no-js">
+  <head>
+    {{ partial "head.html" . }}
+  </head>
+  <body class="td-home{{ with .Page.Params.body_class }} {{ . }}{{ end }}">
+    <div class="container-fluid td-default td-outer">
+      <main role="main" class="td-main">
+        {{ .Content }}
+      </main>
+      {{ partial "footer.html" . }}
+    </div>
+    {{ partialCached "scripts.html" . }}
+  </body>
+</html>
