@@ -1,28 +1,32 @@
 # How to Contribute
 
-We'd love to accept your patches and contributions to this project. There are
-just a few small guidelines you need to follow.
+Contributions to the Capsule documentation are welcome. This repository holds only the website;
+changes to Capsule itself belong in
+[projectcapsule/capsule](https://github.com/projectcapsule/capsule).
 
-## Contributor License Agreement
+## Opening a pull request
 
-Contributions to this project must be accompanied by a Contributor License
-Agreement. You (or your employer) retain the copyright to your contribution;
-this simply gives us permission to use and redistribute your contributions as
-part of the project. Head over to <https://cla.developers.google.com/> to see
-your current agreements on file or to sign a new one.
+Fork, branch off `main`, edit the Markdown under `content/en/`, and open the pull request.
+Netlify posts a deploy preview link on it, so the rendered page can be reviewed before merging.
+Every change needs a maintainer review, including a maintainer's own.
 
-You generally only need to submit a CLA once, so if you've already submitted one
-(even if it was for a different project), you probably don't need to do it
-again.
+Two checks block a merge:
 
-## Code reviews
+- **Sign off each commit.** `git commit -s` adds the `Signed-off-by` trailer the DCO check
+  requires, certifying the
+  [Developer Certificate of Origin](https://developercertificate.org/).
+- **Use a conventional commit subject** — `docs:`, `fix:`, `chore:`, `feat:`.
+  [commitlint](https://commitlint.js.org) enforces it.
 
-All submissions, including submissions by project members, require review. We
-use GitHub pull requests for this purpose. Consult
-[GitHub Help](https://help.github.com/articles/about-pull-requests/) for more
-information on using pull requests.
+## Writing
 
-## Community Guidelines
+Follow the structure and front matter of neighbouring pages, and keep YAML examples valid —
+readers copy them straight out.
 
-This project follows
-[Google's Open Source Community Guidelines](https://opensource.google.com/conduct/).
+`content/en/docs/reference.md` and `content/en/docs/proxy/reference.md` are generated from CRDs
+by `make apidocs`; hand edits are overwritten on the next run.
+
+## Code of Conduct
+
+Capsule is a CNCF Sandbox project and follows the
+[Capsule Code of Conduct](https://github.com/projectcapsule/capsule/blob/main/CODE_OF_CONDUCT.md).
