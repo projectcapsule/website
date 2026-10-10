@@ -681,11 +681,7 @@ Using the `scope: Tenant` is mainly useful when you want to deploy a cluster-sco
 
 ### Impersonation
 
-{{% alert title="Information" color="warning" %}}
-Without a configured ServiceAccount, the Capsule controller ServiceAccount is used for replication operations. This may allow privilege escalation if the controller has broader permissions than Tenant owners.
-{{% /alert %}}
-
-Enabling impersonation ensures that replication operations run under a specific ServiceAccount identity, providing a proper audit trail and limiting privilege exposure. You can check which ServiceAccount is currently in use via the object's status:
+`GlobalTenantResource` has no default ServiceAccount and replicates with the Capsule controller ServiceAccount until you configure one. Impersonation runs the operations under a specific ServiceAccount identity instead, providing a proper audit trail and limiting privilege exposure. You can check which ServiceAccount is currently in use via the object's status:
 
 ```bash
 kubectl get globaltenantresource custom-cm -o jsonpath='{.status.serviceAccount}' | jq

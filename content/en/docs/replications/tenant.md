@@ -647,17 +647,13 @@ kubectl annotate tenantresource renewable-pull-secrets -n wind-test \
 
 ### Impersonation
 
-{{% alert title="Information" color="warning" %}}
-Without a configured ServiceAccount, the Capsule controller ServiceAccount is used for replication operations. This may allow privilege escalation if the controller has broader permissions than Tenant owners.
-{{% /alert %}}
-
-Enabling impersonation ensures that replication operations run under a specific ServiceAccount identity, providing a proper audit trail and limiting privilege exposure. You can check which ServiceAccount is currently in use via the object's status:
+Replication runs as the [`default` ServiceAccount](#default-serviceaccount) of the `TenantResource` Namespace. Impersonation gives the operations a proper audit trail and limits privilege exposure. You can check which ServiceAccount is currently in use via the object's status:
 
 ```bash
-kubectl get tenantresource custom-cm -o jsonpath='{.status.serviceAccount}' | jq
+kubectl get tenantresource custom-cm -n wind-test -o jsonpath='{.status.serviceAccount}' | jq
 {
-  "name": "capsule",
-  "namespace": "capsule-system"
+  "name": "default",
+  "namespace": "wind-test"
 }
 ```
 
@@ -672,7 +668,7 @@ metadata:
   namespace: wind-test
 spec:
   serviceAccount:
-    name: "default"
+    name: "tenant-replicator"
   resources:
     - namespacedItems:
       - apiVersion: v1
@@ -689,7 +685,7 @@ If the ServiceAccount lacks the required RBAC, replication will fail with a perm
     status:
       created: true
       message: 'apply failed for item 0/raw-0: applying object failed: configmaps
-        "game-demo" is forbidden: User "system:serviceaccount:wind-test:default"
+        "game-demo" is forbidden: User "system:serviceaccount:wind-test:tenant-replicator"
         cannot patch resource "configmaps" in API group "" in the namespace "wind-test"'
       status: "False"
       type: Ready
@@ -713,7 +709,7 @@ rules:
 apiVersion: capsule.clastix.io/v1beta2
 kind: TenantResource
 metadata:
-  name: default-sa-replication
+  name: tenant-replicator-rbac
 spec:
   resyncPeriod: 60s
   resources:
@@ -724,7 +720,7 @@ spec:
           name: wind-replication
         subjects:
           - kind: ServiceAccount
-            name: default
+            name: tenant-replicator
             namespace: wind-test
         roleRef:
           kind: ClusterRole
@@ -746,7 +742,7 @@ Missing any of these will cause replication to fail.
 
 #### Default ServiceAccount
 
-To ensure all `TenantResource` objects use a controlled identity by default, configure a default ServiceAccount in the Capsule manager options. Per-object `serviceAccount` fields override this default. Only the name is required; the namespace is always the one the `TenantResource` resides in.
+`tenantDefaultServiceAccount` gives every `TenantResource` a controlled identity and is set to `default`. Per-object `serviceAccount` fields override it. Only the name is required; the namespace is always the one the `TenantResource` resides in.
 
 [Read more about Impersonation](/docs/operating/setup/configuration/#impersonation).
 
