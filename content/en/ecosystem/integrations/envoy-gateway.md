@@ -129,7 +129,7 @@ spec:
 ```
 ### Certificate Management
 
-If we additionally would like to do Certificate Management via [cert-manager](https://cert-manager.io/docs/) in combination with [ACME HTTP-01 challenges](https://cert-manager.io/docs/configuration/acme/http01/) we probably want to provide the users with a `ClusterIssuer` per `Tenant`:
+If we additionally would like to do Certificate Management via [cert-manager](https://cert-manager.io/docs/) in combination with [ACME HTTP-01 challenges](https://cert-manager.io/docs/configuration/acme/http01/) we probably want to provide each `Tenant` with its own `Issuer` in the Tenant's `-system` Namespace:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
