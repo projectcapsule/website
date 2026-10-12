@@ -113,7 +113,6 @@ kind: TenantResource
 metadata:
   name: tenant-cluster-rbac
 spec:
-  scope: Tenant
   resources:
     - additionalMetadata:
         labels:
@@ -390,7 +389,6 @@ metadata:
   name: tenant-sops-providers
 spec:
   resyncPeriod: 600s
-  scope: Tenant
   resources:
     - rawItems:
         - apiVersion: addons.projectcapsule.dev/v1alpha1
@@ -448,7 +446,6 @@ kind: TenantResource
 metadata:
   name: tenant-priority-rbac
 spec:
-  scope: Tenant
   resources:
     - generators:
         - missingKey: error

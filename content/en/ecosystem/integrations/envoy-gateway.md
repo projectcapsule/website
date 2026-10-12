@@ -143,8 +143,8 @@ spec:
       - apiVersion: cert-manager.io/v1
         kind: Issuer
         metadata:
-          name: {{tenant.name}}-acme-http
-          namespace: {{tenant.name}}-system
+          name: "{{tenant.name}}-acme-http"
+          namespace: "{{tenant.name}}-system"
         spec:
           acme:
             email: platform@email.com
@@ -157,7 +157,7 @@ spec:
                     parentRefs:
                       - group: gateway.networking.k8s.io
                         kind: Gateway
-                        name: {{tenant.name}}-gateway
-                        namespace: {{tenant.name}}-system
+                        name: "{{tenant.name}}-gateway"
+                        namespace: "{{tenant.name}}-system"
                         sectionName: http-challenge
 ```
