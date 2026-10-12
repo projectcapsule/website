@@ -102,11 +102,37 @@ markup:
   parser:
     autoHeadingID: true
     autoHeadingIDType: github
+# Agent-friendly outputs (see DEVELOPMENT.md, "Agent-friendly outputs"):
+# - markdown: every page is also published as Markdown (index.md next to
+#   index.html, rendered by layouts/_default/*.markdown.md)
+# - llms: the /llms.txt index, rendered from the home page by
+#   layouts/index.llms.txt
+outputFormats:
+  markdown:
+    mediaType: text/markdown
+    baseName: index
+    isPlainText: true
+    rel: alternate
+    permalinkable: false
+  llms:
+    mediaType: text/plain
+    baseName: llms
+    isPlainText: true
+    notAlternative: true
+    permalinkable: false
 outputs:
+  home:
+    - HTML
+    - RSS
+    - llms
+  page:
+    - HTML
+    - markdown
   section:
     - HTML
     - print
     - RSS
+    - markdown
 module:
   hugoVersion:
     extended: true
