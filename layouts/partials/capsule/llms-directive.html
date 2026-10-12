@@ -1,0 +1,13 @@
+{{- /* Agent-facing pointer to /llms.txt and to the Markdown rendition of the
+     current page. It is visually hidden (Bootstrap .visually-hidden) and
+     hidden from assistive technology: it exists for crawlers and AI agents
+     that read the HTML. The AFDocs checker behind CLOMonitor's agent
+     readiness section looks for a link to llms.txt near the top of <body>,
+     outside <nav>, so the baseof templates render this right after <body>. */ -}}
+<div class="visually-hidden" aria-hidden="true" data-nosnippet>
+  For an LLM-friendly index of this site, see <a href="{{ "llms.txt" | absURL }}" tabindex="-1">llms.txt</a>.
+  {{- with .OutputFormats.Get "markdown" }}
+  A Markdown version of this page is available at <a href="{{ .Permalink }}" tabindex="-1">{{ .Permalink }}</a>,
+  or by requesting this page's URL with the header <code>Accept: text/markdown</code>.
+  {{- end }}
+</div>

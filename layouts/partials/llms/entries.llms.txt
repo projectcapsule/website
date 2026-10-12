@@ -1,0 +1,13 @@
+{{- /* One "- [title](markdown url): description" line per page, depth first in
+     sidebar (weight) order. Nested pages carry their parent titles so entries
+     such as "Setup / Installation" stay unambiguous in a flat list. */ -}}
+{{- $page := .page -}}
+{{- $prefix := .prefix -}}
+{{- $title := replaceRE "[\\[\\]]" "" $page.Title -}}
+{{- with $page.OutputFormats.Get "markdown" }}
+- [{{ $prefix }}{{ $title }}]({{ .Permalink }}){{ with $page.Description }}: {{ trim (replaceRE "\\s+" " " .) " " }}{{ end }}
+{{- end -}}
+{{- $childPrefix := cond .top "" (printf "%s%s / " $prefix $title) -}}
+{{- range $page.Pages.ByWeight -}}
+  {{- partial "llms/entries.llms.txt" (dict "page" . "prefix" $childPrefix "top" false) -}}
+{{- end -}}

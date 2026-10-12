@@ -12,6 +12,36 @@ to = "https://killercoda.com/projectcapsule/scenario/demo"
 status = 302
 force = true
 
+# Agent-friendly outputs (see DEVELOPMENT.md): pages under these paths are also
+# published as Markdown (index.md next to index.html) and served for
+# "Accept: text/markdown" by netlify/edge-functions/markdown.ts, so caches
+# must key on the Accept header. Keep this list in sync with the edge
+# function's `path` list.
+[[headers]]
+for = "/docs/*"
+[headers.values]
+Vary = "Accept-Encoding, Accept"
+
+[[headers]]
+for = "/ecosystem/*"
+[headers.values]
+Vary = "Accept-Encoding, Accept"
+
+[[headers]]
+for = "/project/*"
+[headers.values]
+Vary = "Accept-Encoding, Accept"
+
+[[headers]]
+for = "/adopters/*"
+[headers.values]
+Vary = "Accept-Encoding, Accept"
+
+[[headers]]
+for = "/support/*"
+[headers.values]
+Vary = "Accept-Encoding, Accept"
+
 [context.deploy-preview]
 command = "npm install --save-dev autoprefixer && npm install --save-dev postcss-cli && npm install -D postcss && hugo --gc --minify --baseURL $DEPLOY_PRIME_URL"
 [context.production.environment]

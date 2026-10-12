@@ -7,6 +7,7 @@ layout: whats-new
 outputs:
   - HTML
   - RSS
+  - markdown
 ---
 
 ## Events 📅

@@ -1,0 +1,20 @@
+{{- /*
+  /llms.txt — an index of this site for LLM-based agents (https://llmstxt.org).
+  Rendered from the home page by the "llms" output format defined in
+  config/_default/hugo.yaml. Every link points at the Markdown rendition of a
+  page so agents never have to parse HTML.
+*/ -}}
+{{- $site := .Site -}}
+# {{ $site.Params.title | default $site.Title }}
+
+> Capsule is a multi-tenancy and policy-based framework for Kubernetes. It groups namespaces into tenants, lets tenant owners self-provision namespaces within the quotas, network, security and placement rules set by the cluster administrator, and ships with an optional API-server proxy (capsule-proxy) that scopes kubectl access to a tenant. This site is the project documentation at {{ $site.BaseURL }}.
+
+Every page listed below is also published as Markdown. Append `index.md` to a page URL (for example `/docs/overview/index.md`), replace the trailing slash with `.md` (`/docs/overview.md`), or request the page URL with the header `Accept: text/markdown`. The HTML page is linked from each Markdown file.
+{{ with $site.GetPage "/docs" }}
+## {{ .Title }}
+{{ partial "llms/entries.llms.txt" (dict "page" . "prefix" "" "top" true) -}}
+{{ end -}}
+{{ range (where $site.Home.Sections "Section" "!=" "docs").ByTitle }}
+## {{ .Title }}
+{{ partial "llms/entries.llms.txt" (dict "page" . "prefix" "" "top" true) -}}
+{{ end }}
