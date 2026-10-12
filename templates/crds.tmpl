@@ -45,9 +45,9 @@ Resource Types:
 | **{{if .TypeKey}}[{{.Name}}](#{{.TypeKey}}){{else}}{{.Name}}{{end}}** | {{.Type}} |{{" " -}}
 {{- /* Description and schema details stay within the same table cell */ -}}
 {{- if contains "deprecated" $lowerDesc -}}
-<span style="color:red;font-weight:bold">{{ .Description | replace "\n" "<br>" }}</span>
+<span style="color:red;font-weight:bold">{{ .Description | replace "\n" "<br>" | replace "|" "&#124;" }}</span>
 {{- else -}}
-{{ .Description | replace "\n" "<br>" }}
+{{ .Description | replace "\n" "<br>" | replace "|" "&#124;" }}
 {{- end -}}
 {{- if or .Schema.Format .Schema.Enum .Schema.Default .Schema.Minimum .Schema.Maximum }}<br/>{{- end}}
 {{- if .Schema.Format }}*Format*: {{.Schema.Format}}<br/>{{- end}}
