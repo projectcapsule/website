@@ -98,6 +98,8 @@ solar-2     postgres-solar-2  80s   3           3       Cluster in healthy state
 
 A resource block defines *what* to replicate. Multiple blocks can be stacked in the `resources` array, each using one or more of the strategies below.
 
+A `TenantResource` can only create namespaced resources in the Namespaces of its Tenant. Cluster-scoped kinds (such as `ClusterRole` or `Namespace`) are not supported in `rawItems`, `generators` or `namespacedItems`. Cluster administrators can use a [GlobalTenantResource](/docs/replications/global/) for those.
+
 #### NamespaceSelector
 
 The `namespaceSelector` field restricts replication to Namespaces matching a label selector. Capsule also protects selected resources from modification by Tenant users via its webhook.
@@ -111,7 +113,7 @@ Use `additionalMetadata` to attach extra `labels` and `annotations` to every gen
 apiVersion: capsule.clastix.io/v1beta2
 kind: TenantResource
 metadata:
-  name: tenant-cluster-rbac
+  name: tenant-namespace-rbac
 spec:
   resources:
     - additionalMetadata:
@@ -124,15 +126,15 @@ spec:
           template: |
             ---
             apiVersion: rbac.authorization.k8s.io/v1
-            kind: ClusterRole
+            kind: Role
             metadata:
-              name: tenant:{{$.tenant.metadata.name}}:priority
+              name: configmap-{{$.tenant.metadata.name}}-reader
               labels:
                 k8s.company.com/tenant: "test"
             rules:
-              - apiGroups: ["scheduling.k8s.io"]
-                verbs: ["get"]
-                resources: ["priorityclasses"]
+              - apiGroups: [""]
+                verbs: ["get", "list"]
+                resources: ["configmaps"]
 ```
 
 When the same label key appears in both `additionalMetadata` and the template, `additionalMetadata` takes priority.
@@ -379,31 +381,31 @@ spec:
             type: Container
 ```
 
-The following example creates a [`SopsProvider`](https://github.com/peak-scale/sops-operator) for each Tenant:
+The following example creates a `NetworkPolicy` in each Namespace of the Tenant:
 
 ```yaml
 ---
 apiVersion: capsule.clastix.io/v1beta2
 kind: TenantResource
 metadata:
-  name: tenant-sops-providers
+  name: tenant-network-policies
 spec:
   resyncPeriod: 600s
   resources:
     - rawItems:
-        - apiVersion: addons.projectcapsule.dev/v1alpha1
-          kind: SopsProvider
+        - apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
           metadata:
-            name: "{{tenant.name}}-secrets"
+            name: allow-same-tenant
           spec:
-            keys:
-            - namespaceSelector:
-                matchLabels:
-                  capsule.clastix.io/tenant: "{{tenant.name}}"
-            sops:
-            - namespaceSelector:
-                matchLabels:
-                  capsule.clastix.io/tenant: "{{tenant.name}}"
+            podSelector: {}
+            policyTypes:
+              - Ingress
+            ingress:
+              - from:
+                  - namespaceSelector:
+                      matchLabels:
+                        capsule.clastix.io/tenant: "{{tenant.name}}"
 ```
 
 Because [Server-Side Apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/) is used, you only need to specify the fields you want to manage - the full resource spec is not required.
@@ -414,54 +416,73 @@ For more advanced templating, consider [Generators](#generators).
 
 Generators render one or more Kubernetes objects from a Go template string. The template content must be valid YAML; multi-document output separated by `---` is supported. The template engine is based on [go-sprout](https://github.com/go-sprout/sprout) - see [available functions](/docs/operating/concepts/templating/#sprout-templating).
 
-A simple example that creates a `ClusterRole` per Tenant:
+A simple example that creates a `Role` in each Namespace of the Tenant:
 
 ```yaml
 ---
 apiVersion: capsule.clastix.io/v1beta2
 kind: TenantResource
 metadata:
-  name: tenant-cluster-rbac
+  name: tenant-namespace-rbac
 spec:
   resources:
     - generators:
         - missingKey: error
           template: |
             apiVersion: rbac.authorization.k8s.io/v1
-            kind: ClusterRole
+            kind: Role
             metadata:
-              name: tenant:{{$.tenant.metadata.name}}:reader
+              name: {{$.tenant.metadata.name}}-secret-reader
             rules:
             - apiGroups: [""]
               resources: ["secrets"]
               verbs: ["get", "watch", "list"]
 ```
 
-Templates can also produce multiple objects using flow control:
+Templates can also use flow control. The following example reads the free-form `spec.data` of the `Tenant` and renders each entry into a `ConfigMap` in every Namespace of the Tenant:
 
 ```yaml
 ---
 apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  data:
+    costCenter: inv-120
+    environment: production
+---
+apiVersion: capsule.clastix.io/v1beta2
 kind: TenantResource
 metadata:
-  name: tenant-priority-rbac
+  name: tenant-data
+  namespace: solar-system
 spec:
   resources:
     - generators:
-        - missingKey: error
+        - missingKey: zero
           template: |
-            {{- range $.tenant.status.classes.priority }}
             ---
-            apiVersion: rbac.authorization.k8s.io/v1
-            kind: ClusterRole
+            apiVersion: v1
+            kind: ConfigMap
             metadata:
-              name: tenant:{{$.tenant.metadata.name}}:priority:{{.}}
-            rules:
-              - apiGroups: ["scheduling.k8s.io"]
-                resources: ["priorityclasses"]
-                resourceNames: ["{{.}}"]
-                verbs: ["get"]
+              name: {{ $.tenant.metadata.name }}-data
+            data:
+            {{- range $key, $value := $.tenant.spec.data }}
+              {{ $key }}: "{{ $value }}"
             {{- end }}
+```
+
+Which renders in each Namespace:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: solar-data
+data:
+  costCenter: "inv-120"
+  environment: "production"
 ```
 
 See [Base Context](#base-context) for available template variables. To load additional resources into the template context, see [Context](#context) in the Advanced section.
