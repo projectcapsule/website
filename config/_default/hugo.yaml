@@ -53,6 +53,7 @@ params:
     name: Clastix
     link: https://clastix.io
   ui:
+    showLightDarkModeMenu: true
     breadcrumb_disable: true
     navbar_logo: true
     navbar_translucent_over_cover_disable: false
@@ -105,8 +106,14 @@ markup:
     renderer:
       unsafe: true
   highlight:
-    # See a complete list of available styles at https://xyproto.github.io/splash/docs/all.html
-    style: friendly
+    # Emit Chroma's class names rather than inline styles, so the token colours
+    # are something CSS can reach: Docsy's td/code-dark (imported in
+    # _styles_project.scss) ships a light and a dark Chroma stylesheet and
+    # scopes each to [data-bs-theme]. Inline styles cannot follow the theme --
+    # they leave light-mode token colours sitting on a near-black code block.
+    # `style` has no effect in this mode (it only feeds `hugo gen
+    # chromastyles`), so the colours are Docsy's: tango light, onedark dark.
+    noClasses: false
   parser:
     autoHeadingID: true
     autoHeadingIDType: github

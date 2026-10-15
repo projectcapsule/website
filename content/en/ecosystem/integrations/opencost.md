@@ -2,6 +2,7 @@
 title: OpenCost
 description: "OpenCost Integration for Tenants"
 logo: https://raw.githubusercontent.com/cncf/artwork/refs/heads/main/projects/opencost/icon/color/Opencost_Icon_Color.svg
+logo_dark: https://raw.githubusercontent.com/cncf/artwork/refs/heads/main/projects/opencost/icon/white/Opencost_Icon_White.svg
 type: single
 display: true
 integration: true

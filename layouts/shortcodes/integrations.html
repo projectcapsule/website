@@ -19,7 +19,15 @@
         transition: box-shadow 0.3s ease;">
         <div style="height: 125px;">
         {{ if .Params.logo }}
-        <img src="{{ .Params.logo }}" alt="{{ .Title }}" style="
+        {{/* Paired with `logo_dark` where the project publishes a mark for
+             dark backgrounds; see layouts/shortcodes/home/ecosystem.html. */}}
+        <img src="{{ .Params.logo }}" alt="{{ .Title }}"
+          {{- with .Params.logo_dark }} class="logo-light-only"{{ end }} style="
+          max-height: 100px;
+          margin-bottom: 15px;">
+        {{ end }}
+        {{ with .Params.logo_dark }}
+        <img src="{{ . }}" alt="" class="logo-dark-only" style="
           max-height: 100px;
           margin-bottom: 15px;">
         {{ end }}

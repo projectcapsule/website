@@ -1,5 +1,10 @@
 <h2 class="home-section__title">Try Capsule</h2>
-<div class="d-flex flex-wrap align-items-center justify-content-center gap-3">
+{{- /* The same three actions as the hero, in the same order and the same
+     shapes: one filled, two matching outlines. The hero stands on the photo
+     and outlines them in white; this band follows the theme, so they take the
+     brand outline in light mode and the hero's white one in dark -- see
+     .home-cta__actions in _styles_project.scss. */ -}}
+<div class="home-cta__actions d-flex flex-wrap align-items-center justify-content-center gap-3">
   <a class="btn btn-lg btn-primary" href="/docs/quickstart/">
     Get started <i class="fas fa-arrow-alt-circle-right ms-2" aria-hidden="true"></i>
   </a>
@@ -7,7 +12,7 @@
     <a class="btn btn-lg btn-outline-primary" href="https://killercoda.com/projectcapsule/scenario/demo">
       Live demo
     </a>
-    <a class="btn btn-lg btn-outline-secondary" href="https://github.com/projectcapsule/capsule">
+    <a class="btn btn-lg btn-outline-primary" href="https://github.com/projectcapsule/capsule">
       GitHub <i class="fab fa-github ms-2" aria-hidden="true"></i>
     </a>
   </div>

@@ -5,7 +5,10 @@
       </figcaption>
       {{- with .manifest }}
       <div class="home-pane__code">
-        {{ transform.Highlight (resources.Get .).Content "yaml" "style=github-dark,lineNos=table" }}
+        {{/* noClasses, against the site default: this pane is dark in both
+             themes, so it wants its own style written inline rather than the
+             theme-scoped Chroma classes the docs pages use. */}}
+        {{ transform.Highlight (resources.Get .).Content "yaml" "style=github-dark,noClasses=true,lineNos=table" }}
       </div>
       {{- end }}
       {{- with .transcript }}

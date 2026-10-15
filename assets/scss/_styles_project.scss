@@ -1,3 +1,127 @@
+// Dark mode. Bootstrap flips its own tokens under [data-bs-theme], so the rest
+// of this file follows for free once the palette below is in brand colours.
+
+// Syntax highlighting, which does not follow Bootstrap: Chroma writes the token
+// colours itself. These are Docsy's two Chroma stylesheets, each scoped to a
+// [data-bs-theme], and they need markup.highlight.noClasses = false to have
+// anything to style -- see the comment on it in config/_default/hugo.yaml.
+@import 'td/code-dark';
+
+// Brand purple as a foreground. #280C53 is a background colour -- on a dark
+// page it is too close to the ground to read -- so it is lightened there.
+$brand-fg-dark: scale-color($primary, $lightness: 78%);
+
+// What the dark surfaces are mixed from: $primary with most of its saturation
+// taken out, so the page reads as near-black with a purple cast, not as purple.
+$dark-ground: desaturate($primary, 55%);
+$dark-surface: mix($dark-ground, #000, 28%);
+
+:root {
+  --capsule-brand-fg: var(--bs-primary, #280c53);
+  --capsule-brand-fg-rgb: var(--bs-primary-rgb, 40, 12, 83);
+}
+
+// A filled primary sitting in a row of white outlines: a translucent rim gives
+// it their border without competing with the label. Both homepage action rows
+// want it wherever they stand on a dark ground -- the hero always, the closing
+// CTA under [data-bs-theme="dark"] -- so it is said once here.
+@mixin actions-on-dark-rim {
+  --bs-btn-border-color: rgba(255, 255, 255, 0.55);
+  --bs-btn-hover-border-color: rgba(255, 255, 255, 0.85);
+  --bs-btn-active-border-color: rgba(255, 255, 255, 0.85);
+}
+
+[data-bs-theme="dark"] {
+  // Bootstrap's dark ground is a neutral slate, which leaves the page reading
+  // as grey between a purple hero and a purple footer. Mix the three surface
+  // tokens off the brand instead and everything built on them follows.
+  --bs-body-bg: #{$dark-surface};
+  --bs-tertiary-bg: #{mix($dark-ground, #000, 58%)};
+  --bs-border-color: #{mix($dark-ground, #fff, 85%)};
+
+  // Bootstrap holds muted text at 75% of the body colour, which is dimmer than
+  // this ground wants. Everything using --bs-secondary-color lifts with it.
+  --bs-secondary-color: rgba(var(--bs-body-color-rgb), 0.9);
+
+  --capsule-brand-fg: #{$brand-fg-dark};
+  --capsule-brand-fg-rgb: #{to-rgb($brand-fg-dark)};
+
+  // Bootstrap tints links off $primary as well, which lands at 4.2:1 on the
+  // ground above. Send them through the same token and they clear AA.
+  --bs-link-color-rgb: var(--capsule-brand-fg-rgb);
+  --bs-link-hover-color-rgb: 255, 255, 255;
+
+  // Outline buttons are compiled from $primary and $secondary too, so their rim
+  // and label come out near-black. Their hover fill is already white-on-brand.
+  .btn-outline-primary,
+  .btn-outline-secondary {
+    --bs-btn-color: var(--capsule-brand-fg);
+    --bs-btn-border-color: var(--capsule-brand-fg);
+  }
+
+  // Except in the row closing the homepage. It is the hero's three actions said
+  // again, and here its band is as dark as the hero's photo -- so it takes the
+  // hero's white outlines rather than the brand ones the light band needs, and
+  // the two rows read as the same buttons in both themes.
+  .home-cta__actions {
+    .btn-primary {
+      @include actions-on-dark-rim;
+    }
+
+    .btn-outline-primary {
+      @include button-outline-variant($light);
+    }
+  }
+
+  // The hero photo is the same in both themes, so on this ground it reads as
+  // the brightest thing on the page. Tinting it with the ground rather than
+  // $primary takes brightness out instead of adding purple.
+  body.td-home .td-overlay--dark::after {
+    background-color: rgba($dark-surface, 0.55);
+  }
+
+  // Docsy's box-variant() mixin compiles blocks/section's background and link
+  // colours to literal values, so the homepage bands do not follow the theme.
+  .td-box--white {
+    background-color: var(--bs-body-bg);
+  }
+
+  .td-box--200 {
+    background-color: var(--bs-tertiary-bg);
+  }
+
+  .td-box--white,
+  .td-box--200 {
+    color: var(--bs-body-color);
+
+    p > a,
+    span > a {
+      color: var(--capsule-brand-fg);
+    }
+  }
+}
+
+// An integration whose mark goes dark-on-transparent, or ships its own black
+// plate, names a `logo_dark` in its front matter; the shortcodes then emit both
+// files and these hide one. A class rather than <picture> and a media query,
+// because the theme is a choice as well as a system setting: the menu sets
+// [data-bs-theme], which prefers-color-scheme cannot see.
+.logo-dark-only {
+  display: none;
+}
+
+[data-bs-theme="dark"] {
+  .logo-light-only {
+    display: none;
+  }
+
+  // Back to the browser default for an <img>: the homepage wall is a flex row
+  // and blockifies it anyway, while the cards on /ecosystem/ centre it as text.
+  .logo-dark-only {
+    display: inline;
+  }
+}
+
 
   .section-resources {
     .section-label {
@@ -48,7 +172,7 @@
 
   &__summary {
     > div > p:first-child {
-      color: var(--bs-primary, #280c53);
+      color: var(--capsule-brand-fg);
       font-size: 0.75rem;
       letter-spacing: 0.09em;
     }
@@ -107,7 +231,7 @@
 
   &:hover,
   &:focus-within {
-    border-color: rgba(var(--bs-primary-rgb, 40, 12, 83), 0.45);
+    border-color: rgba(var(--capsule-brand-fg-rgb), 0.45);
     box-shadow: 0 0.8rem 2rem rgba(30, 45, 60, 0.14);
     transform: translateY(-3px);
 
@@ -144,8 +268,8 @@
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    color: var(--bs-primary, #280c53);
-    background: rgba(var(--bs-primary-rgb, 40, 12, 83), 0.1);
+    color: var(--capsule-brand-fg);
+    background: rgba(var(--capsule-brand-fg-rgb), 0.1);
     font-size: inherit;
     font-weight: 600;
   }
@@ -546,12 +670,10 @@ body.td-home .td-cover-block {
   }
 }
 
-// The hero's primary button sits in a row with two btn-outline-light siblings.
-// A translucent rim ties it to their border without competing with the label.
+// The hero's primary button sits in a row with two btn-outline-light siblings,
+// on the photo in either theme.
 .home-hero__footer .btn-primary {
-  --bs-btn-border-color: rgba(255, 255, 255, 0.55);
-  --bs-btn-hover-border-color: rgba(255, 255, 255, 0.85);
-  --bs-btn-active-border-color: rgba(255, 255, 255, 0.85);
+  @include actions-on-dark-rim;
 }
 
 // `safe` keeps the title out from behind the navbar when a short window leaves
@@ -659,7 +781,7 @@ body.td-home .td-cover-block {
   // the section's colour.
   i {
     margin-top: 0.15em;
-    color: var(--bs-primary, #280c53);
+    color: var(--capsule-brand-fg);
     font-size: 0.95em;
   }
 }
@@ -954,7 +1076,7 @@ body.td-home main > section.td-box:has(.home-adopters) {
   }
 
   &:focus-visible {
-    outline: 2px solid var(--bs-primary, #280c53);
+    outline: 2px solid var(--capsule-brand-fg);
     outline-offset: 4px;
   }
 
@@ -1090,7 +1212,7 @@ body.td-home main > section.td-box:has(.home-adopters) {
     }
 
     .home-ecosystem__name {
-      color: var(--bs-primary, #280c53);
+      color: var(--capsule-brand-fg);
       text-decoration: underline;
       text-underline-offset: 0.2em;
     }

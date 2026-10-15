@@ -28,6 +28,13 @@
 
 <div class="home-ecosystem" style="--home-ecosystem-cols: {{ $cols }}">
   {{- range $items }}
+  {{- /* A mark that goes dark-on-transparent, or ships its own black plate,
+       disappears on the dark theme's ground. Where the project publishes a
+       variant for dark backgrounds the page names it as `logo_dark` and both
+       are emitted, one hidden per theme; everything else carries in the one
+       logo, which is most of the wall -- these marks are mostly colour on
+       transparent and read on either ground. */ -}}
+  {{- $dark := .Params.logo_dark -}}
   {{- /* Some of these are set up in the operating docs rather than on a page
        of their own, and say so with a `link` of their own. */ -}}
   <a class="home-ecosystem__item" href="{{ default .RelPermalink .Params.link }}">
@@ -35,7 +42,10 @@
       {{- with .Params.logo }}
       {{- /* alt is empty on purpose: the name is the next line of text, and
            reading the logo out as well would say it twice. */ -}}
-      <img src="{{ . | safeURL }}" alt="">
+      <img src="{{ . | safeURL }}" alt=""{{ with $dark }} class="logo-light-only"{{ end }}>
+      {{- end }}
+      {{- with $dark }}
+      <img src="{{ . | safeURL }}" alt="" class="logo-dark-only">
       {{- end }}
     </span>
     <span class="home-ecosystem__name">{{ .Title }}</span>
