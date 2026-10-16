@@ -156,7 +156,7 @@ This succeeds because the dev rule lists both `restricted` and `baseline` as all
 
 ## Service Restrictions
 
-[Read More](/docs/rules/enforcement/services/)
+[Read More](/docs/rules/enforcement/network/#services)
 
 Prevent tenants from creating `NodePort` or `LoadBalancer` services, and optionally restrict `ExternalName` hostnames to a pattern:
 
