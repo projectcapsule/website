@@ -129,7 +129,7 @@ spec:
 ```
 ### Certificate Management
 
-If we additionally would like to do Certificate Management via [cert-manager](https://cert-manager.io/docs/) in combination with [ACME HTTP-01 challenges](https://cert-manager.io/docs/configuration/acme/http01/) we probably want to provide the users with a `ClusterIssuer` per `Tenant`:
+If we additionally would like to do Certificate Management via [cert-manager](https://cert-manager.io/docs/) in combination with [ACME HTTP-01 challenges](https://cert-manager.io/docs/configuration/acme/http01/) we probably want to provide each `Tenant` with its own `Issuer` in the Tenant's `-system` Namespace:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -143,8 +143,8 @@ spec:
       - apiVersion: cert-manager.io/v1
         kind: Issuer
         metadata:
-          name: {{tenant.name}}-acme-http
-          namespace: {{tenant.name}}-system
+          name: "{{tenant.name}}-acme-http"
+          namespace: "{{tenant.name}}-system"
         spec:
           acme:
             email: platform@email.com
@@ -157,7 +157,7 @@ spec:
                     parentRefs:
                       - group: gateway.networking.k8s.io
                         kind: Gateway
-                        name: {{tenant.name}}-gateway
-                        namespace: {{tenant.name}}-system
+                        name: "{{tenant.name}}-gateway"
+                        namespace: "{{tenant.name}}-system"
                         sectionName: http-challenge
 ```

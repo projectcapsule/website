@@ -686,8 +686,7 @@ metadata:
   name: solar
 spec:
   permissions:
-    promotions:
-      allowOwnerPromotion: false
+    allowOwnerPromotion: false
 ```
 
 ### Rule based Promotion

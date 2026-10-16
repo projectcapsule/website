@@ -290,17 +290,17 @@ Annotation rules are configured under `metadata[].annotations`. Each map key is 
 
 ```yaml
 rules:
-  - enforce:
+  - audience:
+      - kind: "Group"
+        name: "system:authenticated"
+      - kind: "Custom"
+        name: "CapsuleUser"
+      - kind: "Custom"
+        name: "Administrator"
+      - kind: "Custom"
+        name: "TenantOwner"
+    enforce:
       action: allow
-      audience:
-        - kind: "Group"
-          name: "system:authenticated"
-        - kind: "Custom"
-          name: "CapsuleUser"
-        - kind: "Custom"
-          name: "Administrator"
-        - kind: "Custom"
-          name: "TenantOwner"
       metadata:
         - apiGroups:
             - "v1"
@@ -473,7 +473,7 @@ rules:
   - enforce:
       action: deny
       metadata:
-        - apiVersion: "*"
+        - apiGroups: ["*"]
           kinds:
             - ConfigMap
           labels:
