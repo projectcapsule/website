@@ -2,6 +2,7 @@
 title: Headlamp
 description: Capsule Integration with Headlamp
 logo: https://raw.githubusercontent.com/cncf/artwork/refs/heads/main/projects/headlamp/icon/color/headlamp-icon-color.svg
+logo_dark: https://raw.githubusercontent.com/cncf/artwork/refs/heads/main/projects/headlamp/icon/white/headlamp-icon-white.svg
 type: single
 display: true
 integration: true

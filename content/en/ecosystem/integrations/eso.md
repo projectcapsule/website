@@ -1,5 +1,5 @@
 ---
-title: External Secrets Operator
+title: External Secrets
 description: Integrate shared and per-Tenant secret stores, generate passwords, and distribute credentials with Capsule.
 logo: https://github.com/cncf/artwork/raw/main/projects/external-secrets-operator/icon/color/eso-icon-color.svg
 type: single

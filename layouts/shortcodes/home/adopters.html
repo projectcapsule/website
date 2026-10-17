@@ -1,0 +1,176 @@
+{{- /* A scrolling logo strip, edge to edge. Copy lives in data/homepage.yaml,
+     the roster in data/adopters.yaml.
+
+     container-fluid rather than container so the strip runs the full width;
+     the heading and footnote put the container back around themselves.
+
+     The roster is emitted three times so the drift can wrap by exactly one
+     copy, onto identical pixels. Drift and hand both move scrollLeft, so
+     anything that can start a gesture pauses the drift first, in its own
+     event; the scroll handler is only a backstop, reported a frame late.
+
+     Only the first copy is real to a screen reader or the tab key. */ -}}
+
+{{- $a := site.Data.homepage.adopters -}}
+{{- /* An adopter with no logo has nothing to put on the strip. */ -}}
+{{- $items := where (sort site.Data.adopters.adopters "name") "logo" "!=" nil -}}
+{{- /* Read by the script below too. */ -}}
+{{- $copies := 3 -}}
+
+<div class="container">
+  <h2 class="home-section__title">{{ $a.title }}</h2>
+</div>
+
+<div class="home-adopters" data-adopters tabindex="0" role="region" aria-label="{{ $a.title }}">
+  <div class="home-adopters__track" data-adopters-track>
+    {{- range $copy := seq $copies }}
+    {{- $dup := ne $copy 1 }}
+    {{- range $items }}
+    <a class="home-adopters__item" href="{{ .link | safeURL }}" target="_blank" rel="noopener"
+       {{- if $dup }} aria-hidden="true" tabindex="-1"{{ else }} title="{{ .name }}"{{ end }}>
+      <img src="{{ .logo | safeURL }}" alt="{{ if not $dup }}{{ .name }}{{ end }}" loading="lazy">
+    </a>
+    {{- end }}
+    {{- end }}
+  </div>
+</div>
+
+<div class="container">
+  <p class="home-section__footnote text-body-secondary">{{ $a.caveat | markdownify }}</p>
+</div>
+
+<script>
+  (() => {
+    // Slow enough to read a logo as it goes past, which is the point.
+    const SPEED = 32;
+    // What a nudge by hand buys before the drift picks up again.
+    const RESUME_AFTER = 4000;
+    const COPIES = {{ $copies }};
+    // Logos are sized to a shared area, not a shared height - equal height is
+    // what makes a 5:1 wordmark five times the mark beside it. As the fraction
+    // of the box a square logo fills, the only version picturable.
+    const SQUARE_SIDE = 0.82;
+
+    document.querySelectorAll("[data-adopters]:not([data-adopters-ready])").forEach((strip) => {
+      strip.setAttribute("data-adopters-ready", "true");
+
+      const track = strip.querySelector("[data-adopters-track]");
+      const images = Array.from(track.querySelectorAll("img"));
+      const still = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+      // Items are spaced with margin, not the track's gap, so a copy is
+      // exactly a third of it and the wrap lands on the same pixel each time.
+      let cycle = track.scrollWidth / COPIES;
+      // Ours, as a float: scrollLeft is rounded, which would quantise a drift
+      // this slow away. Started anywhere on the middle copy so the page does
+      // not open on the same names twice; the track is a loop, so a late start
+      // runs into the next copy and every logo is equally likely.
+      let pos = cycle + Math.random() * cycle;
+      // The last value we wrote, to tell our scrolling from theirs.
+      let written = -1;
+      let pausedUntil = 0;
+      let held = false;
+
+      // Fit one logo to the shared area, within its box. An image whose
+      // natural size is not known yet keeps the CSS fallback.
+      const fit = (img) => {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        if (!w || !h) return;
+
+        const box = img.parentElement.getBoundingClientRect();
+        const area = Math.pow(box.height * SQUARE_SIDE, 2);
+        const ratio = w / h;
+
+        let height = Math.sqrt(area / ratio);
+        let width = height * ratio;
+
+        // Where irreconcilable aspect ratios give way: a very wide logo runs
+        // out of box before it reaches its share of the area.
+        if (width > box.width) {
+          width = box.width;
+          height = width / ratio;
+        }
+        if (height > box.height) {
+          height = box.height;
+          width = height * ratio;
+        }
+
+        img.style.width = width + "px";
+        img.style.height = height + "px";
+      };
+
+      // Now for anything cached, again on load for the rest.
+      images.forEach((img) => {
+        fit(img);
+        img.addEventListener("load", () => fit(img), { once: true });
+      });
+
+      // A modulo, not a test for having passed an edge: scrollLeft cannot go
+      // below zero, so once clamped there the position to wrap from is lost.
+      const fold = () => {
+        if (cycle > 0) pos = cycle + ((((pos - cycle) % cycle) + cycle) % cycle);
+      };
+
+      const write = () => {
+        strip.scrollLeft = pos;
+        written = strip.scrollLeft;
+      };
+
+      const pause = () => {
+        pausedUntil = performance.now() + RESUME_AFTER;
+      };
+
+      write();
+
+      // A scroll we did not write is one they did. Keeping what we wrote also
+      // stops the start above reading as a nudge and stilling the strip for
+      // the first four seconds.
+      strip.addEventListener("scroll", () => {
+        if (Math.abs(strip.scrollLeft - written) <= 1) return;
+        pos = strip.scrollLeft;
+        written = strip.scrollLeft;
+        pause();
+      }, { passive: true });
+
+      // The half that does the work: both fire before the browser has
+      // scrolled anything. Touch needs no line of its own, nor the keyboard,
+      // which cannot reach the strip without focusing it.
+      strip.addEventListener("wheel", pause, { passive: true });
+      strip.addEventListener("pointerdown", pause, { passive: true });
+
+      // A link that is sliding away is hard to hit. Latched, not read off
+      // :hover each frame, which flickers as the strip scrolls under the
+      // cursor; and only where there is a hover, since a touch screen fires
+      // pointerenter with no pointerleave and would hold it for the visit.
+      if (window.matchMedia("(any-hover: hover)").matches) {
+        strip.addEventListener("pointerenter", () => { held = true; });
+        strip.addEventListener("pointerleave", () => { held = false; });
+      }
+      strip.addEventListener("focusin", () => { held = true; });
+      strip.addEventListener("focusout", () => { held = false; });
+
+      window.addEventListener("resize", () => {
+        cycle = track.scrollWidth / COPIES;
+        images.forEach(fit);
+      });
+
+      let last = performance.now();
+      const step = (now) => {
+        // A backgrounded tab hands back a gap of minutes.
+        const dt = Math.min(now - last, 50);
+        last = now;
+
+        if (!still.matches && !held && now >= pausedUntil) {
+          pos += (SPEED * dt) / 1000;
+          // Folding only here keeps a seam from being caught mid-gesture.
+          fold();
+          write();
+        }
+
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  })();
+</script>

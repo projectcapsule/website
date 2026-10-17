@@ -1,7 +1,7 @@
 ---
 title: Velero
 link: "/docs/operating/operations/backup-restore/"
-logo: https://velero.io/docs/main/img/velero.png
+logo: /images/logos/velero.svg
 display: true
 integration: true
 ---
