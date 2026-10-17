@@ -1,0 +1,15 @@
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: alice
+  forceTenantPrefix: true
+  rules:
+    - quota:
+        - name: shared-compute
+          hard:
+            requests.cpu: "8"
+            requests.memory: 16Gi
