@@ -1,3 +1,9 @@
+max_concurrency = 2
+max_retries = 3
+retry_wait_time = 5
+accept = [200, 429]
+timeout = 60
+exclude_all_private = true
 root_dir = "content/en"
 fallback_extensions = ["md", "html"]
 exclude = [

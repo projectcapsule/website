@@ -32,30 +32,23 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
-      - name: Setup Hugo
-        uses: peaceiris/actions-hugo@75d2e84710de30f6ff7268e08f310b60ef14033f # v3.0.0
+      - name: Setup Devbox
+        uses: jetify-com/devbox-install-action@a0d2d53632934ae004f878c840055956d9f741b0 # v0.14.0
         with:
-          hugo-version: '0.147.7'
-          extended: true
-      - name: Install Dart Sass
-        run: sudo snap install dart-sass
+          devbox-version: '0.18.4'
+          enable-cache: true
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
       - name: Install Node.js dependencies
-        run: " npm install --save-dev autoprefixer postcss-cli && npm ci || true"
-      - name: Update Hugo Modules
-        run: hugo mod get -u ./...
+        run: devbox run npm ci
       - name: Build with Hugo
         env:
           # For maximum backward compatibility with Hugo modules
           HUGO_ENVIRONMENT: production
           HUGO_ENV: production
         run: |
-          hugo \
-            --gc \
-            --minify \
-            --baseURL "${{ steps.pages.outputs.base_url }}/"          
+          devbox run -- task build -- --baseURL "${{ steps.pages.outputs.base_url }}/"
       - name: Upload artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:

@@ -21,12 +21,12 @@ outputs:
 
 ## Breaking Changes ⚠️
 
-* For [`TenantResource`](/docs/replications/tenant/) the [impersonation](/docs/replications/tenant/#impersonation) is now configured by default, always using the `default` `ServiceAccount` of the target namespace. This change is to ensure that the `TenantResource` can be used in a more secure way, without the need to configure impersonation manually. If you are using `TenantResource` with impersonation, you will need to update your configuration to use the `default` `ServiceAccount` of the target namespace.
 * **Proxy**: A namespaced [`ProxySetting`](/docs/proxy/proxysettings/#proxysetting) can no longer grant `clusterResources`. Move existing grants to a [`GlobalProxySettings`](/docs/proxy/proxysettings/#globalproxysettings), which requires the `ProxyClusterScoped` feature gate.
 
 ## Features ✨
 
-* **Capsule**: [Resource Permits](/docs/permits/) let users request resources and temporary permissions from reusable [templates](/docs/permits/templates/), with manual or automatic approval and configurable lifetimes.
+* **Capsule**: [Resource policies](/docs/operating/concepts/managed-resources/#resource-policy) for `TenantResource` and `GlobalTenantResource` add conditional application and control over resource adoption, protection, and cleanup.
+
 * **Capsule**: The rules API now offers more ways to configure and enforce namespace profiles:
 
    * [Workload Placement Mutation](/docs/rules/mutate/workloads/#placement): Configure schedulers, node selectors, tolerations, affinity, and topology spread constraints on new Pods with merge or replace actions.
@@ -44,21 +44,6 @@ outputs:
    * [Enforcement Conditions](/docs/rules/#enforcement-conditions): Apply an enforcement block only to resources and admission requests that match your CEL conditions.
    * [Additional PersistentVolume Access](/docs/rules/enforcement/storage/): Authorize restore handoffs and other explicit PVC bindings to PVs without a Tenant label, using namespace profiles, read-only label selectors, audiences, and CEL conditions on the referenced `volume`. Existing Tenant ownership labels remain authoritative.
 
-* **Capsule**: [Resource policies](/docs/operating/concepts/managed-resources/#resource-policy) for `TenantResource` and `GlobalTenantResource` add conditional application and control over resource adoption, protection, and cleanup.
-
-### Deprecations
-
-  * Announcing deprecation of the legacy Quota-System. The legacy Quota-System will be removed in a future release. Please migrate to the new Quota-System as soon as possible. [Read More](/docs/tenants/rules/#migration)
-
-  * Announcing deprecation of the  [Custom Resources (CRD Quantities)](/docs/tenants/quotas/#custom-resources). The legacy CustomQuotas will be removed in a future release. Please migrate to the new [`GlobalCustomQuotas`/`CustomQuotas`](/docs/resource-management/customquotas/) as soon as possible. [Read More](/docs/tenants/rules/#migration)
-
-  * Announcing deprecation of the [Pod Metadata Options](/docs/tenants/metadata/#pods). Please migrate to the new [`Metadata Rules`](/docs/rules/enforcement/metadata/#migrate-pod-metadata) as soon as possible.
-
-  * Announcing deprecation of the [Service Metadata Options](/docs/tenants/metadata/#services). Please migrate to the new [`Metadata Rules`](/docs/rules/enforcement/metadata/#migrate-service-metadata) as soon as possible.
-
-  * Announcing deprecation of certain [Namespace Metadata Options](/docs/tenants/metadata/#namespaces). Please migrate to the new [`Metadata Rules`](/docs/rules/enforcement/metadata/#migrate-namespace-metadata) as soon as possible.
-
-
 ## Documentation 📚
 
 We have added new documentation for a better experience. See the following topics:
@@ -68,6 +53,12 @@ We have added new documentation for a better experience. See the following topic
 * **[Best Practices for Workloads](/docs/operating/best-practices/workloads/)**
 
 ## Ecosystem 🌐
+
+Dedicated Addons joining the capsule ecosystem
+
+* [Change Windows](https://change-windows.addons.projectcapsule.dev/): Change Windows helps organizations plan routine IT maintenance with fewer surprises and less manual coordination. It gives teams advance notice and can prevent conflicting changes while planned work is underway. It can also pause development environments overnight and bring them back in the morning, helping control infrastructure costs. These routines run automatically on your Kubernetes platform, so teams can spend less time coordinating maintenance and more time delivering services.
+
+* [Resource Permits](https://resource-permits.addons.projectcapsule.dev/): Resource Permits helps platform teams offer services without handling every request manually or handing out broad administrator access. Teams request a predefined service, reviewers decide whether to approve it, and Kubernetes tracks the resources and their lifecycle. Requests can be made through the Kubernetes API, the kubectl plugin, or Headlamp.
 
 Newly added documentation to integrate Capsule with other applications:
 
