@@ -39,23 +39,26 @@ git clone --depth 1 https://github.com/me/example.git
 
 You can now edit your own versions of the site’s source files.
 
-If you want to do SCSS edits and want to publish these, you need to install `PostCSS`
-
-```bash
-npm install
-```
-
 ## Running the website locally
 
-Building and running the site locally requires a recent `extended` version of [Hugo](https://gohugo.io).
-You can find out more about how to install Hugo for your environment in our
-[Getting started](https://www.docsy.dev/docs/getting-started/#prerequisites-and-installation) guide.
-
-Once you've made your working copy of the site repo, from the repo root folder, run:
+Install [Devbox](https://www.jetify.com/docs/devbox/installing_devbox) to get the
+project's development tools, including Hugo Extended, Node.js, Go, Task, prek, and
+Lychee. From the repository root, run:
 
 ```bash
-hugo server
+devbox shell
+task setup
+task serve
 ```
+
+Open <http://localhost:1313> to preview the site. Check documentation links locally
+with:
+
+```bash
+task lychee
+```
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the available tasks and Git hook setup.
 
 ## Running a container locally
 

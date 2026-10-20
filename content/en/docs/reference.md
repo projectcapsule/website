@@ -19,17 +19,11 @@ Resource Types:
 
 - [GlobalCustomQuota](#globalcustomquota)
 
-- [GlobalResourcePermitTemplate](#globalresourcepermittemplate)
-
 - [GlobalResourceQuota](#globalresourcequota)
 
 - [GlobalTenantResource](#globaltenantresource)
 
 - [QuantityLedger](#quantityledger)
-
-- [ResourcePermit](#resourcepermit)
-
-- [ResourcePermitTemplate](#resourcepermittemplate)
 
 - [ResourcePoolClaim](#resourcepoolclaim)
 
@@ -606,10 +600,10 @@ Service Account Client configuration for impersonation properties
 | **caSecretName** | string | Name of the secret containing the CA certificate | false |
 | **caSecretNamespace** | string | Namespace where the CA certificate secret is located | false |
 | **endpoint** | string | Kubernetes API Endpoint to use for impersonation | false |
-| **globalDefaultServiceAccount** | string | Default ServiceAccount for global resources (GlobalTenantResource and GlobalResourcePermitTemplate)<br>When defined, users are required to use this ServiceAccount anywhere in the cluster<br>unless they explicitly provide their own. | false |
-| **globalDefaultServiceAccountNamespace** | string | Namespace of the default ServiceAccount for global resources (GlobalTenantResource and GlobalResourcePermitTemplate)<br>When defined, users are required to use this ServiceAccount anywhere in the cluster<br>unless they explicitly provide their own. | false |
+| **globalDefaultServiceAccount** | string | Default ServiceAccount for global resources (GlobalTenantResource)<br>When defined, users are required to use this ServiceAccount anywhere in the cluster<br>unless they explicitly provide their own. | false |
+| **globalDefaultServiceAccountNamespace** | string | Namespace of the default ServiceAccount for global resources (GlobalTenantResource)<br>When defined, users are required to use this ServiceAccount anywhere in the cluster<br>unless they explicitly provide their own. | false |
 | **skipTlsVerify** | boolean | If true, TLS certificate verification is skipped (not recommended for production)<br/>*Default*: false<br/> | false |
-| **tenantDefaultServiceAccount** | string | Default ServiceAccount for namespaced resources (TenantResource and ResourcePermitTemplate)<br>When defined, users are required to use this ServiceAccount within the namespace<br>where they deploy the resource, unless they explicitly provide their own. | false |
+| **tenantDefaultServiceAccount** | string | Default ServiceAccount for namespaced resources (TenantResource)<br>When defined, users are required to use this ServiceAccount within the namespace<br>where they deploy the resource, unless they explicitly provide their own. | false |
 
 
 ### CapsuleConfiguration.spec.nodeMetadata
@@ -1223,234 +1217,6 @@ Usage measurements
 | :---- | :---- | :----------- | :-------- |
 | **available** | int or string | Used is the current observed total available of the resource (limit - used). | false |
 | **used** | int or string | Used is the current observed total usage of the resource. | false |
-
-## GlobalResourcePermitTemplate
-
-
-
-
-
-
-GlobalResourcePermitTemplate is the Schema for the globalresourcepermittemplates API.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **apiVersion** | string | capsule.clastix.io/v1beta2 | true |
-| **kind** | string | GlobalResourcePermitTemplate | true |
-| **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
-| **[spec](#globalresourcepermittemplatespec)** | object | GlobalResourcePermitTemplateSpec defines the desired state of GlobalResourcePermitTemplate. | false |
-| **[status](#globalresourcepermittemplatestatus)** | object | GlobalResourcePermitTemplateStatus defines the observed state of GlobalResourcePermitTemplate. | false |
-
-
-### GlobalResourcePermitTemplate.spec
-
-
-
-GlobalResourcePermitTemplateSpec defines the desired state of GlobalResourcePermitTemplate.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[resources](#globalresourcepermittemplatespecresourcesindex)** | []object | Resources rendered and managed by this template. | true |
-| **[approvals](#globalresourcepermittemplatespecapprovals)** | object | Approvals configures automatic and manual approval of requests using this template. | false |
-| **[context](#globalresourcepermittemplatespeccontext)** | object | Context loads additional Kubernetes resources for use by all resource targets and templates.<br>Resource reference fields may use parameters declared by ParamSchema. | false |
-| **defaultDuration** | string | The default duration of the ResourcePermit referencing this template should be valid for. If not set,<br>the resource will be kept until the request is deleted. | false |
-| **[impersonation](#globalresourcepermittemplatespecimpersonation)** | object | Impersonation identifies the ServiceAccount used for context loading and<br>every managed-resource action performed for requests using this template.<br>When omitted, the global default ServiceAccount from CapsuleConfiguration<br>is used. If neither is configured, Capsule uses its controller identity. | false |
-| **keepFor** | string | The duration of this ResourcePermit will be kept in the system after it has been expired (eg. auditing purposes)<br>If not set, the ResourcePermit will be deleted after expiring. | false |
-| **maxDuration** | string | The max allowed duration of the ResourcePermit referencing this template should be valid for. | false |
-| **[namespaceSelectors](#globalresourcepermittemplatespecnamespaceselectorsindex)** | []object | NamespaceSelectors limit the namespaces in which ResourcePermits may reference this template.<br>Selectors are ORed. When omitted, the template is available in every namespace. | false |
-| **paramSchema** | object | ParamSchema is the JSON Schema used to validate template parameters.<br>Properties may use the x-capsule-form vendor extension to select values<br>from arbitrary Kubernetes GVKs in compatible form clients. The schema may<br>use x-kubernetes-validations for Kubernetes-compatible CEL rules. | false |
-
-
-### GlobalResourcePermitTemplate.spec.resources[index]
-
-
-
-
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[policy](#globalresourcepermittemplatespecresourcesindexpolicy)** | object | Policy controls how every target in this resource group is created and managed.<br/>*Default*: map[]<br/> | false |
-| **targets** | []object | Targets are Kubernetes resource objects to render and manage with Policy.<br>Parameters and loaded context use the flat template root; trusted request<br>metadata is available under .request. | false |
-| **template** | string | Template is an optional Go template which may render one or more YAML or<br>JSON Kubernetes resources separated by YAML document markers. Request<br>parameters are available under .params and loaded resources under<br>.context.resources. Trusted request metadata is available under .request<br>with name, username, groups, and timestamp fields. | false |
-
-
-### GlobalResourcePermitTemplate.spec.resources[index].policy
-
-
-
-Policy controls how every target in this resource group is created and managed.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **creation** | enum | Creation controls how an existing target is handled. Owner requires the<br>resource to have been created by the applying controller and otherwise<br>returns an error. Merge adopts an existing resource when possible and<br>creates the resource when it does not exist.<br/>*Enum*: Owner, Merge<br/>*Default*: Owner<br/> | false |
-| **deletion** | enum | Deletion controls what happens when the parent stops managing the target.<br>Remove deletes resources created for the parent and relinquishes adopted<br>resources. Orphan keeps the resource and removes Capsule's lifecycle<br>metadata. Removal is the default.<br/>*Enum*: Remove, Orphan<br/>*Default*: Remove<br/> | false |
-| **force** | boolean | Force allows server-side apply to acquire conflicting field ownership.<br/>*Default*: false<br/> | false |
-| **protect** | boolean | Protect prevents users from changing or deleting the target through<br>admission while it is managed. Protection is enabled by default.<br/>*Default*: true<br/> | false |
-
-
-### GlobalResourcePermitTemplate.spec.approvals
-
-
-
-Approvals configures automatic and manual approval of requests using this template.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[approvers](#globalresourcepermittemplatespecapprovalsapproversindex)** | []object | Approvers lists the subjects permitted to approve a request manually.<br>When omitted, any subject with permission to update the request status may<br>approve it. | false |
-| **auto** | boolean | Auto automatically approves matching requests. Approvers are ignored for<br>automatic approvals. | false |
-| **conditions** | []string | Conditions contains CEL expressions evaluated as an OR list. At least one<br>expression must evaluate to true. When omitted, approval is unconditional. | false |
-
-
-### GlobalResourcePermitTemplate.spec.approvals.approvers[index]
-
-
-
-
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **kind** | enum | Kind of entity. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
-| **name** | string | Name of the entity. | true |
-
-
-### GlobalResourcePermitTemplate.spec.context
-
-
-
-Context loads additional Kubernetes resources for use by all resource targets and templates.
-Resource reference fields may use parameters declared by ParamSchema.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[resources](#globalresourcepermittemplatespeccontextresourcesindex)** | []object |  | false |
-
-
-### GlobalResourcePermitTemplate.spec.context.resources[index]
-
-
-
-
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
-| **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
-| **index** | string | Index to mount the resource in the template context | false |
-| **name** | string | Name of the values referent. This is useful<br>when you traying to get a specific resource | false |
-| **namespace** | string | Namespace of the values referent. | false |
-| **optional** | boolean | Only relevant if name is set. If an item is not optional, there will be an error thrown when it does not exist<br/>*Default*: true<br/> | false |
-| **[selector](#globalresourcepermittemplatespeccontextresourcesindexselector)** | object | Selector which allows to get any amount of these resources based on labels | false |
-
-
-### GlobalResourcePermitTemplate.spec.context.resources[index].selector
-
-
-
-Selector which allows to get any amount of these resources based on labels
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[matchExpressions](#globalresourcepermittemplatespeccontextresourcesindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
-| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
-
-
-### GlobalResourcePermitTemplate.spec.context.resources[index].selector.matchExpressions[index]
-
-
-
-A label selector requirement is a selector that contains values, a key, and an operator that
-relates the key and values.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **key** | string | key is the label key that the selector applies to. | true |
-| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
-| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
-
-
-### GlobalResourcePermitTemplate.spec.impersonation
-
-
-
-Impersonation identifies the ServiceAccount used for context loading and
-every managed-resource action performed for requests using this template.
-When omitted, the global default ServiceAccount from CapsuleConfiguration
-is used. If neither is configured, Capsule uses its controller identity.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **name** | string | Name of the referent. | true |
-| **namespace** | string | Namespace of the referent. | true |
-
-
-### GlobalResourcePermitTemplate.spec.namespaceSelectors[index]
-
-
-
-Selector for resources and their labels or selecting origin namespaces
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[matchExpressions](#globalresourcepermittemplatespecnamespaceselectorsindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
-| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
-
-
-### GlobalResourcePermitTemplate.spec.namespaceSelectors[index].matchExpressions[index]
-
-
-
-A label selector requirement is a selector that contains values, a key, and an operator that
-relates the key and values.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **key** | string | key is the label key that the selector applies to. | true |
-| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
-| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
-
-
-### GlobalResourcePermitTemplate.status
-
-
-
-GlobalResourcePermitTemplateStatus defines the observed state of GlobalResourcePermitTemplate.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[conditions](#globalresourcepermittemplatestatusconditionsindex)** | []object | Conditions contains the reconciliation conditions for this template. | false |
-| **namespaces** | []string | Namespaces contains the namespaces allowed to reference this template.<br>A single "*" entry means that the template is available in every namespace. | false |
-| **observedGeneration** | integer | ObservedGeneration is the most recent generation resolved by the controller.<br/>*Format*: int64<br/> | false |
-
-
-### GlobalResourcePermitTemplate.status.conditions[index]
-
-
-
-Condition contains details for one aspect of the current state of this API Resource.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
-| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
-| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
-| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
-| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
-| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
 
 ## GlobalResourceQuota
 
@@ -2229,556 +1995,6 @@ Object that this reservation is intended to create/update.
 | **namespace** | string | Namespace of the tracked object. | false |
 | **uid** | string | UID of the tracked object. | false |
 
-## ResourcePermit
-
-
-
-
-
-
-ResourcePermit is the Schema for the ResourcePermits API.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **apiVersion** | string | capsule.clastix.io/v1beta2 | true |
-| **kind** | string | ResourcePermit | true |
-| **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
-| **[spec](#resourcepermitspec)** | object | ResourcePermitSpec defines the desired state of ResourcePermit. | false |
-| **[status](#resourcepermitstatus)** | object | ResourcePermitStatus defines the observed state of ResourcePermit. | false |
-
-
-### ResourcePermit.spec
-
-
-
-ResourcePermitSpec defines the desired state of ResourcePermit.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[template](#resourcepermitspectemplate)** | object | Template references the template to use for this request. | true |
-| **duration** | string | The duration of this ResourcePermit should be valid for.<br>If no duration was defined, the lifecycle is bound to the request itself -<br>if the request is deleted, it's the end of the duration.<br>The Request can also be Terminated by another automation via calling the ExpirePermit() API-Function. | false |
-| **params** | object | Params the parameters to use for the template. | false |
-| **reason** | string | A reason on why the request is needed | false |
-| **[requestor](#resourcepermitspecrequestor)** | object | Requesting actor for the resource permit. | false |
-| **startTime** | string | Optional point in time when the permit should become active. Must be in the future.<br>If omitted, this is set to the current time. The Request must already be approved before the start time.<br/>*Format*: date-time<br/> | false |
-
-
-### ResourcePermit.spec.template
-
-
-
-Template references the template to use for this request.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **kind** | enum | Kind of template being referenced.<br/>*Enum*: ResourcePermitTemplate, GlobalResourcePermitTemplate<br/> | true |
-| **name** | string | Name of the template being referenced. | true |
-
-
-### ResourcePermit.spec.requestor
-
-
-
-Requesting actor for the resource permit.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **groups** | []string | The groups the entity belongs to | false |
-| **name** | string | The name of the entity | false |
-| **type** | enum | The type of the entity<br/>*Enum*: User, Group, System, ServiceAccount<br/> | false |
-
-
-### ResourcePermit.status
-
-
-
-ResourcePermitStatus defines the observed state of ResourcePermit.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **size** | integer | Number of managed resources. | true |
-| **[active](#resourcepermitstatusactive)** | object | Shows timestamps between approval and termination of the request. | false |
-| **[conditions](#resourcepermitstatusconditionsindex)** | []object | Conditions describes current operational state such as readiness. | false |
-| **[failure](#resourcepermitstatusfailure)** | object | Failure describes a recoverable preflight or activation failure. RetryPhase<br>is the trusted lifecycle phase Capsule resumes after a successful retry. | false |
-| **keepUntil** | string | The time until which the ResourcePermit should be retained after it expires (e.g. for auditing).<br>If unset, the ResourcePermit can be deleted immediately after expiring.<br/>*Format*: date-time<br/> | false |
-| **phase** | enum | <br/>*Enum*: Created, Requested, Pending, Denied, Approved, Active, Failed, Retrying, Expired<br/> | false |
-| **[processedItems](#resourcepermitstatusprocesseditemsindex)** | []object | List of resources managed by the API object. | false |
-| **[request](#resourcepermitstatusrequest)** | object | Request contains the resolved template, execution identity, lifecycle<br>properties, and rendered resources presented for review. | false |
-| **[review](#resourcepermitstatusreview)** | object | Review refers to the subject that either approved or denied the request | false |
-| **[transitions](#resourcepermitstatustransitionsindex)** | []object | Transitions is the chronological, append-only audit trail of lifecycle<br>changes. Conditions remain reserved for operational state such as Ready. | false |
-
-
-### ResourcePermit.status.active
-
-
-
-Shows timestamps between approval and termination of the request.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **from** | string | <br/>*Format*: date-time<br/> | false |
-| **until** | string | <br/>*Format*: date-time<br/> | false |
-
-
-### ResourcePermit.status.conditions[index]
-
-
-
-Condition contains details for one aspect of the current state of this API Resource.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
-| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
-| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
-| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
-| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
-| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
-
-
-### ResourcePermit.status.failure
-
-
-
-Failure describes a recoverable preflight or activation failure. RetryPhase
-is the trusted lifecycle phase Capsule resumes after a successful retry.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **message** | string | Message contains the latest actionable failure returned by Kubernetes. | true |
-| **reason** | string | Reason is the stable machine-readable Ready condition reason. | true |
-| **retryPhase** | enum | RetryPhase is the phase Capsule resumes after recovery succeeds.<br/>*Enum*: Requested, Approved<br/> | true |
-| **stage** | enum | Stage identifies whether the failure happened before review or while<br>activating an already approved request.<br/>*Enum*: Preflight, Activation<br/> | true |
-
-
-### ResourcePermit.status.processedItems[index]
-
-
-
-Advanced Status Item for pin pointing items in tenants/namespaces.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **group** | string |  | false |
-| **kind** | string |  | false |
-| **name** | string |  | false |
-| **namespace** | string |  | false |
-| **origin** | string |  | false |
-| **[status](#resourcepermitstatusprocesseditemsindexstatus)** | object |  | false |
-| **tenant** | string |  | false |
-| **version** | string |  | false |
-
-
-### ResourcePermit.status.processedItems[index].status
-
-
-
-
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
-| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
-| **clusterScoped** | boolean | Indicates whether the referenced resource is cluster-scoped. | false |
-| **created** | boolean | Indicates wether the resource was created or adopted | false |
-| **lastApply** | string | An opaque value that represents the internal version of this object that can<br>be used by clients to determine when objects have changed. May be used for optimistic<br>concurrency, change detection, and the watch operation on a resource or set of resources.<br>Clients must treat these values as opaque and passed unmodified back to the server.<br>They may only be valid for a particular resource or set of resources.<br><br>Populated by the system.<br>Read-only.<br>Value must be treated as opaque by clients and .<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency<br/>*Format*: date-time<br/> | false |
-| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | false |
-| **[policy](#resourcepermitstatusprocesseditemsindexstatuspolicy)** | object | Policy is a lifecycle snapshot for protection and cleanup. Conditions are<br>evaluated from the source block and omitted here. Failed updates retain the<br>previous snapshot; a first successful content write records its policy even<br>if metadata reconciliation fails, so cleanup respects explicit retention.<br>An absent policy on an already applied item preserves legacy behavior. | false |
-
-
-### ResourcePermit.status.processedItems[index].status.policy
-
-
-
-Policy is a lifecycle snapshot for protection and cleanup. Conditions are
-evaluated from the source block and omitted here. Failed updates retain the
-previous snapshot; a first successful content write records its policy even
-if metadata reconciliation fails, so cleanup respects explicit retention.
-An absent policy on an already applied item preserves legacy behavior.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **creation** | enum | Creation controls how an existing target is handled. Owner requires the<br>resource to have been created by the applying controller and otherwise<br>returns an error. Merge adopts an existing resource when possible and<br>creates the resource when it does not exist.<br/>*Enum*: Owner, Merge<br/>*Default*: Owner<br/> | false |
-| **deletion** | enum | Deletion controls what happens when the parent stops managing the target.<br>Remove deletes resources created for the parent and relinquishes adopted<br>resources. Orphan keeps the resource and removes Capsule's lifecycle<br>metadata. Removal is the default.<br/>*Enum*: Remove, Orphan<br/>*Default*: Remove<br/> | false |
-| **force** | boolean | Force allows server-side apply to acquire conflicting field ownership.<br/>*Default*: false<br/> | false |
-| **protect** | boolean | Protect prevents users from changing or deleting the target through<br>admission while it is managed. Protection is enabled by default.<br/>*Default*: true<br/> | false |
-
-
-### ResourcePermit.status.request
-
-
-
-Request contains the resolved template, execution identity, lifecycle
-properties, and rendered resources presented for review.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[approvals](#resourcepermitstatusrequestapprovals)** | object | Approvals is the approval policy copied from the resolved template. It is<br>immutable after rendering so an in-flight request is reviewed against the<br>policy presented with its resource snapshot. | false |
-| **duration** | string |  | false |
-| **[impersonation](#resourcepermitstatusrequestimpersonation)** | object | Impersonation is the resolved identity used for template context loading<br>and managed-resource actions. Capsule records its controller ServiceAccount<br>when no impersonation is configured. | false |
-| **keepFor** | string |  | false |
-| **[resources](#resourcepermitstatusrequestresourcesindex)** | []object | Resources contains the fully rendered manifests prepared for this request.<br>These resources are the source of truth for server-side apply and pruning;<br>source templates and rendering context are never copied into the request. | false |
-| **startTime** | string | <br/>*Format*: date-time<br/> | false |
-| **[template](#resourcepermitstatusrequesttemplate)** | object | Template identifies the exact template version used to render the request. | false |
-
-
-### ResourcePermit.status.request.approvals
-
-
-
-Approvals is the approval policy copied from the resolved template. It is
-immutable after rendering so an in-flight request is reviewed against the
-policy presented with its resource snapshot.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[approvers](#resourcepermitstatusrequestapprovalsapproversindex)** | []object | Approvers lists the subjects permitted to approve a request manually.<br>When omitted, any subject with permission to update the request status may<br>approve it. | false |
-| **auto** | boolean | Auto automatically approves matching requests. Approvers are ignored for<br>automatic approvals. | false |
-| **conditions** | []string | Conditions contains CEL expressions evaluated as an OR list. At least one<br>expression must evaluate to true. When omitted, approval is unconditional. | false |
-
-
-### ResourcePermit.status.request.approvals.approvers[index]
-
-
-
-
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **kind** | enum | Kind of entity. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
-| **name** | string | Name of the entity. | true |
-
-
-### ResourcePermit.status.request.impersonation
-
-
-
-Impersonation is the resolved identity used for template context loading
-and managed-resource actions. Capsule records its controller ServiceAccount
-when no impersonation is configured.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **name** | string | Name of the referent. | true |
-| **namespace** | string | Namespace of the referent. | true |
-
-
-### ResourcePermit.status.request.resources[index]
-
-
-
-RenderedResource is an execution-ready group of Kubernetes manifests
-produced from a ResourceTemplate. It intentionally cannot contain a source
-template so status consumers and reconcilers only observe concrete targets.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **targets** | []object | Targets are the fully rendered Kubernetes manifests. | true |
-| **[policy](#resourcepermitstatusrequestresourcesindexpolicy)** | object | Policy controls how every rendered target is created and managed. | false |
-
-
-### ResourcePermit.status.request.resources[index].policy
-
-
-
-Policy controls how every rendered target is created and managed.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **creation** | enum | Creation controls how an existing target is handled. Owner requires the<br>resource to have been created by the applying controller and otherwise<br>returns an error. Merge adopts an existing resource when possible and<br>creates the resource when it does not exist.<br/>*Enum*: Owner, Merge<br/>*Default*: Owner<br/> | false |
-| **deletion** | enum | Deletion controls what happens when the parent stops managing the target.<br>Remove deletes resources created for the parent and relinquishes adopted<br>resources. Orphan keeps the resource and removes Capsule's lifecycle<br>metadata. Removal is the default.<br/>*Enum*: Remove, Orphan<br/>*Default*: Remove<br/> | false |
-| **force** | boolean | Force allows server-side apply to acquire conflicting field ownership.<br/>*Default*: false<br/> | false |
-| **protect** | boolean | Protect prevents users from changing or deleting the target through<br>admission while it is managed. Protection is enabled by default.<br/>*Default*: true<br/> | false |
-
-
-### ResourcePermit.status.request.template
-
-
-
-Template identifies the exact template version used to render the request.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **kind** | enum | Kind of template being referenced.<br/>*Enum*: ResourcePermitTemplate, GlobalResourcePermitTemplate<br/> | true |
-| **name** | string | Name of the template being referenced. | true |
-| **resourceVersion** | string | ResourceVersion of the template used to render the request resources. | true |
-
-
-### ResourcePermit.status.review
-
-
-
-Review refers to the subject that either approved or denied the request
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **message** | string | Message with the review | false |
-| **[reviewer](#resourcepermitstatusreviewreviewer)** | object | The Entity reviewing this request | false |
-| **verdict** | enum | The verdict made by the reviewing entity<br/>*Enum*: Pending, Denied, Approved<br/> | false |
-
-
-### ResourcePermit.status.review.reviewer
-
-
-
-The Entity reviewing this request
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **groups** | []string | The groups the entity belongs to | false |
-| **name** | string | The name of the entity | false |
-| **type** | enum | The type of the entity<br/>*Enum*: User, Group, System, ServiceAccount<br/> | false |
-
-
-### ResourcePermit.status.transitions[index]
-
-
-
-ResourcePermitTransition records one authenticated lifecycle transition.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[actor](#resourcepermitstatustransitionsindexactor)** | object | Actor is the authenticated user, ServiceAccount, or Capsule system actor<br>responsible for the transition. Group claims are deliberately not copied<br>into the audit trail. | true |
-| **reason** | string | Reason is a stable machine-readable explanation of the transition. | true |
-| **timestamp** | string | Timestamp is when the transition was requested or performed.<br/>*Format*: date-time<br/> | true |
-| **type** | enum | Type identifies the lifecycle state entered by this transition. The<br>previous state can be derived from the preceding chronological entry.<br/>*Enum*: Created, Requested, Pending, Denied, Approved, Active, Failed, Retrying, Expired<br/> | true |
-| **eventTime** | string | EventTime is set after Capsule emits the Kubernetes lifecycle event for<br>this transition.<br/>*Format*: date-time<br/> | false |
-| **message** | string | Message is the human-readable explanation of the transition. | false |
-
-
-### ResourcePermit.status.transitions[index].actor
-
-
-
-Actor is the authenticated user, ServiceAccount, or Capsule system actor
-responsible for the transition. Group claims are deliberately not copied
-into the audit trail.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **name** | string | Name is the authenticated actor name. | true |
-| **type** | enum | Type identifies the kind of authenticated actor.<br/>*Enum*: User, Group, System, ServiceAccount<br/> | true |
-
-## ResourcePermitTemplate
-
-
-
-
-
-
-ResourcePermitTemplate is the Schema for namespaced ResourcePermit templates.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **apiVersion** | string | capsule.clastix.io/v1beta2 | true |
-| **kind** | string | ResourcePermitTemplate | true |
-| **[metadata](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta)** | object | Refer to the Kubernetes API documentation for the fields of the `metadata` field. | true |
-| **[spec](#resourcepermittemplatespec)** | object | ResourcePermitTemplateSpec defines the desired state of a namespaced ResourcePermitTemplate. | false |
-| **[status](#resourcepermittemplatestatus)** | object | ResourcePermitTemplateStatus defines the observed state of ResourcePermitTemplate. | false |
-
-
-### ResourcePermitTemplate.spec
-
-
-
-ResourcePermitTemplateSpec defines the desired state of a namespaced ResourcePermitTemplate.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[resources](#resourcepermittemplatespecresourcesindex)** | []object | Resources rendered and managed by this template. | true |
-| **[approvals](#resourcepermittemplatespecapprovals)** | object | Approvals configures automatic and manual approval of requests using this template. | false |
-| **[context](#resourcepermittemplatespeccontext)** | object | Context loads additional Kubernetes resources for use by all resource targets and templates.<br>Resource reference fields may use parameters declared by ParamSchema. | false |
-| **defaultDuration** | string | The default duration of a ResourcePermit referencing this template. | false |
-| **[impersonation](#resourcepermittemplatespecimpersonation)** | object | Impersonation identifies the namespace-local ServiceAccount used for<br>context loading and every managed-resource action performed for requests<br>using this template. When omitted, the tenant default ServiceAccount from<br>CapsuleConfiguration is used. If neither is configured, Capsule uses its<br>controller identity. | false |
-| **keepFor** | string | The duration a ResourcePermit is retained after it expires for auditing. | false |
-| **maxDuration** | string | The maximum allowed duration of a ResourcePermit referencing this template. | false |
-| **paramSchema** | object | ParamSchema is the JSON Schema used to validate template parameters.<br>Properties may use the x-capsule-form vendor extension to select values<br>from arbitrary Kubernetes GVKs in compatible form clients. The schema may<br>use x-kubernetes-validations for Kubernetes-compatible CEL rules. | false |
-
-
-### ResourcePermitTemplate.spec.resources[index]
-
-
-
-
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[policy](#resourcepermittemplatespecresourcesindexpolicy)** | object | Policy controls how every target in this resource group is created and managed.<br/>*Default*: map[]<br/> | false |
-| **targets** | []object | Targets are Kubernetes resource objects to render and manage with Policy.<br>Parameters and loaded context use the flat template root; trusted request<br>metadata is available under .request. | false |
-| **template** | string | Template is an optional Go template which may render one or more YAML or<br>JSON Kubernetes resources separated by YAML document markers. Request<br>parameters are available under .params and loaded resources under<br>.context.resources. Trusted request metadata is available under .request<br>with name, username, groups, and timestamp fields. | false |
-
-
-### ResourcePermitTemplate.spec.resources[index].policy
-
-
-
-Policy controls how every target in this resource group is created and managed.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **creation** | enum | Creation controls how an existing target is handled. Owner requires the<br>resource to have been created by the applying controller and otherwise<br>returns an error. Merge adopts an existing resource when possible and<br>creates the resource when it does not exist.<br/>*Enum*: Owner, Merge<br/>*Default*: Owner<br/> | false |
-| **deletion** | enum | Deletion controls what happens when the parent stops managing the target.<br>Remove deletes resources created for the parent and relinquishes adopted<br>resources. Orphan keeps the resource and removes Capsule's lifecycle<br>metadata. Removal is the default.<br/>*Enum*: Remove, Orphan<br/>*Default*: Remove<br/> | false |
-| **force** | boolean | Force allows server-side apply to acquire conflicting field ownership.<br/>*Default*: false<br/> | false |
-| **protect** | boolean | Protect prevents users from changing or deleting the target through<br>admission while it is managed. Protection is enabled by default.<br/>*Default*: true<br/> | false |
-
-
-### ResourcePermitTemplate.spec.approvals
-
-
-
-Approvals configures automatic and manual approval of requests using this template.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[approvers](#resourcepermittemplatespecapprovalsapproversindex)** | []object | Approvers lists the subjects permitted to approve a request manually.<br>When omitted, any subject with permission to update the request status may<br>approve it. | false |
-| **auto** | boolean | Auto automatically approves matching requests. Approvers are ignored for<br>automatic approvals. | false |
-| **conditions** | []string | Conditions contains CEL expressions evaluated as an OR list. At least one<br>expression must evaluate to true. When omitted, approval is unconditional. | false |
-
-
-### ResourcePermitTemplate.spec.approvals.approvers[index]
-
-
-
-
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **kind** | enum | Kind of entity. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
-| **name** | string | Name of the entity. | true |
-
-
-### ResourcePermitTemplate.spec.context
-
-
-
-Context loads additional Kubernetes resources for use by all resource targets and templates.
-Resource reference fields may use parameters declared by ParamSchema.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[resources](#resourcepermittemplatespeccontextresourcesindex)** | []object |  | false |
-
-
-### ResourcePermitTemplate.spec.context.resources[index]
-
-
-
-
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **kind** | string | Kind of the referent.<br><br>Use "*" to match all kinds. | true |
-| **apiVersion** | string | API version, API group, or API group/version selector of the referent.<br><br>Empty APIVersion means the core Kubernetes API version "v1".<br>Use "*" to explicitly match all API groups and versions.<br><br>Examples:<br>- "" means core "v1".<br>- "v1" means core "v1".<br>- "apps" means any version in the "apps" API group.<br>- "apps/v1" means the "apps/v1" API group/version.<br>- "apps/*" means any version in the "apps" API group. | false |
-| **index** | string | Index to mount the resource in the template context | false |
-| **name** | string | Name of the values referent. This is useful<br>when you traying to get a specific resource | false |
-| **namespace** | string | Namespace of the values referent. | false |
-| **optional** | boolean | Only relevant if name is set. If an item is not optional, there will be an error thrown when it does not exist<br/>*Default*: true<br/> | false |
-| **[selector](#resourcepermittemplatespeccontextresourcesindexselector)** | object | Selector which allows to get any amount of these resources based on labels | false |
-
-
-### ResourcePermitTemplate.spec.context.resources[index].selector
-
-
-
-Selector which allows to get any amount of these resources based on labels
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[matchExpressions](#resourcepermittemplatespeccontextresourcesindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
-| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
-
-
-### ResourcePermitTemplate.spec.context.resources[index].selector.matchExpressions[index]
-
-
-
-A label selector requirement is a selector that contains values, a key, and an operator that
-relates the key and values.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **key** | string | key is the label key that the selector applies to. | true |
-| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
-| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
-
-
-### ResourcePermitTemplate.spec.impersonation
-
-
-
-Impersonation identifies the namespace-local ServiceAccount used for
-context loading and every managed-resource action performed for requests
-using this template. When omitted, the tenant default ServiceAccount from
-CapsuleConfiguration is used. If neither is configured, Capsule uses its
-controller identity.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **name** | string | Name of the referent. | true |
-
-
-### ResourcePermitTemplate.status
-
-
-
-ResourcePermitTemplateStatus defines the observed state of ResourcePermitTemplate.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **[conditions](#resourcepermittemplatestatusconditionsindex)** | []object | Conditions contains the reconciliation conditions for this template. | false |
-| **observedGeneration** | integer | ObservedGeneration is the most recent generation resolved by the controller.<br/>*Format*: int64<br/> | false |
-
-
-### ResourcePermitTemplate.status.conditions[index]
-
-
-
-Condition contains details for one aspect of the current state of this API Resource.
-
-
-| **Name** | **Type** | **Description** | **Required** |
-| :---- | :---- | :----------- | :-------- |
-| **lastTransitionTime** | string | lastTransitionTime is the last time the condition transitioned from one status to another.<br>This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.<br/>*Format*: date-time<br/> | true |
-| **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | true |
-| **reason** | string | reason contains a programmatic identifier indicating the reason for the condition's last transition.<br>Producers of specific condition types may define expected values and meanings for this field,<br>and whether the values are considered a guaranteed API.<br>The value should be a CamelCase string.<br>This field may not be empty. | true |
-| **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
-| **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
-| **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
-
 ## ResourcePoolClaim
 
 
@@ -3144,10 +2360,12 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
-| **[conditions](#rulestatusspecindexenforceconditionsindex)** | []object | Conditions gate this entire enforcement rule, including workloads, services,<br>metadata and ingress. All conditions must be true; empty means apply.<br>Conditions run during admission; managed metadata in a conditional rule<br>is applied on matching requests only and is not reconciled in the background. | false |
+| **[conditions](#rulestatusspecindexenforceconditionsindex)** | []object | Conditions gate this entire enforcement rule, including workloads, services,<br>metadata, ingress, network and storage. All conditions must be true; empty means apply.<br>Conditions run during admission; managed metadata in a conditional rule<br>is applied on matching requests only and is not reconciled in the background. | false |
 | **[ingress](#rulestatusspecindexenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
 | **[metadata](#rulestatusspecindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
+| **[network](#rulestatusspecindexenforcenetwork)** | object | Network configures network enforcement for namespace resources. | false |
 | **[services](#rulestatusspecindexenforceservices)** | object | Enforcement for Services. | false |
+| **[storage](#rulestatusspecindexenforcestorage)** | object | Additional access to PersistentVolumes without a tenant ownership label. | false |
 | **[workloads](#rulestatusspecindexenforceworkloads)** | object | Enforcement for native workload kinds and Pod properties. | false |
 
 
@@ -3157,6 +2375,8 @@ Enforcement for given rule
 
 AdmissionCondition is a Boolean CEL gate for a mutation entry or enforcement rule. It can
 inspect object and request metadata, but cannot generate mutation values.
+During PVC volume access evaluation, volume contains the referenced PV;
+otherwise volume is null. Conditions never modify the PVC or PV.
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -3268,6 +2488,57 @@ Both may be set together.
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
+### RuleStatus.spec[index].enforce.network
+
+
+
+Network configures network enforcement for namespace resources.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[policies](#rulestatusspecindexenforcenetworkpolicies)** | object | Policies constrains native NetworkPolicies. | false |
+
+
+### RuleStatus.spec[index].enforce.network.policies
+
+
+
+Policies constrains native NetworkPolicies.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[egress](#rulestatusspecindexenforcenetworkpoliciesegress)** | object | Egress constrains destination address grants. Selector-based peers are<br>unaffected. No constraints are applied when omitted. | false |
+| **[ingress](#rulestatusspecindexenforcenetworkpoliciesingress)** | object | Ingress constrains source address grants. Selector-based peers are<br>unaffected. No constraints are applied when omitted. | false |
+
+
+### RuleStatus.spec[index].enforce.network.policies.egress
+
+
+
+Egress constrains destination address grants. Selector-based peers are
+unaffected. No constraints are applied when omitted.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs matches addresses granted by ipBlock.cidr after subtracting except.<br>Omitted peers on an ingress or egress rule grant both IPv4 and IPv6 address<br>space. An empty NetworkPolicy ingress or egress list has no grants in that<br>direction to validate. Each direction is evaluated independently.<br>An empty CIDRs list imposes no constraint.<br>Ordered allow/deny decisions apply to every granted address: deny rejects<br>overlapping grants, allow requires complete coverage, and audit reports<br>overlaps. A later allow cannot authorize addresses outside its CIDRs. | false |
+
+
+### RuleStatus.spec[index].enforce.network.policies.ingress
+
+
+
+Ingress constrains source address grants. Selector-based peers are
+unaffected. No constraints are applied when omitted.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs matches addresses granted by ipBlock.cidr after subtracting except.<br>Omitted peers on an ingress or egress rule grant both IPv4 and IPv6 address<br>space. An empty NetworkPolicy ingress or egress list has no grants in that<br>direction to validate. Each direction is evaluated independently.<br>An empty CIDRs list imposes no constraint.<br>Ordered allow/deny decisions apply to every granted address: deny rejects<br>overlapping grants, allow requires complete coverage, and audit reports<br>overlaps. A later allow cannot authorize addresses outside its CIDRs. | false |
+
+
 ### RuleStatus.spec[index].enforce.services
 
 
@@ -3360,6 +2631,61 @@ NodePorts defines additional constraints for nodePort values.
 | **to** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
 
 
+### RuleStatus.spec[index].enforce.storage
+
+
+
+Additional access to PersistentVolumes without a tenant ownership label.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[volumes](#rulestatusspecindexenforcestoragevolumesindex)** | []object | Volumes matches additional PersistentVolumes. Entries are ORed. Conditions<br>on the enclosing enforcement rule must also match. The last matching<br>allow/deny decides the exception; audit never grants access. | false |
+
+
+### RuleStatus.spec[index].enforce.storage.volumes[index]
+
+
+
+PersistentVolumeMatch matches labels on the referenced PersistentVolume.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[selector](#rulestatusspecindexenforcestoragevolumesindexselector)** | object | Selector matches existing PV labels, independently of PVC.spec.selector.<br>An explicit empty selector matches all PVs. Capsule's tenant ownership<br>label cannot be overridden by a selector or an allow decision. | true |
+| **name** | string | Name identifies this match in admission and audit messages. | false |
+
+
+### RuleStatus.spec[index].enforce.storage.volumes[index].selector
+
+
+
+Selector matches existing PV labels, independently of PVC.spec.selector.
+An explicit empty selector matches all PVs. Capsule's tenant ownership
+label cannot be overridden by a selector or an allow decision.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusspecindexenforcestoragevolumesindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.spec[index].enforce.storage.volumes[index].selector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
 ### RuleStatus.spec[index].enforce.workloads
 
 
@@ -3369,12 +2695,49 @@ Enforcement for native workload kinds and Pod properties.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[disruptionBudgets](#rulestatusspecindexenforceworkloadsdisruptionbudgets)** | object | DisruptionBudgets constrains PDB coverage of selected Pods and controller templates.<br>Only whole-workload targets apply; omitted targets select Pods. | false |
 | **[placement](#rulestatusspecindexenforceworkloadsplacement)** | object | Placement matches the Pod scheduler and scheduling constraints. | false |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
 | **[registries](#rulestatusspecindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
 | **[resources](#rulestatusspecindexenforceworkloadsresources)** | object | Resources defines mutation and enforcement policies for Pod and container<br>resource requests and limits. The workload targets select where the<br>policies apply. With no targets, resource policies apply to all compatible<br>locations: Pod-level resources, regular containers, and init containers.<br>Resource names unsupported at Pod level still apply to compatible container<br>locations.<br>Mutation is applied when a Pod is created, or when an explicitly targeted<br>controller is created or updated (to its Pod template). Remove and MatchRequest manage<br>explicit values, Default fills an absent value, and Ratio fills an absent<br>limit from its request. An explicit Ratio violation is then handled by the<br>enclosing allow, deny, or audit action. | false |
+| **[schedulers](#rulestatusspecindexenforceworkloadsschedulersindex)** | []object | <span style="color:red;font-weight:bold">Schedulers defines additional schedulerName matchers for selected Pods and<br>Pod templates. These are combined with placement.schedulers under the same<br>rule action; a match in either field counts as a match.<br><br>Deprecated: use Placement.Schedulers instead.</span> | false |
 | **[security](#rulestatusspecindexenforceworkloadssecurity)** | object | Security matches effective Pod and container security profiles. | false |
 | **targets** | []string | Targets selects native workloads and, optionally, parts of their Pod specs.<br>With no workload policies, the action matches the selected kinds themselves.<br>With policies, targets scopes those policies; it does not also match the kind.<br>Omitted targets preserve Pod-only defaults. Controller targets are opt-in.<br>Whole-controller targets include every compatible location in the Pod template.<br>Existing pod and pod/* part targets retain their established policy scope. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.disruptionBudgets
+
+
+
+DisruptionBudgets constrains PDB coverage of selected Pods and controller templates.
+Only whole-workload targets apply; omitted targets select Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **allowOverlap** | boolean | AllowOverlap permits multiple PDBs to select the same Pod or selected<br>controller template. False rejects overlap for allow/deny actions and<br>reports violations for audit. True permits overlap in an allow rule;<br>omitted does not participate in evaluation. Rule ordering is preserved.<br>Checks run on PDB selector changes and selected Pod/template label changes.<br>Conditions and audience apply to the admission request, including PDB writes.<br>Cross-resource admission reads are not an atomic transaction. | false |
+| **[evictableReplicas](#rulestatusspecindexenforceworkloadsdisruptionbudgetsevictablereplicas)** | object | EvictableReplicas bounds the configured number of evictable replicas of each<br>selected Deployment, StatefulSet, ReplicaSet or ReplicationController.<br>Uses desired spec.replicas and Kubernetes' upward percentage rounding;<br>zero replicas are exempt. Checks controller writes, /scale, and PDB writes.<br>Bounds are inclusive nonnegative integers; omitted bounds are unrestricted.<br>Allow requires compliance; deny/audit match violations, like resource constraints.<br>Other targets do not have a desired replica count and skip this property.<br>At least one supported controller target must be explicitly selected. | false |
+| **unhealthyPodEvictionPolicies** | []enum | UnhealthyPodEvictionPolicies matches the effective PDB policy. Omission in a<br>PDB means IfHealthyBudget. Allow accepts listed values; deny/audit match<br>listed values, like other enum lists. Empty imposes no restriction.<br/>*Enum*: IfHealthyBudget, AlwaysAllow<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.disruptionBudgets.evictableReplicas
+
+
+
+EvictableReplicas bounds the configured number of evictable replicas of each
+selected Deployment, StatefulSet, ReplicaSet or ReplicationController.
+Uses desired spec.replicas and Kubernetes' upward percentage rounding;
+zero replicas are exempt. Checks controller writes, /scale, and PDB writes.
+Bounds are inclusive nonnegative integers; omitted bounds are unrestricted.
+Allow requires compliance; deny/audit match violations, like resource constraints.
+Other targets do not have a desired replica count and skip this property.
+At least one supported controller target must be explicitly selected.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement
@@ -4006,6 +3369,21 @@ WorkloadResourceRequestPolicy defines how a resource request is mutated.
 | **value** | int or string | Value is the quantity applied by the Default policy. | false |
 
 
+### RuleStatus.spec[index].enforce.workloads.schedulers[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
 ### RuleStatus.spec[index].enforce.workloads.security
 
 
@@ -4087,9 +3465,9 @@ Mutated values remain subject to all applicable enforcement rules.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem,<br>and map keys, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, nodeSelector,<br>tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
+| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
 | **[conditions](#rulestatusspecindexmutateindexconditionsindex)** | []object | Conditions gate this entire mutation entry and inspect the object after<br>preceding mutations. All conditions must be true; empty means apply. | false |
-| **[workloads](#rulestatusspecindexmutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. ReadOnlyRootFilesystem also applies to newly added<br>ephemeral containers on subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
+| **[workloads](#rulestatusspecindexmutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. Security.ReadOnlyRootFilesystem and<br>Registries.ImagePullPolicy also apply to newly added ephemeral containers on<br>subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
 
 
 ### RuleStatus.spec[index].mutate[index].conditions[index]
@@ -4098,6 +3476,8 @@ Mutated values remain subject to all applicable enforcement rules.
 
 AdmissionCondition is a Boolean CEL gate for a mutation entry or enforcement rule. It can
 inspect object and request metadata, but cannot generate mutation values.
+During PVC volume access evaluation, volume contains the referenced PV;
+otherwise volume is null. Conditions never modify the PVC or PV.
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -4112,9 +3492,10 @@ inspect object and request metadata, but cannot generate mutation values.
 
 WorkloadMutation contains typed native Pod values. Empty maps/lists are
 preserved so replace can clear a property; nil means the property is omitted.
-It applies on Pod creation. ReadOnlyRootFilesystem also applies to newly added
-ephemeral containers on subresource updates. Existing containers are never reconciled.
-On merge, later entries override hostUsers, readOnlyRootFilesystem, matching map keys,
+It applies on Pod creation. Security.ReadOnlyRootFilesystem and
+Registries.ImagePullPolicy also apply to newly added ephemeral containers on
+subresource updates. Existing containers are never reconciled.
+On merge, later entries override hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, matching map keys,
 tolerations and spread constraints.
 On merge, required affinity restrictions from applicable entries are ANDed.
 
@@ -4122,6 +3503,7 @@ On merge, required affinity restrictions from applicable entries are ANDed.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **[placement](#rulestatusspecindexmutateindexworkloadsplacement)** | object | Placement configures the Pod scheduler and scheduling constraints. | false |
+| **[registries](#rulestatusspecindexmutateindexworkloadsregistries)** | object | Registries configures Pod image pull secrets and selected containers' pull policies. | false |
 | **[security](#rulestatusspecindexmutateindexworkloadssecurity)** | object | Security configures Pod and container security settings. | false |
 | **targets** | []enum | Targets selects compatible Pod locations. Omitted or empty selects all<br>compatible locations. The pod target includes Pod-level properties and all<br>container groups; pod/containers, pod/initcontainers and pod/ephemeralcontainers<br>narrow selection to one group. Controller templates and volumes are not supported.<br/>*Enum*: pod, pod/containers, pod/initcontainers, pod/ephemeralcontainers<br/> | false |
 
@@ -4732,6 +4114,32 @@ relates the key and values.
 | **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
+### RuleStatus.spec[index].mutate[index].workloads.registries
+
+
+
+Registries configures Pod image pull secrets and selected containers' pull policies.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **imagePullPolicy** | enum | ImagePullPolicy sets imagePullPolicy on every selected regular or init<br>container at Pod creation, and newly added ephemeral containers on subresource<br>updates. Both merge and replace overwrite explicit and Kubernetes-defaulted<br>values. Omitted or null preserves the existing policy. Applies to all Pod OSes.<br/>*Enum*: Always, IfNotPresent, Never<br/> | false |
+| **[imagePullSecrets](#rulestatusspecindexmutateindexworkloadsregistriesimagepullsecretsindex)** | []object | ImagePullSecrets sets spec.imagePullSecrets on Pod creation. Merge appends<br>missing names and removes existing duplicates, retaining first-occurrence order. Replace sets<br>the complete list; an explicit empty list clears it. Omitted or null preserves it.<br>Requires the pod target or omitted/empty targets. References always use the<br>Pod's namespace; Capsule does not create, copy, or check the referenced Secrets. | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.registries.imagePullSecrets[index]
+
+
+
+LocalObjectReference contains enough information to let you locate the
+referenced object inside the same namespace.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name of the referent.<br>This field is effectively required, but due to backwards compatibility is<br>allowed to be empty. Instances of this type with an empty value here are<br>almost certainly wrong.<br>More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names<br/>*Default*: <br/> | false |
+
+
 ### RuleStatus.spec[index].mutate[index].workloads.security
 
 
@@ -4895,10 +4303,12 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
-| **[conditions](#rulestatusstatusruleenforceconditionsindex)** | []object | Conditions gate this entire enforcement rule, including workloads, services,<br>metadata and ingress. All conditions must be true; empty means apply.<br>Conditions run during admission; managed metadata in a conditional rule<br>is applied on matching requests only and is not reconciled in the background. | false |
+| **[conditions](#rulestatusstatusruleenforceconditionsindex)** | []object | Conditions gate this entire enforcement rule, including workloads, services,<br>metadata, ingress, network and storage. All conditions must be true; empty means apply.<br>Conditions run during admission; managed metadata in a conditional rule<br>is applied on matching requests only and is not reconciled in the background. | false |
 | **[ingress](#rulestatusstatusruleenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
 | **[metadata](#rulestatusstatusruleenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
+| **[network](#rulestatusstatusruleenforcenetwork)** | object | Network configures network enforcement for namespace resources. | false |
 | **[services](#rulestatusstatusruleenforceservices)** | object | Enforcement for Services. | false |
+| **[storage](#rulestatusstatusruleenforcestorage)** | object | Additional access to PersistentVolumes without a tenant ownership label. | false |
 | **[workloads](#rulestatusstatusruleenforceworkloads)** | object | Enforcement for native workload kinds and Pod properties. | false |
 
 
@@ -4908,6 +4318,8 @@ Enforcement for given rule
 
 AdmissionCondition is a Boolean CEL gate for a mutation entry or enforcement rule. It can
 inspect object and request metadata, but cannot generate mutation values.
+During PVC volume access evaluation, volume contains the referenced PV;
+otherwise volume is null. Conditions never modify the PVC or PV.
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -5019,6 +4431,57 @@ Both may be set together.
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
+### RuleStatus.status.rule.enforce.network
+
+
+
+Network configures network enforcement for namespace resources.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[policies](#rulestatusstatusruleenforcenetworkpolicies)** | object | Policies constrains native NetworkPolicies. | false |
+
+
+### RuleStatus.status.rule.enforce.network.policies
+
+
+
+Policies constrains native NetworkPolicies.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[egress](#rulestatusstatusruleenforcenetworkpoliciesegress)** | object | Egress constrains destination address grants. Selector-based peers are<br>unaffected. No constraints are applied when omitted. | false |
+| **[ingress](#rulestatusstatusruleenforcenetworkpoliciesingress)** | object | Ingress constrains source address grants. Selector-based peers are<br>unaffected. No constraints are applied when omitted. | false |
+
+
+### RuleStatus.status.rule.enforce.network.policies.egress
+
+
+
+Egress constrains destination address grants. Selector-based peers are
+unaffected. No constraints are applied when omitted.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs matches addresses granted by ipBlock.cidr after subtracting except.<br>Omitted peers on an ingress or egress rule grant both IPv4 and IPv6 address<br>space. An empty NetworkPolicy ingress or egress list has no grants in that<br>direction to validate. Each direction is evaluated independently.<br>An empty CIDRs list imposes no constraint.<br>Ordered allow/deny decisions apply to every granted address: deny rejects<br>overlapping grants, allow requires complete coverage, and audit reports<br>overlaps. A later allow cannot authorize addresses outside its CIDRs. | false |
+
+
+### RuleStatus.status.rule.enforce.network.policies.ingress
+
+
+
+Ingress constrains source address grants. Selector-based peers are
+unaffected. No constraints are applied when omitted.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs matches addresses granted by ipBlock.cidr after subtracting except.<br>Omitted peers on an ingress or egress rule grant both IPv4 and IPv6 address<br>space. An empty NetworkPolicy ingress or egress list has no grants in that<br>direction to validate. Each direction is evaluated independently.<br>An empty CIDRs list imposes no constraint.<br>Ordered allow/deny decisions apply to every granted address: deny rejects<br>overlapping grants, allow requires complete coverage, and audit reports<br>overlaps. A later allow cannot authorize addresses outside its CIDRs. | false |
+
+
 ### RuleStatus.status.rule.enforce.services
 
 
@@ -5111,6 +4574,61 @@ NodePorts defines additional constraints for nodePort values.
 | **to** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
 
 
+### RuleStatus.status.rule.enforce.storage
+
+
+
+Additional access to PersistentVolumes without a tenant ownership label.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[volumes](#rulestatusstatusruleenforcestoragevolumesindex)** | []object | Volumes matches additional PersistentVolumes. Entries are ORed. Conditions<br>on the enclosing enforcement rule must also match. The last matching<br>allow/deny decides the exception; audit never grants access. | false |
+
+
+### RuleStatus.status.rule.enforce.storage.volumes[index]
+
+
+
+PersistentVolumeMatch matches labels on the referenced PersistentVolume.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[selector](#rulestatusstatusruleenforcestoragevolumesindexselector)** | object | Selector matches existing PV labels, independently of PVC.spec.selector.<br>An explicit empty selector matches all PVs. Capsule's tenant ownership<br>label cannot be overridden by a selector or an allow decision. | true |
+| **name** | string | Name identifies this match in admission and audit messages. | false |
+
+
+### RuleStatus.status.rule.enforce.storage.volumes[index].selector
+
+
+
+Selector matches existing PV labels, independently of PVC.spec.selector.
+An explicit empty selector matches all PVs. Capsule's tenant ownership
+label cannot be overridden by a selector or an allow decision.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusruleenforcestoragevolumesindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rule.enforce.storage.volumes[index].selector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
 ### RuleStatus.status.rule.enforce.workloads
 
 
@@ -5120,12 +4638,49 @@ Enforcement for native workload kinds and Pod properties.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[disruptionBudgets](#rulestatusstatusruleenforceworkloadsdisruptionbudgets)** | object | DisruptionBudgets constrains PDB coverage of selected Pods and controller templates.<br>Only whole-workload targets apply; omitted targets select Pods. | false |
 | **[placement](#rulestatusstatusruleenforceworkloadsplacement)** | object | Placement matches the Pod scheduler and scheduling constraints. | false |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
 | **[registries](#rulestatusstatusruleenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
 | **[resources](#rulestatusstatusruleenforceworkloadsresources)** | object | Resources defines mutation and enforcement policies for Pod and container<br>resource requests and limits. The workload targets select where the<br>policies apply. With no targets, resource policies apply to all compatible<br>locations: Pod-level resources, regular containers, and init containers.<br>Resource names unsupported at Pod level still apply to compatible container<br>locations.<br>Mutation is applied when a Pod is created, or when an explicitly targeted<br>controller is created or updated (to its Pod template). Remove and MatchRequest manage<br>explicit values, Default fills an absent value, and Ratio fills an absent<br>limit from its request. An explicit Ratio violation is then handled by the<br>enclosing allow, deny, or audit action. | false |
+| **[schedulers](#rulestatusstatusruleenforceworkloadsschedulersindex)** | []object | <span style="color:red;font-weight:bold">Schedulers defines additional schedulerName matchers for selected Pods and<br>Pod templates. These are combined with placement.schedulers under the same<br>rule action; a match in either field counts as a match.<br><br>Deprecated: use Placement.Schedulers instead.</span> | false |
 | **[security](#rulestatusstatusruleenforceworkloadssecurity)** | object | Security matches effective Pod and container security profiles. | false |
 | **targets** | []string | Targets selects native workloads and, optionally, parts of their Pod specs.<br>With no workload policies, the action matches the selected kinds themselves.<br>With policies, targets scopes those policies; it does not also match the kind.<br>Omitted targets preserve Pod-only defaults. Controller targets are opt-in.<br>Whole-controller targets include every compatible location in the Pod template.<br>Existing pod and pod/* part targets retain their established policy scope. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.disruptionBudgets
+
+
+
+DisruptionBudgets constrains PDB coverage of selected Pods and controller templates.
+Only whole-workload targets apply; omitted targets select Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **allowOverlap** | boolean | AllowOverlap permits multiple PDBs to select the same Pod or selected<br>controller template. False rejects overlap for allow/deny actions and<br>reports violations for audit. True permits overlap in an allow rule;<br>omitted does not participate in evaluation. Rule ordering is preserved.<br>Checks run on PDB selector changes and selected Pod/template label changes.<br>Conditions and audience apply to the admission request, including PDB writes.<br>Cross-resource admission reads are not an atomic transaction. | false |
+| **[evictableReplicas](#rulestatusstatusruleenforceworkloadsdisruptionbudgetsevictablereplicas)** | object | EvictableReplicas bounds the configured number of evictable replicas of each<br>selected Deployment, StatefulSet, ReplicaSet or ReplicationController.<br>Uses desired spec.replicas and Kubernetes' upward percentage rounding;<br>zero replicas are exempt. Checks controller writes, /scale, and PDB writes.<br>Bounds are inclusive nonnegative integers; omitted bounds are unrestricted.<br>Allow requires compliance; deny/audit match violations, like resource constraints.<br>Other targets do not have a desired replica count and skip this property.<br>At least one supported controller target must be explicitly selected. | false |
+| **unhealthyPodEvictionPolicies** | []enum | UnhealthyPodEvictionPolicies matches the effective PDB policy. Omission in a<br>PDB means IfHealthyBudget. Allow accepts listed values; deny/audit match<br>listed values, like other enum lists. Empty imposes no restriction.<br/>*Enum*: IfHealthyBudget, AlwaysAllow<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.disruptionBudgets.evictableReplicas
+
+
+
+EvictableReplicas bounds the configured number of evictable replicas of each
+selected Deployment, StatefulSet, ReplicaSet or ReplicationController.
+Uses desired spec.replicas and Kubernetes' upward percentage rounding;
+zero replicas are exempt. Checks controller writes, /scale, and PDB writes.
+Bounds are inclusive nonnegative integers; omitted bounds are unrestricted.
+Allow requires compliance; deny/audit match violations, like resource constraints.
+Other targets do not have a desired replica count and skip this property.
+At least one supported controller target must be explicitly selected.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement
@@ -5757,6 +5312,21 @@ WorkloadResourceRequestPolicy defines how a resource request is mutated.
 | **value** | int or string | Value is the quantity applied by the Default policy. | false |
 
 
+### RuleStatus.status.rule.enforce.workloads.schedulers[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
 ### RuleStatus.status.rule.enforce.workloads.security
 
 
@@ -5838,9 +5408,9 @@ Mutated values remain subject to all applicable enforcement rules.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem,<br>and map keys, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, nodeSelector,<br>tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
+| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
 | **[conditions](#rulestatusstatusrulemutateindexconditionsindex)** | []object | Conditions gate this entire mutation entry and inspect the object after<br>preceding mutations. All conditions must be true; empty means apply. | false |
-| **[workloads](#rulestatusstatusrulemutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. ReadOnlyRootFilesystem also applies to newly added<br>ephemeral containers on subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
+| **[workloads](#rulestatusstatusrulemutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. Security.ReadOnlyRootFilesystem and<br>Registries.ImagePullPolicy also apply to newly added ephemeral containers on<br>subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
 
 
 ### RuleStatus.status.rule.mutate[index].conditions[index]
@@ -5849,6 +5419,8 @@ Mutated values remain subject to all applicable enforcement rules.
 
 AdmissionCondition is a Boolean CEL gate for a mutation entry or enforcement rule. It can
 inspect object and request metadata, but cannot generate mutation values.
+During PVC volume access evaluation, volume contains the referenced PV;
+otherwise volume is null. Conditions never modify the PVC or PV.
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -5863,9 +5435,10 @@ inspect object and request metadata, but cannot generate mutation values.
 
 WorkloadMutation contains typed native Pod values. Empty maps/lists are
 preserved so replace can clear a property; nil means the property is omitted.
-It applies on Pod creation. ReadOnlyRootFilesystem also applies to newly added
-ephemeral containers on subresource updates. Existing containers are never reconciled.
-On merge, later entries override hostUsers, readOnlyRootFilesystem, matching map keys,
+It applies on Pod creation. Security.ReadOnlyRootFilesystem and
+Registries.ImagePullPolicy also apply to newly added ephemeral containers on
+subresource updates. Existing containers are never reconciled.
+On merge, later entries override hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, matching map keys,
 tolerations and spread constraints.
 On merge, required affinity restrictions from applicable entries are ANDed.
 
@@ -5873,6 +5446,7 @@ On merge, required affinity restrictions from applicable entries are ANDed.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **[placement](#rulestatusstatusrulemutateindexworkloadsplacement)** | object | Placement configures the Pod scheduler and scheduling constraints. | false |
+| **[registries](#rulestatusstatusrulemutateindexworkloadsregistries)** | object | Registries configures Pod image pull secrets and selected containers' pull policies. | false |
 | **[security](#rulestatusstatusrulemutateindexworkloadssecurity)** | object | Security configures Pod and container security settings. | false |
 | **targets** | []enum | Targets selects compatible Pod locations. Omitted or empty selects all<br>compatible locations. The pod target includes Pod-level properties and all<br>container groups; pod/containers, pod/initcontainers and pod/ephemeralcontainers<br>narrow selection to one group. Controller templates and volumes are not supported.<br/>*Enum*: pod, pod/containers, pod/initcontainers, pod/ephemeralcontainers<br/> | false |
 
@@ -6483,6 +6057,32 @@ relates the key and values.
 | **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
+### RuleStatus.status.rule.mutate[index].workloads.registries
+
+
+
+Registries configures Pod image pull secrets and selected containers' pull policies.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **imagePullPolicy** | enum | ImagePullPolicy sets imagePullPolicy on every selected regular or init<br>container at Pod creation, and newly added ephemeral containers on subresource<br>updates. Both merge and replace overwrite explicit and Kubernetes-defaulted<br>values. Omitted or null preserves the existing policy. Applies to all Pod OSes.<br/>*Enum*: Always, IfNotPresent, Never<br/> | false |
+| **[imagePullSecrets](#rulestatusstatusrulemutateindexworkloadsregistriesimagepullsecretsindex)** | []object | ImagePullSecrets sets spec.imagePullSecrets on Pod creation. Merge appends<br>missing names and removes existing duplicates, retaining first-occurrence order. Replace sets<br>the complete list; an explicit empty list clears it. Omitted or null preserves it.<br>Requires the pod target or omitted/empty targets. References always use the<br>Pod's namespace; Capsule does not create, copy, or check the referenced Secrets. | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.registries.imagePullSecrets[index]
+
+
+
+LocalObjectReference contains enough information to let you locate the
+referenced object inside the same namespace.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name of the referent.<br>This field is effectively required, but due to backwards compatibility is<br>allowed to be empty. Instances of this type with an empty value here are<br>almost certainly wrong.<br>More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names<br/>*Default*: <br/> | false |
+
+
 ### RuleStatus.status.rule.mutate[index].workloads.security
 
 
@@ -6613,10 +6213,12 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
-| **[conditions](#rulestatusstatusrulesindexenforceconditionsindex)** | []object | Conditions gate this entire enforcement rule, including workloads, services,<br>metadata and ingress. All conditions must be true; empty means apply.<br>Conditions run during admission; managed metadata in a conditional rule<br>is applied on matching requests only and is not reconciled in the background. | false |
+| **[conditions](#rulestatusstatusrulesindexenforceconditionsindex)** | []object | Conditions gate this entire enforcement rule, including workloads, services,<br>metadata, ingress, network and storage. All conditions must be true; empty means apply.<br>Conditions run during admission; managed metadata in a conditional rule<br>is applied on matching requests only and is not reconciled in the background. | false |
 | **[ingress](#rulestatusstatusrulesindexenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
 | **[metadata](#rulestatusstatusrulesindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
+| **[network](#rulestatusstatusrulesindexenforcenetwork)** | object | Network configures network enforcement for namespace resources. | false |
 | **[services](#rulestatusstatusrulesindexenforceservices)** | object | Enforcement for Services. | false |
+| **[storage](#rulestatusstatusrulesindexenforcestorage)** | object | Additional access to PersistentVolumes without a tenant ownership label. | false |
 | **[workloads](#rulestatusstatusrulesindexenforceworkloads)** | object | Enforcement for native workload kinds and Pod properties. | false |
 
 
@@ -6626,6 +6228,8 @@ Enforcement for given rule
 
 AdmissionCondition is a Boolean CEL gate for a mutation entry or enforcement rule. It can
 inspect object and request metadata, but cannot generate mutation values.
+During PVC volume access evaluation, volume contains the referenced PV;
+otherwise volume is null. Conditions never modify the PVC or PV.
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -6737,6 +6341,57 @@ Both may be set together.
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
+### RuleStatus.status.rules[index].enforce.network
+
+
+
+Network configures network enforcement for namespace resources.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[policies](#rulestatusstatusrulesindexenforcenetworkpolicies)** | object | Policies constrains native NetworkPolicies. | false |
+
+
+### RuleStatus.status.rules[index].enforce.network.policies
+
+
+
+Policies constrains native NetworkPolicies.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[egress](#rulestatusstatusrulesindexenforcenetworkpoliciesegress)** | object | Egress constrains destination address grants. Selector-based peers are<br>unaffected. No constraints are applied when omitted. | false |
+| **[ingress](#rulestatusstatusrulesindexenforcenetworkpoliciesingress)** | object | Ingress constrains source address grants. Selector-based peers are<br>unaffected. No constraints are applied when omitted. | false |
+
+
+### RuleStatus.status.rules[index].enforce.network.policies.egress
+
+
+
+Egress constrains destination address grants. Selector-based peers are
+unaffected. No constraints are applied when omitted.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs matches addresses granted by ipBlock.cidr after subtracting except.<br>Omitted peers on an ingress or egress rule grant both IPv4 and IPv6 address<br>space. An empty NetworkPolicy ingress or egress list has no grants in that<br>direction to validate. Each direction is evaluated independently.<br>An empty CIDRs list imposes no constraint.<br>Ordered allow/deny decisions apply to every granted address: deny rejects<br>overlapping grants, allow requires complete coverage, and audit reports<br>overlaps. A later allow cannot authorize addresses outside its CIDRs. | false |
+
+
+### RuleStatus.status.rules[index].enforce.network.policies.ingress
+
+
+
+Ingress constrains source address grants. Selector-based peers are
+unaffected. No constraints are applied when omitted.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs matches addresses granted by ipBlock.cidr after subtracting except.<br>Omitted peers on an ingress or egress rule grant both IPv4 and IPv6 address<br>space. An empty NetworkPolicy ingress or egress list has no grants in that<br>direction to validate. Each direction is evaluated independently.<br>An empty CIDRs list imposes no constraint.<br>Ordered allow/deny decisions apply to every granted address: deny rejects<br>overlapping grants, allow requires complete coverage, and audit reports<br>overlaps. A later allow cannot authorize addresses outside its CIDRs. | false |
+
+
 ### RuleStatus.status.rules[index].enforce.services
 
 
@@ -6829,6 +6484,61 @@ NodePorts defines additional constraints for nodePort values.
 | **to** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
 
 
+### RuleStatus.status.rules[index].enforce.storage
+
+
+
+Additional access to PersistentVolumes without a tenant ownership label.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[volumes](#rulestatusstatusrulesindexenforcestoragevolumesindex)** | []object | Volumes matches additional PersistentVolumes. Entries are ORed. Conditions<br>on the enclosing enforcement rule must also match. The last matching<br>allow/deny decides the exception; audit never grants access. | false |
+
+
+### RuleStatus.status.rules[index].enforce.storage.volumes[index]
+
+
+
+PersistentVolumeMatch matches labels on the referenced PersistentVolume.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[selector](#rulestatusstatusrulesindexenforcestoragevolumesindexselector)** | object | Selector matches existing PV labels, independently of PVC.spec.selector.<br>An explicit empty selector matches all PVs. Capsule's tenant ownership<br>label cannot be overridden by a selector or an allow decision. | true |
+| **name** | string | Name identifies this match in admission and audit messages. | false |
+
+
+### RuleStatus.status.rules[index].enforce.storage.volumes[index].selector
+
+
+
+Selector matches existing PV labels, independently of PVC.spec.selector.
+An explicit empty selector matches all PVs. Capsule's tenant ownership
+label cannot be overridden by a selector or an allow decision.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulesindexenforcestoragevolumesindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].enforce.storage.volumes[index].selector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
 ### RuleStatus.status.rules[index].enforce.workloads
 
 
@@ -6838,12 +6548,49 @@ Enforcement for native workload kinds and Pod properties.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[disruptionBudgets](#rulestatusstatusrulesindexenforceworkloadsdisruptionbudgets)** | object | DisruptionBudgets constrains PDB coverage of selected Pods and controller templates.<br>Only whole-workload targets apply; omitted targets select Pods. | false |
 | **[placement](#rulestatusstatusrulesindexenforceworkloadsplacement)** | object | Placement matches the Pod scheduler and scheduling constraints. | false |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
 | **[registries](#rulestatusstatusrulesindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
 | **[resources](#rulestatusstatusrulesindexenforceworkloadsresources)** | object | Resources defines mutation and enforcement policies for Pod and container<br>resource requests and limits. The workload targets select where the<br>policies apply. With no targets, resource policies apply to all compatible<br>locations: Pod-level resources, regular containers, and init containers.<br>Resource names unsupported at Pod level still apply to compatible container<br>locations.<br>Mutation is applied when a Pod is created, or when an explicitly targeted<br>controller is created or updated (to its Pod template). Remove and MatchRequest manage<br>explicit values, Default fills an absent value, and Ratio fills an absent<br>limit from its request. An explicit Ratio violation is then handled by the<br>enclosing allow, deny, or audit action. | false |
+| **[schedulers](#rulestatusstatusrulesindexenforceworkloadsschedulersindex)** | []object | <span style="color:red;font-weight:bold">Schedulers defines additional schedulerName matchers for selected Pods and<br>Pod templates. These are combined with placement.schedulers under the same<br>rule action; a match in either field counts as a match.<br><br>Deprecated: use Placement.Schedulers instead.</span> | false |
 | **[security](#rulestatusstatusrulesindexenforceworkloadssecurity)** | object | Security matches effective Pod and container security profiles. | false |
 | **targets** | []string | Targets selects native workloads and, optionally, parts of their Pod specs.<br>With no workload policies, the action matches the selected kinds themselves.<br>With policies, targets scopes those policies; it does not also match the kind.<br>Omitted targets preserve Pod-only defaults. Controller targets are opt-in.<br>Whole-controller targets include every compatible location in the Pod template.<br>Existing pod and pod/* part targets retain their established policy scope. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.disruptionBudgets
+
+
+
+DisruptionBudgets constrains PDB coverage of selected Pods and controller templates.
+Only whole-workload targets apply; omitted targets select Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **allowOverlap** | boolean | AllowOverlap permits multiple PDBs to select the same Pod or selected<br>controller template. False rejects overlap for allow/deny actions and<br>reports violations for audit. True permits overlap in an allow rule;<br>omitted does not participate in evaluation. Rule ordering is preserved.<br>Checks run on PDB selector changes and selected Pod/template label changes.<br>Conditions and audience apply to the admission request, including PDB writes.<br>Cross-resource admission reads are not an atomic transaction. | false |
+| **[evictableReplicas](#rulestatusstatusrulesindexenforceworkloadsdisruptionbudgetsevictablereplicas)** | object | EvictableReplicas bounds the configured number of evictable replicas of each<br>selected Deployment, StatefulSet, ReplicaSet or ReplicationController.<br>Uses desired spec.replicas and Kubernetes' upward percentage rounding;<br>zero replicas are exempt. Checks controller writes, /scale, and PDB writes.<br>Bounds are inclusive nonnegative integers; omitted bounds are unrestricted.<br>Allow requires compliance; deny/audit match violations, like resource constraints.<br>Other targets do not have a desired replica count and skip this property.<br>At least one supported controller target must be explicitly selected. | false |
+| **unhealthyPodEvictionPolicies** | []enum | UnhealthyPodEvictionPolicies matches the effective PDB policy. Omission in a<br>PDB means IfHealthyBudget. Allow accepts listed values; deny/audit match<br>listed values, like other enum lists. Empty imposes no restriction.<br/>*Enum*: IfHealthyBudget, AlwaysAllow<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.disruptionBudgets.evictableReplicas
+
+
+
+EvictableReplicas bounds the configured number of evictable replicas of each
+selected Deployment, StatefulSet, ReplicaSet or ReplicationController.
+Uses desired spec.replicas and Kubernetes' upward percentage rounding;
+zero replicas are exempt. Checks controller writes, /scale, and PDB writes.
+Bounds are inclusive nonnegative integers; omitted bounds are unrestricted.
+Allow requires compliance; deny/audit match violations, like resource constraints.
+Other targets do not have a desired replica count and skip this property.
+At least one supported controller target must be explicitly selected.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement
@@ -7475,6 +7222,21 @@ WorkloadResourceRequestPolicy defines how a resource request is mutated.
 | **value** | int or string | Value is the quantity applied by the Default policy. | false |
 
 
+### RuleStatus.status.rules[index].enforce.workloads.schedulers[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
 ### RuleStatus.status.rules[index].enforce.workloads.security
 
 
@@ -7556,9 +7318,9 @@ Mutated values remain subject to all applicable enforcement rules.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem,<br>and map keys, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, nodeSelector,<br>tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
+| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
 | **[conditions](#rulestatusstatusrulesindexmutateindexconditionsindex)** | []object | Conditions gate this entire mutation entry and inspect the object after<br>preceding mutations. All conditions must be true; empty means apply. | false |
-| **[workloads](#rulestatusstatusrulesindexmutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. ReadOnlyRootFilesystem also applies to newly added<br>ephemeral containers on subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
+| **[workloads](#rulestatusstatusrulesindexmutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. Security.ReadOnlyRootFilesystem and<br>Registries.ImagePullPolicy also apply to newly added ephemeral containers on<br>subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
 
 
 ### RuleStatus.status.rules[index].mutate[index].conditions[index]
@@ -7567,6 +7329,8 @@ Mutated values remain subject to all applicable enforcement rules.
 
 AdmissionCondition is a Boolean CEL gate for a mutation entry or enforcement rule. It can
 inspect object and request metadata, but cannot generate mutation values.
+During PVC volume access evaluation, volume contains the referenced PV;
+otherwise volume is null. Conditions never modify the PVC or PV.
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -7581,9 +7345,10 @@ inspect object and request metadata, but cannot generate mutation values.
 
 WorkloadMutation contains typed native Pod values. Empty maps/lists are
 preserved so replace can clear a property; nil means the property is omitted.
-It applies on Pod creation. ReadOnlyRootFilesystem also applies to newly added
-ephemeral containers on subresource updates. Existing containers are never reconciled.
-On merge, later entries override hostUsers, readOnlyRootFilesystem, matching map keys,
+It applies on Pod creation. Security.ReadOnlyRootFilesystem and
+Registries.ImagePullPolicy also apply to newly added ephemeral containers on
+subresource updates. Existing containers are never reconciled.
+On merge, later entries override hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, matching map keys,
 tolerations and spread constraints.
 On merge, required affinity restrictions from applicable entries are ANDed.
 
@@ -7591,6 +7356,7 @@ On merge, required affinity restrictions from applicable entries are ANDed.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **[placement](#rulestatusstatusrulesindexmutateindexworkloadsplacement)** | object | Placement configures the Pod scheduler and scheduling constraints. | false |
+| **[registries](#rulestatusstatusrulesindexmutateindexworkloadsregistries)** | object | Registries configures Pod image pull secrets and selected containers' pull policies. | false |
 | **[security](#rulestatusstatusrulesindexmutateindexworkloadssecurity)** | object | Security configures Pod and container security settings. | false |
 | **targets** | []enum | Targets selects compatible Pod locations. Omitted or empty selects all<br>compatible locations. The pod target includes Pod-level properties and all<br>container groups; pod/containers, pod/initcontainers and pod/ephemeralcontainers<br>narrow selection to one group. Controller templates and volumes are not supported.<br/>*Enum*: pod, pod/containers, pod/initcontainers, pod/ephemeralcontainers<br/> | false |
 
@@ -8199,6 +7965,32 @@ relates the key and values.
 | **key** | string | key is the label key that the selector applies to. | true |
 | **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
 | **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.registries
+
+
+
+Registries configures Pod image pull secrets and selected containers' pull policies.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **imagePullPolicy** | enum | ImagePullPolicy sets imagePullPolicy on every selected regular or init<br>container at Pod creation, and newly added ephemeral containers on subresource<br>updates. Both merge and replace overwrite explicit and Kubernetes-defaulted<br>values. Omitted or null preserves the existing policy. Applies to all Pod OSes.<br/>*Enum*: Always, IfNotPresent, Never<br/> | false |
+| **[imagePullSecrets](#rulestatusstatusrulesindexmutateindexworkloadsregistriesimagepullsecretsindex)** | []object | ImagePullSecrets sets spec.imagePullSecrets on Pod creation. Merge appends<br>missing names and removes existing duplicates, retaining first-occurrence order. Replace sets<br>the complete list; an explicit empty list clears it. Omitted or null preserves it.<br>Requires the pod target or omitted/empty targets. References always use the<br>Pod's namespace; Capsule does not create, copy, or check the referenced Secrets. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.registries.imagePullSecrets[index]
+
+
+
+LocalObjectReference contains enough information to let you locate the
+referenced object inside the same namespace.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name of the referent.<br>This field is effectively required, but due to backwards compatibility is<br>allowed to be empty. Instances of this type with an empty value here are<br>almost certainly wrong.<br>More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names<br/>*Default*: <br/> | false |
 
 
 ### RuleStatus.status.rules[index].mutate[index].workloads.security
@@ -9673,10 +9465,12 @@ Enforcement for given rule
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
-| **[conditions](#tenantspecrulesindexenforceconditionsindex)** | []object | Conditions gate this entire enforcement rule, including workloads, services,<br>metadata and ingress. All conditions must be true; empty means apply.<br>Conditions run during admission; managed metadata in a conditional rule<br>is applied on matching requests only and is not reconciled in the background. | false |
+| **[conditions](#tenantspecrulesindexenforceconditionsindex)** | []object | Conditions gate this entire enforcement rule, including workloads, services,<br>metadata, ingress, network and storage. All conditions must be true; empty means apply.<br>Conditions run during admission; managed metadata in a conditional rule<br>is applied on matching requests only and is not reconciled in the background. | false |
 | **[ingress](#tenantspecrulesindexenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
 | **[metadata](#tenantspecrulesindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
+| **[network](#tenantspecrulesindexenforcenetwork)** | object | Network configures network enforcement for namespace resources. | false |
 | **[services](#tenantspecrulesindexenforceservices)** | object | Enforcement for Services. | false |
+| **[storage](#tenantspecrulesindexenforcestorage)** | object | Additional access to PersistentVolumes without a tenant ownership label. | false |
 | **[workloads](#tenantspecrulesindexenforceworkloads)** | object | Enforcement for native workload kinds and Pod properties. | false |
 
 
@@ -9686,6 +9480,8 @@ Enforcement for given rule
 
 AdmissionCondition is a Boolean CEL gate for a mutation entry or enforcement rule. It can
 inspect object and request metadata, but cannot generate mutation values.
+During PVC volume access evaluation, volume contains the referenced PV;
+otherwise volume is null. Conditions never modify the PVC or PV.
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -9797,6 +9593,57 @@ Both may be set together.
 | **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
 
 
+### Tenant.spec.rules[index].enforce.network
+
+
+
+Network configures network enforcement for namespace resources.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[policies](#tenantspecrulesindexenforcenetworkpolicies)** | object | Policies constrains native NetworkPolicies. | false |
+
+
+### Tenant.spec.rules[index].enforce.network.policies
+
+
+
+Policies constrains native NetworkPolicies.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[egress](#tenantspecrulesindexenforcenetworkpoliciesegress)** | object | Egress constrains destination address grants. Selector-based peers are<br>unaffected. No constraints are applied when omitted. | false |
+| **[ingress](#tenantspecrulesindexenforcenetworkpoliciesingress)** | object | Ingress constrains source address grants. Selector-based peers are<br>unaffected. No constraints are applied when omitted. | false |
+
+
+### Tenant.spec.rules[index].enforce.network.policies.egress
+
+
+
+Egress constrains destination address grants. Selector-based peers are
+unaffected. No constraints are applied when omitted.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs matches addresses granted by ipBlock.cidr after subtracting except.<br>Omitted peers on an ingress or egress rule grant both IPv4 and IPv6 address<br>space. An empty NetworkPolicy ingress or egress list has no grants in that<br>direction to validate. Each direction is evaluated independently.<br>An empty CIDRs list imposes no constraint.<br>Ordered allow/deny decisions apply to every granted address: deny rejects<br>overlapping grants, allow requires complete coverage, and audit reports<br>overlaps. A later allow cannot authorize addresses outside its CIDRs. | false |
+
+
+### Tenant.spec.rules[index].enforce.network.policies.ingress
+
+
+
+Ingress constrains source address grants. Selector-based peers are
+unaffected. No constraints are applied when omitted.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **cidrs** | []string | CIDRs matches addresses granted by ipBlock.cidr after subtracting except.<br>Omitted peers on an ingress or egress rule grant both IPv4 and IPv6 address<br>space. An empty NetworkPolicy ingress or egress list has no grants in that<br>direction to validate. Each direction is evaluated independently.<br>An empty CIDRs list imposes no constraint.<br>Ordered allow/deny decisions apply to every granted address: deny rejects<br>overlapping grants, allow requires complete coverage, and audit reports<br>overlaps. A later allow cannot authorize addresses outside its CIDRs. | false |
+
+
 ### Tenant.spec.rules[index].enforce.services
 
 
@@ -9889,6 +9736,61 @@ NodePorts defines additional constraints for nodePort values.
 | **to** | integer | <br/>*Format*: int32<br/>*Minimum*: 1<br/>*Maximum*: 65535<br/> | true |
 
 
+### Tenant.spec.rules[index].enforce.storage
+
+
+
+Additional access to PersistentVolumes without a tenant ownership label.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[volumes](#tenantspecrulesindexenforcestoragevolumesindex)** | []object | Volumes matches additional PersistentVolumes. Entries are ORed. Conditions<br>on the enclosing enforcement rule must also match. The last matching<br>allow/deny decides the exception; audit never grants access. | false |
+
+
+### Tenant.spec.rules[index].enforce.storage.volumes[index]
+
+
+
+PersistentVolumeMatch matches labels on the referenced PersistentVolume.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[selector](#tenantspecrulesindexenforcestoragevolumesindexselector)** | object | Selector matches existing PV labels, independently of PVC.spec.selector.<br>An explicit empty selector matches all PVs. Capsule's tenant ownership<br>label cannot be overridden by a selector or an allow decision. | true |
+| **name** | string | Name identifies this match in admission and audit messages. | false |
+
+
+### Tenant.spec.rules[index].enforce.storage.volumes[index].selector
+
+
+
+Selector matches existing PV labels, independently of PVC.spec.selector.
+An explicit empty selector matches all PVs. Capsule's tenant ownership
+label cannot be overridden by a selector or an allow decision.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecrulesindexenforcestoragevolumesindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].enforce.storage.volumes[index].selector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
 ### Tenant.spec.rules[index].enforce.workloads
 
 
@@ -9898,12 +9800,49 @@ Enforcement for native workload kinds and Pod properties.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[disruptionBudgets](#tenantspecrulesindexenforceworkloadsdisruptionbudgets)** | object | DisruptionBudgets constrains PDB coverage of selected Pods and controller templates.<br>Only whole-workload targets apply; omitted targets select Pods. | false |
 | **[placement](#tenantspecrulesindexenforceworkloadsplacement)** | object | Placement matches the Pod scheduler and scheduling constraints. | false |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
 | **[registries](#tenantspecrulesindexenforceworkloadsregistriesindex)** | []object | Define registries which are allowed to be used within this tenant<br>The rules are aggregated, since you can use Regular Expressions the match registry endpoints | false |
 | **[resources](#tenantspecrulesindexenforceworkloadsresources)** | object | Resources defines mutation and enforcement policies for Pod and container<br>resource requests and limits. The workload targets select where the<br>policies apply. With no targets, resource policies apply to all compatible<br>locations: Pod-level resources, regular containers, and init containers.<br>Resource names unsupported at Pod level still apply to compatible container<br>locations.<br>Mutation is applied when a Pod is created, or when an explicitly targeted<br>controller is created or updated (to its Pod template). Remove and MatchRequest manage<br>explicit values, Default fills an absent value, and Ratio fills an absent<br>limit from its request. An explicit Ratio violation is then handled by the<br>enclosing allow, deny, or audit action. | false |
+| **[schedulers](#tenantspecrulesindexenforceworkloadsschedulersindex)** | []object | <span style="color:red;font-weight:bold">Schedulers defines additional schedulerName matchers for selected Pods and<br>Pod templates. These are combined with placement.schedulers under the same<br>rule action; a match in either field counts as a match.<br><br>Deprecated: use Placement.Schedulers instead.</span> | false |
 | **[security](#tenantspecrulesindexenforceworkloadssecurity)** | object | Security matches effective Pod and container security profiles. | false |
 | **targets** | []string | Targets selects native workloads and, optionally, parts of their Pod specs.<br>With no workload policies, the action matches the selected kinds themselves.<br>With policies, targets scopes those policies; it does not also match the kind.<br>Omitted targets preserve Pod-only defaults. Controller targets are opt-in.<br>Whole-controller targets include every compatible location in the Pod template.<br>Existing pod and pod/* part targets retain their established policy scope. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.disruptionBudgets
+
+
+
+DisruptionBudgets constrains PDB coverage of selected Pods and controller templates.
+Only whole-workload targets apply; omitted targets select Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **allowOverlap** | boolean | AllowOverlap permits multiple PDBs to select the same Pod or selected<br>controller template. False rejects overlap for allow/deny actions and<br>reports violations for audit. True permits overlap in an allow rule;<br>omitted does not participate in evaluation. Rule ordering is preserved.<br>Checks run on PDB selector changes and selected Pod/template label changes.<br>Conditions and audience apply to the admission request, including PDB writes.<br>Cross-resource admission reads are not an atomic transaction. | false |
+| **[evictableReplicas](#tenantspecrulesindexenforceworkloadsdisruptionbudgetsevictablereplicas)** | object | EvictableReplicas bounds the configured number of evictable replicas of each<br>selected Deployment, StatefulSet, ReplicaSet or ReplicationController.<br>Uses desired spec.replicas and Kubernetes' upward percentage rounding;<br>zero replicas are exempt. Checks controller writes, /scale, and PDB writes.<br>Bounds are inclusive nonnegative integers; omitted bounds are unrestricted.<br>Allow requires compliance; deny/audit match violations, like resource constraints.<br>Other targets do not have a desired replica count and skip this property.<br>At least one supported controller target must be explicitly selected. | false |
+| **unhealthyPodEvictionPolicies** | []enum | UnhealthyPodEvictionPolicies matches the effective PDB policy. Omission in a<br>PDB means IfHealthyBudget. Allow accepts listed values; deny/audit match<br>listed values, like other enum lists. Empty imposes no restriction.<br/>*Enum*: IfHealthyBudget, AlwaysAllow<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.disruptionBudgets.evictableReplicas
+
+
+
+EvictableReplicas bounds the configured number of evictable replicas of each
+selected Deployment, StatefulSet, ReplicaSet or ReplicationController.
+Uses desired spec.replicas and Kubernetes' upward percentage rounding;
+zero replicas are exempt. Checks controller writes, /scale, and PDB writes.
+Bounds are inclusive nonnegative integers; omitted bounds are unrestricted.
+Allow requires compliance; deny/audit match violations, like resource constraints.
+Other targets do not have a desired replica count and skip this property.
+At least one supported controller target must be explicitly selected.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **max** | integer | <br/>*Format*: int64<br/> | false |
+| **min** | integer | <br/>*Format*: int64<br/> | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement
@@ -10535,6 +10474,21 @@ WorkloadResourceRequestPolicy defines how a resource request is mutated.
 | **value** | int or string | Value is the quantity applied by the Default policy. | false |
 
 
+### Tenant.spec.rules[index].enforce.workloads.schedulers[index]
+
+
+
+At least one of Exact or Exp must be set.
+Both may be set together.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided values exactly. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+
+
 ### Tenant.spec.rules[index].enforce.workloads.security
 
 
@@ -10616,9 +10570,9 @@ Mutated values remain subject to all applicable enforcement rules.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem,<br>and map keys, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, nodeSelector,<br>tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
+| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
 | **[conditions](#tenantspecrulesindexmutateindexconditionsindex)** | []object | Conditions gate this entire mutation entry and inspect the object after<br>preceding mutations. All conditions must be true; empty means apply. | false |
-| **[workloads](#tenantspecrulesindexmutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. ReadOnlyRootFilesystem also applies to newly added<br>ephemeral containers on subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
+| **[workloads](#tenantspecrulesindexmutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. Security.ReadOnlyRootFilesystem and<br>Registries.ImagePullPolicy also apply to newly added ephemeral containers on<br>subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
 
 
 ### Tenant.spec.rules[index].mutate[index].conditions[index]
@@ -10627,6 +10581,8 @@ Mutated values remain subject to all applicable enforcement rules.
 
 AdmissionCondition is a Boolean CEL gate for a mutation entry or enforcement rule. It can
 inspect object and request metadata, but cannot generate mutation values.
+During PVC volume access evaluation, volume contains the referenced PV;
+otherwise volume is null. Conditions never modify the PVC or PV.
 
 
 | **Name** | **Type** | **Description** | **Required** |
@@ -10641,9 +10597,10 @@ inspect object and request metadata, but cannot generate mutation values.
 
 WorkloadMutation contains typed native Pod values. Empty maps/lists are
 preserved so replace can clear a property; nil means the property is omitted.
-It applies on Pod creation. ReadOnlyRootFilesystem also applies to newly added
-ephemeral containers on subresource updates. Existing containers are never reconciled.
-On merge, later entries override hostUsers, readOnlyRootFilesystem, matching map keys,
+It applies on Pod creation. Security.ReadOnlyRootFilesystem and
+Registries.ImagePullPolicy also apply to newly added ephemeral containers on
+subresource updates. Existing containers are never reconciled.
+On merge, later entries override hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, matching map keys,
 tolerations and spread constraints.
 On merge, required affinity restrictions from applicable entries are ANDed.
 
@@ -10651,6 +10608,7 @@ On merge, required affinity restrictions from applicable entries are ANDed.
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **[placement](#tenantspecrulesindexmutateindexworkloadsplacement)** | object | Placement configures the Pod scheduler and scheduling constraints. | false |
+| **[registries](#tenantspecrulesindexmutateindexworkloadsregistries)** | object | Registries configures Pod image pull secrets and selected containers' pull policies. | false |
 | **[security](#tenantspecrulesindexmutateindexworkloadssecurity)** | object | Security configures Pod and container security settings. | false |
 | **targets** | []enum | Targets selects compatible Pod locations. Omitted or empty selects all<br>compatible locations. The pod target includes Pod-level properties and all<br>container groups; pod/containers, pod/initcontainers and pod/ephemeralcontainers<br>narrow selection to one group. Controller templates and volumes are not supported.<br/>*Enum*: pod, pod/containers, pod/initcontainers, pod/ephemeralcontainers<br/> | false |
 
@@ -11259,6 +11217,32 @@ relates the key and values.
 | **key** | string | key is the label key that the selector applies to. | true |
 | **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
 | **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.registries
+
+
+
+Registries configures Pod image pull secrets and selected containers' pull policies.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **imagePullPolicy** | enum | ImagePullPolicy sets imagePullPolicy on every selected regular or init<br>container at Pod creation, and newly added ephemeral containers on subresource<br>updates. Both merge and replace overwrite explicit and Kubernetes-defaulted<br>values. Omitted or null preserves the existing policy. Applies to all Pod OSes.<br/>*Enum*: Always, IfNotPresent, Never<br/> | false |
+| **[imagePullSecrets](#tenantspecrulesindexmutateindexworkloadsregistriesimagepullsecretsindex)** | []object | ImagePullSecrets sets spec.imagePullSecrets on Pod creation. Merge appends<br>missing names and removes existing duplicates, retaining first-occurrence order. Replace sets<br>the complete list; an explicit empty list clears it. Omitted or null preserves it.<br>Requires the pod target or omitted/empty targets. References always use the<br>Pod's namespace; Capsule does not create, copy, or check the referenced Secrets. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.registries.imagePullSecrets[index]
+
+
+
+LocalObjectReference contains enough information to let you locate the
+referenced object inside the same namespace.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name of the referent.<br>This field is effectively required, but due to backwards compatibility is<br>allowed to be empty. Instances of this type with an empty value here are<br>almost certainly wrong.<br>More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names<br/>*Default*: <br/> | false |
 
 
 ### Tenant.spec.rules[index].mutate[index].workloads.security

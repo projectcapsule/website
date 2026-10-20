@@ -192,7 +192,7 @@ Resource is Namespace-scoped and applies the settings to the belonged Tenant.
 | :---- | :---- | :----------- | :-------- |
 | **kind** | enum | Kind of tenant owner. Possible values are "User", "Group", and "ServiceAccount"<br/>*Enum*: User, Group, ServiceAccount<br/> | true |
 | **name** | string | Name of tenant owner. | true |
-| **[clusterResources](#proxysettingspecsubjectsindexclusterresourcesindex)** | []object | Cluster Resources for tenant Owner. | false |
+| **[clusterResources](#proxysettingspecsubjectsindexclusterresourcesindex)** | []object | <span style="color:red;font-weight:bold">Deprecated: ClusterResources cannot be granted through a namespaced<br>ProxySetting. Use administrator-managed GlobalProxySettings instead.<br>This field is retained to decode existing objects, but is ignored by the<br>proxy and must be omitted or empty in new settings.</span> | false |
 | **[proxySettings](#proxysettingspecsubjectsindexproxysettingsindex)** | []object | <span style="color:red;font-weight:bold">Deprecated: Use Global Proxy Settings instead (https://projectcapsule.dev/docs/proxy/proxysettings/#globalproxysettings)<br><br>Proxy settings for tenant owner.</span> | false |
 
 
