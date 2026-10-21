@@ -5,6 +5,15 @@ description: >
   Configure policies and restrictions on a per-Namespace basis with Rules
 ---
 
+{{% alert title="Rules documentation" color="info" %}}
+**The [Rules documentation](/docs/rules/) is the main reference for the rules API.**
+Find all [mutation](/docs/rules/mutate/) and [enforcement](/docs/rules/enforcement/)
+properties there, together with conditions, audiences, and rule evaluation order.
+
+This page covers Tenant-specific configuration through `Tenant.spec.rules`:
+namespace selection, templating, and quota generation.
+{{% /alert %}}
+
 Enforcement rules allow Bill, the cluster administrator, to set policies and restrictions on a per-`Tenant` basis. These rules are enforced by Capsule admission webhooks when Alice, the `TenantOwner`, creates or modifies resources in her `Namespaces`. With the rule construct, namespaces within the same tenant can be profiled differently depending on their metadata.
 
 ## Namespace Selector

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.18.4/.schema/devbox.schema.json",
+  "packages": {
+    "go": "1.25.4",
+    "nodejs": "22",
+    "hugo": "0.134.0",
+    "dart-sass": "1.89.2",
+    "go-task": "3.45.5",
+    "prek": "0.5.5",
+    "lychee": "0.24.2",
+    "spellchecker-cli": "7.0.3",
+    "zizmor": "1.25.2"
+  }
+}

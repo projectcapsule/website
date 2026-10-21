@@ -20,6 +20,8 @@
 /public
 node_modules
 bin/
+.devbox/
+.task/
 
 # system files
 .DS_Store

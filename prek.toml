@@ -1,3 +1,6 @@
+default_install_hook_types = ["pre-commit", "pre-push"]
+default_stages = ["pre-commit"]
+
 [[repos]]
 repo = "https://github.com/pre-commit/pre-commit-hooks"
 rev = "v6.0.0"
@@ -22,16 +25,17 @@ repo = "local"
 [[repos.hooks]]
 id = "lychee"
 name = "Check links with lychee"
-entry = "scripts/lychee.sh"
-args = ["--config", "config/lychee.toml", "--max-concurrency", "2", "--accept", "200,429", "--timeout", "60", "./content"]
+entry = "devbox run task lychee"
 language = "system"
-stages = ["pre-push"]
+stages = ["pre-commit", "pre-push"]
 pass_filenames = false
+always_run = true
 
 [[repos.hooks]]
 id = "apidocs-check"
 name = "Check API docs are up to date"
-entry = "scripts/apidocs-check.sh"
+entry = "devbox run task apidocs:check"
 language = "system"
 stages = ["pre-push"]
 pass_filenames = false
+always_run = true

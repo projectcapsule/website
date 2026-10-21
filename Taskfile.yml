@@ -1,0 +1,149 @@
+version: '3'
+
+set: [errexit, pipefail]
+
+vars:
+  CRDOC_VERSION: v0.6.4
+  CRDOC: '{{.ROOT_DIR}}/bin/crdoc-{{.CRDOC_VERSION}}'
+
+tasks:
+  default:
+    cmds:
+      - task --list
+
+  setup:
+    desc: Install Node.js dependencies and Git hooks
+    cmds:
+      - npm ci
+      - task: hooks:install
+
+  serve:
+    desc: Run the Hugo development server
+    cmds:
+      - hugo server --buildDrafts --buildFuture {{.CLI_ARGS}}
+
+  build:
+    desc: Build the production site
+    cmds:
+      - hugo --minify {{.CLI_ARGS}}
+
+  hooks:install:
+    desc: Install prek commit and push hooks
+    cmds:
+      - prek install
+
+  hooks:
+    desc: Run commit hooks against all files
+    cmds:
+      - prek run --all-files {{.CLI_ARGS}}
+
+  lychee:
+    desc: Check documentation links with the CI settings
+    vars:
+      HAD_IMAGES_DIR:
+        sh: 'if [ -d content/en/images ]; then echo true; else echo false; fi'
+    cmds:
+      - defer: |
+          if [ '{{.HAD_IMAGES_DIR}}' = false ]; then
+            rm -rf content/en/images
+          fi
+      # Hugo serves static/images at /images; Lychee resolves them in content/en.
+      - mkdir -p content/en/images
+      - cp -R static/images/. content/en/images/
+      - lychee --config config/lychee.toml {{.CLI_ARGS}} ./content
+
+  docs-lint:
+    desc: Check documentation spelling
+    dir: content
+    cmds:
+      - spellchecker -f '*.md' '*/*.md' '!general/crds-apis.md' -d dictionary.txt {{.CLI_ARGS}}
+
+  apidocs:
+    desc: Generate Capsule and Capsule Proxy API documentation
+    cmds:
+      - task: apidocs:capsule
+      - task: apidocs:proxy
+
+  lint:zizmor:
+    desc: Security-lint GitHub Actions workflows with zizmor.
+    aliases: [lint-zizmor]
+    cmds:
+      - zizmor .github/workflows/
+
+  lint:zizmor-fix:
+    desc: Security-lint GitHub Actions workflows with zizmor.
+    aliases: [lint-zizmor-fix]
+    cmds:
+      - zizmor .github/workflows/ --fix=all
+
+  apidocs:capsule:
+    desc: Generate Capsule API documentation (REF defaults to main)
+    cmds:
+      - task: apidocs:generate
+        vars:
+          REPO_URL: '{{.REPO_URL | default "https://github.com/projectcapsule/capsule.git"}}'
+          REF: '{{.REF | default "main"}}'
+          CRDS: charts/capsule/crds
+          OUTPUT: '{{.OUTPUT | default "content/en/docs/reference.md"}}'
+
+  apidocs:proxy:
+    desc: Generate Capsule Proxy API documentation (REF defaults to main)
+    cmds:
+      - task: apidocs:generate
+        vars:
+          REPO_URL: '{{.REPO_URL | default "https://github.com/projectcapsule/capsule-proxy.git"}}'
+          REF: '{{.REF | default "main"}}'
+          CRDS: charts/capsule-proxy/crds
+          OUTPUT: '{{.OUTPUT | default "content/en/docs/proxy/reference.md"}}'
+
+  apidocs:check:
+    desc: Check API documentation without modifying source files
+    vars:
+      CHECK_DIR:
+        sh: mktemp -d
+    cmds:
+      - defer: rm -rf '{{.CHECK_DIR}}'
+      - task: apidocs:capsule
+        vars:
+          OUTPUT: '{{.CHECK_DIR}}/capsule.md'
+      - task: apidocs:proxy
+        vars:
+          OUTPUT: '{{.CHECK_DIR}}/capsule-proxy.md'
+      - |
+        diff_status=0
+        diff -u content/en/docs/reference.md '{{.CHECK_DIR}}/capsule.md' || diff_status=1
+        diff -u content/en/docs/proxy/reference.md '{{.CHECK_DIR}}/capsule-proxy.md' || diff_status=1
+        if [ "$diff_status" -ne 0 ]; then
+          echo ">>> API docs are out of date. Run 'devbox run task apidocs' and commit the result."
+          exit 1
+        fi
+
+  apidocs:generate:
+    internal: true
+    deps: [apidocs:install]
+    env:
+      APIDOCS_REPO_URL: '{{.REPO_URL}}'
+      APIDOCS_REF: '{{.REF}}'
+      APIDOCS_CRDS: '{{.CRDS}}'
+      APIDOCS_OUTPUT: '{{.OUTPUT}}'
+      APIDOCS_GEN: '{{.CRDOC}}'
+    cmds:
+      - |
+        tmp_dir="$(mktemp -d)"
+        trap 'rm -rf "$tmp_dir"' EXIT
+        git clone --depth 1 --branch "$APIDOCS_REF" "$APIDOCS_REPO_URL" "$tmp_dir"
+        find "$tmp_dir/$APIDOCS_CRDS" -type f ! -name '*.yaml' -delete
+        "$APIDOCS_GEN" crdoc --resources "$tmp_dir/$APIDOCS_CRDS" --output "$APIDOCS_OUTPUT" --template templates/crds.tmpl
+
+  apidocs:install:
+    internal: true
+    run: once
+    status:
+      - test -x '{{.CRDOC}}'
+    cmds:
+      - |
+        tmp_dir="$(mktemp -d)"
+        trap 'rm -rf "$tmp_dir"' EXIT
+        GOBIN="$tmp_dir" go install fybrik.io/crdoc@{{.CRDOC_VERSION}}
+        mkdir -p bin
+        mv "$tmp_dir/crdoc" '{{.CRDOC}}'
