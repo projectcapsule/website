@@ -1,0 +1,27 @@
+{{- /* The problem, then the three things people do about it. Copy lives in
+     data/homepage.yaml.
+
+     A card is its title and the one line of what that approach costs, so the
+     three costs are what sit against each other down the row with nothing
+     else competing for the read.
+
+     col-lg-4 rather than col-md-6: at three cards the latter orphans the third
+     on a row of its own. Below lg they stack full width instead. */ -}}
+
+{{- $a := site.Data.homepage.alternatives -}}
+
+<h2 class="home-section__title">{{ $a.title }}</h2>
+<p class="home-section__intro">{{ $a.intro | markdownify }}</p>
+
+<div class="row g-4 home-alternatives">
+  {{- range $a.items }}
+  <div class="col-lg-4 d-flex">
+    <div class="card w-100">
+      <div class="card-body">
+        <h3 class="card-title home-card__title">{{ .title }}</h3>
+        <p class="card-text text-body-secondary">{{ .body | markdownify }}</p>
+      </div>
+    </div>
+  </div>
+  {{- end }}
+</div>
