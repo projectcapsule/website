@@ -206,16 +206,7 @@ spec:
           - clusterRoleName: 'edit'
             subjects:
               - kind: Group
-<<<<<<< HEAD
-<<<<<<< HEAD
-                name: "tenant:{{ .tenant.metadata.name }}:operators"
-=======
                 name: "solar:operators"
->>>>>>> 040fb2af9f39a8b5da7f6bdd18c5e15c63687b80
-=======
-                name: "tenant:{{ .tenant.metadata.name }}:operators"
->>>>>>> 5298aace8a45da78c5806f42687fcf787e5cbf47
-
     - namespaceSelector:
         matchLabels:
           environment: prod

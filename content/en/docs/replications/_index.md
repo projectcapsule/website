@@ -14,7 +14,7 @@ Both CRDs follow the same structure: resources are defined in `spec.resources` b
 
 ## Per-resource policies
 
-Each `spec.resources[]` block accepts the same policy as a ResourcePermit template.
+Each `spec.resources[]` block accepts a resource policy in both replication APIs.
 The policy applies to every `rawItems`, `namespacedItems`, and `generators` result
 in that block. These are the defaults:
 

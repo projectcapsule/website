@@ -44,6 +44,14 @@ params:
   copyright:
     authors: Project Capsule Authors | All Rights Reserved
     from_year: 2019
+  # Who started the project. Credited in the footer rather than on the homepage,
+  # because it is provenance and belongs beside the CNCF line on every page.
+  # The logo is assets/icons/clastix.svg rather than a URL: the footer is dark,
+  # and that is their own single-colour variant for a dark background.
+  initiative:
+    label: Project initiative by
+    name: Clastix
+    link: https://clastix.io
   ui:
     breadcrumb_disable: true
     navbar_logo: true
@@ -69,7 +77,7 @@ params:
         url: 'https://github.com/projectcapsule'
         icon: fab fa-github
         desc: Github Organization
-      - name: Linkedin
+      - name: LinkedIn
         url: 'https://www.linkedin.com/company/103417269'
         icon: fab fa-linkedin
         desc: Community Organisation
@@ -102,11 +110,37 @@ markup:
   parser:
     autoHeadingID: true
     autoHeadingIDType: github
+# Agent-friendly outputs (see DEVELOPMENT.md, "Agent-friendly outputs"):
+# - markdown: every page is also published as Markdown (index.md next to
+#   index.html, rendered by layouts/_default/*.markdown.md)
+# - llms: the /llms.txt index, rendered from the home page by
+#   layouts/index.llms.txt
+outputFormats:
+  markdown:
+    mediaType: text/markdown
+    baseName: index
+    isPlainText: true
+    rel: alternate
+    permalinkable: false
+  llms:
+    mediaType: text/plain
+    baseName: llms
+    isPlainText: true
+    notAlternative: true
+    permalinkable: false
 outputs:
+  home:
+    - HTML
+    - RSS
+    - llms
+  page:
+    - HTML
+    - markdown
   section:
     - HTML
     - print
     - RSS
+    - markdown
 module:
   hugoVersion:
     extended: true

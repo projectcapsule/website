@@ -1,0 +1,10 @@
+# CLOMonitor metadata, see
+# https://clomonitor.io/docs/topics/checks/#agent-readiness
+#
+# Points the agent readiness checks (AFDocs) at the documentation instead of
+# the landing page. CLOMonitor reads this file from each repository it
+# analyses, so the same entry belongs in projectcapsule/capsule to retarget
+# the project-level report, which otherwise uses that repository's GitHub
+# homepage.
+agentReadiness:
+  url: https://projectcapsule.dev/docs/

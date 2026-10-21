@@ -180,6 +180,7 @@ metadata:
   name: tenant-resource-replications
 spec:
   resyncPeriod: 60s
+  resources:
   - namespacedItems:
     - apiVersion: addons.projectcapsule.dev/v1alpha1
       kind: SopsProvider
@@ -661,16 +662,16 @@ spec:
         - apiVersion: addons.projectcapsule.dev/v1alpha1
           kind: SopsProvider
           metadata:
-            name: {{tenant.name}}-secrets
+            name: "{{tenant.name}}-secrets"
           spec:
             keys:
             - namespaceSelector:
                 matchLabels:
-                  capsule.clastix.io/tenant: {{tenant.name}}
+                  capsule.clastix.io/tenant: "{{tenant.name}}"
             sops:
             - namespaceSelector:
                 matchLabels:
-                  capsule.clastix.io/tenant: {{tenant.name}}
+                  capsule.clastix.io/tenant: "{{tenant.name}}"
 ```
 
 Using the `scope: Tenant` is mainly useful when you want to deploy a cluster-scoped resource once per tenant, such as the `SopsProvider` above.
@@ -904,7 +905,7 @@ the ConfigMap. Adoption alone does not disable protection; the default remains
 `protect: true`. Existing fields owned by other managers remain unless ownership
 conflicts are intentionally resolved with `force`.
 
-##### Pruning
+#### Pruning
 
 Each block's `policy.deletion` controls cleanup when its targets leave scope,
 including namespace deselection, block removal, or parent deletion:

@@ -502,7 +502,7 @@ rules:
   - enforce:
       action: deny
       metadata:
-        - apiVersion: "*"
+        - apiGroups: ["*"]
           kinds:
             - ConfigMap
           labels:

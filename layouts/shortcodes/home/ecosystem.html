@@ -1,0 +1,46 @@
+{{- /* The documented integrations, as a wall of logos linking into the
+     ecosystem pages. Copy lives in data/homepage.yaml; the roster is the
+     ecosystem pages themselves, so an integration page that opts in shows up
+     here as well as on /ecosystem/ without a list to keep in step.
+
+     Same filter as layouts/shortcodes/integrations.html, which renders the
+     full list there: `integration: true` to opt in, `display: false` to opt
+     a page back out while its page is still a stub. */ -}}
+
+{{- $e := site.Data.homepage.ecosystem -}}
+{{- $tagged := where (where site.RegularPages "Section" "ecosystem") "Params.integration" true -}}
+
+{{- $items := slice -}}
+{{- range sort $tagged "Title" -}}
+  {{- if default true .Params.display }}{{ $items = $items | append . }}{{ end -}}
+{{- end -}}
+
+{{- /* How many logos a row gets on a wide screen. Half the roster, so the wall
+     is two even rows rather than a full row and a remainder -- derived from the
+     count so it stays even as integrations are added, and clamped either side
+     so a short roster doesn't string out into one thin line and a long one
+     doesn't squeeze past what the container can hold. The stylesheet turns it
+     into a width; below lg the logos just wrap to fit. */ -}}
+{{- $cols := int (math.Min 7 (math.Max 4 (math.Ceil (div (len $items) 2.0)))) -}}
+
+<h2 class="home-section__title">{{ $e.title }}</h2>
+<p class="home-section__intro">{{ $e.intro | markdownify }}</p>
+
+<div class="home-ecosystem" style="--home-ecosystem-cols: {{ $cols }}">
+  {{- range $items }}
+  {{- /* Some of these are set up in the operating docs rather than on a page
+       of their own, and say so with a `link` of their own. */ -}}
+  <a class="home-ecosystem__item" href="{{ default .RelPermalink .Params.link }}">
+    <span class="home-ecosystem__logo">
+      {{- with .Params.logo }}
+      {{- /* alt is empty on purpose: the name is the next line of text, and
+           reading the logo out as well would say it twice. */ -}}
+      <img src="{{ . | safeURL }}" alt="">
+      {{- end }}
+    </span>
+    <span class="home-ecosystem__name">{{ .Title }}</span>
+  </a>
+  {{- end }}
+</div>
+
+<p class="home-section__footnote text-body-secondary">{{ $e.more | markdownify }}</p>

@@ -1,0 +1,25 @@
+    <figure class="home-pane{{ with .tone }} home-pane--{{ . }}{{ end }}">
+      <figcaption class="home-pane__title">
+        <span class="home-pane__dots" aria-hidden="true"></span>
+        <span class="home-pane__name">{{ .pane_title }}</span>
+      </figcaption>
+      {{- with .manifest }}
+      <div class="home-pane__code">
+        {{ transform.Highlight (resources.Get .).Content "yaml" "style=github-dark,lineNos=table" }}
+      </div>
+      {{- end }}
+      {{- with .transcript }}
+      {{- $lines := slice -}}
+      {{- range split (trim . "\n") "\n" -}}
+        {{- $l := htmlEscape . -}}
+        {{- if hasPrefix $l "$ " -}}
+          {{- $l = printf `<span class="home-pane__cmd"><span class="home-pane__prompt">$</span>%s</span>` (strings.TrimPrefix "$" $l) -}}
+        {{- end -}}
+        {{- $lines = $lines | append $l -}}
+      {{- end -}}
+      {{- $t := delimit $lines "\n" -}}
+      {{- $t = replace $t "‹" `<span class="home-pane__key">` -}}
+      {{- $t = replace $t "›" "</span>" -}}
+      <pre class="home-pane__body"><code>{{ $t | safeHTML }}</code></pre>
+      {{- end }}
+    </figure>

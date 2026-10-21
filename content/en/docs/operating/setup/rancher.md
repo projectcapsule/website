@@ -349,7 +349,7 @@ spec:
   - kind: User
     name: alice
     proxySettings:
-    - kind: Node
+    - kind: Nodes
       operations:
       - List
   nodeSelector:
