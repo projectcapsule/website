@@ -228,7 +228,7 @@ rules:
 ...
 ```
 
-This is broader than `bind` — the controller then actually holds these permissions. It is required whenever the controller must exercise the permissions itself, for example when replicating resources via [TenantResources](/docs/replications/tenant/) without impersonation.
+This is broader than `bind` — the controller then actually holds these permissions. It is required whenever the controller must exercise the permissions itself, for example when replicating resources via [GlobalTenantResources](/docs/replications/global/) without impersonation.
 
 You can also directly grant arbitrary additional permissions via Helm values:
 
@@ -255,7 +255,7 @@ green   Active                     2                                 False   can
 Before you enable strict mode, you must implement the required permissions for your use case. Depending on which features you are using, you may need to take manual action, for example:
 
 * [Migrate additional RoleBindings](/docs/tenants/permissions/#strict)
-* [Migrate `TenantResources` to use impersonation](/docs/replications/tenant/#impersonation)
+* [Grant RBAC to the `TenantResources` impersonation ServiceAccount](/docs/replications/tenant/#impersonation)
 * [Migrate `GlobalTenantResources` to use impersonation](/docs/replications/global/#impersonation)
 
 ### Admission Policies

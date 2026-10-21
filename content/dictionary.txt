@@ -3,6 +3,7 @@ APIs
 Apache2
 Authenticator
 BYOD
+CEL
 CLI
 CRD
 CRDs
@@ -183,6 +184,7 @@ multitenant
 naas
 namespace
 namespace-owner-reference
+namespace-scoped
 namespaceSelector
 namespaced
 namespaces
@@ -217,3 +219,7 @@ webhooks
 wontfix
 CNCF
 mb-4
+cta
+docsy's
+navbar
+viewport

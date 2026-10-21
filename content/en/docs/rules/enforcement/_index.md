@@ -1,5 +1,5 @@
 ---
-title: Enforcement
+title: Enforce
 weight: 5
 description: >
   Enforcement policies and restrictions on a per-Namespace basis with Rules
@@ -8,9 +8,24 @@ description: >
 
 Namespace rules can enforce admission behavior for selected resources in Tenant namespaces. Each `enforce` block can define an `action` and one or more matchers.
 
-Rules are evaluated in declaration order. If multiple `allow` or `deny` rules match the same request, the **last matching allow or deny rule wins**. If at least one `allow` rule is configured for a workload matcher and no `allow` or `deny` rule matches the evaluated value, Capsule denies the request. In other words, `allow` rules create an allow-list for that matcher. `audit` rules are purely observational: they never influence the allow/deny decision, but all matching audit rules emit Kubernetes events and add admission warnings.
+Each policy chapter identifies its API configuration path, then opens with
+**Rule Composition**: **Actions and order**, followed by **Admission scope and
+limits**. Policy sections explain configuration and examples. The final
+**Reference** section provides complete Tenant examples. Use the
+[policy reference](#reference) to choose a chapter.
 
-## Action
+See [Order and scope](/docs/rules/#order-and-scope) for how mutation precedes
+enforcement, and [Conditions](/docs/rules/#enforcement-conditions) for conditional enforcement.
+[Audience](/docs/rules/#audience) and [match expressions](/docs/rules/#match-expressions)
+are documented under Rules.
+
+## Rule Composition
+
+### Actions and order
+
+<span id="action"></span>
+
+Rules are evaluated in declaration order. If multiple `allow` or `deny` rules match the same evaluated value, the **last matching allow or deny rule wins**. If at least one `allow` rule is configured for a matcher and no `allow` or `deny` rule matches the evaluated value, Capsule denies the request. In other words, `allow` rules create an allow-list for that matcher. `audit` rules are purely observational: they never influence the allow/deny decision, and report matches through Kubernetes events. Some policies also add admission warnings; see the reporting behavior documented for each policy.
 
 Each `enforce` block supports an `action` field:
 
@@ -18,11 +33,16 @@ Each `enforce` block supports an `action` field:
 |---|---|
 | `allow` | Allows the matching request and enables allow-list behavior for the matcher. If at least one allow rule exists and no allow or deny rule matches a value, Capsule denies that value. Additional constraints, such as image pull policy, must also be satisfied. |
 | `deny` | Denies the matching request. A later matching `allow` rule can override it. |
-| `audit` | Emits a Kubernetes event and returns an admission warning when it matches. It does not allow or deny the request. |
+| `audit` | Reports matching values without allowing or denying the request. NetworkPolicy CIDR rules emit Kubernetes events; other policies may also return admission warnings. |
 
 If `action` is omitted, Capsule treats the rule as `deny`.
 
-Allow-list behavior is evaluated per workload matcher and per evaluated value. For example, if a registry allow rule exists for `harbor/.*`, a Pod image from `docker.io/library/nginx:latest` is denied unless another later or earlier allow rule also matches that image. Audit rules do not satisfy this allow-list requirement.
+[Storage volume rules](/docs/rules/enforcement/storage/) use these actions only
+for additional access to PVs without a Tenant ownership label. They preserve
+existing Tenant-owned volume access, and cannot override another Tenant's PV
+label. A storage `audit` match never grants access.
+
+Allow-list behavior is evaluated per matcher and per evaluated value. For example, if a registry allow rule exists for `harbor/.*`, a Pod image from `docker.io/library/nginx:latest` is denied unless another later or earlier allow rule also matches that image. Audit rules do not satisfy this allow-list requirement.
 
 This precedence model allows both broad defaults and specific exceptions. For example, you can allow all Harbor images but deny a customer path afterwards:
 
@@ -62,7 +82,7 @@ rules:
 
 In this example, `harbor/customer/test-image/app:1.0.0` is denied, while `harbor/customer/prod-image/app:1.0.0` is allowed.
 
-### Audit
+#### Audit
 
 Use `action: audit` to observe workload usage without directly blocking the request. Audit rules emit Kubernetes events and add warnings to the admission response, but they do not allow or deny the request. If an allow-list is active for the same matcher and no allow rule matches the evaluated value, the request is still denied even when an audit rule matches.
 
@@ -108,211 +128,71 @@ rules:
   - enforce:
       action: audit
       workloads:
-        schedulers:
-          - exact:
-              - custom-scheduler
+        placement:
+          schedulers:
+            - exact:
+                - custom-scheduler
 ```
 
 Applying a Pod with `spec.schedulerName: custom-scheduler` succeeds in this audit-only example because no scheduler allow-list is configured. Capsule emits an audit event and returns an admission warning.
 
 When audit rules are used together with allow rules, the matching value must still be allowed explicitly. For example, an audited registry reference that does not match any registry `allow` rule is denied by the allow-list, but Capsule still emits the audit event before denying the request.
 
-## Audience
+### Admission scope and limits
 
-Use `audience` to restrict a rule to requests made by specific users, groups,
-service accounts, or Capsule-defined subject categories. The property belongs to
-the root of a rule, alongside `enforce`:
+Enforcement runs during admission for resources in the namespaces selected by
+the rule. [Audience](/docs/rules/#audience) filters the caller, and
+[conditions](/docs/rules/#enforcement-conditions) decide whether an enforcement
+block participates. Each policy chapter lists its supported resources,
+operations, subresources, and handling of missing values.
 
-```yaml
-spec:
-  rules:
-    - audience:
-        - kind: Group
-          name: system:authenticated
-      enforce:
-        action: allow
-        metadata:
-          - kinds:
-              - ConfigMap
-            annotations:
-              example.corp/cost-center:
-                required: true
-                values:
-                  - exp: "^INV-[0-9]{4}$"
-```
+Mutation runs before validation. An `allow` decision applies to its evaluated
+policy and value; other applicable checks, RBAC, and Kubernetes API validation
+must still pass. In particular, an enclosing `action: audit` does not disable
+resource defaulting or mutation.
 
-When `audience` is omitted or empty, the rule applies to every request, which is
-the same behavior as rules created before audience filtering was introduced.
+Enforcement evaluates incoming writes. Changing a rule or namespace profile
+does not by itself repair existing resources or revoke established bindings.
+Storage ownership, resource mutation, and checks involving related resources
+have specific limits documented in their chapters.
 
-When an audience is configured, the rule applies if the requesting subject
-matches **at least one** entry. In other words, entries are combined with logical
-OR semantics. Audience matching is performed consistently for both validation
-and mutation, so a subject excluded from a rule is neither validated nor mutated
-by that rule.
+## Reference
 
-The supported standard audience kinds are `User`, `Group`, and
-`ServiceAccount`:
+The following fields belong to `spec.rules[].enforce`. Each policy page includes
+a complete Tenant example and explains its supported resources, matching
+behavior, and admission scope.
 
-```yaml
-spec:
-  rules:
-    - audience:
-        # Match one exact Kubernetes username.
-        - kind: User
-          name: alice@example.com
+| Policy | Field under `enforce` | Complete Tenant example |
+|---|---|---|
+| [Workloads](/docs/rules/enforcement/workloads/) | `workloads` | [Workload reference](/docs/rules/enforcement/workloads/#reference) |
+| [Metadata](/docs/rules/enforcement/metadata/) | `metadata` | [Metadata reference](/docs/rules/enforcement/metadata/#reference) |
+| [Services](/docs/rules/enforcement/network/#services) | `services` | [Service reference](/docs/rules/enforcement/network/#service-reference) |
+| [Ingress](/docs/rules/enforcement/network/#ingress) | `ingress` | [Ingress reference](/docs/rules/enforcement/network/#ingress-reference) |
+| [Network Policies](/docs/rules/enforcement/network/#policies) | `network.policies.ingress.cidrs`, `network.policies.egress.cidrs` | [NetworkPolicy reference](/docs/rules/enforcement/network/#policies-reference) |
+| [Storage](/docs/rules/enforcement/storage/) | `storage.volumes` | [Storage reference](/docs/rules/enforcement/storage/#reference) |
 
-        # Match any request carrying this group.
-        - kind: Group
-          name: oidc:engineering
-
-        # Match one Kubernetes service account.
-        - kind: ServiceAccount
-          name: system:serviceaccount:delivery:deployer
-      enforce:
-        action: deny
-        metadata:
-          - apiGroups:
-              - v1
-            kinds:
-              - Namespace
-            labels:
-              pod-security.kubernetes.io/enforce:
-                managed: restricted
-```
-
-For `User`, `Group`, and `ServiceAccount`, `name` is compared with the identity
-information provided in the Kubernetes admission request. A service account is
-represented by its canonical Kubernetes username:
-
-```text
-system:serviceaccount:<namespace>:<service-account-name>
-```
-
-For example, a request from the `deployer` service account in the `delivery`
-namespace has the username
-`system:serviceaccount:delivery:deployer`.
-
-### Custom
-
-The `Custom` kind exposes audiences based on Capsule's internal identity and
-tenant resolution. Its `name` must be one of the supported values below.
-
-| **name** | **description** |
-|:---|:---|
-| `CapsuleUser` | Matches subjects listed by `configuration.Users()`. |
-| `Administrator` | Matches subjects listed by `configuration.Administrators()`. |
-| `TenantOwner` | Matches an owner of the tenant resolved for the current request. A request cannot match when no tenant can be resolved. |
-| `Controller` | Matches the service account used by the Capsule controller. |
-
-Custom audiences can be combined with standard audiences. The following rule
-applies to Capsule users, Capsule administrators, tenant owners, the Capsule
-controller, or members of the Kubernetes `system:masters` group:
+To disallow CIDR-based ingress and egress grants in every namespace of a Tenant:
 
 ```yaml
-spec:
-  rules:
-    - audience:
-        - kind: Custom
-          name: CapsuleUser
-        - kind: Custom
-          name: Administrator
-        - kind: Custom
-          name: TenantOwner
-        - kind: Custom
-          name: Controller
-        - kind: Group
-          name: system:masters
-      enforce:
-        action: allow
-        metadata:
-          - apiGroups:
-              - v1
-            kinds:
-              - Namespace
-            annotations:
-              example.corp/cost-center:
-                default: II-1
+rules:
+  - enforce:
+      action: deny
+      network:
+        policies:
+          ingress:
+            cidrs:
+              - 0.0.0.0/0
+              - ::/0
+          egress:
+            cidrs:
+              - 0.0.0.0/0
+              - ::/0
 ```
 
-`TenantOwner` is request-scoped. Capsule first resolves the tenant associated
-with the admission request and then checks the requesting subject against that
-tenant's owners. This makes it suitable for rules that should affect tenant
-owners but not unrelated Capsule users:
-
-```yaml
-spec:
-  rules:
-    - audience:
-        - kind: Custom
-          name: TenantOwner
-      enforce:
-        action: allow
-        metadata:
-          - kinds:
-              - ConfigMap
-            labels:
-              owner-managed:
-                default: "true"
-```
-
-`Controller` specifically identifies the Capsule controller service account. It
-is useful when internal reconciliation requests need different policy behavior
-from requests made by ordinary users:
-
-```yaml
-spec:
-  rules:
-    - audience:
-        - kind: Custom
-          name: Controller
-      enforce:
-        action: allow
-        metadata:
-          - kinds:
-              - Secret
-            labels:
-              capsule.clastix.io/reconciled:
-                managed: "true"
-```
-
-Unknown audience kinds and unsupported `Custom` names are rejected when the
-rule is admitted. This catches spelling mistakes and prevents a rule from being
-silently configured with an audience that can never match.
-
-
-## Match expressions
-
-Several workload rule types use a common match expression structure. A matcher must define at least one of `exact` or `exp`. Both fields may be set together; in that case, the matcher succeeds when either the exact list or the regular expression matches.
-
-```yaml
-exact:
-  - value-a
-  - value-b
-exp: "value-[0-9]+"
-```
-
-| Field | Description |
-|---|---|
-| `exact` | A list of exact values. The matcher succeeds when the evaluated value equals one of the listed values. |
-| `exp` | A regular expression matched against the evaluated value. |
-| `negate` | Negates the final match result. This applies to both `exact` and `exp`. |
-
-For example, this matcher matches `registry.local/team-a/app:1.0.0`, `registry.local/team-b/app:1.0.0`, or any reference under `registry.local/shared/*`:
-
-```yaml
-exact:
-  - registry.local/team-a/app:1.0.0
-  - registry.local/team-b/app:1.0.0
-exp: "registry.local/shared/.*"
-```
-
-With `negate: true`, the final match result is inverted. This means negation applies to exact values as well as regular expressions:
-
-```yaml
-exact:
-  - registry.local/blocked/app:1.0.0
-exp: "registry.local/deprecated/.*"
-negate: true
-```
-
-This matcher succeeds for every value except `registry.local/blocked/app:1.0.0` and values matching `registry.local/deprecated/.*`.
+Place this `rules` block under `Tenant.spec`. The rule rejects grants from or to any
+IPv4 or IPv6 CIDR, as well as unrestricted ingress or egress rules with omitted
+peers. Selector-based peers and empty grant lists pass their CIDR check.
+Each direction is independent; omit `ingress` or `egress` to leave that direction
+unconstrained.
+The [NetworkPolicy reference](/docs/rules/enforcement/network/#policies-reference)
+shows how later rules can permit approved ranges in selected namespaces.

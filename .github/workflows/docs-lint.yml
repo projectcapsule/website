@@ -6,12 +6,18 @@ on:
     branches: [ "*" ]
     paths:
       - '.github/workflows/docs-lint.yml'
-      - 'docs/content/**'
+      - 'content/**'
+      - 'Taskfile.yml'
+      - 'devbox.json'
+      - 'devbox.lock'
   pull_request:
     branches: [ "*" ]
     paths:
       - '.github/workflows/docs-lint.yml'
-      - 'docs/content/**'
+      - 'content/**'
+      - 'Taskfile.yml'
+      - 'devbox.json'
+      - 'devbox.lock'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -25,7 +31,9 @@ jobs:
       - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+          persist-credentials: false
+      - uses: jetify-com/devbox-install-action@a0d2d53632934ae004f878c840055956d9f741b0 # v0.14.0
         with:
-          node-version: 18
-      - run: make docs-lint
+          devbox-version: '0.18.4'
+          enable-cache: true
+      - run: devbox run task docs-lint

@@ -987,6 +987,11 @@ spec:
 
 ### PersistentVolumes
 
+For selected PVs that have no Tenant ownership label, administrators can grant
+[additional volume access through namespace rules](/docs/rules/enforcement/storage/).
+These rules support restore handoffs with label selectors, caller audiences,
+and CEL conditions while preserving the Tenant ownership checks below.
+
 Any `Tenant` owner is able to create a `PersistentVolumeClaim` that, backed by a given `StorageClass`, will provide volumes for their applications.
 
 In most cases, once a `PersistentVolumeClaim` is deleted, the bounded `PersistentVolume` will be recycled due.

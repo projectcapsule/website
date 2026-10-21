@@ -154,7 +154,7 @@ manager:
 
 ### `impersonation`
 
-For Replications by default the controller ServiceAccount is used to perform the operations. However it is possible to define a dedicated ServiceAccount to be used for that purpose. Within this configuration you can define properties such as the endpoint of the kube-apiserver and if service account promotion should be allowed for this client. Also declare default service account to be used for replication operations. By default the `https://kubernetes.default.svc` endpoint is used.
+Replications impersonate a ServiceAccount, falling back to the controller ServiceAccount when none is resolved. `tenantDefaultServiceAccount` is set to `default` for `TenantResource`; `GlobalTenantResource` has no default and requires both `globalDefaultServiceAccount` and `globalDefaultServiceAccountNamespace`. Within this configuration you can define properties such as the endpoint of the kube-apiserver and if service account promotion should be allowed for this client. By default the `https://kubernetes.default.svc` endpoint is used.
 
 ```yaml
 manager:
@@ -185,9 +185,8 @@ manager:
       globalDefaultServiceAccountNamespace: "tenant-system"
 
       # Default ServiceAccount for tenant resources (TenantResource) [Namespaced Scope]
-      # When defined, users are required to use this ServiceAccount anywhere in the cluster
-      # unless they explicitly provide their own. Once this is set, Capsule will add this ServiceAccount
-      # for all GlobalTenantResources, if they don't already have a ServiceAccount defined.
+      # Applied to every TenantResource which doesn't define its own, in that resource's
+      # own Namespace.
       tenantDefaultServiceAccount: "default"
 ```
 
