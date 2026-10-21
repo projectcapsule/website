@@ -775,4 +775,3 @@ To revoke the promotion, Alice can remove the label:
 ```shell
 kubectl label sa gitops-reconcile -n solar-test projectcapsule.dev/promote- --as alice --as-group projectcapsule.dev
 ```
-

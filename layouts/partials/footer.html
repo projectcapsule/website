@@ -1,0 +1,62 @@
+<footer class="td-footer capsule-footer d-print-none">
+  <div class="capsule-footer__inner">
+    <div class="capsule-footer__main">
+      <div>
+        <a class="capsule-footer__brand" href="{{ .Site.Home.RelPermalink }}">
+          {{ with resources.Get "icons/logo.svg" }}
+            <img src="{{ .RelPermalink }}" width="32" height="28" alt="">
+          {{ end }}
+          <span>{{ .Site.Title }}</span>
+        </a>
+        {{- with .Site.Params.initiative }}
+        {{- /* Clastix's own single-colour variant for a dark background,
+               vendored into assets/icons and redrawn in currentColor. Inlined
+               rather than put in an <img> so it takes the footer's colour, and
+               this link's hover, from the text it sits on. The link carries the
+               name, so the SVG itself is aria-hidden. */ -}}
+        <p class="capsule-footer__initiative">
+          {{ .label }}
+          <a href="{{ .link | safeURL }}" target="_blank" rel="noopener" aria-label="{{ .name }}">
+            {{- with resources.Get "icons/clastix.svg" }}{{ .Content | safeHTML }}{{ end -}}
+          </a>
+        </p>
+        {{- end }}
+      </div>
+      <nav aria-label="Footer">
+        <ul class="capsule-footer__links">
+          {{ with .Site.GetPage "/docs" }}
+            <li><a href="{{ .RelPermalink }}">Docs</a></li>
+          {{ end }}
+          {{ range slice "user" "developer" }}
+            {{ range index $.Site.Params.links . }}
+              <li><a href="{{ .url }}" target="_blank" rel="noopener">{{ .name }}</a></li>
+            {{ end }}
+          {{ end }}
+        </ul>
+      </nav>
+    </div>
+    <div class="capsule-footer__bottom">
+      <div class="capsule-footer__meta">
+        <div>{{ partial "footer/center.html" . }}</div>
+        {{- /* The sandbox sentence and the CNCF mark are both asked for by the
+               CNCF website guidelines, so they sit together as one attribution
+               rather than as two separate notices.
+
+               Unlike the Clastix wordmark above, this is the official white
+               horizontal logo in an <img>: the trademark rules want the mark
+               used unaltered, and the file carries its own <style> block whose
+               bare `svg` rule would leak into the page if it were inlined.
+
+               The sentence already names the foundation, so the image is
+               decoration to a screen reader. */ -}}
+        <span class="capsule-footer__cncf">
+          <span>A <a href="https://www.cncf.io/sandbox-projects/" target="_blank" rel="noopener">CNCF Sandbox</a> project</span>
+          {{ with resources.Get "icons/cncf.svg" }}
+            <img src="{{ .RelPermalink }}" width="105" height="20" alt="">
+          {{ end }}
+        </span>
+      </div>
+      <p class="capsule-footer__legal">The Linux Foundation® (TLF) has registered trademarks and uses trademarks. For a list of TLF trademarks, see <a href="https://www.linuxfoundation.org/legal/trademark-usage">Trademark Usage</a>.</p>
+    </div>
+  </div>
+</footer>

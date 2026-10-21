@@ -5,12 +5,15 @@ adopters:
   - name: Begasoft AG
     link: https://www.begasoft.ch
     logo: /images/adopters/begasoft.png
+  - name: Bison Schweiz AG
+    link: https://www.bison-group.com
+    logo: https://raw.githubusercontent.com/BisonSchweizAG/bisonschweizag.github.io/refs/heads/main/logo/BISON_Logo_Claim_rgb.png
   - name: "Department of Defense"
     link: https://www.defense.gov/
     logo: https://www.access-board.gov/images/dod-seal.png
   - name: "Die Mobiliar"
     link: https://www.mobiliar.ch/
-    logo: https://mobiliar.rokka.io/dynamic/crop-width-701-height-525-mode-ratio--resize-width-701--options-autoformat-true-optim.quality-4/dfeb319d1c438de49d67799cf87534f3f332f498/logo-der-mobiliar-.jpg
+    logo: https://mobiliar.rokka.io/dynamic/trim--resize-width-701--options-autoformat-true-optim.quality-4/dfeb319d1c438de49d67799cf87534f3f332f498/logo-der-mobiliar-.jpg
   - name: Enreach
     link: https://www.enreach.com/
     logo: https://campaigns.enreach.com/hubfs/Global/logos/Enreach-logo-vertical-indigo.svg
@@ -22,7 +25,7 @@ adopters:
     logo: https://klarrio.com/wp-content/uploads/klarrio.png
   - name: KubeRocketCI
     link: https://docs.kuberocketci.io/
-    logo: https://raw.githubusercontent.com/epam/edp-install/master/docs/assets/krci-logo-267×150-white.png
+    logo: https://github.com/KubeRocketCI/docs/blob/main/static/img/kuberocketci.png?raw=true
   - name: ODC-Noord
     link: https://odc-noord.nl/
     logo: https://github.com/projectcapsule/capsule/raw/main/assets/customer_logo/odc-noord-logo.png
@@ -43,7 +46,7 @@ adopters:
     logo: https://raw.githubusercontent.com/yarelm/velocity-logo/main/velocity.png
   - name: Wargaming.net
     link: https://www.wargaming.net/
-    logo: https://download.logo.wine/logo/Wargaming_(company)/Wargaming_(company)-Logo.wine.png
+    logo: https://upload.wikimedia.org/wikipedia/en/f/fa/Wargaming_logo.svg
   - name: Zynga
     link: https://www.zynga.com/
     logo: https://www.dropbox.com/scl/fo/i9mq9a4ya5mfrdp57mbou/ANkl6ehJRIh0KzfjSi2ZnPc/Main/Zynga_Main_Square_Red.png?rlkey=7djjykvxu15ij8dbs9wnm5sal&st=w1np02z4&raw=1

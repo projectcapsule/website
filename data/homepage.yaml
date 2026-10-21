@@ -1,0 +1,128 @@
+# Copy for the one-off homepage sections. The structure lives in
+# layouts/shortcodes/home/, the wording lives here, so changing the pitch
+# does not mean touching templates.
+#
+# Keep it short. This page is scanned, not read.
+
+alternatives:
+  title: The problem
+  # Opens the page, ahead of the mechanism: someone who has not met Capsule
+  # needs the problem before the tour. Two sentences: the cause -- namespaces
+  # do not nest -- then the colon that tells a scanner the three cards below
+  # are the choices it just named.
+  intro: >-
+    Kubernetes namespaces have no hierarchy. Clusters with multiple teams or
+    customers face hard choices:
+  # The three things people actually do about that, in the order they usually
+  # reach for them: by hand, then build an abstraction, then split the cluster.
+  #
+  # The title names the approach, the line under it is what that approach
+  # costs, and there is nothing else on the card: the three costs are the only
+  # thing to read, so they are what compare down the row.
+  #
+  # The costs are the docs overview's own, in its words where it has them. The
+  # CRD card is the exception: the overview has no bullet for it.
+  items:
+    - title: Namespaces
+      body: Cluster admins become a bottleneck, and developers cannot list their own namespaces.
+    - title: Custom CRD
+      body: Your teams learn an API that exists on your cluster and nowhere else.
+    - title: Multiple Clusters
+      body: Another control plane per team to upgrade, secure and pay for.
+
+story:
+  title: How Capsule works
+  intro: >-
+    Capsule groups a team's namespaces into a tenant. Admins set the rules,
+    while teams manage their own namespaces.
+  roles:
+    - id: admin
+      title: Cluster admin
+      body: >-
+        Tenants define access and rules that every team namespace inherits.
+        Capsule is completely declarative and GitOps ready.
+      pane_title: tenant.yaml
+      manifest: home/tenant.yaml
+    - id: owner
+      title: Tenant owner
+      body: >-
+        Owners create ordinary namespaces without cluster-admin rights or a
+        ticket. With the optional Capsule Proxy, listed namespaces are scoped
+        to the tenant.
+      pane_title: alice@laptop
+      transcript: |
+        $ kubectl create namespace solar-dev
+        namespace/solar-dev created
+
+        $ kubectl create namespace solar-prod
+        namespace/solar-prod created
+
+        $ kubectl get namespaces
+        NAME         STATUS   AGE
+        ‹solar-dev›    Active   2m
+        ‹solar-prod›   Active   1m
+  enforcement:
+    title: Capsule enforces the boundaries
+    body: >-
+      Capsule grants owners access, applies configured quotas and policies,
+      and rejects requests outside the tenant's rules.
+    pane_title: alice@laptop
+    tone: denied
+    transcript: |
+      $ kubectl create namespace experiments
+      ‹The Namespace name must start with 'solar-'
+      when ForceTenantPrefix is enabled in the Tenant.›
+
+      $ kubectl apply -f pod.yaml
+      ‹resource exceeds GlobalResourceQuota
+      "solar-shared-compute": requests.cpu (requested=2,
+      current=7, projected=9, hard=8, exceededBy=1)›
+
+features:
+  title: Features
+  items:
+    - icon: fa-layer-group
+      title: Tenants
+      body: >-
+        Group namespaces by team, product, or customer. Owners manage namespaces
+        and grant developers access to deploy applications.
+      url: /docs/tenants/
+      url_text: Tenant docs
+    - icon: fa-gauge-high
+      title: Resource Management
+      body: Distribute CPU, memory, and storage budgets across namespaces with flexible claiming rather than fixed per-namespace quotas.
+      url: /docs/resource-management/
+      url_text: Resource management
+    - icon: fa-shield-halved
+      title: Policy rules
+      body: Enforce allowed registries, pull policies, and namespace metadata requirements on a per-tenant basis.
+      url: /docs/rules/
+      url_text: Policy rules
+    - icon: fa-copy
+      title: Replications
+      body: Propagate Kubernetes resources (Secrets, NetworkPolicies, etc.) across tenant namespaces automatically.
+      url: /docs/replications/
+      url_text: Replications
+    - icon: fa-filter
+      title: Capsule Proxy
+      body: >-
+        Let teams list only their tenant's namespaces, pods and volumes
+        through the standard Kubernetes API, using their existing tools.
+      url: /docs/proxy/
+      url_text: Capsule Proxy docs
+
+adopters:
+  title: Adopted by
+  caveat: >-
+    Running Capsule? [Add your organisation](/project/contributions/adoption/).
+
+ecosystem:
+  title: Integrations
+  # Two halves, because the first undersells it on its own: a tenant's
+  # namespaces are ordinary, so nothing breaks -- and the integrations then
+  # teach the tool the tenant itself. Said once here, so the grid is just logos.
+  intro: >-
+    Tenant namespaces are ordinary namespaces, so your tools keep working.
+    These integrations make them tenant-aware.
+  more: >-
+    [See the whole ecosystem](/ecosystem/)

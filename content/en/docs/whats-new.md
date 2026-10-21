@@ -7,6 +7,7 @@ layout: whats-new
 outputs:
   - HTML
   - RSS
+  - markdown
 ---
 
 ## Events 📅
@@ -16,6 +17,7 @@ outputs:
 ## Security 🔒
 
 * **(Enterprise)**: Projectcapsule is now providing their releases on an immutable OCI registry, which allows users to verify the integrity of the images and provides a more secure way to distribute the images. Which is not possible on GHCR due to the fact that GHCR does not support immutability of images.
+* [OpenShift] Added documentation showing how to prevent CapsuleUsers from modifying OpenShift-managed namespace labels and annotations, including `openshift.io/run-level`, to help prevent SecurityContextConstraints bypasses. [Read More](/docs/operating/setup/openshift/#example-tenant-and-tenantowners)
 
 ## Breaking Changes ⚠️
 
@@ -34,9 +36,9 @@ outputs:
 
 ### Deprecations
 
-  * Announcing deprecation of the legacy Quota-System. The legacy Quota-System will be removed in a future release. Please migrate to the new Quota-System as soon as possible. [Read More](/docs/tenants/rules/quotas/#migration)
+  * Announcing deprecation of the legacy Quota-System. The legacy Quota-System will be removed in a future release. Please migrate to the new Quota-System as soon as possible. [Read More](/docs/tenants/rules/#migration)
 
-  * Announcing deprecation of the  [Custom Resources (CRD Quantities)](/docs/tenants/quotas/#custom-resources). The legacy CustomQuotas will be removed in a future release. Please migrate to the new [`GlobalCustomQuotas`/`CustomQuotas`](/docs/resource-management/customquotas/) as soon as possible. [Read More](/docs/tenants/rules/quotas/#migration)
+  * Announcing deprecation of the  [Custom Resources (CRD Quantities)](/docs/tenants/quotas/#custom-resources). The legacy CustomQuotas will be removed in a future release. Please migrate to the new [`GlobalCustomQuotas`/`CustomQuotas`](/docs/resource-management/customquotas/) as soon as possible. [Read More](/docs/tenants/rules/#migration)
 
   * Announcing deprecation of the [Pod Metadata Options](/docs/tenants/metadata/#pods). Please migrate to the new [`Metadata Rules`](/docs/rules/enforcement/metadata/#migrate-pod-metadata) as soon as possible.
 

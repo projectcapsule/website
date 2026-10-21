@@ -12,4 +12,3 @@ Enforcement rules allow Bill, the cluster administrator, to set policies and res
 Rules cover two areas:
 
 - **[Enforcement](/docs/rules/enforcement/)**: control allowed workloads, ingress hostnames, service types, and namespace metadata.
-- **[Permissions](/docs/rules/permissions/)**: distribute RoleBindings and promote ServiceAccounts across Tenant namespaces.

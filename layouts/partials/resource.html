@@ -1,5 +1,6 @@
 {{- $title := .title | default "Community resource" -}}
 {{- $type := .type | default "resource" | lower -}}
+{{- $isPresentation := eq $type "presentation" -}}
 {{- $url := .url -}}
 {{- if and (not $url) .youtube -}}
   {{- $url = printf "https://www.youtube.com/watch?v=%s" .youtube -}}
@@ -44,6 +45,8 @@
             <i class="fa-solid fa-circle-play" aria-hidden="true"></i>
           {{- else if eq $type "article" -}}
             <i class="fa-solid fa-newspaper" aria-hidden="true"></i>
+          {{- else if $isPresentation -}}
+            <i class="fa-solid fa-file-arrow-down" aria-hidden="true"></i>
           {{- else -}}
             <i class="fa-solid fa-book-open" aria-hidden="true"></i>
           {{- end -}}
@@ -54,9 +57,9 @@
 
       <div class="resource-card__copy">
         <h3 class="h5 card-title mb-0">
-          <a class="stretched-link" href="{{ $url }}" target="_blank" rel="noopener noreferrer">
+          <a class="stretched-link" href="{{ $url }}" target="_blank" rel="noopener noreferrer"{{ if $isPresentation }} download{{ end }}>
             {{ $title | markdownify }}
-            <span class="visually-hidden"> (opens in a new tab)</span>
+            <span class="visually-hidden"> ({{ if $isPresentation }}downloads presentation{{ else }}opens in a new tab{{ end }})</span>
           </a>
         </h3>
 
