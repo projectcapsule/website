@@ -9,12 +9,12 @@ description: >
 
 Namespace rules let administrators configure behavior for resources in Tenant
 namespaces. Use namespace selectors to give namespaces within the same Tenant
-different profiles. Rules can set workload properties during admission and
-validate the resulting resources.
+different profiles. Rules can set workload properties and ListenerSet Gateway
+references during admission, then validate the resulting resources.
 
 Rules cover two areas:
 
-- **[Mutate](/docs/rules/mutate/)**: apply typed workload settings to new Pods in selected namespaces.
+- **[Mutate](/docs/rules/mutate/)**: apply typed workload settings to new Pods and Gateway references to ListenerSets in selected namespaces.
 
 - **[Enforcement](/docs/rules/enforcement/)**: control allowed workloads, ingress hostnames, service types, NetworkPolicy egress CIDRs, and namespace metadata.
 
@@ -68,6 +68,14 @@ on that subresource. Controller templates and existing containers are not
 rewritten. Other Pod updates, deletes, and subresources do not run workload
 mutations. Rule or namespace-label changes affect new Pods and new ephemeral
 containers within the property's supported scope.
+
+`mutate[].ingress.listenerSets.parentRef` applies to
+`gateway.networking.k8s.io/v1` ListenerSets on main-resource creation and updates.
+Other kinds, deletes, and subresource updates are skipped. Rule and namespace-label
+changes affect subsequent admissions without reconciling existing ListenerSets.
+See [Ingress mutations](/docs/rules/mutate/ingress/) for merge, replacement, and
+Gateway attachment semantics.
+
 Each rule supports up to 64 mutation entries. Placement mutations do not
 accumulate duplicate entries when admission is reinvoked.
 
@@ -343,19 +351,21 @@ property. Use `request.userInfo` for request identity, while keeping existing
 
 ### Mutation conditions
 
-Without conditions, a workload mutation applies to every Pod selected by the
-rule. Add `conditions` to the mutation entry, alongside `action` and `workloads`,
-to apply its changes only when all Boolean CEL expressions return true. A false
-condition skips that entry; later entries and other rules continue. Conditions
-on the sibling `enforce` block do not control these mutations.
+Without conditions, a mutation applies to every compatible resource selected by
+the rule. Add `conditions` to the mutation entry, alongside `action` and the
+`workloads` or `ingress` block, to apply its changes only when all Boolean CEL
+expressions return true. A false condition skips that entry; later entries and
+other rules continue. Conditions on the sibling `enforce` block do not control
+these mutations.
 
-Conditions see the current Pod immediately before the mutation entry runs,
+Conditions see the current resource immediately before the mutation entry runs,
 including changes from preceding mutations. They do not see changes from their
 own entry. Conditions run on Pod creation and, for applicable
 `security.readOnlyRootFilesystem` and `registries.imagePullPolicy` mutations, when adding
-ephemeral containers. They cannot
-expand a property's supported targets or operations. They select mutations; mutation values are supplied by the
-workload properties.
+ephemeral containers. ListenerSet parent-reference conditions run on
+main-resource creation and updates. Conditions cannot expand a property's
+supported targets or operations. They select mutations; mutation values are
+supplied by the typed properties.
 
 #### Set a value only when it is missing
 

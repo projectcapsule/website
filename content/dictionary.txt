@@ -17,6 +17,7 @@ ClusterIP
 ClusterRole
 ClusterRoles
 ConfigMap
+DNS
 Dependant
 Env
 ExternalName
@@ -52,6 +53,9 @@ Kustomize
 LimitRangeItem
 LimitRangeSpec
 LimitRanger
+ListenerSet
+ListenerSet's
+ListenerSets
 LoadBalance
 LoadBalancer
 MTB
@@ -104,6 +108,7 @@ ResourceQuota
 ResourceQuotaSpec
 Roadmap
 RoleBinding
+RuleStatus
 RuntimeClass
 RuntimeClasses
 SDK
@@ -210,6 +215,7 @@ rolebindings
 scopeSelector
 serviceaccount
 stateful
+subresource
 uid
 unsetting
 v1alpha1

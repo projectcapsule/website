@@ -7,7 +7,8 @@ description: >
 
 Use `spec.rules[].mutate` to set resource properties during admission. It is an
 ordered list of entries, each with an optional `action` and a typed resource
-block. Currently, `workloads` applies to Pods on creation;
+block. [`ingress.listenerSets.parentRef`](/docs/rules/mutate/ingress/) supplies
+Gateway references on ListenerSet creation and updates. `workloads` applies to Pods on creation;
 [`security.readOnlyRootFilesystem`](/docs/rules/mutate/workloads/#read-only-root-filesystem)
 and [`registries.imagePullPolicy`](/docs/rules/mutate/workloads/#image-pull-policy)
 also apply to newly added ephemeral containers.
@@ -69,6 +70,9 @@ explains which list entries match during a merge and how required affinity is
 combined. Scalar settings such as `security.hostUsers`, `security.readOnlyRootFilesystem`, and
 [`registries.imagePullPolicy`](/docs/rules/mutate/workloads/#image-pull-policy)
 overwrite selected values with either action.
+[ListenerSet parent references](/docs/rules/mutate/ingress/#merge-and-replace) are
+applied as complete references: merge fills only an absent or null reference,
+while replace replaces it in full.
 
 ### Omitted and empty values
 
@@ -76,7 +80,8 @@ overwrite selected values with either action.
 |---|---|
 | Property omitted or `null` | Leave the existing property unchanged with either action. |
 | Empty `placement.nodeSelector`, `placement.tolerations`, `placement.topologySpreadConstraints`, `placement.affinity`, or `registries.imagePullSecrets` with `replace` | Clear that property. |
-| Empty `placement: {}`, `security: {}`, or `registries: {}` | Supply no changes; another mutation property must be supplied. |
+| Empty `placement: {}`, `security: {}`, `registries: {}`, `ingress: {}`, or `ingress.listenerSets: {}` | Supply no changes; another mutation property must be supplied. |
+| Empty `ingress.listenerSets.parentRef: {}` | Invalid: `name` is required. |
 | `security.hostUsers: false` or `security.readOnlyRootFilesystem: false` | Set an explicit Boolean value; `false` is not an omission. |
 
 For example, this clears node selectors and affinity while retaining tolerations

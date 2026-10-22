@@ -240,10 +240,11 @@ configuration with the one below. If using a `GlobalTenantResource`, update its
 Gateway generator and remove the HTTPRoute context lookup and the loop that
 generates HTTPS listeners. Tenants now provide those listeners themselves.
 
-### Tenant hostname rule
+### Tenant Gateway default and hostname rule {#tenant-hostname-rule}
 
-The platform administrator configures the `solar` Tenant with an allow rule for
-both ListenerSets and HTTPRoutes:
+The platform administrator configures the `solar` Tenant with a default Gateway
+reference for ListenerSets and an allow rule for both ListenerSet and HTTPRoute
+hostnames:
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -255,7 +256,13 @@ spec:
     - kind: User
       name: alice
   rules:
-    - enforce:
+    - mutate:
+        - ingress:
+            listenerSets:
+              parentRef:
+                name: "tenant-{{ .tenant.metadata.name }}-gateway"
+                namespace: "tenant-{{ .tenant.metadata.name }}-system"
+      enforce:
         action: allow
         ingress:
           types:
@@ -265,8 +272,14 @@ spec:
             - exp: '^.+\.solar\.example\.com$'
 ```
 
-The rule applies to every namespace belonging to `solar`. Capsule checks each
-listener's `hostname` and every entry in an HTTPRoute's `spec.hostnames` during
+The rule applies to every namespace belonging to `solar`. The
+[ListenerSet mutation](/docs/rules/mutate/ingress/) fills a missing `spec.parentRef`
+with `tenant-solar-gateway` in `tenant-solar-system`. `action` defaults to `merge`;
+an explicit parent reference is retained. `group` defaults to
+`gateway.networking.k8s.io` and `kind` to `Gateway`.
+
+Capsule checks each listener's `hostname` and every entry in an HTTPRoute's
+`spec.hostnames` during
 creation and updates. The anchored expression allows hostnames at any depth
 below `solar.example.com`, including wildcard hostnames within that domain.
 It excludes the parent hostname `solar.example.com` itself. Targeting both
@@ -342,11 +355,6 @@ metadata:
   name: solar-web
   namespace: solar-production
 spec:
-  parentRef:
-    group: gateway.networking.k8s.io
-    kind: Gateway
-    name: tenant-solar-gateway
-    namespace: tenant-solar-system
   listeners:
     - name: https
       hostname: web.solar.example.com
@@ -366,8 +374,10 @@ spec:
           from: Same
 ```
 
-The Secret is in the ListenerSet's namespace. The HTTPRoute attaches to that
-ListenerSet, selecting its `https` listener:
+Capsule adds `spec.parentRef` pointing to `tenant-solar-gateway` in
+`tenant-solar-system`. The Gateway's `allowedListeners` permits the attachment;
+the mutation itself does not grant access. The Secret is in the ListenerSet's
+namespace. The HTTPRoute attaches to that ListenerSet, selecting its `https` listener:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1

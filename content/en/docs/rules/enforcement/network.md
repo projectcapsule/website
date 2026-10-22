@@ -1483,7 +1483,8 @@ In namespaces labeled `allow-special-nodeport=true`, a `NodePort` Service using 
 Ingress enforcement is configured under `spec.rules[].enforce.ingress`.
 Use [Ingress Types](#ingress-types) to select Kubernetes Ingresses, OpenShift Routes,
 and Gateway API resources, then configure [Hostnames](#hostnames) to allow,
-deny, or audit their hostname values.
+deny, or audit their hostname values. To supply a default Gateway reference for
+ListenerSets, use [ingress mutations](/docs/rules/mutate/ingress/).
 
 ### Ingress Types {#ingress-types}
 
