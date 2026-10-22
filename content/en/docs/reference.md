@@ -2333,7 +2333,7 @@ For future implementation where users might manage RuleStatus CRs themselves
 | :---- | :---- | :----------- | :-------- |
 | **[audience](#rulestatusspecindexaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#rulestatusspecindexenforce)** | object | Enforcement for given rule | false |
-| **[mutate](#rulestatusspecindexmutateindex)** | []object | Mutate applies ordered typed mutations before enforcement. It shares the<br>rule's namespace selection and audience. Workload mutations apply on Pod creation. | false |
+| **[mutate](#rulestatusspecindexmutateindex)** | []object | Mutate applies ordered typed mutations before enforcement. It shares the<br>rule's namespace selection and audience. Workload mutations apply on Pod creation;<br>ListenerSet parent references apply on main-resource creation and update. | false |
 | **[quota](#rulestatusspecindexquotaindex)** | []object | Quota contains native Kubernetes ResourceQuota specifications shared by<br>all namespaces selected by this rule. Unlike Enforce, quota accounting is<br>independent of the request audience. | false |
 
 
@@ -3465,8 +3465,9 @@ Mutated values remain subject to all applicable enforcement rules.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
+| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br>ListenerSet parent references are atomic: merge fills an absent or null<br>reference, while replace replaces the entire supplied reference.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
 | **[conditions](#rulestatusspecindexmutateindexconditionsindex)** | []object | Conditions gate this entire mutation entry and inspect the object after<br>preceding mutations. All conditions must be true; empty means apply. | false |
+| **[ingress](#rulestatusspecindexmutateindexingress)** | object | Ingress configures Kubernetes ingress and Gateway API resource mutations. | false |
 | **[workloads](#rulestatusspecindexmutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. Security.ReadOnlyRootFilesystem and<br>Registries.ImagePullPolicy also apply to newly added ephemeral containers on<br>subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
 
 
@@ -3484,6 +3485,49 @@ otherwise volume is null. Conditions never modify the PVC or PV.
 | :---- | :---- | :----------- | :-------- |
 | **expression** | string | Expression must evaluate to bool. Any false condition skips this block.<br>An evaluation error rejects the request unless another condition is false. | true |
 | **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
+
+
+### RuleStatus.spec[index].mutate[index].ingress
+
+
+
+Ingress configures Kubernetes ingress and Gateway API resource mutations.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[listenerSets](#rulestatusspecindexmutateindexingresslistenersets)** | object | ListenerSets configures gateway.networking.k8s.io/v1 ListenerSets. | false |
+
+
+### RuleStatus.spec[index].mutate[index].ingress.listenerSets
+
+
+
+ListenerSets configures gateway.networking.k8s.io/v1 ListenerSets.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[parentRef](#rulestatusspecindexmutateindexingresslistenersetsparentref)** | object | ParentRef supplies the complete spec.parentRef. Merge fills only an absent<br>or null reference; any supplied reference is retained, including an omitted<br>namespace. Replace replaces the entire reference. Nil leaves it unchanged.<br>The first applicable merge wins; later replacements can override it.<br>Attachment remains subject to the parent's allowedListeners configuration. | false |
+
+
+### RuleStatus.spec[index].mutate[index].ingress.listenerSets.parentRef
+
+
+
+ParentRef supplies the complete spec.parentRef. Merge fills only an absent
+or null reference; any supplied reference is retained, including an omitted
+namespace. Replace replaces the entire reference. Nil leaves it unchanged.
+The first applicable merge wins; later replacements can override it.
+Attachment remains subject to the parent's allowedListeners configuration.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name identifies the parent resource. | true |
+| **group** | string | Group identifies the parent's API group. An explicit empty string selects<br>the core API group, following Gateway API reference semantics.<br/>*Default*: gateway.networking.k8s.io<br/> | false |
+| **kind** | string | Kind identifies the parent's kind.<br/>*Default*: Gateway<br/> | false |
+| **namespace** | string | Namespace identifies the parent's namespace. Omitted means the<br>ListenerSet's namespace; an explicit empty string is invalid. | false |
 
 
 ### RuleStatus.spec[index].mutate[index].workloads
@@ -4276,7 +4320,7 @@ Rule contains a legacy flattened view and cannot fully represent action-aware ru
 | :---- | :---- | :----------- | :-------- |
 | **[audience](#rulestatusstatusruleaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#rulestatusstatusruleenforce)** | object | Enforcement for given rule | false |
-| **[mutate](#rulestatusstatusrulemutateindex)** | []object | Mutate applies ordered typed mutations before enforcement. It shares the<br>rule's namespace selection and audience. Workload mutations apply on Pod creation. | false |
+| **[mutate](#rulestatusstatusrulemutateindex)** | []object | Mutate applies ordered typed mutations before enforcement. It shares the<br>rule's namespace selection and audience. Workload mutations apply on Pod creation;<br>ListenerSet parent references apply on main-resource creation and update. | false |
 | **[quota](#rulestatusstatusrulequotaindex)** | []object | Quota contains native Kubernetes ResourceQuota specifications shared by<br>all namespaces selected by this rule. Unlike Enforce, quota accounting is<br>independent of the request audience. | false |
 
 
@@ -5408,8 +5452,9 @@ Mutated values remain subject to all applicable enforcement rules.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
+| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br>ListenerSet parent references are atomic: merge fills an absent or null<br>reference, while replace replaces the entire supplied reference.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
 | **[conditions](#rulestatusstatusrulemutateindexconditionsindex)** | []object | Conditions gate this entire mutation entry and inspect the object after<br>preceding mutations. All conditions must be true; empty means apply. | false |
+| **[ingress](#rulestatusstatusrulemutateindexingress)** | object | Ingress configures Kubernetes ingress and Gateway API resource mutations. | false |
 | **[workloads](#rulestatusstatusrulemutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. Security.ReadOnlyRootFilesystem and<br>Registries.ImagePullPolicy also apply to newly added ephemeral containers on<br>subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
 
 
@@ -5427,6 +5472,49 @@ otherwise volume is null. Conditions never modify the PVC or PV.
 | :---- | :---- | :----------- | :-------- |
 | **expression** | string | Expression must evaluate to bool. Any false condition skips this block.<br>An evaluation error rejects the request unless another condition is false. | true |
 | **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
+
+
+### RuleStatus.status.rule.mutate[index].ingress
+
+
+
+Ingress configures Kubernetes ingress and Gateway API resource mutations.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[listenerSets](#rulestatusstatusrulemutateindexingresslistenersets)** | object | ListenerSets configures gateway.networking.k8s.io/v1 ListenerSets. | false |
+
+
+### RuleStatus.status.rule.mutate[index].ingress.listenerSets
+
+
+
+ListenerSets configures gateway.networking.k8s.io/v1 ListenerSets.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[parentRef](#rulestatusstatusrulemutateindexingresslistenersetsparentref)** | object | ParentRef supplies the complete spec.parentRef. Merge fills only an absent<br>or null reference; any supplied reference is retained, including an omitted<br>namespace. Replace replaces the entire reference. Nil leaves it unchanged.<br>The first applicable merge wins; later replacements can override it.<br>Attachment remains subject to the parent's allowedListeners configuration. | false |
+
+
+### RuleStatus.status.rule.mutate[index].ingress.listenerSets.parentRef
+
+
+
+ParentRef supplies the complete spec.parentRef. Merge fills only an absent
+or null reference; any supplied reference is retained, including an omitted
+namespace. Replace replaces the entire reference. Nil leaves it unchanged.
+The first applicable merge wins; later replacements can override it.
+Attachment remains subject to the parent's allowedListeners configuration.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name identifies the parent resource. | true |
+| **group** | string | Group identifies the parent's API group. An explicit empty string selects<br>the core API group, following Gateway API reference semantics.<br/>*Default*: gateway.networking.k8s.io<br/> | false |
+| **kind** | string | Kind identifies the parent's kind.<br/>*Default*: Gateway<br/> | false |
+| **namespace** | string | Namespace identifies the parent's namespace. Omitted means the<br>ListenerSet's namespace; an explicit empty string is invalid. | false |
 
 
 ### RuleStatus.status.rule.mutate[index].workloads
@@ -6186,7 +6274,7 @@ For future implementation where users might manage RuleStatus CRs themselves
 | :---- | :---- | :----------- | :-------- |
 | **[audience](#rulestatusstatusrulesindexaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#rulestatusstatusrulesindexenforce)** | object | Enforcement for given rule | false |
-| **[mutate](#rulestatusstatusrulesindexmutateindex)** | []object | Mutate applies ordered typed mutations before enforcement. It shares the<br>rule's namespace selection and audience. Workload mutations apply on Pod creation. | false |
+| **[mutate](#rulestatusstatusrulesindexmutateindex)** | []object | Mutate applies ordered typed mutations before enforcement. It shares the<br>rule's namespace selection and audience. Workload mutations apply on Pod creation;<br>ListenerSet parent references apply on main-resource creation and update. | false |
 | **[quota](#rulestatusstatusrulesindexquotaindex)** | []object | Quota contains native Kubernetes ResourceQuota specifications shared by<br>all namespaces selected by this rule. Unlike Enforce, quota accounting is<br>independent of the request audience. | false |
 
 
@@ -7318,8 +7406,9 @@ Mutated values remain subject to all applicable enforcement rules.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
+| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br>ListenerSet parent references are atomic: merge fills an absent or null<br>reference, while replace replaces the entire supplied reference.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
 | **[conditions](#rulestatusstatusrulesindexmutateindexconditionsindex)** | []object | Conditions gate this entire mutation entry and inspect the object after<br>preceding mutations. All conditions must be true; empty means apply. | false |
+| **[ingress](#rulestatusstatusrulesindexmutateindexingress)** | object | Ingress configures Kubernetes ingress and Gateway API resource mutations. | false |
 | **[workloads](#rulestatusstatusrulesindexmutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. Security.ReadOnlyRootFilesystem and<br>Registries.ImagePullPolicy also apply to newly added ephemeral containers on<br>subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
 
 
@@ -7337,6 +7426,49 @@ otherwise volume is null. Conditions never modify the PVC or PV.
 | :---- | :---- | :----------- | :-------- |
 | **expression** | string | Expression must evaluate to bool. Any false condition skips this block.<br>An evaluation error rejects the request unless another condition is false. | true |
 | **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].ingress
+
+
+
+Ingress configures Kubernetes ingress and Gateway API resource mutations.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[listenerSets](#rulestatusstatusrulesindexmutateindexingresslistenersets)** | object | ListenerSets configures gateway.networking.k8s.io/v1 ListenerSets. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].ingress.listenerSets
+
+
+
+ListenerSets configures gateway.networking.k8s.io/v1 ListenerSets.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[parentRef](#rulestatusstatusrulesindexmutateindexingresslistenersetsparentref)** | object | ParentRef supplies the complete spec.parentRef. Merge fills only an absent<br>or null reference; any supplied reference is retained, including an omitted<br>namespace. Replace replaces the entire reference. Nil leaves it unchanged.<br>The first applicable merge wins; later replacements can override it.<br>Attachment remains subject to the parent's allowedListeners configuration. | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].ingress.listenerSets.parentRef
+
+
+
+ParentRef supplies the complete spec.parentRef. Merge fills only an absent
+or null reference; any supplied reference is retained, including an omitted
+namespace. Replace replaces the entire reference. Nil leaves it unchanged.
+The first applicable merge wins; later replacements can override it.
+Attachment remains subject to the parent's allowedListeners configuration.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name identifies the parent resource. | true |
+| **group** | string | Group identifies the parent's API group. An explicit empty string selects<br>the core API group, following Gateway API reference semantics.<br/>*Default*: gateway.networking.k8s.io<br/> | false |
+| **kind** | string | Kind identifies the parent's kind.<br/>*Default*: Gateway<br/> | false |
+| **namespace** | string | Namespace identifies the parent's namespace. Omitted means the<br>ListenerSet's namespace; an explicit empty string is invalid. | false |
 
 
 ### RuleStatus.status.rules[index].mutate[index].workloads
@@ -9436,7 +9568,7 @@ Rules Distributed via Tenants
 | :---- | :---- | :----------- | :-------- |
 | **[audience](#tenantspecrulesindexaudienceindex)** | []object | Audience limits this rule to matching request subjects.<br>An empty audience matches every request. | false |
 | **[enforce](#tenantspecrulesindexenforce)** | object | Enforcement for given rule | false |
-| **[mutate](#tenantspecrulesindexmutateindex)** | []object | Mutate applies ordered typed mutations before enforcement. It shares the<br>rule's namespace selection and audience. Workload mutations apply on Pod creation. | false |
+| **[mutate](#tenantspecrulesindexmutateindex)** | []object | Mutate applies ordered typed mutations before enforcement. It shares the<br>rule's namespace selection and audience. Workload mutations apply on Pod creation;<br>ListenerSet parent references apply on main-resource creation and update. | false |
 | **[namespaceSelector](#tenantspecrulesindexnamespaceselector)** | object | Select namespaces which are going to be targeted with this rule | false |
 | **[permissions](#tenantspecrulesindexpermissions)** | object | Permissions for given rule | false |
 | **[quota](#tenantspecrulesindexquotaindex)** | []object | Quota contains native Kubernetes ResourceQuota specifications shared by<br>all namespaces selected by this rule. Unlike Enforce, quota accounting is<br>independent of the request audience. | false |
@@ -10570,8 +10702,9 @@ Mutated values remain subject to all applicable enforcement rules.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
+| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br>ListenerSet parent references are atomic: merge fills an absent or null<br>reference, while replace replaces the entire supplied reference.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
 | **[conditions](#tenantspecrulesindexmutateindexconditionsindex)** | []object | Conditions gate this entire mutation entry and inspect the object after<br>preceding mutations. All conditions must be true; empty means apply. | false |
+| **[ingress](#tenantspecrulesindexmutateindexingress)** | object | Ingress configures Kubernetes ingress and Gateway API resource mutations. | false |
 | **[workloads](#tenantspecrulesindexmutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. Security.ReadOnlyRootFilesystem and<br>Registries.ImagePullPolicy also apply to newly added ephemeral containers on<br>subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
 
 
@@ -10589,6 +10722,49 @@ otherwise volume is null. Conditions never modify the PVC or PV.
 | :---- | :---- | :----------- | :-------- |
 | **expression** | string | Expression must evaluate to bool. Any false condition skips this block.<br>An evaluation error rejects the request unless another condition is false. | true |
 | **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].ingress
+
+
+
+Ingress configures Kubernetes ingress and Gateway API resource mutations.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[listenerSets](#tenantspecrulesindexmutateindexingresslistenersets)** | object | ListenerSets configures gateway.networking.k8s.io/v1 ListenerSets. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].ingress.listenerSets
+
+
+
+ListenerSets configures gateway.networking.k8s.io/v1 ListenerSets.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[parentRef](#tenantspecrulesindexmutateindexingresslistenersetsparentref)** | object | ParentRef supplies the complete spec.parentRef. Merge fills only an absent<br>or null reference; any supplied reference is retained, including an omitted<br>namespace. Replace replaces the entire reference. Nil leaves it unchanged.<br>The first applicable merge wins; later replacements can override it.<br>Attachment remains subject to the parent's allowedListeners configuration. | false |
+
+
+### Tenant.spec.rules[index].mutate[index].ingress.listenerSets.parentRef
+
+
+
+ParentRef supplies the complete spec.parentRef. Merge fills only an absent
+or null reference; any supplied reference is retained, including an omitted
+namespace. Replace replaces the entire reference. Nil leaves it unchanged.
+The first applicable merge wins; later replacements can override it.
+Attachment remains subject to the parent's allowedListeners configuration.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name identifies the parent resource. | true |
+| **group** | string | Group identifies the parent's API group. An explicit empty string selects<br>the core API group, following Gateway API reference semantics.<br/>*Default*: gateway.networking.k8s.io<br/> | false |
+| **kind** | string | Kind identifies the parent's kind.<br/>*Default*: Gateway<br/> | false |
+| **namespace** | string | Namespace identifies the parent's namespace. Omitted means the<br>ListenerSet's namespace; an explicit empty string is invalid. | false |
 
 
 ### Tenant.spec.rules[index].mutate[index].workloads

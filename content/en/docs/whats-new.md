@@ -35,6 +35,7 @@ outputs:
    * [Workload Read-only Root Filesystem Mutation](/docs/rules/mutate/workloads/#read-only-root-filesystem): Set `security.readOnlyRootFilesystem` for selected regular, init, and newly added ephemeral containers.
    * [Workload Seccomp Mutation](/docs/rules/mutate/workloads/#seccomp): Default or replace Pod-level seccomp profiles, including node-local profile paths.
    * [Workload AppArmor Mutation](/docs/rules/mutate/workloads/#apparmor): Default or replace Pod-level AppArmor profiles, including named profiles loaded on nodes.
+   * [ListenerSet Gateway Reference Mutation](/docs/rules/mutate/ingress/#listenersets): Default or replace Gateway parent references on ListenerSet creation and updates in selected namespaces, with Tenant/Namespace templates. The API group and kind default to `gateway.networking.k8s.io` and `Gateway`.
    * [Mutation Conditions](/docs/rules/#mutation-conditions): Apply individual mutation entries conditionally with CEL expressions that inspect the resource and admission request.
    * [Workload Placement Enforcement](/docs/rules/enforcement/workloads/#placement): Control which schedulers, node selectors, tolerations, affinity rules, and topology spread constraints workloads may use.
    * [Workload Type Enforcement](/docs/rules/enforcement/workloads/#select-workloads): Allow, deny, or audit selected workload kinds, such as blocking DaemonSets in application namespaces.
