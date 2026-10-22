@@ -192,11 +192,6 @@ menu:
       pre: <i class='fas fa-store'></i>
       weight: 12
 
-    - name: Adopters
-      url: /adopters/
-      pre: <i class='fas fa-users'></i>
-      weight: 13
-
     - name: Support
       url: /support/
       pre: <i class='fas fa-briefcase'></i>

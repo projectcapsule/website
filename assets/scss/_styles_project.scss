@@ -929,10 +929,17 @@ body.td-home main > section.td-box:has(.home-adopters) {
 // fallback the script overwrites - without JS the strip still reads, it just
 // sizes by the longer side instead of by area.
 //
-// The grey wash is the other half of the levelling: it stops a red logo from
-// reading as a louder endorsement than a black one.
+// Equal area is now the whole of the levelling - the logos keep their own
+// colour, so a bright one does carry further than a dark one along the strip.
 .home-adopters {
   overflow-x: auto;
+  // The only thing that says the strip takes a pull. Touch needs no telling
+  // and the scrollbar is hidden below, so without this a mouse has nothing:
+  // a vertical wheel does not reach a sideways scroller.
+  cursor: grab;
+  // There is nothing here to copy, and a pull that starts on a logo would
+  // otherwise come away with a selection over the images instead of a scroll.
+  user-select: none;
   // The band's own padding would sit outside the strip, where it is neither
   // scrollable nor hoverable. Held here instead, the space around the logos
   // is part of the target that holds the drift still and takes a swipe.
@@ -953,6 +960,12 @@ body.td-home main > section.td-box:has(.home-adopters) {
 
   &::-webkit-scrollbar {
     display: none;
+  }
+
+  // Held for the length of the pull, including where it leaves the strip:
+  // the pointer is captured, so :active outlives the cursor.
+  &:active {
+    cursor: grabbing;
   }
 
   &:focus-visible {
@@ -984,17 +997,6 @@ body.td-home main > section.td-box:has(.home-adopters) {
       pointer-events: none;
       max-width: 100%;
       max-height: 100%;
-      filter: grayscale(1);
-      // Only barely held back: several of these logos are already a light
-      // grey at source, and taking much more off them leaves nothing.
-      opacity: 0.9;
-      transition: filter 160ms ease, opacity 160ms ease;
-    }
-
-    &:hover img,
-    &:focus img {
-      filter: none;
-      opacity: 1;
     }
   }
 }
