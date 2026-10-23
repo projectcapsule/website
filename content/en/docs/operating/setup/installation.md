@@ -276,19 +276,28 @@ tls:
 
 ### Webhooks
 
-Capsule makes use of [webhooks for admission control](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers). Ensure that your cluster supports webhooks and that they are properly configured. The webhooks are automatically created by Capsule during installation. However, some of these webhooks will cause problems when Capsule is not running (this is especially problematic in single-node clusters). Here are the webhooks you need to watch out for.
+Capsule uses [admission webhooks](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/) to enforce tenant boundaries and apply namespace rules. If a matching webhook has `failurePolicy: Fail`, requests can be rejected while Capsule is unavailable. Excluding the operations needed to recover your cluster is especially important in single-node clusters and when admission controllers depend on each other.
 
-Generally, we recommend using [matchConditions](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchconditions) for all webhooks to avoid problems when Capsule is not running. You should exclude your system-critical components from the Capsule webhooks. For namespaced resources (`pods`, `services`, etc.) the webhooks select only namespaces that are part of a Capsule Tenant. If your system-critical components are not part of a Capsule Tenant, they will not be affected by the webhooks. However, if you have system-critical components that are part of a Capsule Tenant, you should exclude them from the Capsule webhooks by using [matchConditions](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchconditions) as well, or add more specific [namespaceSelectors](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-namespaceselector)/[objectSelectors](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-objectselector) to exclude them. This can also improve performance.
-
-[Refer to the webhook values](https://artifacthub.io/packages/helm/projectcapsule/capsule#webhooks-parameters).
+Many of Capsule's namespaced resource webhooks already select tenant namespaces. Review the [webhook values](https://artifacthub.io/packages/helm/projectcapsule/capsule#webhooks-parameters) for the enabled hooks, including hooks for cluster-scoped resources. The following conditions provide explicit exemptions for selected system workloads and trusted controllers.
 
 #### System-critical Components
 
-It's strongly advised to exclude system-critical components from the Capsule webhooks. This includes components like `kube-system`, `kube-public`, and `kube-node-lease` namespaces, as well as any other namespaces that are critical for the operation of your cluster. You can use [matchConditions](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchconditions) to exclude these namespaces from the Capsule webhooks.
+Two different kinds of requests need consideration: **operations on resources inside system namespaces**, and **operations performed by trusted system service accounts**. Use both conditions below when you want to keep system workloads running and allow those controllers to manage resources elsewhere in the cluster while Capsule is unavailable. They address different requests; a service-account exemption alone does not cover every operation involved in creating and scheduling a Pod.
 
 ```yaml
 webhooks:
   matchConditions:
+    # Skip namespaced resources in these namespaces, regardless of the caller.
+    # Keep the Namespace objects themselves subject to ownership checks.
+    - name: exclude-system-namespaced-resources
+      expression: >-
+        !has(request.namespace) ||
+        !(request.namespace in ["kube-system", "kube-public", "kyverno-system"]) ||
+        (request.resource.group == "" &&
+         request.resource.resource == "namespaces")
+
+    # Skip requests from service accounts in these trusted namespaces,
+    # including requests for cluster-scoped resources or other namespaces.
     - name: exclude-trusted-system-serviceaccounts
       expression: >-
         !has(request.userInfo.username) ||
@@ -297,37 +306,89 @@ webhooks:
         )
 ```
 
-You may need to adjust the match conditions based on the specific system-critical components and namespaces present in your cluster. Exclude any control plane components from the Capsule webhooks by using the following match condition.
+These values apply to all enabled Capsule mutating and validating webhooks. Choose the namespaces for your installation and update both lists. Adding another namespace only requires another list entry, rather than a separate expression for every namespace.
 
-```yaml
-webhooks:
-  matchConditions:
-    - name: exclude-control-plane
-      expression: '!(request.userInfo.username in ["system:apiserver", "system:kube-controller-manager", "system:kube-scheduler"]) && !("system:nodes" in request.userInfo.groups) && !("system:serviceaccounts:kube-system" in request.userInfo.groups)'
-```
+Kubernetes evaluates [match conditions](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-matchconditions) before calling the webhook. All conditions must be `true` for a request to match; **any condition returning `false` skips that webhook**. The two exemptions therefore work independently: a request can be skipped because of its target namespace **or** its authenticated caller. A skipped request does not depend on the webhook server being available.
 
-You may also have other system-critical components or namespaces that may block Capsule, Kyverno is a good example. You should consider excluding them from the Capsule webhooks using appropriate match conditions. In Kyverno Helm-Values this would look like this:
+##### Why the target namespace condition is needed
+
+The first condition excludes namespaced resources such as Pods, Services, ConfigMaps, and requests to namespaced subresources such as `pods/binding`. It applies regardless of who submits the request. This covers a human creating a system Pod, a controller creating a replacement Pod, the scheduler binding it to a node, and a kubelet updating its status, wherever the resource and operation rules for that webhook would otherwise match.
+
+Those requests do not necessarily come from a service account in the Pod's namespace. For example, the scheduler commonly authenticates as `system:kube-scheduler`, and a human creating a Pod authenticates as that human. The Pod's `spec.serviceAccountName` describes the identity its containers will use; it does not change the caller submitting the Pod or scheduling request. An exemption for service accounts in `kube-system` therefore cannot, by itself, keep all Pod operations in `kube-system` independent of Capsule.
+
+This condition prevents the configured Capsule webhooks from blocking those namespaced operations. Kubernetes RBAC, other admission controllers, node capacity, taints, and scheduling constraints still apply. It also means Capsule's validation and mutation are skipped for **every caller** acting on those namespaced resources, so reserve these exclusions for namespaces where that policy exemption is intended.
+
+##### Why the service-account condition is needed
+
+The second condition checks the authenticated API caller. Kubernetes [service-account usernames](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#service-account-tokens) have the form `system:serviceaccount:<namespace>:<name>`. The prefix includes the colon after the namespace, so `kube-system-other` does not accidentally match `kube-system`.
+
+A trusted controller may create or update a Namespace, ClusterRole, or another cluster-scoped resource. Such a resource has no target namespace, even when the controller runs in `kube-system`. A controller can also manage resources in application namespaces. The target namespace condition keeps those requests in scope; the caller condition provides the additional exemption needed for that controller's work to continue without Capsule.
+
+This is a broad trust decision: **every service account in a listed namespace bypasses the configured webhooks for all otherwise matching requests, including requests outside its own namespace**. Only include namespaces whose service accounts and credentials are controlled by trusted administrators. Anyone able to run a Pod as one of those service accounts may obtain its identity. For tighter control, replace the prefix test with a list of exact service-account usernames. This condition does not exempt certificate identities such as `system:kube-scheduler` or `system:kube-controller-manager`; the target namespace condition already covers their namespaced operations in the selected namespaces.
+
+If your only goal is to exclude Pods and other namespaced resources in these namespaces, the first condition is sufficient. Add the caller condition when trusted controllers also need the wider exemption for cluster-scoped resources or resources in other namespaces.
+
+##### Preserve Namespace ownership checks
+
+A Namespace object such as `Namespace/kube-system` is cluster-scoped. Updating it is different from updating a Pod **inside** `kube-system`. The final clause in the first condition deliberately returns `true` for core Namespace resources, keeping them eligible for admission. The `has(...)` guards handle admission requests where optional namespace or username fields are absent.
+
+Do not add an exemption based on a Namespace object's name. A blanket [namespaceSelector](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#matching-requests-namespaceselector) exclusion is also unsuitable for the Namespace ownership webhook: Kubernetes evaluates that selector against a Namespace object's own labels. Excluding the system Namespace objects would let callers with Kubernetes RBAC permission to update them bypass Capsule's ownership checks. Capsule installations can rely on those checks to constrain tenant owners who have broad Namespace RBAC permissions.
+
+No additional `namespaceSelector` exclusion is needed for the CEL conditions above. The intended behavior is:
+
+| Request | Effect of these conditions |
+| --- | --- |
+| An ordinary user creates a Pod in `kube-system` | The target namespace condition skips the webhook; Kubernetes RBAC must still permit the operation. |
+| The scheduler binds a Pod in `kyverno-system` | The target namespace condition skips the webhook, even though the caller is not a service account from that namespace. |
+| An ordinary tenant owner updates `Namespace/kube-system` | Neither exemption applies; Capsule's Namespace ownership checks remain in scope. |
+| A trusted service account from `kube-system` creates a Namespace or updates a resource in an application namespace | The caller condition skips the webhook. |
+| An ordinary tenant owner updates a resource in a tenant application namespace | Neither exemption applies; the normal webhook selection and admission checks apply. |
+
+Global, mutating/validating, and per-hook match conditions are combined. Existing selectors and resource rules also continue to determine which requests can reach a webhook. If you use the per-hook `opts.capsuleUsers` or `opts.administrators` settings, review their interaction with explicit conditions: Capsule uses explicitly configured `matchConditions` instead of generating the identity condition from those options.
+
+##### Kyverno Helm values
+
+When Kyverno also needs these exemptions, configure its chart separately under `config.matchConditions`. Capsule's `webhooks.matchConditions` values do not configure Kyverno. The example below uses the same three namespaces and the same two conditions.
+
+Kyverno's chart also has default namespace exclusions. To keep Namespace objects subject to policy for ordinary callers, remove the overlapping blanket exclusions and express the intended exemptions through CEL. In the [Kyverno chart values](https://github.com/kyverno/kyverno/blob/kyverno-chart-3.9.2/charts/kyverno/values.yaml), `excludeKyvernoNamespace: false` disables the automatic exclusion of Kyverno's installation namespace. Setting `matchExpressions: []` replaces the default namespace selector expressions; an empty map can leave defaults in place when Helm merges values. Despite its name, `resourceFiltersExcludeNamespaces` removes those namespaces from the chart's default resource filters; it does not add a new namespace exclusion.
 
 ```yaml
 config:
+  # Remove blanket exclusions that would also skip Namespace objects.
+  excludeKyvernoNamespace: false
+  webhooks:
+    namespaceSelector:
+      matchExpressions: []
   resourceFiltersExcludeNamespaces:
     - kube-system
     - kube-public
-    - capsule-system
+    - kyverno-system
 
-  # Exempt trusted callers, regardless of the target namespace.
   matchConditions:
+    # Exempt system workloads without excluding their Namespace objects.
+    - name: exclude-system-namespaced-resources
+      expression: >-
+        !has(request.namespace) ||
+        !(request.namespace in ["kube-system", "kube-public", "kyverno-system"]) ||
+        (request.resource.group == "" &&
+         request.resource.resource == "namespaces")
+
+    # Exempt trusted controllers, including their cluster-scoped operations.
     - name: exclude-trusted-system-serviceaccounts
       expression: >-
         !has(request.userInfo.username) ||
-        !["kube-system", "kube-public", "capsule-system"].exists(ns,
+        !["kube-system", "kube-public", "kyverno-system"].exists(ns,
           request.userInfo.username.startsWith("system:serviceaccount:" + ns + ":")
         )
 ```
 
+The CEL conditions prevent matching requests from being sent to Kyverno. Resource filters alone are insufficient for this availability goal because they are evaluated inside Kyverno after a webhook request reaches it. Other default resource filters remain in place. Review any additional selectors, filters, and caller exclusions in your installed Kyverno version; these values do not remove unrelated exclusions or configure background policy scans.
+
+If Capsule runs in `capsule-system` and Kyverno must also exempt its workloads and service accounts, add `capsule-system` to both CEL namespace lists and to `resourceFiltersExcludeNamespaces` in the Kyverno values. Apply the same trust assessment before exempting that namespace.
+
 #### Nodes
 
-There is a webhook which catches interactions with the Node resource. This webhook is mainly relevant when you make use of [Node metadata](/docs/tenants/enforcement/#nodes). In most other cases, it will only cause problems. By default, the webhook is **disabled**, but you can enable it by setting the following value:
+The Node webhook is relevant when you use [Node metadata](/docs/tenants/metadata/#nodes). It is **disabled** by default. Enable it only when you need that enforcement:
 
 ```yaml
 webhooks:
@@ -336,7 +397,7 @@ webhooks:
       enabled: true
 ```
 
-Or you could at least consider to set the failure policy to `Ignore`, if you don't want to disrupt critical nodes:
+To allow matching Node operations to continue when the webhook cannot be reached, you can set its failure policy to `Ignore`. This also means those operations proceed without Capsule's Node validation during an outage:
 
 ```yaml
 webhooks:
@@ -345,31 +406,24 @@ webhooks:
       failurePolicy: Ignore
 ```
 
-If you still want to use the feature, you could exclude the kube-system namespace (or any other namespace you want to exclude) from the webhook by setting the following value:
+Nodes are cluster-scoped, so the target namespace condition above does not exempt them. The global service-account condition does exempt requests made by trusted service accounts, but kubelets commonly authenticate in the `system:nodes` group. If you intentionally want to bypass Capsule's Node checks for kubelets, use a caller condition on this hook:
 
 ```yaml
 webhooks:
   hooks:
     nodes:
       matchConditions:
-      - name: 'exclude-kubelet-requests'
-        expression: '!("system:nodes" in request.userInfo.groups)'
-      - name: 'exclude-kube-system'
-        expression: '!("system:serviceaccounts:kube-system" in request.userInfo.groups)'
+        - name: exclude-kubelet-requests
+          expression: >-
+            !has(request.userInfo.groups) ||
+            !("system:nodes" in request.userInfo.groups)
 ```
+
+This exempts kubelet callers from this Node webhook, regardless of which Node they target. It does not exclude a namespace, and it bypasses the Node metadata enforcement that would otherwise apply to those callers. Prefer this scoped configuration over a global exemption for all node identities.
 
 #### Namespaces
 
-Namespaces are the most important resource in Capsule. The Namespace webhook is responsible for enforcing the Capsule Tenant boundaries. It is enabled by default and should not be disabled. However, you may change the matchConditions to exclude certain namespaces from the Capsule Tenant boundaries. For example, you can exclude the kube-system namespace by setting the following value:
-
-```yaml
-webhooks:
-  hooks:
-    namespaces:
-      matchConditions:
-      - name: 'exclude-kube-system'
-        expression: '!("system:serviceaccounts:kube-system" in request.userInfo.groups)'
-```
+The Namespace webhook enforces Capsule Tenant boundaries. It is enabled by default and should remain enabled. The global conditions above keep Namespace objects in scope for ordinary callers while exempting trusted service accounts. Exempting resources **inside** a system namespace must not become an exemption for an ordinary tenant owner's updates to the Namespace object itself.
 
 #### Protected
 
