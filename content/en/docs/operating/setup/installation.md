@@ -289,6 +289,19 @@ It's strongly advised to exclude system-critical components from the Capsule web
 ```yaml
 webhooks:
   matchConditions:
+    - name: exclude-trusted-system-serviceaccounts
+      expression: >-
+        !has(request.userInfo.username) ||
+        !["kube-system", "kube-public", "kyverno-system"].exists(ns,
+          request.userInfo.username.startsWith("system:serviceaccount:" + ns + ":")
+        )
+```
+
+You may need to adjust the match conditions based on the specific system-critical components and namespaces present in your cluster. Exclude any control plane components from the Capsule webhooks by using the following match condition.
+
+```yaml
+webhooks:
+  matchConditions:
     - name: exclude-control-plane
       expression: '!(request.userInfo.username in ["system:apiserver", "system:kube-controller-manager", "system:kube-scheduler"]) && !("system:nodes" in request.userInfo.groups) && !("system:serviceaccounts:kube-system" in request.userInfo.groups)'
 ```
