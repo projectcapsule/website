@@ -306,6 +306,30 @@ webhooks:
       expression: '!(request.userInfo.username in ["system:apiserver", "system:kube-controller-manager", "system:kube-scheduler"]) && !("system:nodes" in request.userInfo.groups) && !("system:serviceaccounts:kube-system" in request.userInfo.groups)'
 ```
 
+You may also have other system-critical components or namespaces that may block Capsule, Kyverno is a good example. You should consider excluding them from the Capsule webhooks using appropriate match conditions. In Kyverno Helm-Values this would look like this:
+
+```yaml
+config:
+  # Remove default target-namespace exclusions.
+  excludeKyvernoNamespace: false
+  webhooks:
+    namespaceSelector:
+      matchExpressions: []
+  resourceFiltersExcludeNamespaces:
+    - kube-system
+    - kube-public
+    - capsule-system
+
+  # Exempt trusted callers, regardless of the target namespace.
+  matchConditions:
+    - name: exclude-trusted-system-serviceaccounts
+      expression: >-
+        !has(request.userInfo.username) ||
+        !["kube-system", "kube-public", "capsule-system"].exists(ns,
+          request.userInfo.username.startsWith("system:serviceaccount:" + ns + ":")
+        )
+```
+
 #### Nodes
 
 There is a webhook which catches interactions with the Node resource. This webhook is mainly relevant when you make use of [Node metadata](/docs/tenants/enforcement/#nodes). In most other cases, it will only cause problems. By default, the webhook is **disabled**, but you can enable it by setting the following value:
