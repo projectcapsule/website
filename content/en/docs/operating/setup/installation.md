@@ -310,11 +310,6 @@ You may also have other system-critical components or namespaces that may block 
 
 ```yaml
 config:
-  # Remove default target-namespace exclusions.
-  excludeKyvernoNamespace: false
-  webhooks:
-    namespaceSelector:
-      matchExpressions: []
   resourceFiltersExcludeNamespaces:
     - kube-system
     - kube-public
