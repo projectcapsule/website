@@ -43,6 +43,13 @@ and [Networking](/docs/operating/best-practices/networking/) into one ordered
 * Set all three Pod Security version labels to a version supported by your
   cluster. This example pins them to `v1.36`. Applications must supply security
   contexts that satisfy `restricted`; these rules do not generate those fields.
+* On OpenShift, also block tenant users from changing OpenShift-managed
+  namespace labels and annotations, such as `openshift.io/run-level`, to
+  prevent SecurityContextConstraints bypasses. See
+  [Example Tenant and TenantOwners](/docs/operating/setup/openshift/#example-tenant-and-tenantowners)
+  in the OpenShift guide. OpenShift manages the `pod-security.kubernetes.io/*`
+  labels based on the SCCs, so review the Pod Security rules of this baseline
+  before applying it there.
 
 ## Reference
 

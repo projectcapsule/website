@@ -28,6 +28,12 @@ outputs:
 
 * **Capsule**: [Resource policies](/docs/operating/concepts/managed-resources/#resource-policy) for `TenantResource` and `GlobalTenantResource` add conditional application and control over resource adoption, protection, and cleanup.
 
+* **Capsule**: The Helm chart has new OpenShift toggles. See the [OpenShift guide](/docs/operating/setup/openshift/#helm-chart-values) for a complete values example:
+
+   * [`global.openshift.enabled`](/docs/operating/setup/openshift/#openshift-toggle): Configures OpenShift in one go.
+   * `global.openshift.requiredScc`: Sets the SCC requested on all pods (default `restricted-v2`). With `restricted-v3`, `hostUsers: false` is set on all pods, including the jobs.
+   * [`openshift.etcdEncryption.enabled`](/docs/operating/setup/openshift/#etcd-encryption): Excludes the OpenShift `kube-storage-version-migrator` from the replication webhook, which is required for `TenantResource` and `GlobalTenantResource` replication when etcd encryption is enabled.
+
 * **Capsule**: The rules API now offers more ways to configure and enforce namespace profiles:
 
    * [Workload Placement Mutation](/docs/rules/mutate/workloads/#placement): Configure schedulers, node selectors, tolerations, affinity, and topology spread constraints on new Pods with merge or replace actions.
