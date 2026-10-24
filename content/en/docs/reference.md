@@ -2410,7 +2410,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.metadata[index]
@@ -2439,7 +2439,7 @@ MetadataRule defines metadata constraints for namespaced resources.
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
 | **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes.<br>Present metadata matching the effective managed value is exempt from<br>metadata value validation, including overlapping deny rules. The last<br>applicable managed value for each concrete key wins.<br>During admission, only rules matching the request's audience contribute<br>to the effective managed value. | false |
-| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **required** | boolean | Required enforces that the metadata key must be present. Omitted means false.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist. | false |
 | **[values](#rulestatusspecindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
 
@@ -2455,7 +2455,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.metadata[index].labels[key]
@@ -2469,7 +2469,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
 | **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes.<br>Present metadata matching the effective managed value is exempt from<br>metadata value validation, including overlapping deny rules. The last<br>applicable managed value for each concrete key wins.<br>During admission, only rules matching the request's audience contribute<br>to the effective managed value. | false |
-| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **required** | boolean | Required enforces that the metadata key must be present. Omitted means false.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist. | false |
 | **[values](#rulestatusspecindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
 
@@ -2485,7 +2485,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.network
@@ -2591,7 +2591,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.services.loadBalancers
@@ -2808,7 +2808,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].fieldRequirements[index].values
@@ -2825,7 +2825,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].labelSelector
@@ -2874,7 +2874,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].labelSelector.requirements[index].values
@@ -2891,7 +2891,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].namespaceSelector
@@ -2940,7 +2940,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].namespaceSelector.requirements[index].values
@@ -2957,7 +2957,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].namespaces
@@ -2971,7 +2971,7 @@ Namespaces constrains each explicitly supplied namespace.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].requirements[index]
@@ -3004,7 +3004,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].requirements[index].values
@@ -3021,7 +3021,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].topologyKey
@@ -3035,7 +3035,7 @@ TopologyKey applies to Pod affinity and anti-affinity.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement.affinity[index].weight
@@ -3079,7 +3079,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement.nodeSelector[index].values
@@ -3096,7 +3096,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement.schedulers[index]
@@ -3111,7 +3111,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement.tolerations[index]
@@ -3144,7 +3144,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement.tolerations[index].tolerationSeconds
@@ -3175,7 +3175,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement.topologySpreadConstraints[index]
@@ -3242,7 +3242,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement.topologySpreadConstraints[index].labelSelector.requirements[index].values
@@ -3259,7 +3259,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.placement.topologySpreadConstraints[index].maxSkew
@@ -3302,7 +3302,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.registries[index]
@@ -3316,7 +3316,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
 
 
@@ -3381,7 +3381,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.security
@@ -3423,7 +3423,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.security.seccompProfiles[index]
@@ -3452,7 +3452,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.spec[index].mutate[index]
@@ -4397,7 +4397,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.metadata[index]
@@ -4426,7 +4426,7 @@ MetadataRule defines metadata constraints for namespaced resources.
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
 | **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes.<br>Present metadata matching the effective managed value is exempt from<br>metadata value validation, including overlapping deny rules. The last<br>applicable managed value for each concrete key wins.<br>During admission, only rules matching the request's audience contribute<br>to the effective managed value. | false |
-| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **required** | boolean | Required enforces that the metadata key must be present. Omitted means false.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist. | false |
 | **[values](#rulestatusstatusruleenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
 
@@ -4442,7 +4442,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.metadata[index].labels[key]
@@ -4456,7 +4456,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
 | **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes.<br>Present metadata matching the effective managed value is exempt from<br>metadata value validation, including overlapping deny rules. The last<br>applicable managed value for each concrete key wins.<br>During admission, only rules matching the request's audience contribute<br>to the effective managed value. | false |
-| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **required** | boolean | Required enforces that the metadata key must be present. Omitted means false.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist. | false |
 | **[values](#rulestatusstatusruleenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
 
@@ -4472,7 +4472,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.network
@@ -4578,7 +4578,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.services.loadBalancers
@@ -4795,7 +4795,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].fieldRequirements[index].values
@@ -4812,7 +4812,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].labelSelector
@@ -4861,7 +4861,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].labelSelector.requirements[index].values
@@ -4878,7 +4878,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].namespaceSelector
@@ -4927,7 +4927,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].namespaceSelector.requirements[index].values
@@ -4944,7 +4944,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].namespaces
@@ -4958,7 +4958,7 @@ Namespaces constrains each explicitly supplied namespace.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].requirements[index]
@@ -4991,7 +4991,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].requirements[index].values
@@ -5008,7 +5008,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].topologyKey
@@ -5022,7 +5022,7 @@ TopologyKey applies to Pod affinity and anti-affinity.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement.affinity[index].weight
@@ -5066,7 +5066,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement.nodeSelector[index].values
@@ -5083,7 +5083,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement.schedulers[index]
@@ -5098,7 +5098,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement.tolerations[index]
@@ -5131,7 +5131,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement.tolerations[index].tolerationSeconds
@@ -5162,7 +5162,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement.topologySpreadConstraints[index]
@@ -5229,7 +5229,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement.topologySpreadConstraints[index].labelSelector.requirements[index].values
@@ -5246,7 +5246,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.placement.topologySpreadConstraints[index].maxSkew
@@ -5289,7 +5289,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.registries[index]
@@ -5303,7 +5303,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
 
 
@@ -5368,7 +5368,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.security
@@ -5410,7 +5410,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.security.seccompProfiles[index]
@@ -5439,7 +5439,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rule.mutate[index]
@@ -6351,7 +6351,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.metadata[index]
@@ -6380,7 +6380,7 @@ MetadataRule defines metadata constraints for namespaced resources.
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
 | **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes.<br>Present metadata matching the effective managed value is exempt from<br>metadata value validation, including overlapping deny rules. The last<br>applicable managed value for each concrete key wins.<br>During admission, only rules matching the request's audience contribute<br>to the effective managed value. | false |
-| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **required** | boolean | Required enforces that the metadata key must be present. Omitted means false.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist. | false |
 | **[values](#rulestatusstatusrulesindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
 
@@ -6396,7 +6396,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.metadata[index].labels[key]
@@ -6410,7 +6410,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
 | **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes.<br>Present metadata matching the effective managed value is exempt from<br>metadata value validation, including overlapping deny rules. The last<br>applicable managed value for each concrete key wins.<br>During admission, only rules matching the request's audience contribute<br>to the effective managed value. | false |
-| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **required** | boolean | Required enforces that the metadata key must be present. Omitted means false.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist. | false |
 | **[values](#rulestatusstatusrulesindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
 
@@ -6426,7 +6426,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.network
@@ -6532,7 +6532,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.services.loadBalancers
@@ -6749,7 +6749,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].fieldRequirements[index].values
@@ -6766,7 +6766,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].labelSelector
@@ -6815,7 +6815,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].labelSelector.requirements[index].values
@@ -6832,7 +6832,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].namespaceSelector
@@ -6881,7 +6881,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].namespaceSelector.requirements[index].values
@@ -6898,7 +6898,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].namespaces
@@ -6912,7 +6912,7 @@ Namespaces constrains each explicitly supplied namespace.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].requirements[index]
@@ -6945,7 +6945,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].requirements[index].values
@@ -6962,7 +6962,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].topologyKey
@@ -6976,7 +6976,7 @@ TopologyKey applies to Pod affinity and anti-affinity.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement.affinity[index].weight
@@ -7020,7 +7020,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement.nodeSelector[index].values
@@ -7037,7 +7037,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement.schedulers[index]
@@ -7052,7 +7052,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement.tolerations[index]
@@ -7085,7 +7085,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement.tolerations[index].tolerationSeconds
@@ -7116,7 +7116,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement.topologySpreadConstraints[index]
@@ -7183,7 +7183,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].labelSelector.requirements[index].values
@@ -7200,7 +7200,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].maxSkew
@@ -7243,7 +7243,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.registries[index]
@@ -7257,7 +7257,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
 
 
@@ -7322,7 +7322,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.security
@@ -7364,7 +7364,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.security.seccompProfiles[index]
@@ -7393,7 +7393,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### RuleStatus.status.rules[index].mutate[index]
@@ -9647,7 +9647,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.metadata[index]
@@ -9676,7 +9676,7 @@ MetadataRule defines metadata constraints for namespaced resources.
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
 | **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes.<br>Present metadata matching the effective managed value is exempt from<br>metadata value validation, including overlapping deny rules. The last<br>applicable managed value for each concrete key wins.<br>During admission, only rules matching the request's audience contribute<br>to the effective managed value. | false |
-| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **required** | boolean | Required enforces that the metadata key must be present. Omitted means false.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist. | false |
 | **[values](#tenantspecrulesindexenforcemetadataindexannotationskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
 
@@ -9692,7 +9692,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.metadata[index].labels[key]
@@ -9706,7 +9706,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **default** | string | Default is applied by admission mutation when the concrete metadata key is absent.<br>It is not reconciled after admission. | false |
 | **managed** | string | Managed is enforced by admission mutation and reconciled by the RuleStatus<br>controller using server-side apply when the rule configuration changes.<br>Present metadata matching the effective managed value is exempt from<br>metadata value validation, including overlapping deny rules. The last<br>applicable managed value for each concrete key wins.<br>During admission, only rules matching the request's audience contribute<br>to the effective managed value. | false |
-| **required** | boolean | Required enforces that the metadata key must be present.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist.<br/>*Default*: false<br/> | false |
+| **required** | boolean | Required enforces that the metadata key must be present. Omitted means false.<br><br>This is only meaningful with action=allow. Deny and audit rules do not<br>require missing metadata to exist. | false |
 | **[values](#tenantspecrulesindexenforcemetadataindexlabelskeyvaluesindex)** | []object | Values defines allowed, denied, or audited values for the metadata key.<br><br>With action=allow and no values, only Required is enforced.<br>With action=deny or action=audit and no values, any present value matches,<br>including an empty string. | false |
 
 
@@ -9722,7 +9722,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.network
@@ -9828,7 +9828,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.services.loadBalancers
@@ -10045,7 +10045,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].fieldRequirements[index].values
@@ -10062,7 +10062,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].labelSelector
@@ -10111,7 +10111,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].labelSelector.requirements[index].values
@@ -10128,7 +10128,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].namespaceSelector
@@ -10177,7 +10177,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].namespaceSelector.requirements[index].values
@@ -10194,7 +10194,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].namespaces
@@ -10208,7 +10208,7 @@ Namespaces constrains each explicitly supplied namespace.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].requirements[index]
@@ -10241,7 +10241,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].requirements[index].values
@@ -10258,7 +10258,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].topologyKey
@@ -10272,7 +10272,7 @@ TopologyKey applies to Pod affinity and anti-affinity.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement.affinity[index].weight
@@ -10316,7 +10316,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement.nodeSelector[index].values
@@ -10333,7 +10333,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement.schedulers[index]
@@ -10348,7 +10348,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement.tolerations[index]
@@ -10381,7 +10381,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement.tolerations[index].tolerationSeconds
@@ -10412,7 +10412,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement.topologySpreadConstraints[index]
@@ -10479,7 +10479,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].labelSelector.requirements[index].values
@@ -10496,7 +10496,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.placement.topologySpreadConstraints[index].maxSkew
@@ -10539,7 +10539,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.registries[index]
@@ -10553,7 +10553,7 @@ and the three representations of namespace rules in RuleStatus.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
 
 
@@ -10618,7 +10618,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.security
@@ -10660,7 +10660,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.security.seccompProfiles[index]
@@ -10689,7 +10689,7 @@ Both may be set together.
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 
 
 ### Tenant.spec.rules[index].mutate[index]
@@ -11915,7 +11915,7 @@ Managed Metadata
 | :---- | :---- | :----------- | :-------- |
 | **exact** | []string | Exact matches one of the provided values exactly. | false |
 | **exp** | string | Exp matches regular expression. | false |
-| **negate** | boolean | Negate regular Expression<br/>*Default*: false<br/> | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
 | **policy** | []string | Allowed PullPolicy for the given registry. Supplying no value allows all policies. | false |
 
 
