@@ -33,11 +33,6 @@ for = "/project/*"
 Vary = "Accept-Encoding, Accept"
 
 [[headers]]
-for = "/adopters/*"
-[headers.values]
-Vary = "Accept-Encoding, Accept"
-
-[[headers]]
 for = "/support/*"
 [headers.values]
 Vary = "Accept-Encoding, Accept"
