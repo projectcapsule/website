@@ -1217,3 +1217,8 @@ body.td-home main > section.td-box:has(.home-adopters) {
     transform: none;
   }
 }
+
+// Long generated headings (API reference paths have no break opportunities) wrap instead of overflowing.
+.td-content :is(h1, h2, h3, h4, h5, h6) {
+  overflow-wrap: anywhere;
+}
