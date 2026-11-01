@@ -328,11 +328,6 @@ Cilium exposes the labels of a Pod's namespace as endpoint labels with the
 `io.cilium.k8s.namespace.labels.` prefix, so peers are selected through
 `fromEndpoints` and `toEndpoints`.
 
-A selector in a namespaced CiliumNetworkPolicy only matches Pods in the
-policy's own namespace unless it refers to the namespace of the peer. The
-`io.kubernetes.pod.namespace` `Exists` expression below lifts that restriction,
-so the namespace label selects the peers across namespaces.
-
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
 kind: GlobalTenantResource
@@ -342,6 +337,9 @@ spec:
   scope: Namespace
   tenantSelector: {}
   resyncPeriod: 60s
+  serviceAccount:
+    name: capsule-cilium-baseline
+    namespace: capsule-system
   resources:
     - policy:
         creation: Owner
@@ -359,23 +357,16 @@ spec:
               - fromEndpoints:
                   - matchLabels:
                       io.cilium.k8s.namespace.labels.capsule.clastix.io/tenant: "{{tenant.name}}"
-                    matchExpressions:
-                      - key: io.kubernetes.pod.namespace
-                        operator: Exists
               # Pods in trusted platform namespaces.
               - fromEndpoints:
                   - matchLabels:
                       io.cilium.k8s.namespace.labels.company.com/system: "true"
-                    matchExpressions:
-                      - key: io.kubernetes.pod.namespace
-                        operator: Exists
             egress:
+              # Pods in any namespace of the same Tenant, including this one.
               - toEndpoints:
                   - matchLabels:
                       io.cilium.k8s.namespace.labels.capsule.clastix.io/tenant: "{{tenant.name}}"
-                    matchExpressions:
-                      - key: io.kubernetes.pod.namespace
-                        operator: Exists
+              # Cluster DNS.
               - toEndpoints:
                   - matchLabels:
                       io.kubernetes.pod.namespace: kube-system
@@ -386,11 +377,16 @@ spec:
                         protocol: UDP
                       - port: "53"
                         protocol: TCP
+                    rules:
+                      dns:
+                        - matchPattern: "*"
 ```
 
 Once a CiliumNetworkPolicy selects a Pod with ingress or egress rules, traffic
 in that direction that no rule allows is denied, so this single policy has the
-same effect as the four native policies above. The same caveats apply: tenants
+same effect as the four native policies above. The DNS rule follows the
+[Cilium DNS policy documentation](https://docs.cilium.io/en/latest/security/dns/),
+which recommends allowing the DNS lookups explicitly. The same caveats apply: tenants
 that may create their own CiliumNetworkPolicies can widen the access, the
 `company.com/system` label must be reserved for platform namespaces, and the
 DNS selector must match your DNS deployment. Test the profile with the Cilium
