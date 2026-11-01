@@ -319,6 +319,84 @@ another NetworkPolicy. With `deletion: Remove`, removing the replication or a
 destination from its selection removes the policies it created; plan those
 changes as changes to network access.
 
+### CiliumNetworkPolicies
+
+With Cilium, the same baseline can be distributed as a single namespaced
+`CiliumNetworkPolicy` per namespace. CiliumNetworkPolicies have no
+`namespaceSelector` and no `fromNamespaces` or `toNamespaces` fields. Instead,
+Cilium exposes the labels of a Pod's namespace as endpoint labels with the
+`io.cilium.k8s.namespace.labels.` prefix, so peers are selected through
+`fromEndpoints` and `toEndpoints`.
+
+A selector in a namespaced CiliumNetworkPolicy only matches Pods in the
+policy's own namespace unless it refers to the namespace of the peer. The
+`io.kubernetes.pod.namespace` `Exists` expression below lifts that restriction,
+so the namespace label selects the peers across namespaces.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: GlobalTenantResource
+metadata:
+  name: tenant-cilium-baseline
+spec:
+  scope: Namespace
+  tenantSelector: {}
+  resyncPeriod: 60s
+  resources:
+    - policy:
+        creation: Owner
+        protect: true
+        deletion: Remove
+      rawItems:
+        - apiVersion: cilium.io/v2
+          kind: CiliumNetworkPolicy
+          metadata:
+            name: capsule-tenant-baseline
+          spec:
+            endpointSelector: {}  # All Pods in the namespace
+            ingress:
+              # Pods in any namespace of the same Tenant, including this one.
+              - fromEndpoints:
+                  - matchLabels:
+                      io.cilium.k8s.namespace.labels.capsule.clastix.io/tenant: "{{tenant.name}}"
+                    matchExpressions:
+                      - key: io.kubernetes.pod.namespace
+                        operator: Exists
+              # Pods in trusted platform namespaces.
+              - fromEndpoints:
+                  - matchLabels:
+                      io.cilium.k8s.namespace.labels.company.com/system: "true"
+                    matchExpressions:
+                      - key: io.kubernetes.pod.namespace
+                        operator: Exists
+            egress:
+              - toEndpoints:
+                  - matchLabels:
+                      io.cilium.k8s.namespace.labels.capsule.clastix.io/tenant: "{{tenant.name}}"
+                    matchExpressions:
+                      - key: io.kubernetes.pod.namespace
+                        operator: Exists
+              - toEndpoints:
+                  - matchLabels:
+                      io.kubernetes.pod.namespace: kube-system
+                      k8s-app: kube-dns
+                toPorts:
+                  - ports:
+                      - port: "53"
+                        protocol: UDP
+                      - port: "53"
+                        protocol: TCP
+```
+
+Once a CiliumNetworkPolicy selects a Pod with ingress or egress rules, traffic
+in that direction that no rule allows is denied, so this single policy has the
+same effect as the four native policies above. The same caveats apply: tenants
+that may create their own CiliumNetworkPolicies can widen the access, the
+`company.com/system` label must be reserved for platform namespaces, and the
+DNS selector must match your DNS deployment. Test the profile with the Cilium
+version you run, for example with `cilium policy get` and connectivity checks
+between Tenants.
+
 ### Deny Namespace Metadata
 
 The platform-ingress policy trusts namespaces carrying
