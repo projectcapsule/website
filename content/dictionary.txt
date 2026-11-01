@@ -1,4 +1,6 @@
 ACL-filtered
+AdminNetworkPolicies
+AdminNetworkPolicy
 APIs
 Apache2
 Authenticator
@@ -14,6 +16,8 @@ CaaS
 CapsuleConfiguration
 CapsuleConfigurationSpec
 ClusterIP
+ClusterNetworkPolicies
+ClusterNetworkPolicy
 ClusterRole
 ClusterRoles
 ConfigMap
@@ -120,6 +124,7 @@ ServiceAccounts
 ServiceMonitor
 StorageClass
 StorageClasses
+Tigera
 TLS
 TLS-terminated
 TenantResource
@@ -174,6 +179,7 @@ init-time
 ipBlock
 k3d
 keycloak
+kindnet
 kubeconfig
 kubectl
 kubernetes
@@ -229,3 +235,13 @@ cta
 docsy's
 navbar
 viewport
+Cilium
+CiliumClusterwideNetworkPolicies
+CiliumClusterwideNetworkPolicy
+ClusterRoleBinding
+GlobalNetworkPolicies
+GlobalNetworkPolicy
+Overridable
+unlabeled
+kube-apiserver
+kube-network-policies
