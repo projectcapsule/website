@@ -245,3 +245,5 @@ Overridable
 unlabeled
 kube-apiserver
 kube-network-policies
+kube-ovn
+ovn

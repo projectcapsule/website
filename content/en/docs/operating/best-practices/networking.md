@@ -188,7 +188,7 @@ The mechanism depends on what enforces policies in your cluster:
 
 | Your cluster | Choose | Why |
 |---|---|---|
-| kube-network-policies, Calico or Cilium, and you want one portable manifest | [ClusterNetworkPolicies](#clusternetworkpolicies) | One upstream API for all three, tested with the same result. The API is still alpha (`v1alpha2`). |
+| kube-network-policies, Calico, Cilium or kube-ovn, and you want one portable manifest | [ClusterNetworkPolicies](#clusternetworkpolicies) | One upstream API for all four, tested with the same result. The API is still alpha (`v1alpha2`). |
 | Calico and you prefer a stable API | [Calico tiers](#calico-tiers) | `projectcalico.org/v3` is stable. Selects the API server by Service, so no address to maintain. |
 | Calico and tenants need their own ordered or deny rules | [Calico tier per Tenant](#calico-tier-per-tenant) | Owners get a tier they alone can use. Tenants can write deny rules and ordered rules that run before native NetworkPolicies and cannot override the platform tier. |
 | Cilium and you prefer its stable API | [Cilium policies](#cilium) | `cilium.io/v2` is stable, but there are no tiers and `enableDefaultDeny` must be set carefully. |
@@ -196,7 +196,7 @@ The mechanism depends on what enforces policies in your cluster:
 | Existing AdminNetworkPolicy setup | [AdminNetworkPolicy](#adminnetworkpolicy) | Legacy; migrate to ClusterNetworkPolicies. |
 
 All approaches below give the same isolation. We tested every one on
-kube-network-policies, Calico and Cilium as applicable; see
+kube-network-policies, Calico, Cilium and kube-ovn as applicable; see
 [Verify the Behavior](#verify-the-behavior).
 
 ### ClusterNetworkPolicies
@@ -225,14 +225,15 @@ The API is alpha, and the examples only use fields from the standard channel.
 These policies only take effect when a component in your cluster implements the
 API. A CNI that only enforces native NetworkPolicies accepts the objects but
 ignores them without reporting an error, so always test that traffic is
-actually denied. All three implementations below gave the same results in
+actually denied. All four implementations below gave the same results in
 [our tests](#verify-the-behavior). The upstream
 [implementation list](https://network-policy-api.sigs.k8s.io/implementations/)
 has more.
 
 | Implementation | Tested | What to enable |
 |---|---|---|
-| [kube-network-policies](https://github.com/kubernetes-sigs/kube-network-policies) | v1.1.2 | Works next to a CNI that does not enforce NetworkPolicies itself. Install the `ClusterNetworkPolicy` CRD, then its [`install-cnp.yaml`](https://github.com/kubernetes-sigs/kube-network-policies/blob/main/install-cnp.yaml) manifest. |
+| [kube-network-policies](https://github.com/kubernetes-sigs/kube-network-policies) | v1.1.2 | Adds ClusterNetworkPolicy support to a CNI that has none, and enforces native NetworkPolicies as well. Disable the CNI's own NetworkPolicy enforcement so it is the only enforcer, as explained below. Install the `ClusterNetworkPolicy` CRD, then its [`install-cnp.yaml`](https://github.com/kubernetes-sigs/kube-network-policies/blob/main/install-cnp.yaml) manifest. |
+| [kube-ovn](https://github.com/kubeovn/kube-ovn), v1.16 and later | v1.16.16 | Supported, but disabled by default. Install with `ENABLE_ANP=true` (Helm: `func.ENABLE_ANP=true`). The installer does not ship the CRDs. Install the `ClusterNetworkPolicy` CRD yourself, plus the `AdminNetworkPolicy` and `BaselineAdminNetworkPolicy` v1alpha1 CRDs, because the controller watches all three. kube-ovn enforces native NetworkPolicies itself, so there is no second enforcer to disable. Priorities must be between 0 and 399 and a policy can have at most 25 rules. A policy outside these limits is only reported in the `kube-ovn-controller` log. |
 | Calico, v3.32 and later | v3.32.3 | Supported. The Tigera operator installs the CRD, and the policies run in Calico's `kube-admin` tier. |
 | Cilium, v1.20 and later | v1.20.4 | Disabled by default. Set the Helm value `k8sClusterNetworkPolicy.enabled=true`, install the [CRD](https://github.com/kubernetes-sigs/network-policy-api/tree/main/config/crd/standard) yourself because the chart does not ship it, and set `policyCIDRMatchMode: nodes` so CIDR rules match node IPs. See the [Cilium documentation](https://docs.cilium.io/en/stable/network/kubernetes/policy/#kubernetes-clusternetworkpolicy). |
 
@@ -427,9 +428,7 @@ Calico evaluates policies in ordered tiers, like the ClusterNetworkPolicy
 tiers, but with the stable `projectcalico.org/v3` API. Policies in a tier that
 is ordered before the `default` tier, where Calico stores native
 NetworkPolicies, cannot be changed or overridden by tenant owners. Prefer this
-over ClusterNetworkPolicies on Calico if you want a stable API. It requires the
-Calico API server, which the operator-based installation includes. The plain
-`calico.yaml` manifest only exposes `crd.projectcalico.org/v1`.
+over ClusterNetworkPolicies on Calico if you want a stable API.
 
 Create one tier for the platform. `order: 500` places it after Calico's own
 `calico-system` tier (100) and before `kube-admin` (1000, the tier used for
@@ -794,6 +793,12 @@ only enforce NetworkPolicies and ClusterNetworkPolicies, and the `install-anp.ya
 manifest at `v1.1.2` points to an image that ignores AdminNetworkPolicies.
 Use the ClusterNetworkPolicy instead.
 
+kube-ovn still implements AdminNetworkPolicies, so we tested them there with
+`v1alpha1` CRDs. `Deny` rules isolate the Tenants as expected, but `Allow` rules
+do not override a default-deny NetworkPolicy that a Tenant owner creates. DNS,
+API server and platform namespace traffic then break. The
+ClusterNetworkPolicy `Accept` rules work in the same situation, so use those.
+
 ### Verify the Behavior
 
 We ran the same checks on kind v0.31 clusters with Kubernetes v1.35:
@@ -803,13 +808,15 @@ We ran the same checks on kind v0.31 clusters with Kubernetes v1.35:
 | kube-network-policies v1.1.2 | ClusterNetworkPolicies | Default kind CNI (kindnet). Its own NetworkPolicy enforcement was disabled by removing the `networkpolicies` rule from the `kindnet` ClusterRole, so that kube-network-policies is the only enforcer. |
 | Calico v3.32.3 | ClusterNetworkPolicies, and GlobalNetworkPolicies in a tier | No default CNI, installed with the Tigera operator. |
 | Cilium v1.20.4 | ClusterNetworkPolicies, and CiliumClusterwideNetworkPolicies | No default CNI, installed with Helm, `k8sClusterNetworkPolicy.enabled=true` and `policyCIDRMatchMode: nodes`. |
+| kube-ovn v1.16.16 | ClusterNetworkPolicies, and AdminNetworkPolicies | No default CNI, installed with the `install.sh` script and `ENABLE_ANP=true`, plus the CRDs described above. |
 
 Each cluster had two Tenants, `solar` (namespaces `solar-prod` and `solar-dev`)
 and `green` (`green-prod`), with a web Pod, a Service and a client Pod in each
 namespace, a platform namespace labeled `company.com/system: "true"`, and an
 unlabeled namespace with the same Pods. The baseline came from a
 GlobalTenantResource as shown above. The results were the same for every
-combination in the table:
+combination in the table, except for the AdminNetworkPolicies on kube-ovn
+described [above](#adminnetworkpolicy):
 
 | Check | Result |
 |---|---|
