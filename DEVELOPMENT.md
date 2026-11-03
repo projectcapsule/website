@@ -1,5 +1,11 @@
 # Development
 
+## Deployment
+
+CNCF Netlify deploys the site on every merge to `main`, and posts a deploy preview with a unique
+URL on every pull request. A local setup is optional: it is for previewing changes before
+pushing and for running the same checks as CI.
+
 ## Environment
 
 Install [Devbox](https://www.jetify.com/docs/devbox/installing_devbox), then run:
@@ -31,6 +37,7 @@ Run `task --list` to see the available tasks.
 | `task apidocs:capsule` | Regenerate only Capsule API docs |
 | `task apidocs:proxy` | Regenerate only Capsule Proxy API docs |
 | `task apidocs:check` | Compare generated API docs without changing source files |
+| `task lint:zizmor` | Security-lint the GitHub Actions workflows |
 | `task hooks:install` | Install the commit and push hooks |
 | `task hooks` | Run commit hooks against all files |
 
@@ -75,7 +82,6 @@ Run hooks manually:
 prek run                                      # staged files
 task hooks                                    # all files, commit stage
 prek run trailing-whitespace                   # one commit hook
-prek run lychee                               # link check at commit stage
 prek run --hook-stage pre-push lychee          # link check at push stage
 prek run --hook-stage pre-push apidocs-check   # API docs check
 ```
@@ -88,12 +94,11 @@ prek run --hook-stage pre-push apidocs-check   # API docs check
 | `check-yaml` | commit | Validate YAML syntax |
 | `check-merge-conflict` | commit | Detect merge conflict markers |
 | `yamllint` | commit | Lint YAML style |
-| `lychee` | commit, push | Check documentation links |
+| `lychee` | push | Check documentation links |
 | `apidocs-check` | push | Check generated API docs |
 
 Formatting and YAML hooks run only against `content/`, excluding the generated
-API reference files. Lychee always runs its full check at both commit and push
-stages. The API docs check runs at push time.
+API reference files. The link check and the API docs check run only at push time.
 
 Update pinned hook repository revisions with:
 
