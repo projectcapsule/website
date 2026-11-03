@@ -84,7 +84,7 @@ In this example, `harbor/customer/test-image/app:1.0.0` is denied, while `harbor
 
 #### Audit
 
-Use `action: audit` to observe workload usage without directly blocking the request. Audit rules emit Kubernetes events and add warnings to the admission response, but they do not allow or deny the request. If an allow-list is active for the same matcher and no allow rule matches the evaluated value, the request is still denied even when an audit rule matches.
+Use `action: audit` to observe matches without directly blocking the request. Audit rules emit Kubernetes events; some policies also add admission warnings. They do not allow or deny the request. If an allow-list is active for the same matcher and no allow rule matches the evaluated value, the request is still denied even when an audit rule matches.
 
 For registry enforcement:
 
@@ -170,6 +170,7 @@ behavior, and admission scope.
 | [Ingress](/docs/rules/enforcement/network/#ingress) | `ingress` | [Ingress reference](/docs/rules/enforcement/network/#ingress-reference) |
 | [Network Policies](/docs/rules/enforcement/network/#policies) | `network.policies.ingress.cidrs`, `network.policies.egress.cidrs` | [NetworkPolicy reference](/docs/rules/enforcement/network/#policies-reference) |
 | [Storage](/docs/rules/enforcement/storage/) | `storage.volumes` | [Storage reference](/docs/rules/enforcement/storage/#reference) |
+| [Devices](/docs/rules/enforcement/devices/) | `devices.classes` | [DeviceClass reference](/docs/rules/enforcement/devices/#reference) |
 
 To disallow CIDR-based ingress and egress grants in every namespace of a Tenant:
 
