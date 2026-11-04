@@ -358,6 +358,15 @@ no
 Dynamic Resource Allocation (DRA) is a Kubernetes capability that allows Pods to request and use shared resources, typically external devices such as hardware accelerators.
 See [Kubernetes documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/) for more information.
 
+For namespace-specific profiles, configure
+[DeviceClass rules](/docs/rules/enforcement/devices/) under
+`spec.rules[].enforce.devices.classes`. These rules support exact names, name
+expressions, and selectors on DeviceClass labels.
+
+The existing `spec.deviceClasses` setting below applies across the Tenant and
+remains supported. When both settings are present, a class reference must pass
+both; namespace rules cannot widen the Tenant-wide restriction.
+
 Bill can assign a set of dedicated `DeviceClasses` to tell the `solar` `Tenant` what devices they can request.
 ```yaml
 apiVersion: resource.k8s.io/v1
@@ -387,11 +396,13 @@ spec:
     matchLabels:
       env: "production"
 ```
-With the said Tenant specification, Alice can create a ResourceClaim or ResourceClaimTemplate resource if spec.devices.requests[].deviceClassName ( ResourceClaim) or spec.spec.devices.requests[].deviceClassName ( ResourceClaimTemplate) equals to:
-
-* Any DeviceClass, which has the label env with the value production
-
-If any of the devices in the ResourceClaim or ResourceClaimTemplate spec is going to use a non-allowed DeviceClass, the entire request will be rejected by the Validation Webhook enforcing it.
+With this Tenant specification, every referenced DeviceClass must exist and
+carry `env: production`. Capsule checks
+`spec.devices.requests[].exactly.deviceClassName` and every
+`spec.devices.requests[].firstAvailable[].deviceClassName` on ResourceClaims,
+and the same fields under `spec.spec.devices.requests[]` on
+ResourceClaimTemplates. A forbidden class in any request or fallback rejects
+the entire resource creation.
 
 Alice now can create a ResourceClaim using only an allowed DeviceClass:
 ```yaml

@@ -19,6 +19,9 @@ locations, with `pod` including all container groups.
 changes the resource; enforcement validates the result. Either can be used alone,
 and mutated values remain subject to applicable enforcement policies.
 
+[DeviceClass defaults](/docs/rules/mutate/devices/) fill missing class names on
+ResourceClaim and ResourceClaimTemplate creation in selected namespaces.
+
 See [Order and scope](/docs/rules/#order-and-scope) for the admission sequence
 and [Conditions](/docs/rules/#mutation-conditions) for conditional mutations.
 
@@ -73,6 +76,8 @@ overwrite selected values with either action.
 [ListenerSet parent references](/docs/rules/mutate/ingress/#merge-and-replace) are
 applied as complete references: merge fills only an absent or null reference,
 while replace replaces it in full.
+[DeviceClass defaults](/docs/rules/mutate/devices/#merge-behavior-and-order) support
+only merge: they fill missing class names and preserve every explicit name.
 
 ### Omitted and empty values
 
@@ -80,7 +85,7 @@ while replace replaces it in full.
 |---|---|
 | Property omitted or `null` | Leave the existing property unchanged with either action. |
 | Empty `placement.nodeSelector`, `placement.tolerations`, `placement.topologySpreadConstraints`, `placement.affinity`, or `registries.imagePullSecrets` with `replace` | Clear that property. |
-| Empty `placement: {}`, `security: {}`, `registries: {}`, `ingress: {}`, or `ingress.listenerSets: {}` | Supply no changes; another mutation property must be supplied. |
+| Empty `placement: {}`, `security: {}`, `registries: {}`, `ingress: {}`, `ingress.listenerSets: {}`, or `devices: {}` | Supply no changes; another mutation property must be supplied. |
 | Empty `ingress.listenerSets.parentRef: {}` | Invalid: `name` is required. |
 | `security.hostUsers: false` or `security.readOnlyRootFilesystem: false` | Set an explicit Boolean value; `false` is not an omission. |
 
