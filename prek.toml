@@ -27,7 +27,7 @@ id = "lychee"
 name = "Check links with lychee"
 entry = "devbox run task lychee"
 language = "system"
-stages = ["pre-commit", "pre-push"]
+stages = ["pre-push"]
 pass_filenames = false
 always_run = true
 

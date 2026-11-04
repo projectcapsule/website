@@ -9,13 +9,18 @@ a Hugo module. CNCF Netlify deploys `main` and previews every pull request.
 
 ## Running locally
 
-`npm install` brings in the pinned extended Hugo, so `npx` runs the version the site is
-deployed with. A `go` toolchain is also needed, to fetch the Docsy module.
+The tooling (Hugo, Go, Node.js, Task, prek, lychee) is provided by
+[Devbox](https://www.jetify.com/docs/devbox/installing_devbox), so there is nothing else to
+install.
 
 ```bash
-npm install
-npx hugo server   # http://localhost:1313
+devbox shell
+task setup    # once: installs Node.js dependencies and the Git hooks
+task serve    # http://localhost:1313
 ```
+
+Outside the shell, prefix a task with `devbox run`, for example `devbox run task serve`.
+`task build` builds the production site into `public/`. Run `task --list` for all tasks.
 
 ## Generated API reference
 
@@ -23,14 +28,15 @@ npx hugo server   # http://localhost:1313
 and capsule-proxy CRDs. Edit those upstream, not these files, then regenerate:
 
 ```bash
-make apidocs              # both repositories at main, so unreleased CRDs
-make apidocs REF=v0.10.6  # one ref, used for both repositories
+task apidocs                       # both repositories at main, so unreleased CRDs
+task apidocs:capsule REF=v0.12.0   # one repository at a specific ref
 ```
 
 ## Contributing
 
-Pages live under `content/en/`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the pull request
-workflow and [DEVELOPMENT.md](DEVELOPMENT.md) for the pre-commit hooks and link checker.
+Pages live under `content/en/`. A local setup is optional, as Netlify posts a deploy preview on
+every pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for the pull request workflow and
+[DEVELOPMENT.md](DEVELOPMENT.md) for the tasks, Git hooks and link checker.
 
 ## License
 
