@@ -23,7 +23,7 @@ outputs:
 ## Breaking Changes ⚠️
 
 * **Proxy**: A namespaced [`ProxySetting`](/docs/proxy/proxysettings/#proxysetting) can no longer grant `clusterResources`. Move existing grants to a [`GlobalProxySettings`](/docs/proxy/proxysettings/#globalproxysettings), which requires the `ProxyClusterScoped` feature gate.
- * **Capsule**: A Tenant no longer lists the available PriorityClasses under `status.classes.priority`. Migrate templates and policies that read this field; generators using `missingKey: error` fail when accessing the removed key. PriorityClasses are a namespace-specific policy, configured with [priority class rules](/docs/rules/enforcement/workloads/#priority-classes); `spec.priorityClasses` keeps working.
+
 ## Features ✨
 
 * **Capsule**: [Resource policies](/docs/operating/concepts/managed-resources/#resource-policy) for `TenantResource` and `GlobalTenantResource` add conditional application and control over resource adoption, protection, and cleanup.
@@ -42,10 +42,8 @@ outputs:
    * [Workload Seccomp Mutation](/docs/rules/mutate/workloads/#seccomp): Default or replace Pod-level seccomp profiles, including node-local profile paths.
    * [Workload AppArmor Mutation](/docs/rules/mutate/workloads/#apparmor): Default or replace Pod-level AppArmor profiles, including named profiles loaded on nodes.
    * [ListenerSet Gateway Reference Mutation](/docs/rules/mutate/ingress/#listenersets): Default or replace Gateway parent references on ListenerSet creation and updates in selected namespaces, with Tenant/Namespace templates. The API group and kind default to `gateway.networking.k8s.io` and `Gateway`.
-   * [Workload Priority Class Mutation](/docs/rules/mutate/workloads/#priority-class): Assign a PriorityClass to new Pods per namespace profile, as a default for Pods without a class or as a replacement for every Pod.
    * [Mutation Conditions](/docs/rules/#mutation-conditions): Apply individual mutation entries conditionally with CEL expressions that inspect the resource and admission request.
    * [Workload Placement Enforcement](/docs/rules/enforcement/workloads/#placement): Control which schedulers, node selectors, tolerations, affinity rules, and topology spread constraints workloads may use.
-   * [Workload Priority Class Enforcement](/docs/rules/enforcement/workloads/#priority-classes): Allow, deny, or audit the PriorityClasses of Pods and controller templates by name, expression, or the labels of the class.
    * [Workload Type Enforcement](/docs/rules/enforcement/workloads/#select-workloads): Allow, deny, or audit selected workload kinds, such as blocking DaemonSets in application namespaces.
    * [Pod Disruption Budget Enforcement](/docs/rules/enforcement/workloads/#pod-disruption-budgets): Require room for voluntary evictions, prevent overlapping PDBs, and control unhealthy Pod eviction. Checks cover PDB and workload changes, including controller scaling.
    * [Workload Seccomp Enforcement](/docs/rules/enforcement/workloads/#seccomp): Restrict effective seccomp profile types and local profile paths across selected Pods and containers.
