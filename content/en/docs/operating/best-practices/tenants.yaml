@@ -195,3 +195,14 @@ spec:
               company.com/system:
                 values:
                   - exp: ".*"
+
+    # Keep DRA administrative access disabled in application namespaces.
+    - enforce:
+        action: deny
+        metadata:
+          - apiGroups: [v1]
+            kinds: [Namespace]
+            labels:
+              resource.kubernetes.io/admin-access:
+                values:
+                  - exact: ["true"]
