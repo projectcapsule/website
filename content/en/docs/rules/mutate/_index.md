@@ -70,6 +70,8 @@ explains which list entries match during a merge and how required affinity is
 combined. Scalar settings such as `security.hostUsers`, `security.readOnlyRootFilesystem`, and
 [`registries.imagePullPolicy`](/docs/rules/mutate/workloads/#image-pull-policy)
 overwrite selected values with either action.
+[`classes.priority`](/docs/rules/mutate/workloads/#priority-class) is assigned by
+merge only when the Pod has no priority class of its own, and by replace always.
 [ListenerSet parent references](/docs/rules/mutate/ingress/#merge-and-replace) are
 applied as complete references: merge fills only an absent or null reference,
 while replace replaces it in full.
@@ -80,7 +82,7 @@ while replace replaces it in full.
 |---|---|
 | Property omitted or `null` | Leave the existing property unchanged with either action. |
 | Empty `placement.nodeSelector`, `placement.tolerations`, `placement.topologySpreadConstraints`, `placement.affinity`, or `registries.imagePullSecrets` with `replace` | Clear that property. |
-| Empty `placement: {}`, `security: {}`, `registries: {}`, `ingress: {}`, or `ingress.listenerSets: {}` | Supply no changes; another mutation property must be supplied. |
+| Empty `placement: {}`, `security: {}`, `registries: {}`, `classes: {}`, `ingress: {}`, or `ingress.listenerSets: {}` | Supply no changes; another mutation property must be supplied. |
 | Empty `ingress.listenerSets.parentRef: {}` | Invalid: `name` is required. |
 | `security.hostUsers: false` or `security.readOnlyRootFilesystem: false` | Set an explicit Boolean value; `false` is not an omission. |
 

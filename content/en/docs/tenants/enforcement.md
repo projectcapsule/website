@@ -163,6 +163,14 @@ spec:
 
 ### PriorityClasses
 
+To restrict or default PriorityClasses per namespace, use
+[priority class rules](/docs/rules/enforcement/workloads/#priority-classes) and the
+[priority class mutation](/docs/rules/mutate/workloads/#priority-class). The
+field described here keeps working and remains an additional boundary next to
+those rules; see the [migration table](/docs/rules/enforcement/workloads/#migration).
+The Tenant no longer lists the available PriorityClasses under
+`status.classes.priority`.
+
 Pods can have priority. Priority indicates the importance of a Pod relative to other Pods. If a Pod cannot be scheduled, the scheduler tries to preempt (evict) lower priority Pods to make scheduling of the pending Pod possible. See [Kubernetes documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/).
 
 In a multi-tenant cluster, not all users can be trusted, as a tenant owner could create Pods at the highest possible priorities, causing other Pods to be evicted/not get scheduled.
