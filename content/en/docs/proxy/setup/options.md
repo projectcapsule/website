@@ -2,10 +2,12 @@
 title: Controller Options
 description: >
   Configure the Capsule Proxy Controller
-weight: 2
+weight: 3
 ---
 
-You can customize the Capsule Proxy with the following configurations.
+You can customize the Capsule Proxy with the following configurations. See
+[User scope](/docs/proxy/setup/installation/#user-scope) for identity eligibility, administrator
+exclusions, RoleBinding reflection, and grants for non-Capsule users.
 
 ## Controller Options
 
@@ -30,8 +32,12 @@ options:
   logLevel: 4
   # -- Name of the CapsuleConfiguration custom resource used by Capsule, required to identify the user groups
   capsuleConfigurationName: default
+  # -- Require Capsule identities for proxy grants. Set false to allow authenticated non-Capsule callers to use matching GlobalProxySettings; Capsule is optional. Requires ProxyClusterScoped for global grants.
+  requireCapsuleUser: true
   # -- Define which groups must be ignored while proxying requests
   ignoredUserGroups: []
+  # -- Define which usernames must be ignored while proxying requests
+  ignoredUsernames: []
   # --  Names of the groups which are not used for impersonation (considered after impersonation-group-regexp)
   ignoredImpersonationGroups: []
   # -- Regular expression to match the groups which are considered for impersonation
@@ -56,7 +62,7 @@ options:
   rolebindingsResyncPeriod: 10h
   # -- Disable the go-client caching to hit directly the Kubernetes API Server, it disables any local caching as the rolebinding reflector.
   disableCaching: false
-  # -- Enable the rolebinding reflector, which allows to list the namespaces, where a rolebinding mentions a user.
+  # -- Enable RoleBinding reflection. Namespaced resource LIST grants require the reflection.proxy.projectcapsule.dev/enabled label.
   roleBindingReflector: false
   # -- Authentication types to be used for requests. Possible Auth Types: [BearerToken, TLSCertificate, XForwardedClientCert]
   authPreferredTypes: "BearerToken,TLSCertificate"
@@ -83,7 +89,7 @@ The following options are available for the Capsule Proxy Controller:
       --disable-caching                       Disable the go-client caching to hit directly the Kubernetes API Server, it disables any local caching as the rolebinding reflector (default: false)
       --enable-leader-election                Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.
       --enable-pprof                          Enables Pprof endpoint for profiling (not recommend in production)
-      --enable-reflector                      Enable rolebinding reflector. The reflector allows to list the namespaces, where a rolebinding mentions a user
+      --enable-reflector                      Enable reflection for RoleBindings labelled reflection.proxy.projectcapsule.dev/enabled=true
       --enable-ssl                            Enable the bind on HTTPS for secure communication (default: true) (default true)
       --feature-gates mapStringBool           A set of key=value pairs that describe feature gates for alpha/experimental features. Options are:
                                               AllAlpha=true|false (ALPHA - default=false)
@@ -93,10 +99,12 @@ The following options are available for the Capsule Proxy Controller:
                                               SkipImpersonationReview=true|false (ALPHA - default=false)
       --ignored-impersonation-group strings   Names of the groups which are not used for impersonation (considered after impersonation-group-regexp)
       --ignored-user-group strings            Names of the groups which requests must be ignored and proxy-passed to the upstream server
+      --ignored-username strings              Usernames whose requests must be ignored and proxy-passed to the upstream server
       --impersonation-group-regexp string     Regular expression to match the groups which are considered for impersonation
       --listening-port uint                   HTTP port the proxy listens to (default: 9001) (default 9001)
       --metrics-addr string                   The address the metric endpoint binds to. (default ":8080")
       --oidc-username-claim string            The OIDC field name used to identify the user (default: preferred_username) (default "preferred_username")
+      --require-capsule-user                  Require Capsule identity membership for proxy grants; when false, authenticated non-Capsule callers may use matching GlobalProxySettings and Capsule is optional (default true)
       --rolebindings-resync-period duration   Resync period for rolebindings reflector (default 10h0m0s)
       --ssl-cert-path string                  Path to the TLS certificate (default: /opt/capsule-proxy/tls.crt)
       --ssl-key-path string                   Path to the TLS certificate key (default: /opt/capsule-proxy/tls.key)
@@ -109,6 +117,65 @@ The following options are available for the Capsule Proxy Controller:
       --zap-stacktrace-level level            Zap Level at and above which stacktraces are captured (one of 'info', 'error', 'panic').
       --zap-time-encoding time-encoding       Zap time encoding (one of 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'). Defaults to 'epoch'.
 ```
+
+## User scope and reflection
+
+By default, `options.requireCapsuleUser: true` (`--require-capsule-user=true`)
+requires callers to be recognized Capsule identities before receiving proxy
+grants. Configure eligible users and groups in the CapsuleConfiguration selected
+by `options.capsuleConfigurationName` (`--capsule-configuration-name`). See
+[User scope](/docs/proxy/setup/installation/#user-scope) for the
+CapsuleConfiguration example, including `system:authenticated` and administrator
+exclusions.
+
+For Capsule users, the following Helm values enable RoleBinding reflection and
+exclude your administrators from proxy filtering:
+
+```yaml
+options:
+  capsuleConfigurationName: default
+  requireCapsuleUser: true
+  ignoredUserGroups:
+    - platform-admins
+  ignoredUsernames:
+    - platform-admin
+  disableCaching: false
+  roleBindingReflector: true
+```
+
+Replace the example administrator group and username with your actual identities.
+The corresponding exclusion flags are `--ignored-user-group` and
+`--ignored-username`. Ignored identities retain their native Kubernetes RBAC
+permissions; these settings do not grant administrator access.
+
+`options.roleBindingReflector: true` sets `--enable-reflector=true`.
+Reflection requires Capsule integration and caching, so keep
+`options.disableCaching: false` (`--disable-caching=false`). For namespaced
+resource LIST grants, also set
+`reflection.proxy.projectcapsule.dev/enabled: "true"` on the Tenant's
+`spec.additionalRoleBindings[].labels`. See
+[RoleBinding reflection](/docs/proxy/setup/installation/#rolebinding-reflection)
+for the Tenant example and access boundaries.
+
+### Global grants for non-Capsule users
+
+To allow authenticated callers to receive matching `GlobalProxySettings` grants
+without becoming Capsule users, use these Helm values:
+
+```yaml
+options:
+  requireCapsuleUser: false
+  extraArgs:
+    - --feature-gates=ProxyClusterScoped=true
+```
+
+These values set `--require-capsule-user=false` and
+`--feature-gates=ProxyClusterScoped=true`. A global rule must still match the
+caller, resource, operation, and selected objects. This does not grant tenant
+delegation or reflected access to non-Capsule callers. Capsule is optional in
+this mode; see
+[Global grants for non-Capsule users](/docs/proxy/setup/installation/#global-grants-for-non-capsule-users)
+for startup behavior and supported operations.
 
 ## Feature Gates
 
