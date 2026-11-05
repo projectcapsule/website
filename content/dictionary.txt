@@ -239,3 +239,11 @@ OpenShift
 matcher
 matchers
 v1
+DeviceClass
+DeviceClasses
+DRA
+ResourceClaim
+ResourceClaims
+ResourceClaimTemplate
+ResourceClaimTemplates
+FPGA

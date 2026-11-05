@@ -15,9 +15,8 @@ resulting resources.
 
 Rules cover two areas:
 
-- **[Mutate](/docs/rules/mutate/)**: apply typed workload settings to new Pods, default or replace Ingress and Gateway classes, and set Gateway references on ListenerSets in selected namespaces.
-
-- **[Enforcement](/docs/rules/enforcement/)**: control allowed workloads, ingress hostnames and classes, service types, NetworkPolicy egress CIDRs, and namespace metadata.
+- **[Mutate](/docs/rules/mutate/)**: Mutate resources in selected namespaces.
+- **[Enforcement](/docs/rules/enforcement/)**: Enforce policies on resources in selected namespaces.
 
 See [Conditions](#conditions) for conditional mutation and enforcement.
 
@@ -314,7 +313,7 @@ at `mutate[].conditions` or `enforce.conditions`.
 | Location | Scope |
 |---|---|
 | `mutate[].conditions` | The entire mutation entry, within the property's supported targets and operations. |
-| `enforce.conditions` | The entire `enforce` block: workloads, Services, metadata, ingress, and storage, including metadata and resource request/limit mutations. |
+| `enforce.conditions` | The entire `enforce` block: workloads, Services, metadata, ingress, storage, and devices, including metadata and resource request/limit mutations. |
 
 A false mutation condition skips only its mutation entry. A false enforcement
 condition skips that `enforce` block, while sibling `mutate` entries and other
