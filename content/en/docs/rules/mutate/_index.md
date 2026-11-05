@@ -7,7 +7,9 @@ description: >
 
 Use `spec.rules[].mutate` to set resource properties during admission. It is an
 ordered list of entries, each with an optional `action` and a typed resource
-block. [`ingress.listenerSets.parentRef`](/docs/rules/mutate/ingress/) supplies
+block. [`ingress.class`](/docs/rules/mutate/ingress/#classes) defaults or replaces
+class references on Ingress and Gateway creation and updates.
+[`ingress.listenerSets.parentRef`](/docs/rules/mutate/ingress/#listenersets) supplies
 Gateway references on ListenerSet creation and updates. `workloads` applies to Pods on creation;
 [`security.readOnlyRootFilesystem`](/docs/rules/mutate/workloads/#read-only-root-filesystem)
 and [`registries.imagePullPolicy`](/docs/rules/mutate/workloads/#image-pull-policy)
@@ -70,6 +72,9 @@ explains which list entries match during a merge and how required affinity is
 combined. Scalar settings such as `security.hostUsers`, `security.readOnlyRootFilesystem`, and
 [`registries.imagePullPolicy`](/docs/rules/mutate/workloads/#image-pull-policy)
 overwrite selected values with either action.
+[Ingress and Gateway class names](/docs/rules/mutate/ingress/#class-merge-and-replace)
+are scalar defaults: merge preserves a non-empty class, while replace sets the
+configured name on every matching write.
 [ListenerSet parent references](/docs/rules/mutate/ingress/#merge-and-replace) are
 applied as complete references: merge fills only an absent or null reference,
 while replace replaces it in full.
@@ -82,6 +87,7 @@ while replace replaces it in full.
 | Empty `placement.nodeSelector`, `placement.tolerations`, `placement.topologySpreadConstraints`, `placement.affinity`, or `registries.imagePullSecrets` with `replace` | Clear that property. |
 | Empty `placement: {}`, `security: {}`, `registries: {}`, `ingress: {}`, or `ingress.listenerSets: {}` | Supply no changes; another mutation property must be supplied. |
 | Empty `ingress.listenerSets.parentRef: {}` | Invalid: `name` is required. |
+| Empty `ingress.class: ""`, or `ingress.types` without a non-empty `ingress.class` | Invalid: configure the class name and its target kinds together. |
 | `security.hostUsers: false` or `security.readOnlyRootFilesystem: false` | Set an explicit Boolean value; `false` is not an omission. |
 
 For example, this clears node selectors and affinity while retaining tolerations
