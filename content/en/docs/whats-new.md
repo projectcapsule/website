@@ -23,8 +23,7 @@ outputs:
 ## Breaking Changes ⚠️
 
 * **Proxy**: A namespaced [`ProxySetting`](/docs/proxy/proxysettings/#proxysetting) can no longer grant `clusterResources`. Move existing grants to a [`GlobalProxySettings`](/docs/proxy/proxysettings/#globalproxysettings), which requires the `ProxyClusterScoped` feature gate.
-* **Capsule**: A Tenant no longer lists the available PriorityClasses under `status.classes.priority`. Templates and policies that read this list now receive no entries. PriorityClasses are a namespace-specific policy, configured with [priority class rules](/docs/rules/enforcement/workloads/#priority-classes); `spec.priorityClasses` keeps working.
-
+ * **Capsule**: A Tenant no longer lists the available PriorityClasses under `status.classes.priority`. Migrate templates and policies that read this field; generators using `missingKey: error` fail when accessing the removed key. PriorityClasses are a namespace-specific policy, configured with [priority class rules](/docs/rules/enforcement/workloads/#priority-classes); `spec.priorityClasses` keeps working.
 ## Features ✨
 
 * **Capsule**: [Resource policies](/docs/operating/concepts/managed-resources/#resource-policy) for `TenantResource` and `GlobalTenantResource` add conditional application and control over resource adoption, protection, and cleanup.
