@@ -232,6 +232,13 @@ cta
 docsy's
 navbar
 viewport
+CIDRs
+GatewayClass
+GatewayClasses
+OpenShift
+matcher
+matchers
+v1
 DeviceClass
 DeviceClasses
 DRA

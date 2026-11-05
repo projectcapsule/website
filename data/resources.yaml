@@ -8,9 +8,23 @@ resources:
     tags:
       - overview
       - multi-tenancy
+  - title: "Kubernetes Multi-Tenancy Is Hard. Capsule Makes It Easier"
+    date: "2026-08-15"
+    youtube: "jpxso4kqNbc"
+    type: "video"
+    tags:
+      - tutorial
+      - community
   - title: "ChatLoopBackOff Episode 79: Capsule with Thomas and Oliver"
     date: "2026-08-01"
     youtube: "a7yVjFFa0Eo"
+    type: "video"
+    tags:
+      - tutorial
+      - maintainer
+  - title: "Project Lightning Talk: Namespace Multi-Tenancy, But All The Problems Related To It"
+    youtube: "-imwG5MP2aw"
+    date: "2026-04-09"
     type: "video"
     tags:
       - maintainer
@@ -37,6 +51,12 @@ resources:
     date: "2025-02-27"
     thumbnail: "/images/content/multi-tenant-spectrum.png"
     type: "video"
+  - title: "Project Lightning Talk: Capsule: Launching Multi-Tenancy to New Kubernetes Horizons"
+    youtube: "02dSHShBVuk"
+    date: "2025-04-15"
+    type: "video"
+    tags:
+      - maintainer
   - title: "Kubernetes Multi-tenancy Spectrum by aniele Polencic"
     url: https://www.linkedin.com/posts/danielepolencic_multi-tenancy-spectrum-in-kubernetes-ugcPost-7299773103826423809-logM?utm_source=share&utm_medium=member_desktop&rcm=ACoAACmXYUUB8FmX69ABG0zyNMP4W0AhGgWpgNU
     date: "2025-02-10"

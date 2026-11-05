@@ -9,14 +9,14 @@ description: >
 
 Namespace rules let administrators configure behavior for resources in Tenant
 namespaces. Use namespace selectors to give namespaces within the same Tenant
-different profiles. Rules can set workload properties and ListenerSet Gateway
-references during admission, then validate the resulting resources.
+different profiles. Rules can set workload properties, Ingress and Gateway
+classes, and ListenerSet Gateway references during admission, then validate the
+resulting resources.
 
 Rules cover two areas:
 
-- **[Mutate](/docs/rules/mutate/)**: apply typed workload settings to new Pods, Gateway references to ListenerSets, and [DeviceClass defaults](/docs/rules/mutate/devices/) to DRA claims and templates in selected namespaces.
-
-- **[Enforcement](/docs/rules/enforcement/)**: control allowed workloads, DeviceClass references, ingress hostnames, service types, NetworkPolicy egress CIDRs, and namespace metadata.
+- **[Mutate](/docs/rules/mutate/)**: Mutate resources in selected namespaces.
+- **[Enforcement](/docs/rules/enforcement/)**: Enforce policies on resources in selected namespaces.
 
 See [Conditions](#conditions) for conditional mutation and enforcement.
 
@@ -68,6 +68,11 @@ on that subresource. Controller templates and existing containers are not
 rewritten. Other Pod updates, deletes, and subresources do not run workload
 mutations. Rule or namespace-label changes affect new Pods and new ephemeral
 containers within the property's supported scope.
+
+`mutate[].ingress.class` applies to the Ingress and Gateway kinds selected by
+`mutate[].ingress.types` on main-resource creation and updates. Gateway API v1
+is the primary API; served `v1beta1` Gateway requests receive the same class
+rules for compatibility. See [class mutations](/docs/rules/mutate/ingress/#classes).
 
 `mutate[].ingress.listenerSets.parentRef` applies to
 `gateway.networking.k8s.io/v1` ListenerSets on main-resource creation and updates.

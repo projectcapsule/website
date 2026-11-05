@@ -310,7 +310,7 @@ worker08.acme.com         Ready    worker            8d    v1.25.2   pool=renewa
 
 #### PodNodeSelector
 
-> This approach requires `PodNodeSelector` Admission Controller plugin to be active. If the plugin is not active, the pods will be scheduled to any node. If your distribution does not support this feature, you can use [Expression Node Selectors](/docs/tenants/enforcement#node-selector-expressions).
+> This approach requires `PodNodeSelector` Admission Controller plugin to be active. If the plugin is not active, the pods will be scheduled to any node. If your distribution does not support this feature, you can use [workload placement rules](/docs/rules/mutate/workloads/#node-selectors).
 
 The label `pool=renewable` is defined as `.spec.nodeSelector` in the `Tenant` manifest:
 
@@ -528,6 +528,11 @@ spec:
 With the above configuration, any attempt of Alice to create a `Service` of type `LoadBalancer` is denied by the Validation Webhook enforcing it. Default value is `true`.
 
 ### GatewayClasses
+
+For different class policies within one Tenant, use
+[namespace class enforcement](/docs/rules/enforcement/network/#classes) and
+[class mutation](/docs/rules/mutate/ingress/#classes). The Tenant-wide options
+below remain additional restrictions when namespace rules are configured.
 
 > Note: This feature is offered only by API type `GatewayClass` in group `gateway.networking.k8s.io` version `v1`.
 
@@ -763,6 +768,11 @@ spec:
 Doing this, Alice will not be able to use `*.water.acme.com`, being the tenant owner of solar and green only.
 
 ### IngressClasses
+
+For different class policies within one Tenant, use
+[namespace class enforcement](/docs/rules/enforcement/network/#classes) and
+[class mutation](/docs/rules/mutate/ingress/#classes). The Tenant-wide options
+below remain additional restrictions when namespace rules are configured.
 
 An Ingress Controller is used in Kubernetes to publish services and applications outside of the cluster. An Ingress Controller can be provisioned to accept only `Ingresses` with a given `IngressClass`.
 
