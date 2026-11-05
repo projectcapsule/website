@@ -70,5 +70,5 @@ export const config: Config = {
   // Sections whose pages carry a Markdown rendition (outputs.page/section in
   // config/_default/hugo.yaml), plus any ".md" URL. Add new top-level content
   // sections here so their pages negotiate Markdown too.
-  path: ["/*.md", "/docs/*", "/ecosystem/*", "/project/*", "/adopters/*", "/support/*"],
+  path: ["/*.md", "/docs/*", "/ecosystem/*", "/project/*", "/support/*"],
 };

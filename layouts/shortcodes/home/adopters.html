@@ -4,12 +4,13 @@
      container-fluid rather than container so the strip runs the full width;
      the heading and footnote put the container back around themselves.
 
-     The roster is emitted three times so the drift can wrap by exactly one
-     copy, onto identical pixels. Drift and hand both move scrollLeft, so
-     anything that can start a gesture pauses the drift first, in its own
-     event; the scroll handler is only a backstop, reported a frame late.
+     The roster is emitted three times so the strip can wrap by exactly one
+     copy, onto identical pixels. Drift, throw and hand all move the same
+     float through the one writer, which folds every time, so none of them
+     can run out of track and the wrap never shows. The scroll handler is
+     only a backstop, for the sideways gestures the browser gives us free.
 
-     Only the first copy is real to a screen reader or the tab key. */ -}}
+     Only the first copy is real to a screen reader. */ -}}
 
 {{- $a := site.Data.homepage.adopters -}}
 {{- /* An adopter with no logo has nothing to put on the strip. */ -}}
@@ -26,10 +27,11 @@
     {{- range $copy := seq $copies }}
     {{- $dup := ne $copy 1 }}
     {{- range $items }}
-    <a class="home-adopters__item" href="{{ .link | safeURL }}" target="_blank" rel="noopener"
-       {{- if $dup }} aria-hidden="true" tabindex="-1"{{ else }} title="{{ .name }}"{{ end }}>
-      <img src="{{ .logo | safeURL }}" alt="{{ if not $dup }}{{ .name }}{{ end }}" loading="lazy">
-    </a>
+    <span class="home-adopters__item"
+       {{- if $dup }} aria-hidden="true"{{ else }} title="{{ .name }}"{{ end }}>
+      {{- /* Load offscreen copies too so fast scrolling and wrapping do not reveal unloaded logos. */}}
+      <img src="{{ .logo | safeURL }}" alt="{{ if not $dup }}{{ .name }}{{ end }}" loading="eager">
+    </span>
     {{- end }}
     {{- end }}
   </div>
@@ -45,6 +47,21 @@
     const SPEED = 32;
     // What a nudge by hand buys before the drift picks up again.
     const RESUME_AFTER = 4000;
+    // What is left of a throw's speed after one 60Hz frame's worth of decay.
+    // Short on purpose: against the 13.5rem a logo and its margin take, a
+    // brisk throw runs about one and a half of them and is done inside a
+    // second. Enough that letting go does not stop dead, not enough to take
+    // the strip somewhere of its own accord.
+    const FLING_DECAY = 0.91;
+    // The speed a throw is spent at, px/s. Also the shortest throw worth
+    // keeping, so letting go of a still strip does not nudge it.
+    const FLING_MIN = 24;
+    // How much of the newest sample a velocity reading takes. Low, so one
+    // jittery frame before release cannot decide the throw.
+    const FLING_SMOOTH = 0.3;
+    // A hand already still this long before letting go was not throwing, and
+    // its last reading is stale by then anyway.
+    const FLING_STALE = 100;
     const COPIES = {{ $copies }};
     // Logos are sized to a shared area, not a shared height - equal height is
     // what makes a 5:1 wordmark five times the mark beside it. As the fraction
@@ -70,6 +87,10 @@
       let written = -1;
       let pausedUntil = 0;
       let held = false;
+      // The pull in hand, and the throw it leaves behind: px/s, signed the
+      // way scrollLeft grows. Zero when there is none.
+      let drag = null;
+      let fling = 0;
 
       // Fit one logo to the shared area, within its box. An image whose
       // natural size is not known yet keeps the CSS fallback.
@@ -106,13 +127,15 @@
         img.addEventListener("load", () => fit(img), { once: true });
       });
 
-      // A modulo, not a test for having passed an edge: scrollLeft cannot go
-      // below zero, so once clamped there the position to wrap from is lost.
-      const fold = () => {
-        if (cycle > 0) pos = cycle + ((((pos - cycle) % cycle) + cycle) % cycle);
-      };
-
+      // The one way the strip is moved, by drift, throw and hand alike.
+      //
+      // The fold is a modulo rather than a test for having passed an edge: it
+      // holds pos on the middle copy, whose pixels are the other two's, so no
+      // caller can reach either end of the track - which is also why none of
+      // them has to care that scrollLeft clamps, losing the position there
+      // would otherwise be to wrap back from.
       const write = () => {
+        if (cycle > 0) pos = cycle + ((((pos - cycle) % cycle) + cycle) % cycle);
         strip.scrollLeft = pos;
         written = strip.scrollLeft;
       };
@@ -123,9 +146,10 @@
 
       write();
 
-      // A scroll we did not write is one they did. Keeping what we wrote also
-      // stops the start above reading as a nudge and stilling the strip for
-      // the first four seconds.
+      // A scroll we did not write is one they did: a sideways trackpad swipe,
+      // shift and the wheel, the arrow keys on a focused strip. Keeping what
+      // we wrote also stops the start above reading as a nudge and stilling
+      // the strip for the first four seconds.
       strip.addEventListener("scroll", () => {
         if (Math.abs(strip.scrollLeft - written) <= 1) return;
         pos = strip.scrollLeft;
@@ -133,22 +157,78 @@
         pause();
       }, { passive: true });
 
-      // The half that does the work: both fire before the browser has
-      // scrolled anything. Touch needs no line of its own, nor the keyboard,
-      // which cannot reach the strip without focusing it.
       strip.addEventListener("wheel", pause, { passive: true });
-      strip.addEventListener("pointerdown", pause, { passive: true });
 
-      // A link that is sliding away is hard to hit. Latched, not read off
+      // Reaching for the strip is as good as saying stop: a logo being read,
+      // or about to be grabbed, should hold still. Latched, not read off
       // :hover each frame, which flickers as the strip scrolls under the
       // cursor; and only where there is a hover, since a touch screen fires
       // pointerenter with no pointerleave and would hold it for the visit.
+      // A throw outranks it, being let go of with the cursor still inside.
       if (window.matchMedia("(any-hover: hover)").matches) {
         strip.addEventListener("pointerenter", () => { held = true; });
         strip.addEventListener("pointerleave", () => { held = false; });
       }
       strip.addEventListener("focusin", () => { held = true; });
       strip.addEventListener("focusout", () => { held = false; });
+
+      // Desktop has no gesture for a sideways scroller: a vertical wheel does
+      // not reach it, and the latch above only stills the drift. So the mouse
+      // is given what touch already has natively - pulling the strip moves it.
+      // Touch is left out of the pull on purpose: it scrolls this natively,
+      // with momentum a hand-rolled drag would replace with something worse.
+      // It still stops the drift, which is why the pause comes first.
+      strip.addEventListener("pointerdown", (e) => {
+        pause();
+        // Grabbing a gliding strip catches it where it is.
+        fling = 0;
+        if (e.pointerType === "touch" || e.button !== 0) return;
+        // user-select only governs the strip's own content: a pull that
+        // leaves it downward would otherwise start selecting the page under
+        // it. Safe to cancel here only because nothing in the strip is a
+        // link any more - it would have taken their activation with it.
+        e.preventDefault();
+        drag = { at: e.clientX, t: performance.now(), v: 0 };
+        // Moves keep arriving once the cursor leaves the strip, and the
+        // capture releases itself on pointerup.
+        strip.setPointerCapture(e.pointerId);
+      });
+
+      // Moved by each step of the hand rather than by the distance from where
+      // the pull began: there is then no anchor for the fold in write() to
+      // leave stale, and nothing to accumulate unseen past an end.
+      strip.addEventListener("pointermove", (e) => {
+        if (!drag) return;
+
+        const t = performance.now();
+        const ms = t - drag.t;
+        const dx = drag.at - e.clientX;
+
+        // Speed of the hand as the strip sees it, a pull leftwards raising
+        // scrollLeft. Read against the previous move, so what is left at
+        // release is the speed then and not the average over the whole pull.
+        if (ms > 0) {
+          drag.v += ((dx / ms) * 1000 - drag.v) * FLING_SMOOTH;
+          drag.t = t;
+        }
+
+        drag.at = e.clientX;
+        pos += dx;
+        write();
+      });
+
+      strip.addEventListener("pointerup", () => {
+        if (!drag) return;
+        if (performance.now() - drag.t < FLING_STALE && Math.abs(drag.v) > FLING_MIN) {
+          fling = drag.v;
+        }
+        drag = null;
+        // Until now the drift was held off by drag itself.
+        pause();
+      });
+
+      // The browser took the gesture for something of its own.
+      strip.addEventListener("pointercancel", () => { drag = null; fling = 0; });
 
       window.addEventListener("resize", () => {
         cycle = track.scrollWidth / COPIES;
@@ -161,10 +241,23 @@
         const dt = Math.min(now - last, 50);
         last = now;
 
-        if (!still.matches && !held && now >= pausedUntil) {
+        if (fling !== 0) {
+          pos += (fling * dt) / 1000;
+          write();
+          // Per elapsed frame, not per callback, so a 120Hz screen does not
+          // glide twice as far as a 60Hz one.
+          fling *= Math.pow(FLING_DECAY, dt / 16.67);
+          if (Math.abs(fling) < FLING_MIN) {
+            // Spent. A throw the drift's way is handed straight over, so the
+            // strip carries on rather than stopping dead for the rest of the
+            // pull's four seconds; one against it keeps them, since the drift
+            // would otherwise turn round the instant the glide died and the
+            // pause is what hides the turn.
+            if (fling > 0) pausedUntil = 0;
+            fling = 0;
+          }
+        } else if (!still.matches && !held && !drag && now >= pausedUntil) {
           pos += (SPEED * dt) / 1000;
-          // Folding only here keeps a seam from being caught mid-gesture.
-          fold();
           write();
         }
 
