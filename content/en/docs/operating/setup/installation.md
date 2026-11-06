@@ -58,6 +58,26 @@ Perform the following steps to install the Capsule operator:
 
 Here are some key considerations to keep in mind when installing Capsule. Also check out the **[Best Practices](/docs/operating/best-practices)** for more information.
 
+### High Availability
+
+We recommend running Capsule with **multiple replicas (at least 2)** in production. Capsule serves admission webhooks, which are in the request path of all tenant operations. With a single replica, a restart, node drain or node failure makes the webhooks unavailable and (with the default `failurePolicy: Fail`) blocks the affected requests. Leader election is enabled by default, so only one replica reconciles at a time while all replicas serve the webhooks.
+
+```yaml
+replicaCount: 2
+```
+
+Additionally, we recommend enabling a [PodDisruptionBudget](https://kubernetes.io/docs/tasks/run-application/configure-pdb/) (PDB), so that voluntary disruptions (node drains, cluster upgrades, autoscaler scale-down) never evict all Capsule replicas at once.
+
+```yaml
+replicaCount: 2
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+```
+
+Use either `minAvailable` or `maxUnavailable` (not both, a number or a percentage). Make sure `minAvailable` is lower than `replicaCount`, otherwise node drains are blocked. Optionally set `unhealthyPodEvictionPolicy` to `IfHealthyBudget` or `AlwaysAllow`. The PodDisruptionBudget is only created when `manager.kind` is `Deployment`.
+
 ### Scalability
 
 For large clusters you might need to consider adjusting values for the Capsule controller.
