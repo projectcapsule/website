@@ -58,6 +58,38 @@ Perform the following steps to install the Capsule operator:
 
 Here are some key considerations to keep in mind when installing Capsule. Also check out the **[Best Practices](/docs/operating/best-practices)** for more information.
 
+### High Availability
+
+We recommend running Capsule with **multiple replicas (at least 2)** in production. Capsule serves admission webhooks, which are in the request path of all tenant operations. With a single replica, a restart, node drain or node failure makes the webhooks unavailable and (with the default `failurePolicy: Fail`) blocks the affected requests. Leader election is enabled by default, so only one replica reconciles at a time while all replicas serve the webhooks.
+
+```yaml
+replicaCount: 2
+```
+
+By default, the chart adds a **preferred** (soft) pod anti-affinity on `kubernetes.io/hostname`, so the replicas are spread over different nodes when possible. Because the rule is only preferred, scheduling and rolling updates still work on single-node clusters and on clusters with fewer nodes than replicas. You can disable it with `antiAffinity.enabled: false`, or override it by setting `affinity.podAntiAffinity` yourself. If you need a hard guarantee that replicas never share a node, use `topologySpreadConstraints` instead of a required anti-affinity:
+
+```yaml
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: capsule
+        app.kubernetes.io/instance: <release-name>
+```
+
+Replace `<release-name>` with the name of your Helm release. Additionally, we recommend enabling a [PodDisruptionBudget](https://kubernetes.io/docs/tasks/run-application/configure-pdb/) (PDB), so that voluntary disruptions (node drains, cluster upgrades, autoscaler scale-down) never evict all Capsule replicas at once. A PDB does not protect against involuntary disruptions such as a node failure, which is what the replica spreading above is for.
+
+```yaml
+replicaCount: 2
+
+podDisruptionBudget:
+  enabled: true
+```
+
+The chart defaults `minAvailable` to `1`. If you want to customize these values, use either `minAvailable` or `maxUnavailable` (a number or a percentage). The PodDisruptionBudget and the default anti-affinity are only applied when `manager.kind` is `Deployment`.
+
 ### Scalability
 
 For large clusters you might need to consider adjusting values for the Capsule controller.
