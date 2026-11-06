@@ -1123,9 +1123,6 @@ tenant:
                     tenant: wind
     status:
         classes:
-            priority:
-                - system-cluster-critical
-                - system-node-critical
             storage:
                 - standard
         conditions:

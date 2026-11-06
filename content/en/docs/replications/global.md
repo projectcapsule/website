@@ -446,22 +446,22 @@ Templates can also produce multiple objects using flow control:
 apiVersion: capsule.clastix.io/v1beta2
 kind: GlobalTenantResource
 metadata:
-  name: tenant-priority-rbac
+  name: tenant-storage-rbac
 spec:
   scope: Tenant
   resources:
     - generators:
         - missingKey: error
           template: |
-            {{- range $.tenant.status.classes.priority }}
+            {{- range $.tenant.status.classes.storage }}
             ---
             apiVersion: rbac.authorization.k8s.io/v1
             kind: ClusterRole
             metadata:
-              name: tenant:{{$.tenant.metadata.name}}:priority:{{.}}
+              name: tenant:{{$.tenant.metadata.name}}:storage:{{.}}
             rules:
-              - apiGroups: ["scheduling.k8s.io"]
-                resources: ["priorityclasses"]
+              - apiGroups: ["storage.k8s.io"]
+                resources: ["storageclasses"]
                 resourceNames: ["{{.}}"]
                 verbs: ["get"]
             {{- end }}
@@ -1284,9 +1284,6 @@ tenant:
                     tenant: wind
     status:
         classes:
-            priority:
-                - system-cluster-critical
-                - system-node-critical
             storage:
                 - standard
         conditions:

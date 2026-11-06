@@ -2454,8 +2454,42 @@ Enforcement for Ingress and Gateway API resource hostnames.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[classes](#rulestatusspecindexenforceingressclassesindex)** | []object | Classes matches IngressClass or GatewayClass names and labels. Entries,<br>and the criteria within each entry, are ORed. Label selectors read the<br>referenced class, not the ingress or namespace. Exact and exp need no read.<br>Classless objects are rejected by applicable allow/deny class rules.<br>Legacy Tenant class restrictions remain an additional boundary. | false |
 | **[hostnames](#rulestatusspecindexenforceingresshostnamesindex)** | []object | Hostnames defines allowed, denied, or audited hostname expressions.<br>A resource targeted by an allow or deny rule must declare non-empty values<br>in all hostname fields. Audit-only rules record missing hostnames without<br>denying them. | false |
-| **types** | []enum | Types defines the resource kinds to which hostname enforcement applies.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+| **types** | []enum | Types defines the resource kinds to which enforcement applies. Classes<br>apply to Ingress and Gateway; hostnames apply to every supported type.<br>Gateway targets gateway.networking.k8s.io/v1. Served v1beta1 Gateway<br>requests receive the same rules to prevent bypass through another version.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.ingress.classes[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusspecindexenforceingressclassesindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.spec[index].enforce.ingress.classes[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### RuleStatus.spec[index].enforce.ingress.hostnames[index]
@@ -3605,7 +3639,9 @@ Ingress configures Kubernetes ingress and Gateway API resource mutations.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **class** | string | Class sets the targeted Ingress or Gateway class on CREATE and UPDATE.<br>Merge fills an absent or empty class, preserving explicit field/annotation<br>values. Replace sets the class and keeps an existing ingress annotation in<br>sync. Rule changes do not reconcile existing objects. Templates are allowed;<br>rendered values must be valid DNS subdomains. Omitted leaves it unchanged. | false |
 | **[listenerSets](#rulestatusspecindexmutateindexingresslistenersets)** | object | ListenerSets configures gateway.networking.k8s.io/v1 ListenerSets. | false |
+| **types** | []enum | Types selects the kinds whose class is set. Required when class is supplied.<br>Gateway targets gateway.networking.k8s.io/v1. Served v1beta1 Gateway<br>requests receive the same class mutation for version compatibility.<br>ListenerSet parentRef mutation has its own explicit target and is unchanged.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
 
 
 ### RuleStatus.spec[index].mutate[index].ingress.listenerSets
@@ -4550,8 +4586,42 @@ Enforcement for Ingress and Gateway API resource hostnames.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[classes](#rulestatusstatusruleenforceingressclassesindex)** | []object | Classes matches IngressClass or GatewayClass names and labels. Entries,<br>and the criteria within each entry, are ORed. Label selectors read the<br>referenced class, not the ingress or namespace. Exact and exp need no read.<br>Classless objects are rejected by applicable allow/deny class rules.<br>Legacy Tenant class restrictions remain an additional boundary. | false |
 | **[hostnames](#rulestatusstatusruleenforceingresshostnamesindex)** | []object | Hostnames defines allowed, denied, or audited hostname expressions.<br>A resource targeted by an allow or deny rule must declare non-empty values<br>in all hostname fields. Audit-only rules record missing hostnames without<br>denying them. | false |
-| **types** | []enum | Types defines the resource kinds to which hostname enforcement applies.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+| **types** | []enum | Types defines the resource kinds to which enforcement applies. Classes<br>apply to Ingress and Gateway; hostnames apply to every supported type.<br>Gateway targets gateway.networking.k8s.io/v1. Served v1beta1 Gateway<br>requests receive the same rules to prevent bypass through another version.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.ingress.classes[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusstatusruleenforceingressclassesindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rule.enforce.ingress.classes[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### RuleStatus.status.rule.enforce.ingress.hostnames[index]
@@ -5701,7 +5771,9 @@ Ingress configures Kubernetes ingress and Gateway API resource mutations.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **class** | string | Class sets the targeted Ingress or Gateway class on CREATE and UPDATE.<br>Merge fills an absent or empty class, preserving explicit field/annotation<br>values. Replace sets the class and keeps an existing ingress annotation in<br>sync. Rule changes do not reconcile existing objects. Templates are allowed;<br>rendered values must be valid DNS subdomains. Omitted leaves it unchanged. | false |
 | **[listenerSets](#rulestatusstatusrulemutateindexingresslistenersets)** | object | ListenerSets configures gateway.networking.k8s.io/v1 ListenerSets. | false |
+| **types** | []enum | Types selects the kinds whose class is set. Required when class is supplied.<br>Gateway targets gateway.networking.k8s.io/v1. Served v1beta1 Gateway<br>requests receive the same class mutation for version compatibility.<br>ListenerSet parentRef mutation has its own explicit target and is unchanged.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
 
 
 ### RuleStatus.status.rule.mutate[index].ingress.listenerSets
@@ -6613,8 +6685,42 @@ Enforcement for Ingress and Gateway API resource hostnames.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[classes](#rulestatusstatusrulesindexenforceingressclassesindex)** | []object | Classes matches IngressClass or GatewayClass names and labels. Entries,<br>and the criteria within each entry, are ORed. Label selectors read the<br>referenced class, not the ingress or namespace. Exact and exp need no read.<br>Classless objects are rejected by applicable allow/deny class rules.<br>Legacy Tenant class restrictions remain an additional boundary. | false |
 | **[hostnames](#rulestatusstatusrulesindexenforceingresshostnamesindex)** | []object | Hostnames defines allowed, denied, or audited hostname expressions.<br>A resource targeted by an allow or deny rule must declare non-empty values<br>in all hostname fields. Audit-only rules record missing hostnames without<br>denying them. | false |
-| **types** | []enum | Types defines the resource kinds to which hostname enforcement applies.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+| **types** | []enum | Types defines the resource kinds to which enforcement applies. Classes<br>apply to Ingress and Gateway; hostnames apply to every supported type.<br>Gateway targets gateway.networking.k8s.io/v1. Served v1beta1 Gateway<br>requests receive the same rules to prevent bypass through another version.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.ingress.classes[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusstatusrulesindexenforceingressclassesindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].enforce.ingress.classes[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.ingress.hostnames[index]
@@ -7764,7 +7870,9 @@ Ingress configures Kubernetes ingress and Gateway API resource mutations.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **class** | string | Class sets the targeted Ingress or Gateway class on CREATE and UPDATE.<br>Merge fills an absent or empty class, preserving explicit field/annotation<br>values. Replace sets the class and keeps an existing ingress annotation in<br>sync. Rule changes do not reconcile existing objects. Templates are allowed;<br>rendered values must be valid DNS subdomains. Omitted leaves it unchanged. | false |
 | **[listenerSets](#rulestatusstatusrulesindexmutateindexingresslistenersets)** | object | ListenerSets configures gateway.networking.k8s.io/v1 ListenerSets. | false |
+| **types** | []enum | Types selects the kinds whose class is set. Required when class is supplied.<br>Gateway targets gateway.networking.k8s.io/v1. Served v1beta1 Gateway<br>requests receive the same class mutation for version compatibility.<br>ListenerSet parentRef mutation has its own explicit target and is unchanged.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
 
 
 ### RuleStatus.status.rules[index].mutate[index].ingress.listenerSets
@@ -10018,8 +10126,42 @@ Enforcement for Ingress and Gateway API resource hostnames.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[classes](#tenantspecrulesindexenforceingressclassesindex)** | []object | Classes matches IngressClass or GatewayClass names and labels. Entries,<br>and the criteria within each entry, are ORed. Label selectors read the<br>referenced class, not the ingress or namespace. Exact and exp need no read.<br>Classless objects are rejected by applicable allow/deny class rules.<br>Legacy Tenant class restrictions remain an additional boundary. | false |
 | **[hostnames](#tenantspecrulesindexenforceingresshostnamesindex)** | []object | Hostnames defines allowed, denied, or audited hostname expressions.<br>A resource targeted by an allow or deny rule must declare non-empty values<br>in all hostname fields. Audit-only rules record missing hostnames without<br>denying them. | false |
-| **types** | []enum | Types defines the resource kinds to which hostname enforcement applies.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+| **types** | []enum | Types defines the resource kinds to which enforcement applies. Classes<br>apply to Ingress and Gateway; hostnames apply to every supported type.<br>Gateway targets gateway.networking.k8s.io/v1. Served v1beta1 Gateway<br>requests receive the same rules to prevent bypass through another version.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.ingress.classes[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#tenantspecrulesindexenforceingressclassesindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].enforce.ingress.classes[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### Tenant.spec.rules[index].enforce.ingress.hostnames[index]
@@ -11169,7 +11311,9 @@ Ingress configures Kubernetes ingress and Gateway API resource mutations.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **class** | string | Class sets the targeted Ingress or Gateway class on CREATE and UPDATE.<br>Merge fills an absent or empty class, preserving explicit field/annotation<br>values. Replace sets the class and keeps an existing ingress annotation in<br>sync. Rule changes do not reconcile existing objects. Templates are allowed;<br>rendered values must be valid DNS subdomains. Omitted leaves it unchanged. | false |
 | **[listenerSets](#tenantspecrulesindexmutateindexingresslistenersets)** | object | ListenerSets configures gateway.networking.k8s.io/v1 ListenerSets. | false |
+| **types** | []enum | Types selects the kinds whose class is set. Required when class is supplied.<br>Gateway targets gateway.networking.k8s.io/v1. Served v1beta1 Gateway<br>requests receive the same class mutation for version compatibility.<br>ListenerSet parentRef mutation has its own explicit target and is unchanged.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
 
 
 ### Tenant.spec.rules[index].mutate[index].ingress.listenerSets
@@ -12260,7 +12404,7 @@ Available Class Types within Tenant
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **device** | []string | Available DeviceClasses | false |
-| **gateway** | []string | Available GatewayClasses | false |
+| **gateway** | []string | <span style="color:red;font-weight:bold">Deprecated: retained for API compatibility, but no longer populated.<br>Ingress/Gateway classes are enforced through namespace rules.</span> | false |
 | **priority** | []string | Available PriorityClasses | false |
 | **runtime** | []string | Available StorageClasses | false |
 | **storage** | []string | Available Storageclasses (Only collected if any matching condition is specified) | false |
