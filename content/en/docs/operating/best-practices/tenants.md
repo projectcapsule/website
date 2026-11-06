@@ -25,6 +25,7 @@ and [Networking](/docs/operating/best-practices/networking/) into one ordered
 | Priority | Default to and allow only `tenant-standard`. |
 | Services | Allow only `ClusterIP` and deny every external IP. |
 | Namespace trust | Deny adding or changing `company.com/system` on Tenant namespaces. |
+| DRA admin access | Keep administrative device access disabled by denying `resource.kubernetes.io/admin-access: "true"` on Tenant namespaces. |
 
 ## Before Applying
 
@@ -97,6 +98,9 @@ PriorityClass settings.
 - comment: "Reserve this trusted-platform label for administrator-managed namespaces."
   title: Protect platform trust labels
   url: /docs/rules/enforcement/metadata/#deny-metadata-values
+- comment: "Keep DRA administrative access disabled in application namespaces."
+  title: Disable DRA admin access
+  url: /docs/operating/best-practices/tenants/#dra-administrative-access
 {{< /tenant-example >}}
 
 ## How the Policies Combine
@@ -131,6 +135,34 @@ deliberate exceptions. Add them only under reviewed namespace selectors, with
 the selecting labels under platform control. Review [rule order and scope](/docs/rules/#order-and-scope)
 when composing further rules so a later decision does not unintentionally
 relax the baseline.
+
+## DRA Administrative Access
+
+Keep [Dynamic Resource Allocation (DRA) administrative access](https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/#admin-access)
+disabled by default in application Tenant namespaces. A ResourceClaim or
+ResourceClaimTemplate with `adminAccess: true` can access devices already in
+use by other workloads and may receive additional permissions from the device
+driver. Restricting DeviceClasses alone does not prevent this privileged mode.
+
+Kubernetes permits these requests in namespaces labeled
+`resource.kubernetes.io/admin-access: "true"`. Keep that label absent and prevent
+Tenant users from enabling it. The example's final metadata rule denies the
+`"true"` value on namespace creation and on updates that add or change the
+label. Namespaces without the label, the value `"false"`, and updates removing
+the label remain allowed. Ordinary DRA requests remain available, subject to
+any configured DeviceClass restrictions.
+
+Apply this rule to every application Tenant without namespace selectors,
+audiences, or conditions, so the restriction covers every namespace and caller.
+Review later rules and managed metadata to ensure they do not enable the label.
+Reserve administrative device access for separately reviewed namespaces under
+platform control.
+
+Before applying the baseline, remove any existing
+`resource.kubernetes.io/admin-access: "true"` labels. Metadata validation skips
+unchanged values on updates, so the denial does not clean up existing labels.
+Also review existing claims and running workloads with `adminAccess: true`;
+removing the label does not revoke device access from running workloads.
 
 ## Complete the Platform Setup
 
