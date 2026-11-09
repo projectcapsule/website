@@ -427,7 +427,10 @@ admission object. A condition based on a mutated field can therefore have a
 different result in the two phases.
 
 On Pod updates, conditional placement enforcement is reevaluated even when only
-labels or another condition input changes. Typed workload mutations apply on
+labels or another condition input changes.
+[Priority class enforcement](/docs/rules/enforcement/workloads/#updates) is
+reevaluated on such updates only when an allow or deny class rule has
+conditions. Typed workload mutations apply on
 creation, with the additional `security.readOnlyRootFilesystem` and
 `registries.imagePullPolicy` scope for new ephemeral containers. Conditions do not expand a policy's supported operations or
 subresources.

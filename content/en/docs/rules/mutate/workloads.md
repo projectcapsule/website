@@ -4,7 +4,7 @@ weight: 1
 aliases:
   - /docs/rules/mutate/placement-example/
 description: >
-  Configure Pod placement, security, and image pull policies with ordered mutations
+  Configure Pod placement, security, image pull policies, and priority classes with ordered mutations
 ---
 
 Workload mutations set Pod properties under `spec.rules[].mutate[].workloads`
@@ -13,12 +13,13 @@ select schedulers, assign node pools, add tolerations, spread workloads across t
 and configure affinity. Use [security settings](#security) to configure Pod user
 namespaces, seccomp/AppArmor profiles, and read-only container root filesystems.
 Use [registry settings](#registries) to configure container image pull policies
-and Pod image pull secret references. [Placement enforcement](/docs/rules/enforcement/workloads/#placement)
+and Pod image pull secret references. Use [class settings](#classes) to assign
+a PriorityClass. [Placement enforcement](/docs/rules/enforcement/workloads/#placement)
 validates the resulting placement settings using matchers.
 
 This page covers configuration and mutation behavior. The
 [Reference](#reference) provides a complete Tenant combining all workload
-mutation properties with placement, security-profile, and image pull policy enforcement.
+mutation properties with placement, security-profile, image pull policy, and priority class enforcement.
 
 | Property | Field under `workloads` | Pod field | Enforcement |
 |---|---|---|---|
@@ -33,12 +34,14 @@ mutation properties with placement, security-profile, and image pull policy enfo
 | [Image pull secrets](#image-pull-secrets) | `registries.imagePullSecrets` | `spec.imagePullSecrets` | Mutation only. |
 | [Image pull policy](#image-pull-policy) | `registries.imagePullPolicy` | Selected containers: `imagePullPolicy` | [Registry pull policies](/docs/rules/enforcement/workloads/#pullpolicy) |
 | [Host user namespace](#host-user-namespace) | `security.hostUsers` | `spec.hostUsers` | Mutation only. |
+| [Priority class](#priority-class) | `classes.priority` | `spec.priorityClassName`, with its `spec.priority` and `spec.preemptionPolicy` | [Priority class matchers](/docs/rules/enforcement/workloads/#priority-classes) |
 
 ## Configure workload mutations
 
 Each mutation entry has an optional [action](/docs/rules/mutate/#action) and a
 `workloads` block containing at least one property to set. Scheduling fields live
-under `workloads.placement`; security fields live under `workloads.security`.
+under `workloads.placement`; security fields live under `workloads.security`;
+class assignments live under `workloads.classes`.
 `targets` stays directly under `workloads` and applies to all configured groups.
 The action applies to each supplied field inside a group: replacing
 `placement.scheduler` preserves an omitted `placement.nodeSelector` and all
@@ -109,7 +112,7 @@ still determine which mutations apply. Audience matching uses the identity
 creating the Pod, usually the controller's service account.
 {{% /alert %}}
 
-| Target | [Placement](#placement) / [Image pull secrets](#image-pull-secrets) | [`security.hostUsers`](#host-user-namespace) | [Seccomp](#seccomp) / [AppArmor](#apparmor) | [`security.readOnlyRootFilesystem`](#read-only-root-filesystem) / [`registries.imagePullPolicy`](#image-pull-policy) |
+| Target | [Placement](#placement) / [Image pull secrets](#image-pull-secrets) / [Priority class](#priority-class) | [`security.hostUsers`](#host-user-namespace) | [Seccomp](#seccomp) / [AppArmor](#apparmor) | [`security.readOnlyRootFilesystem`](#read-only-root-filesystem) / [`registries.imagePullPolicy`](#image-pull-policy) |
 |---|---|---|---|---|
 | Omitted, `[]`, or `pod` | ✅ Pod-level fields | ✅ Pod user namespace | ✅ Pod-level profiles only | ✅ All container groups |
 | `pod/containers` | ❌ | ❌ | ❌ | ✅ Regular containers |
@@ -118,8 +121,8 @@ creating the Pod, usually the controller's service account.
 
 Placement includes `placement.scheduler`, `placement.nodeSelector`, `placement.tolerations`,
 `placement.topologySpreadConstraints`, and `placement.affinity`. These properties, `security.hostUsers`,
-`security.seccompProfile`, `security.appArmorProfile`, and `registries.imagePullSecrets` require
-`pod` or omitted/empty targets.
+`security.seccompProfile`, `security.appArmorProfile`, `registries.imagePullSecrets`, and
+`classes.priority` require `pod` or omitted/empty targets.
 Seccomp and AppArmor mutation preserves explicit container profiles with both
 `merge` and `replace`; container-specific profile mutation is not supported.
 
@@ -953,14 +956,148 @@ Pods, or the secret list when adding ephemeral containers. Configure both
 `imagePullPolicy` and `imagePullSecrets` in one `registries` block when using the
 Pod target. For a container-specific pull policy, use a separate mutation entry.
 
+## Classes
+
+Configure the classes a Pod refers to under `mutate[].workloads.classes`.
+
+### Priority class
+
+`classes.priority` sets the Pod's `spec.priorityClassName`. Capsule also writes
+the `priority` and `preemptionPolicy` of that
+[PriorityClass](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/),
+because Kubernetes rejects a Pod whose priority does not belong to its class.
+Use the name of a PriorityClass that exists in the cluster; Capsule assigns the
+class but does not create it.
+
+To give Pods a namespace default when they name no class, use `merge`:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - mutate:
+        - action: merge
+          workloads:
+            classes:
+              priority: solar-standard
+```
+
+| Action | Behavior |
+|---|---|
+| `merge` or omitted action | Assign the class when the Pod has none of its own. Preserve a class the Pod names. |
+| `replace` | Assign the class to every Pod covered by the entry. |
+
+Omitting `classes.priority` or setting it to `null` leaves the Pod unchanged.
+An empty name is rejected, and the name must be a valid PriorityClass name. This
+is a Pod-level setting: use `targets: [pod]`, `targets: []`, or omit targets.
+
+#### Classes assigned by Kubernetes
+
+Kubernetes assigns the PriorityClass marked `globalDefault: true` to every Pod
+that names no class, before Capsule receives the admission request. `merge`
+counts that class as omitted, so a namespace default takes precedence over the
+cluster default:
+
+| Class on the Pod at admission | `merge` | `replace` |
+|---|---|---|
+| None | Configured class | Configured class |
+| The cluster's global default | Configured class | Configured class |
+| Another class | Preserved | Configured class |
+| The configured class | Unchanged | Unchanged |
+
+Capsule cannot distinguish an omitted class from the global default named
+explicitly: both reach admission with the same value, and `merge` replaces both.
+A class is judged by its current `globalDefault` flag on the API server, so
+promoting or demoting a PriorityClass takes effect on the next Pod.
+
+When several entries set a class, the first applicable `merge` decides and later
+`merge` entries keep its result. A later `replace` still overrides it.
+[Conditions](/docs/rules/#mutation-conditions) gate the whole entry and see the
+class set by preceding entries.
+
+#### Missing classes
+
+If the configured PriorityClass does not exist, Capsule rejects the Pod with an
+error naming the rule, such as
+`rules[0].mutate[0].workloads.classes.priority: PriorityClass "solar-standard" does not exist`.
+Create the class before a rule that refers to it selects namespaces. Pods that
+keep their own class under `merge` are unaffected.
+
+The name supports [Tenant/Namespace templates](/docs/tenants/rules/#templating),
+for example `priority: '{{ .tenant.metadata.name }}-standard'`. The rendered
+value must be a valid PriorityClass name before the rule becomes ready.
+
+#### Default and restrict classes per namespace
+
+This Tenant gives production namespaces a default they may override with one
+other class, and forces a low-priority class in development namespaces:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          environment: production
+      mutate:
+        - action: merge
+          workloads:
+            classes:
+              priority: solar-standard
+      enforce:
+        action: allow
+        workloads:
+          classes:
+            priority:
+              - exact: [solar-standard, solar-critical]
+    - namespaceSelector:
+        matchLabels:
+          environment: development
+      mutate:
+        - action: replace
+          workloads:
+            classes:
+              priority: solar-low
+```
+
+| Request | Result from these rules |
+|---|---|
+| New Pod in `production` without a class, or with the cluster's global default | Receives `solar-standard`. |
+| New Pod in `production` naming `solar-critical` | Preserved and allowed. |
+| New Pod in `production` naming another class | Preserved by `merge`, then denied by the allow-list. |
+| New Pod in `development`, with any class or none | Receives `solar-low`. |
+| Namespace with neither label | Neither rule applies. |
+
+These rules apply only when a Pod is created, including Pods created by
+controllers. Stored controller templates and existing Pods keep their class.
+The final class remains subject to
+[priority class enforcement](/docs/rules/enforcement/workloads/#priority-classes):
+allow the configured class in any applicable allow-list, or admission rejects
+the mutated Pod. An enforcement rule that
+[targets a controller](/docs/rules/enforcement/workloads/#targets-and-controller-templates)
+requires its template to name a class, because this mutation does not reach
+templates.
+
 ## Reference
 
 This complete Tenant combines every supported workload mutation property with
-placement, security-profile, and image pull policy enforcement. It selects namespaces labeled
+placement, security-profile, image pull policy, and priority class enforcement. It selects namespaces labeled
 `example.com/application: checkout` and configures workloads for Linux nodes.
 
-The `tenant-scheduler` scheduler, node pool, and zone labels must exist in the
-cluster. Eligible nodes must support [user namespaces](#host-user-namespace)
+The `tenant-scheduler` scheduler, the `checkout-standard` PriorityClass, node
+pool, and zone labels must exist in the cluster. Eligible nodes must support [user namespaces](#host-user-namespace)
 and [AppArmor](#apparmor). Provision the `checkout-registry` image pull Secret
 in each selected namespace. Application Pods should carry
 `app.kubernetes.io/part-of: checkout` so the spread and Pod-affinity selectors
@@ -971,7 +1108,8 @@ preserving custom scheduler names. The second entry independently applies the
 remaining placement settings, supplies missing Pod-level security profiles, and
 sets all selected container root filesystems read-only and image pull policies
 to `Always`. It also adds `checkout-registry` to the Pod's image pull secret
-references. Provide writable volume mounts for application paths that need them.
+references and assigns `checkout-standard` to Pods without a priority class.
+Provide writable volume mounts for application paths that need them.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -1009,6 +1147,8 @@ spec:
               imagePullPolicy: Always
               imagePullSecrets:
                 - name: checkout-registry
+            classes:
+              priority: checkout-standard
             placement:
               nodeSelector:
                 kubernetes.io/os: linux
@@ -1068,6 +1208,9 @@ spec:
               - types: [RuntimeDefault]
             appArmorProfiles:
               - types: [RuntimeDefault]
+          classes:
+            priority:
+              - exact: [checkout-standard, checkout-batch]
           placement:
             nodeSelector:
               - key: {exact: [kubernetes.io/os]}
@@ -1144,10 +1287,12 @@ spec:
 | Root filesystem flag omitted or `false` | Set to `true` on regular/init containers at creation and newly added ephemeral containers. |
 | Pod seccomp or AppArmor profile omitted | Defaulted to RuntimeDefault. |
 | Explicit Pod or container profile | Preserved by mutation, then rejected unless its effective type is RuntimeDefault. |
+| Priority class omitted, or the cluster's global default | Set to `checkout-standard`, with its priority and preemption policy. |
+| Explicit priority class | Preserved by mutation, then rejected unless it is `checkout-standard` or `checkout-batch`. |
 | Existing node selector or required affinity | Combined with the configured restrictions, then checked by the placement allowlists. |
 | Namespace without `example.com/application: checkout` | These rules do not apply. |
 
-Under `enforce`, the `pod` target validates placement and Pod-level profile defaults. The three
+Under `enforce`, the `pod` target validates placement, the priority class, and Pod-level profile defaults. The three
 container targets validate effective profiles and image pull policies for regular,
 init, and ephemeral containers, including container profile overrides. The registry
 matcher accepts all image sources while requiring `Always`. Under `mutate`, `targets: [pod]`

@@ -75,6 +75,8 @@ explains which list entries match during a merge and how required affinity is
 combined. Scalar settings such as `security.hostUsers`, `security.readOnlyRootFilesystem`, and
 [`registries.imagePullPolicy`](/docs/rules/mutate/workloads/#image-pull-policy)
 overwrite selected values with either action.
+[`classes.priority`](/docs/rules/mutate/workloads/#priority-class) is assigned by
+merge only when the Pod has no priority class of its own, and by replace always.
 [Ingress and Gateway class names](/docs/rules/mutate/ingress/#class-merge-and-replace)
 are scalar defaults: merge preserves a non-empty class, while replace sets the
 configured name on every matching write.
@@ -90,7 +92,7 @@ only merge: they fill missing class names and preserve every explicit name.
 |---|---|
 | Property omitted or `null` | Leave the existing property unchanged with either action. |
 | Empty `placement.nodeSelector`, `placement.tolerations`, `placement.topologySpreadConstraints`, `placement.affinity`, or `registries.imagePullSecrets` with `replace` | Clear that property. |
-| Empty `placement: {}`, `security: {}`, `registries: {}`, `ingress: {}`, `ingress.listenerSets: {}`, or `devices: {}` | Supply no changes; another mutation property must be supplied. |
+| Empty `placement: {}`, `security: {}`, `registries: {}`, `classes: {}`, `ingress: {}`, `ingress.listenerSets: {}`, or `devices: {}` | Supply no changes; another mutation property must be supplied. |
 | Empty `ingress.listenerSets.parentRef: {}` | Invalid: `name` is required. |
 | Empty `ingress.class: ""`, or `ingress.types` without a non-empty `ingress.class` | Invalid: configure the class name and its target kinds together. |
 | `security.hostUsers: false` or `security.readOnlyRootFilesystem: false` | Set an explicit Boolean value; `false` is not an omission. |
