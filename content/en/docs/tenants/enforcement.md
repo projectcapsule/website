@@ -241,6 +241,14 @@ Note the `globalDefault: false` which is important to avoid the `PriorityClass` 
 
 ### RuntimeClasses
 
+To restrict or default RuntimeClasses per namespace, use
+[runtime class rules](/docs/rules/enforcement/workloads/#runtime-classes) and the
+[runtime class mutation](/docs/rules/mutate/workloads/#runtime-class). The
+field described here keeps working and remains an additional boundary next to
+those rules; see the [migration table](/docs/rules/enforcement/workloads/#migrate-from-specruntimeclasses).
+The Tenant no longer lists the available RuntimeClasses under
+`status.classes.runtime`.
+
 Pods can be assigned different `RuntimeClasses`. With the assigned runtime you can control Container Runtime Interface (CRI) is used for each pod. See [Kubernetes documentation](https://kubernetes.io/docs/concepts/containers/runtime-class/) for more information.
 
 To prevent misuses of Pod `RuntimeClasses`, Bill, the cluster admin, can enforce the allowed Pod`RuntimeClasses` at `Tenant` level:
