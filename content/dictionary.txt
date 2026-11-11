@@ -232,3 +232,10 @@ cta
 docsy's
 navbar
 viewport
+FluxCD
+GitRepository
+TenantOwner
+TenantOwners
+ValidatingAdmissionPolicy
+finalizers
+HelmRelease
