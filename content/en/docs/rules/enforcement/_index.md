@@ -16,8 +16,8 @@ limits**. Policy sections explain configuration and examples. The final
 
 See [Order and scope](/docs/rules/#order-and-scope) for how mutation precedes
 enforcement, and [Conditions](/docs/rules/#enforcement-conditions) for conditional enforcement.
-[Audience](/docs/rules/#audience) and [match expressions](/docs/rules/#match-expressions)
-are documented under Rules.
+See [Audiences](/docs/operating/concepts/audiences/) for request identity matching
+and [match expressions](/docs/rules/#match-expressions) for value matching.
 
 ## Rule Composition
 
@@ -141,7 +141,7 @@ When audit rules are used together with allow rules, the matching value must sti
 ### Admission scope and limits
 
 Enforcement runs during admission for resources in the namespaces selected by
-the rule. [Audience](/docs/rules/#audience) filters the caller, and
+the rule. [Audience](/docs/operating/concepts/audiences/) filters the caller, and
 [conditions](/docs/rules/#enforcement-conditions) decide whether an enforcement
 block participates. Each policy chapter lists its supported resources,
 operations, subresources, and handling of missing values.

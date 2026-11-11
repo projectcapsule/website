@@ -12,7 +12,7 @@ values, required keys, and value validation. [Migration](#migration) covers the
 legacy Namespace, Pod, and Service metadata options.
 
 Rules use the shared [namespace selection](/docs/tenants/rules/),
-[audiences](/docs/rules/#audience),
+[audiences](/docs/operating/concepts/audiences/),
 [conditions](/docs/rules/#enforcement-conditions), and
 [actions and order](/docs/rules/enforcement/#action).
 See [Reference](#reference) for a complete Tenant example.

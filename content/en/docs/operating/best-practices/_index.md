@@ -36,3 +36,51 @@ If no external secret store is available, there should at least be a secure way 
 In our ecosystem, we provide a solution based on SOPS (Secrets OPerationS) for this use case; called the [sops-operator](https://github.com/peak-scale/sops-operator).
 
 [👉 Demonstration](https://killercoda.com/peakscale/course/playgrounds/sops-secrets)
+
+### Block Static ServiceAccount Tokens
+
+Use the TokenRequest API or projected ServiceAccount token volumes for Kubernetes
+API access. Kubernetes recommends these credentials over legacy
+`kubernetes.io/service-account-token` Secrets, which hold tokens that do not
+expire automatically. See the Kubernetes [ServiceAccount token
+documentation](https://kubernetes.io/docs/concepts/security/service-accounts/#manually-retrieve-serviceaccount-credentials).
+
+Prevent new legacy token Secrets in Tenant namespaces with a
+[metadata rule](/docs/rules/enforcement/metadata/) that denies the
+`kubernetes.io/service-account.name` annotation required by that Secret type:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        metadata:
+          - apiGroups: [v1]
+            kinds: [Secret]
+            annotations:
+              'kubernetes\.io/service-account\.name': {}
+```
+
+The escaped dots match the exact annotation key. With `action: deny`, the empty
+policy `{}` rejects any value, including an empty string. Secrets without this
+annotation remain unaffected by this rule. TokenRequest and projected volumes
+use a different API path and remain available under their existing permissions.
+Setting `automountServiceAccountToken: false` alone does not prevent someone
+from creating a legacy token Secret.
+
+Merge this rule into the Tenant's existing `spec.rules`, preserving other
+configuration. With no namespace selector, it covers every namespace of that
+Tenant. The [combined Tenant baseline](/docs/operating/best-practices/tenants/#reference)
+already includes it. Keep later metadata rules from overriding the denial.
+
+This is an admission policy, not credential revocation: unchanged annotations
+are skipped on updates, and existing tokens are not removed. Review and remove
+existing legacy token Secrets separately. The rule also cannot identify token
+strings copied into ordinary Secret data.

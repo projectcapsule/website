@@ -1419,6 +1419,8 @@ GlobalTenantResourceSpec defines the desired state of GlobalTenantResource.
 | **scope** | enum | Resource Scope, Can either be<br>- Tenant: Create Resources for each tenant  in selected Tenants<br>- Namespace: Create Resources for each namespace in selected Tenants<br/>*Enum*: Namespace, Tenant, None<br/>*Default*: Namespace<br/> | false |
 | **[serviceAccount](#globaltenantresourcespecserviceaccount)** | object | Local ServiceAccount which will perform all the actions defined in the TenantResource<br>You must provide permissions accordingly to that ServiceAccount | false |
 | **[tenantSelector](#globaltenantresourcespectenantselector)** | object | Defines the Tenant selector used target the tenants on which resources must be propagated. | false |
+| **triggerMinInterval** | string | TriggerMinInterval bounds triggered reconciliation frequency across all triggers<br>on this resource. Events within the interval coalesce into one pending reconcile.<br>Spec changes, deletion, manual requests, and periodic resyncs retain their behavior.<br/>*Default*: 10s<br/> | false |
+| **[triggers](#globaltenantresourcespectriggersindex)** | []object | Triggers request reconciliation on matching namespaced admission attempts.<br>Capsule-managed resources never trigger reconciliation. Delivery is best effort;<br>resyncPeriod remains the recovery mechanism for missed or pre-persistence events. | false |
 
 
 ### GlobalTenantResource.spec.resources[index]
@@ -1687,6 +1689,111 @@ relates the key and values.
 | **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
+### GlobalTenantResource.spec.triggers[index]
+
+
+
+TenantResourceTrigger requests best-effort reconciliation on matching admission attempts.
+Resource behavior and replication destinations remain defined by resources.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name uniquely identifies this trigger. | true |
+| **apiGroups** | []string | apiGroups is the API groups the resources belong to. '*' is all groups.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **apiVersions** | []string | apiVersions is the API versions the resources belong to. '*' is all versions.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **[audience](#globaltenantresourcespectriggersindexaudienceindex)** | []object | Audience uses the same identity matching as namespace rules. Empty matches everyone. | false |
+| **[matchConditions](#globaltenantresourcespectriggersindexmatchconditionsindex)** | []object | MatchConditions are native admission CEL conditions. All must match. | false |
+| **[namespaceSelector](#globaltenantresourcespectriggersindexnamespaceselector)** | object | NamespaceSelector selects event source namespaces for GlobalTenantResources.<br>TenantResources always observe only their own namespace and cannot set this field. | false |
+| **[objectSelector](#globaltenantresourcespectriggersindexobjectselector)** | object | ObjectSelector matches the labels of either the old or new admission object. | false |
+| **operations** | []string | operations is the operations the admission hook cares about - CREATE, UPDATE, DELETE, CONNECT or *<br>for all of those operations and any future admission operations that are added.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **resources** | []string | resources is a list of resources this rule applies to.<br><br>For example:<br>'pods' means pods.<br>'pods/log' means the log subresource of pods.<br>'*' means all resources, but not subresources.<br>'pods/*' means all subresources of pods.<br>'*/scale' means all scale subresources.<br>'*/*' means all resources and their subresources.<br><br>If wildcard is present, the validation rule will ensure resources do not<br>overlap with each other.<br><br>Depending on the enclosing object, subresources might not be allowed.<br>Required. | false |
+| **scope** | string | scope specifies the scope of this rule.<br>Valid values are "Cluster", "Namespaced", and "*"<br>"Cluster" means that only cluster-scoped resources will match this rule.<br>Namespace API objects are cluster-scoped.<br>"Namespaced" means that only namespaced resources will match this rule.<br>"*" means that there are no scope restrictions.<br>Subresources match the scope of their parent resource.<br>Default is "*". | false |
+
+
+### GlobalTenantResource.spec.triggers[index].audience[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | <br/>*Enum*: User, Group, ServiceAccount, Custom<br/> | true |
+| **name** | string |  | true |
+
+
+### GlobalTenantResource.spec.triggers[index].matchConditions[index]
+
+
+
+MatchCondition represents a condition which must by fulfilled for a request to be sent to a webhook.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **expression** | string | expression represents the expression which will be evaluated by CEL. Must evaluate to bool.<br>CEL expressions have access to the contents of the AdmissionRequest and Authorizer, organized into CEL variables:<br><br>'object' - The object from the incoming request. The value is null for DELETE requests.<br>'oldObject' - The existing object. The value is null for CREATE requests.<br>'request' - Attributes of the admission request(/pkg/apis/admission/types.go#AdmissionRequest).<br>'authorizer' - A CEL Authorizer. May be used to perform authorization checks for the principal (user or service account) of the request.<br>  See https://pkg.go.dev/k8s.io/apiserver/pkg/cel/library#Authz<br>'authorizer.requestResource' - A CEL ResourceCheck constructed from the 'authorizer' and configured with the<br>  request resource.<br>Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/<br><br>Required. | true |
+| **name** | string | name is an identifier for this match condition, used for strategic merging of MatchConditions,<br>as well as providing an identifier for logging purposes. A good name should be descriptive of<br>the associated expression.<br>Name must be a qualified name consisting of alphanumeric characters, '-', '_' or '.', and<br>must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or<br>'123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]') with an<br>optional DNS subdomain prefix and '/' (e.g. 'example.com/MyName')<br><br>Required. | true |
+
+
+### GlobalTenantResource.spec.triggers[index].namespaceSelector
+
+
+
+NamespaceSelector selects event source namespaces for GlobalTenantResources.
+TenantResources always observe only their own namespace and cannot set this field.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#globaltenantresourcespectriggersindexnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### GlobalTenantResource.spec.triggers[index].namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### GlobalTenantResource.spec.triggers[index].objectSelector
+
+
+
+ObjectSelector matches the labels of either the old or new admission object.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#globaltenantresourcespectriggersindexobjectselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### GlobalTenantResource.spec.triggers[index].objectSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
 ### GlobalTenantResource.status
 
 
@@ -1702,6 +1809,8 @@ GlobalTenantResourceStatus defines the observed state of GlobalTenantResource.
 | **[processedItems](#globaltenantresourcestatusprocesseditemsindex)** | []object | List of resources managed by the API object. | false |
 | **selectedTenants** | []string | List of Tenants addressed by the GlobalTenantResource. | false |
 | **[serviceAccount](#globaltenantresourcestatusserviceaccount)** | object | Serviceaccount used for impersonation | false |
+| **nextResyncAt** | string | NextResyncAt is the next periodic resync deadline for trigger-enabled replications.<br/>*Format*: date-time<br/> | false |
+| **[trigger](#globaltenantresourcestatustrigger)** | object | Trigger records the last admission notification handled by this controller. | false |
 
 
 ### GlobalTenantResource.status.conditions[index]
@@ -1788,6 +1897,18 @@ Serviceaccount used for impersonation
 | :---- | :---- | :----------- | :-------- |
 | **name** | string | Name of the referent. | true |
 | **namespace** | string | Namespace of the referent. | true |
+
+### GlobalTenantResource.status.trigger
+
+
+
+Trigger records the last admission notification handled by this controller.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTriggeredAt** | string | LastTriggeredAt is the start of the last triggered reconcile, including failed attempts.<br/>*Format*: date-time<br/> | true |
+| **observedRequest** | string | ObservedRequest identifies the notification included in the last triggered reconcile. | true |
 
 ## QuantityLedger
 
@@ -8317,6 +8438,8 @@ TenantResourceSpec defines the desired state of TenantResource.
 | **[dependsOn](#tenantresourcespecdependsonindex)** | []object | DependsOn may contain a meta.NamespacedObjectReference slice<br>with references to TenantResource resources that must be ready before this<br>TenantResource can be reconciled. | false |
 | **pruningOnDelete** | boolean | <span style="color:red;font-weight:bold">When the replicated resource manifest is deleted, all the objects replicated so far will be automatically deleted.<br>Disable this to keep replicated resources although the deletion of the replication manifest.<br><br>Deprecated: use resources[].policy.deletion instead. Retained for blocks without a policy.</span><br/>*Default*: true<br/> | false |
 | **[serviceAccount](#tenantresourcespecserviceaccount)** | object | Local ServiceAccount which will perform all the actions defined in the TenantResource<br>You must provide permissions accordingly to that ServiceAccount | false |
+| **triggerMinInterval** | string | TriggerMinInterval bounds triggered reconciliation frequency across all triggers<br>on this resource. Events within the interval coalesce into one pending reconcile.<br>Spec changes, deletion, manual requests, and periodic resyncs retain their behavior.<br/>*Default*: 10s<br/> | false |
+| **[triggers](#tenantresourcespectriggersindex)** | []object | Triggers request reconciliation on matching namespaced admission attempts.<br>Capsule-managed resources never trigger reconciliation. Delivery is best effort;<br>resyncPeriod remains the recovery mechanism for missed or pre-persistence events. | false |
 
 
 ### TenantResource.spec.resources[index]
@@ -8556,6 +8679,111 @@ You must provide permissions accordingly to that ServiceAccount
 | **name** | string | Name of the referent. | true |
 
 
+### TenantResource.spec.triggers[index]
+
+
+
+TenantResourceTrigger requests best-effort reconciliation on matching admission attempts.
+Resource behavior and replication destinations remain defined by resources.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name uniquely identifies this trigger. | true |
+| **apiGroups** | []string | apiGroups is the API groups the resources belong to. '*' is all groups.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **apiVersions** | []string | apiVersions is the API versions the resources belong to. '*' is all versions.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **[audience](#tenantresourcespectriggersindexaudienceindex)** | []object | Audience uses the same identity matching as namespace rules. Empty matches everyone. | false |
+| **[matchConditions](#tenantresourcespectriggersindexmatchconditionsindex)** | []object | MatchConditions are native admission CEL conditions. All must match. | false |
+| **[namespaceSelector](#tenantresourcespectriggersindexnamespaceselector)** | object | NamespaceSelector selects event source namespaces for GlobalTenantResources.<br>TenantResources always observe only their own namespace and cannot set this field. | false |
+| **[objectSelector](#tenantresourcespectriggersindexobjectselector)** | object | ObjectSelector matches the labels of either the old or new admission object. | false |
+| **operations** | []string | operations is the operations the admission hook cares about - CREATE, UPDATE, DELETE, CONNECT or *<br>for all of those operations and any future admission operations that are added.<br>If '*' is present, the length of the slice must be one.<br>Required. | false |
+| **resources** | []string | resources is a list of resources this rule applies to.<br><br>For example:<br>'pods' means pods.<br>'pods/log' means the log subresource of pods.<br>'*' means all resources, but not subresources.<br>'pods/*' means all subresources of pods.<br>'*/scale' means all scale subresources.<br>'*/*' means all resources and their subresources.<br><br>If wildcard is present, the validation rule will ensure resources do not<br>overlap with each other.<br><br>Depending on the enclosing object, subresources might not be allowed.<br>Required. | false |
+| **scope** | string | scope specifies the scope of this rule.<br>Valid values are "Cluster", "Namespaced", and "*"<br>"Cluster" means that only cluster-scoped resources will match this rule.<br>Namespace API objects are cluster-scoped.<br>"Namespaced" means that only namespaced resources will match this rule.<br>"*" means that there are no scope restrictions.<br>Subresources match the scope of their parent resource.<br>Default is "*". | false |
+
+
+### TenantResource.spec.triggers[index].audience[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | <br/>*Enum*: User, Group, ServiceAccount, Custom<br/> | true |
+| **name** | string |  | true |
+
+
+### TenantResource.spec.triggers[index].matchConditions[index]
+
+
+
+MatchCondition represents a condition which must by fulfilled for a request to be sent to a webhook.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **expression** | string | expression represents the expression which will be evaluated by CEL. Must evaluate to bool.<br>CEL expressions have access to the contents of the AdmissionRequest and Authorizer, organized into CEL variables:<br><br>'object' - The object from the incoming request. The value is null for DELETE requests.<br>'oldObject' - The existing object. The value is null for CREATE requests.<br>'request' - Attributes of the admission request(/pkg/apis/admission/types.go#AdmissionRequest).<br>'authorizer' - A CEL Authorizer. May be used to perform authorization checks for the principal (user or service account) of the request.<br>  See https://pkg.go.dev/k8s.io/apiserver/pkg/cel/library#Authz<br>'authorizer.requestResource' - A CEL ResourceCheck constructed from the 'authorizer' and configured with the<br>  request resource.<br>Documentation on CEL: https://kubernetes.io/docs/reference/using-api/cel/<br><br>Required. | true |
+| **name** | string | name is an identifier for this match condition, used for strategic merging of MatchConditions,<br>as well as providing an identifier for logging purposes. A good name should be descriptive of<br>the associated expression.<br>Name must be a qualified name consisting of alphanumeric characters, '-', '_' or '.', and<br>must start and end with an alphanumeric character (e.g. 'MyName',  or 'my.name',  or<br>'123-abc', regex used for validation is '([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]') with an<br>optional DNS subdomain prefix and '/' (e.g. 'example.com/MyName')<br><br>Required. | true |
+
+
+### TenantResource.spec.triggers[index].namespaceSelector
+
+
+
+NamespaceSelector selects event source namespaces for GlobalTenantResources.
+TenantResources always observe only their own namespace and cannot set this field.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantresourcespectriggersindexnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### TenantResource.spec.triggers[index].namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### TenantResource.spec.triggers[index].objectSelector
+
+
+
+ObjectSelector matches the labels of either the old or new admission object.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantresourcespectriggersindexobjectselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### TenantResource.spec.triggers[index].objectSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
 ### TenantResource.status
 
 
@@ -8570,6 +8798,8 @@ TenantResourceStatus defines the observed state of TenantResource.
 | **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 | **[processedItems](#tenantresourcestatusprocesseditemsindex)** | []object | List of resources managed by the API object. | false |
 | **[serviceAccount](#tenantresourcestatusserviceaccount)** | object | Serviceaccount used for impersonation | false |
+| **nextResyncAt** | string | NextResyncAt is the next periodic resync deadline for trigger-enabled replications.<br/>*Format*: date-time<br/> | false |
+| **[trigger](#tenantresourcestatustrigger)** | object | Trigger records the last admission notification handled by this controller. | false |
 
 
 ### TenantResource.status.conditions[index]
@@ -8656,6 +8886,18 @@ Serviceaccount used for impersonation
 | :---- | :---- | :----------- | :-------- |
 | **name** | string | Name of the referent. | true |
 | **namespace** | string | Namespace of the referent. | true |
+
+### TenantResource.status.trigger
+
+
+
+Trigger records the last admission notification handled by this controller.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTriggeredAt** | string | LastTriggeredAt is the start of the last triggered reconcile, including failed attempts.<br/>*Format*: date-time<br/> | true |
+| **observedRequest** | string | ObservedRequest identifies the notification included in the last triggered reconcile. | true |
 
 ## Tenant
 

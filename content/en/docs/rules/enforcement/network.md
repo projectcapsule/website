@@ -21,7 +21,7 @@ and hostnames on ingress resources. [Reference](#reference) provides a complete
 Tenant example for each policy group.
 
 Rules use the shared [namespace selection](/docs/tenants/rules/),
-[audiences](/docs/rules/#audience),
+[audiences](/docs/operating/concepts/audiences/),
 [conditions](/docs/rules/#enforcement-conditions), and
 [actions and order](/docs/rules/enforcement/#action).
 
@@ -2104,4 +2104,3 @@ Each routing, TLS, or listener hostname is checked independently:
 Every hostname on a resource must pass. For example, an Ingress with an allowed
 routing host and a disallowed TLS host is denied. If you narrow the `types`
 lists, omitted resource kinds remain unaffected by these rules.
-

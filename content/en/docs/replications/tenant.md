@@ -5,6 +5,9 @@ description: >
   Replicate resources across a Tenant's Namespaces as Tenant Owner
 ---
 
+Use [admission triggers](/docs/replications/triggers/) to reconcile source changes
+between periodic resyncs.
+
 ## Overview
 
 `TenantResource` is a namespace-scoped CRD that lets Tenant owners automatically replicate Kubernetes resources across all Namespaces in their Tenant - without manual distribution or custom automation. It is the tenant-level counterpart to [GlobalTenantResource](/docs/replications/global/), which is reserved for cluster administrators.

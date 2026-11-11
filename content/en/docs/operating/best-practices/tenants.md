@@ -3,12 +3,13 @@ title: Tenants
 weight: 1
 aliases:
   - /docs/operating/best-practices/images/
-description: A complete Tenant combining the workload and networking best-practice baseline
+description: A complete Tenant combining workload, networking, and credential best practices
 ---
 
 Use this complete Tenant as a starting point for application namespaces. It
-combines the compatible baseline policies from [Workloads](/docs/operating/best-practices/workloads/)
-and [Networking](/docs/operating/best-practices/networking/) into one ordered
+combines the compatible baseline policies from [Workloads](/docs/operating/best-practices/workloads/),
+[Networking](/docs/operating/best-practices/networking/), and
+[ServiceAccount credentials](/docs/operating/best-practices/#block-static-serviceaccount-tokens) into one ordered
 `spec.rules` list. All namespaces in this Tenant receive the same baseline.
 
 ## Included Policies
@@ -25,6 +26,7 @@ and [Networking](/docs/operating/best-practices/networking/) into one ordered
 | Priority | Default to and allow only `tenant-standard`. |
 | Services | Allow only `ClusterIP` and deny every external IP. |
 | Namespace trust | Deny adding or changing `company.com/system` on Tenant namespaces. |
+| Credentials | Deny the annotation required to create legacy ServiceAccount token Secrets. |
 
 ## Before Applying
 
@@ -97,6 +99,9 @@ PriorityClass settings.
 - comment: "Reserve this trusted-platform label for administrator-managed namespaces."
   title: Protect platform trust labels
   url: /docs/rules/enforcement/metadata/#deny-metadata-values
+- comment: "Prevent creation of legacy ServiceAccount token Secrets."
+  title: Block static ServiceAccount tokens
+  url: /docs/operating/best-practices/#block-static-serviceaccount-tokens
 {{< /tenant-example >}}
 
 ## How the Policies Combine

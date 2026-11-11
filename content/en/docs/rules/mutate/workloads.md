@@ -104,7 +104,7 @@ created directly or by a Deployment, StatefulSet, DaemonSet, Job, CronJob, or
 another controller. Stored controller templates remain unchanged.
 **The resulting Pods still receive applicable mutations when they are created.**
 
-Namespace selection, mutation targets, conditions, and [audience](/docs/rules/#audience)
+Namespace selection, mutation targets, conditions, and [audience](/docs/operating/concepts/audiences/)
 still determine which mutations apply. Audience matching uses the identity
 creating the Pod, usually the controller's service account.
 {{% /alert %}}

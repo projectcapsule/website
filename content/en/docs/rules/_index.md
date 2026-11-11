@@ -29,7 +29,7 @@ subject.
 A Tenant rule's `namespaceSelector` selects its namespaces; omitting it selects
 all namespaces in that Tenant. Matching Tenant rules retain their declaration
 order in the namespace's effective RuleStatus, including rules containing only
-`mutate`. Tenant/Namespace templating and [audience](#audience) filtering apply
+`mutate`. Tenant/Namespace templating and [audience](/docs/operating/concepts/audiences/) filtering apply
 to both mutation and enforcement.
 
 ### Admission order
@@ -93,9 +93,9 @@ can narrow a policy's scope but cannot expand its supported operations.
 
 ## Audience
 
-Use `audience` to restrict a rule to requests made by specific users, groups,
-service accounts, or Capsule-defined subject categories. The property belongs to
-the root of a rule, alongside `mutate` and `enforce`:
+Use the shared [audience model](/docs/operating/concepts/audiences/) to select the
+request identities to which a rule applies. The property belongs to the root of
+a rule, alongside `mutate` and `enforce`:
 
 ```yaml
 spec:
@@ -115,148 +115,15 @@ spec:
                   - exp: "^INV-[0-9]{4}$"
 ```
 
-When `audience` is omitted or empty, the rule applies to every request selected
-by the rule.
+Audience filtering applies to both mutation and enforcement. A subject excluded
+from a rule is neither mutated nor validated by that rule; other applicable
+rules still apply. Namespace selection continues to determine where the rule is
+available.
 
-When an audience is configured, the rule applies if the requesting subject
-matches **at least one** entry. In other words, entries are combined with logical
-OR semantics. Audience matching is performed consistently for both validation
-and mutation, so a subject excluded from a rule is neither validated nor mutated
-by that rule.
-
-Audience filtering uses the actual identity on the Pod admission request. Pods
-created by a workload controller are normally submitted by that controller's
-service account, not by the user who originally created the Deployment or Job.
-Account for that distinction when combining `audience` with mutation or enforcement.
-
-The supported standard audience kinds are `User`, `Group`, and
-`ServiceAccount`:
-
-```yaml
-spec:
-  rules:
-    - audience:
-        # Match one exact Kubernetes username.
-        - kind: User
-          name: alice@example.com
-
-        # Match any request carrying this group.
-        - kind: Group
-          name: oidc:engineering
-
-        # Match one Kubernetes service account.
-        - kind: ServiceAccount
-          name: system:serviceaccount:delivery:deployer
-      enforce:
-        action: deny
-        metadata:
-          - apiGroups:
-              - v1
-            kinds:
-              - Namespace
-            labels:
-              pod-security.kubernetes.io/enforce:
-                managed: restricted
-```
-
-For `User`, `Group`, and `ServiceAccount`, `name` is compared with the identity
-information provided in the Kubernetes admission request. A service account is
-represented by its canonical Kubernetes username:
-
-```text
-system:serviceaccount:<namespace>:<service-account-name>
-```
-
-For example, a request from the `deployer` service account in the `delivery`
-namespace has the username
-`system:serviceaccount:delivery:deployer`.
-
-### Custom
-
-The `Custom` kind exposes audiences based on Capsule's internal identity and
-tenant resolution. Its `name` must be one of the supported values below.
-
-| **name** | **description** |
-|:---|:---|
-| `CapsuleUser` | Matches subjects listed by `configuration.Users()`. |
-| `Administrator` | Matches subjects listed by `configuration.Administrators()`. |
-| `TenantOwner` | Matches an owner of the tenant resolved for the current request. A request cannot match when no tenant can be resolved. |
-| `Controller` | Matches the service account used by the Capsule controller. |
-
-Custom audiences can be combined with standard audiences. The following rule
-applies to Capsule users, Capsule administrators, tenant owners, the Capsule
-controller, or members of the Kubernetes `system:masters` group:
-
-```yaml
-spec:
-  rules:
-    - audience:
-        - kind: Custom
-          name: CapsuleUser
-        - kind: Custom
-          name: Administrator
-        - kind: Custom
-          name: TenantOwner
-        - kind: Custom
-          name: Controller
-        - kind: Group
-          name: system:masters
-      enforce:
-        action: allow
-        metadata:
-          - apiGroups:
-              - v1
-            kinds:
-              - Namespace
-            annotations:
-              example.corp/cost-center:
-                default: II-1
-```
-
-`TenantOwner` is request-scoped. Capsule first resolves the tenant associated
-with the admission request and then checks the requesting subject against that
-tenant's owners. This makes it suitable for rules that should affect tenant
-owners but not unrelated Capsule users:
-
-```yaml
-spec:
-  rules:
-    - audience:
-        - kind: Custom
-          name: TenantOwner
-      enforce:
-        action: allow
-        metadata:
-          - kinds:
-              - ConfigMap
-            labels:
-              owner-managed:
-                default: "true"
-```
-
-`Controller` specifically identifies the Capsule controller service account. It
-is useful when internal reconciliation requests need different policy behavior
-from requests made by ordinary users:
-
-```yaml
-spec:
-  rules:
-    - audience:
-        - kind: Custom
-          name: Controller
-      enforce:
-        action: allow
-        metadata:
-          - kinds:
-              - Secret
-            labels:
-              capsule.clastix.io/reconciled:
-                managed: "true"
-```
-
-Unknown audience kinds and unsupported `Custom` names are rejected when the
-rule is admitted. This catches spelling mistakes and prevents a rule from being
-silently configured with an audience that can never match.
+See [Audiences](/docs/operating/concepts/audiences/) for standard and custom kinds,
+OR matching, and tenant context. For controller-created Pods, account for the
+[identity on the admission request](/docs/operating/concepts/audiences/#request-identity)
+when choosing an audience.
 
 ## Match expressions
 
@@ -339,7 +206,7 @@ Check absent fields with `has(...)` and map membership with `in`. The
 [missing-value example](#set-a-value-only-when-it-is-missing) demonstrates both.
 The Pod node selector is at `object.spec.nodeSelector`; it is not a container
 property. Use `request.userInfo` for request identity, while keeping existing
-[audience](#audience) settings for straightforward subject selection.
+[audience](/docs/operating/concepts/audiences/) settings for straightforward subject selection.
 
 ### Evaluation
 

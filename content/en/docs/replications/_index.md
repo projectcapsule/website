@@ -12,6 +12,13 @@ Capsule provides two dedicated Custom Resource Definitions for propagating Kuber
 
 Both CRDs follow the same structure: resources are defined in `spec.resources` blocks, reconciled on a configurable `resyncPeriod`, and support [Go-template-based generators](/docs/operating/concepts/templating/) for dynamic resource creation.
 
+## Admission triggers
+
+Use [admission triggers](./triggers/) to refresh replications when selected source
+objects change. Both APIs support [audiences](/docs/operating/concepts/audiences/), object selectors, CEL match
+conditions, and a shared minimum trigger interval. Managed resources and dry runs
+never produce trigger notifications.
+
 ## Per-resource policies
 
 Each `spec.resources[]` block accepts a resource policy in both replication APIs.

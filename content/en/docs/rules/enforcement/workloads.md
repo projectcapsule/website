@@ -13,7 +13,7 @@ policies are present, targets scope those policies: [resource management](#resou
 [security profiles](#security), and [PodDisruptionBudgets](#pod-disruption-budgets).
 
 Rules use the shared [namespace selection](/docs/tenants/rules/),
-[audiences](/docs/rules/#audience),
+[audiences](/docs/operating/concepts/audiences/),
 [conditions](/docs/rules/#enforcement-conditions), and
 [actions and order](/docs/rules/enforcement/#action).
 See [Reference](#reference) for a complete Tenant example.
@@ -64,7 +64,7 @@ each policy takes effect.
 
 A controller write and the Pods it later creates are separate admissions, often
 with different callers. Include the required targets and
-[audiences](/docs/rules/#audience) for both paths. Conditions inspect the actual
+[audiences](/docs/operating/concepts/audiences/) for both paths. Conditions inspect the actual
 incoming resource, which can also be a PDB or a Scale object.
 
 Kubernetes validation, LimitRanges, ResourceQuotas, and other admission policies
@@ -211,7 +211,7 @@ for the policy. For registry checks, use `pod/containers`,
 `pod/initcontainers`, `pod/ephemeralcontainers`, and/or `pod/volumes` for the image
 locations you want to cover; `pod` alone does not select images. Controller-created
 Jobs and Pods can have different callers, so include those identities in any
-[audience filter](/docs/rules/#audience).
+[audience filter](/docs/operating/concepts/audiences/).
 
 With **no workload policies**, `targets: [cronjob]` instead acts on the kind:
 `deny` rejects CronJobs, while `allow` establishes a workload-kind allow-list.
@@ -979,7 +979,7 @@ an explicit excessive limit or a limit without a positive request.
 ##### Rule order and policy overrides
 
 Rules are processed in declaration order after `namespaceSelector` and
-[audience](/docs/rules/#audience) filtering. Resource policies are resolved independently for every
+[audience](/docs/operating/concepts/audiences/) filtering. Resource policies are resolved independently for every
 combination of target, resource name, and field (`request` or `limit`). This
 allows CPU and memory, or requests and limits, to be managed independently.
 
@@ -1028,7 +1028,7 @@ are still evaluated. This makes `Preserve` useful as a namespace-specific
 escape hatch and `Default` useful when switching from enforcement back to
 fill-only behavior.
 
-For the request identity of controller-created Pods, see [Audience](/docs/rules/#audience).
+For the request identity of controller-created Pods, see [Audiences](/docs/operating/concepts/audiences/#request-identity).
 
 ##### Configuration validation
 
@@ -1862,7 +1862,7 @@ wins. Allowing one property does not bypass a failure of another. Audit rules
 emit events without changing the admission decision. Omitted properties never
 override an earlier rule.
 
-[Namespace selection, audiences](/docs/rules/), and
+[Namespace selection](/docs/rules/#order-and-scope), [audiences](/docs/operating/concepts/audiences/), and
 [enforcement conditions](/docs/rules/#enforcement-conditions) use the usual rules
 scope. Conditions inspect the actual incoming object: a PDB during a PDB write,
 a controller during a controller write, and an `autoscaling/v1` Scale during a

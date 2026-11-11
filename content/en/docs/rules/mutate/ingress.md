@@ -173,7 +173,7 @@ order. The first matching merge fills a missing reference; later merges preserve
 it. A later replacement can override it. Put specific merge defaults before a
 shared fallback when their selectors overlap.
 
-Use [audience](/docs/rules/#audience) to select requesting subjects and
+Use [audience](/docs/operating/concepts/audiences/) to select requesting subjects and
 [mutation conditions](/docs/rules/#mutation-conditions) to select individual
 ListenerSets. This fragment supplies a private Gateway for objects labeled
 `exposure: private`, then a public fallback for other objects without a parent:

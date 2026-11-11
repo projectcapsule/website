@@ -5,6 +5,9 @@ description: >
   Replicate resources across tenants or namespaces as Cluster Administrator.
 ---
 
+Use [admission triggers](/docs/replications/triggers/) to reconcile source changes
+between periodic resyncs.
+
 ## Overview
 
 `GlobalTenantResource` is a cluster-scoped CRD designed for cluster administrators. It lets you automatically replicate Kubernetes resources - such as Secrets, ConfigMaps, or custom resources - into the Namespaces of selected Tenants. Tenant owners cannot create `GlobalTenantResource` objects; for tenant-scoped replication, see [TenantResource](/docs/replications/tenant/).

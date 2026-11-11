@@ -6,6 +6,9 @@ description: Key design decisions, personas, templating, and metadata reference 
 
 Concept references explain reusable behavior shared across Capsule APIs:
 
+- [Audiences](./audiences/): select request identities for namespace rules and
+  replication admission triggers, including Capsule users, administrators, tenant
+  owners, and the Capsule controller.
 - [Parameter Schemas and Dynamic Forms](./parameter-schema/): validate parameterized
   APIs with JSON Schema and Kubernetes CEL, and populate client forms from arbitrary
   Kubernetes resources.

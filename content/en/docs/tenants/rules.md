@@ -8,7 +8,8 @@ description: >
 {{% alert title="Rules documentation" color="info" %}}
 **The [Rules documentation](/docs/rules/) is the main reference for the rules API.**
 Find all [mutation](/docs/rules/mutate/) and [enforcement](/docs/rules/enforcement/)
-properties there, together with conditions, audiences, and rule evaluation order.
+properties there, together with conditions, [audiences](/docs/operating/concepts/audiences/),
+and rule evaluation order.
 
 This page covers Tenant-specific configuration through `Tenant.spec.rules`:
 namespace selection, templating, and quota generation.
@@ -131,7 +132,7 @@ Every quota entry requires a DNS label-compatible `name` which must be unique ac
 
 Generated resource names use `<tenant-name>-<quota-name>`.
 
-Quota accounting is independent of a rule's request audience. An audience can limit other rule behavior but does not partition the shared resource budget. Quota definitions are not copied into namespace `RuleStatus` objects. They are reconciled directly from the Tenant into cluster-scoped `GlobalResourceQuota` objects, which remain the authoritative source for admission and accounting.
+Quota accounting is independent of a rule's request [audience](/docs/operating/concepts/audiences/). An audience can limit other rule behavior but does not partition the shared resource budget. Quota definitions are not copied into namespace `RuleStatus` objects. They are reconciled directly from the Tenant into cluster-scoped `GlobalResourceQuota` objects, which remain the authoritative source for admission and accounting.
 
 Existing `Tenant.spec.resourceQuotas` behavior remains available for compatibility. Use rule-generated or directly managed `GlobalResourceQuota` objects when an atomic shared limit across namespaces is required.
 
@@ -321,7 +322,7 @@ spec:
                   - List
                   selector:
                     matchLabels:
-                      projectcapsule.dev/tenant: {{ $.tenant.metadata.name }} 
+                      projectcapsule.dev/tenant: {{ $.tenant.metadata.name }}
 ```
 
 
