@@ -14,7 +14,7 @@ and configure affinity. Use [security settings](#security) to configure Pod user
 namespaces, seccomp/AppArmor profiles, and read-only container root filesystems.
 Use [registry settings](#registries) to configure container image pull policies
 and Pod image pull secret references. Use [class settings](#classes) to assign
-a PriorityClass. [Placement enforcement](/docs/rules/enforcement/workloads/#placement)
+a PriorityClass or a RuntimeClass. [Placement enforcement](/docs/rules/enforcement/workloads/#placement)
 validates the resulting placement settings using matchers.
 
 This page covers configuration and mutation behavior. The
@@ -35,6 +35,7 @@ mutation properties with placement, security-profile, image pull policy, and pri
 | [Image pull policy](#image-pull-policy) | `registries.imagePullPolicy` | Selected containers: `imagePullPolicy` | [Registry pull policies](/docs/rules/enforcement/workloads/#pullpolicy) |
 | [Host user namespace](#host-user-namespace) | `security.hostUsers` | `spec.hostUsers` | Mutation only. |
 | [Priority class](#priority-class) | `classes.priority` | `spec.priorityClassName`, with its `spec.priority` and `spec.preemptionPolicy` | [Priority class matchers](/docs/rules/enforcement/workloads/#priority-classes) |
+| [Runtime class](#runtime-class) | `classes.runtime` | `spec.runtimeClassName`, with the overhead and scheduling constraints of the class | [Runtime class matchers](/docs/rules/enforcement/workloads/#runtime-classes) |
 
 ## Configure workload mutations
 
@@ -1087,6 +1088,127 @@ The final class remains subject to
 allow the configured class in any applicable allow-list, or admission rejects
 the mutated Pod. An enforcement rule that
 [targets a controller](/docs/rules/enforcement/workloads/#targets-and-controller-templates)
+requires its template to name a class, because this mutation does not reach
+templates.
+
+### Runtime class
+
+`classes.runtime` sets the Pod's `spec.runtimeClassName`. When the entries
+change the class of a Pod, Capsule applies the resource overhead and the
+scheduling constraints of the assigned
+[RuntimeClass](https://kubernetes.io/docs/concepts/containers/runtime-class/),
+as the API server does for a class the Pod names itself. Use the name of a
+RuntimeClass that exists in the cluster; Capsule assigns the class but does not
+create it.
+
+To give Pods a namespace default when they name no class, use `merge`:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - mutate:
+        - action: merge
+          workloads:
+            classes:
+              runtime: solar-sandbox
+```
+
+| Action | Behavior |
+|---|---|
+| `merge` or omitted action | Assign the class when the Pod has none of its own. Preserve every class the Pod names. |
+| `replace` | Assign the class to every Pod covered by the entry. |
+
+Kubernetes has no default RuntimeClass, so an omitted class is simply unset:
+unlike the [priority class merge](#classes-assigned-by-kubernetes), there is no
+cluster default that counts as omitted. The first applicable `merge` decides
+and later `merge` entries keep its result; a later `replace` still overrides
+it. [Conditions](/docs/rules/#mutation-conditions) gate the whole entry and see
+the class, overhead, and scheduling constraints set by preceding entries.
+
+Omitting `classes.runtime` or setting it to `null` leaves the Pod unchanged. An
+empty name is rejected, and the name must be a valid RuntimeClass name. The
+name supports [Tenant/Namespace templates](/docs/tenants/rules/#templating).
+This is a Pod-level setting: use `targets: [pod]`, `targets: []`, or omit
+targets.
+
+#### Overhead and scheduling constraints
+
+When the entries change the class of a Pod, Capsule settles the result the way
+the built-in RuntimeClass admission does for a submitted class:
+
+| Property of the assigned class | Effect on the Pod |
+|---|---|
+| The class itself | Must exist, or the Pod is rejected; see [Missing classes](#missing-runtime-classes). |
+| `overhead` | Becomes `spec.overhead` of the Pod. |
+| `scheduling.nodeSelector` | Added to `spec.nodeSelector`. A key the Pod already sets to a different value rejects the Pod, naming the conflicting key. |
+| `scheduling.tolerations` | Merged into `spec.tolerations`. |
+
+The constraints of the final class are restored when a `replace` of
+`placement.nodeSelector` or `placement.tolerations` removes them, also when the
+class itself did not change. Constraints the Pod already carries for a class an
+entry replaces are residual: they are retained but not restored, while a class
+replaced within the entries leaves nothing behind.
+
+#### Missing classes {#missing-runtime-classes}
+
+If the assigned RuntimeClass does not exist, Capsule rejects the Pod with an
+error naming the class, such as `RuntimeClass "solar-sandbox" not found`.
+Create the class before a rule that refers to it selects namespaces. Pods that
+keep their own class under `merge` are unaffected, and a class that only an
+intermediate entry assigned and a later entry replaced is not read.
+
+#### Default and restrict runtimes per namespace
+
+This Tenant puts every Pod of sandboxed namespaces on a sandboxed runtime and
+rejects any other class there:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          workload-isolation: sandboxed
+      mutate:
+        - action: merge
+          workloads:
+            classes:
+              runtime: solar-sandbox
+      enforce:
+        action: allow
+        workloads:
+          classes:
+            runtime:
+              - exact: [solar-sandbox]
+```
+
+| Request | Result from these rules |
+|---|---|
+| New Pod in a sandboxed namespace without a class | Receives `solar-sandbox`, with the overhead and scheduling constraints of that class. |
+| New Pod in a sandboxed namespace naming `solar-sandbox` | Unchanged and allowed. |
+| New Pod in a sandboxed namespace naming another class | Preserved by `merge`, then denied by the allow-list. |
+| Namespace without the label | Neither rule applies. |
+
+These rules apply only when a Pod is created, including Pods created by
+controllers. Stored controller templates and existing Pods keep their class.
+The final class remains subject to
+[runtime class enforcement](/docs/rules/enforcement/workloads/#runtime-classes):
+allow the configured class in any applicable allow-list, or admission rejects
+the mutated Pod. An enforcement rule that
+[targets a controller](/docs/rules/enforcement/workloads/#controller-templates-and-defaults)
 requires its template to name a class, because this mutation does not reach
 templates.
 
