@@ -529,6 +529,17 @@ per Tenant with a [GlobalTenantResource](/docs/replications/global/) using
 `scope: Tenant`. The Tenant label `capsule.clastix.io/tenant` on every Tenant
 namespace is what the policies select on, and Capsule resets changes to it.
 
+Replicating these resources needs permissions on the generated kinds. The
+default replication identity can manage them. With strict RBAC or a dedicated
+ServiceAccount (`spec.serviceAccount` or the
+[default ServiceAccount](/docs/replications/global/#default-serviceaccount)),
+grant it the [required permissions](/docs/replications/global/#required-permissions)
+on `clusternetworkpolicies.policy.networking.k8s.io`,
+`ciliumclusterwidenetworkpolicies.cilium.io`, or
+`globalnetworkpolicies.projectcalico.org` and `tiers.projectcalico.org`,
+depending on the approach. Without them the GlobalTenantResource reports
+`Ready=False` with a `forbidden` message.
+
 The mechanism depends on what enforces policies in your cluster:
 
 | Your cluster | Choose | Why |
@@ -586,9 +597,12 @@ kube-network-policies to a CNI that has its own NetworkPolicy enforcement, such
 as kindnet in a default kind cluster.
 
 With Cilium, the agents read `policyCIDRMatchMode` at startup. A `helm upgrade`
-does not restart them, so restart the `cilium` DaemonSet after changing it. Only
-the value `nodes` is accepted; other values, such as `pods,nodes`, make the
-agent exit on startup.
+does not restart them, so restart the `cilium` DaemonSet after changing it.
+`nodes` is all these policies need. To also match Pod IPs, which the API
+requires for full CIDR conformance, set the Helm value as a list,
+`policyCIDRMatchMode={pods,nodes}`, which renders `pods nodes`. A
+comma-separated string renders `pods,nodes`, which the agent rejects with
+`unknown CIDR match mode` and exits on startup.
 
 #### Baseline per Tenant
 
@@ -769,7 +783,9 @@ how you write the policies:
   labels.
 * The `kube-apiserver` entity selects the API server without a CIDR, so
   `policyCIDRMatchMode` is not needed. A `toServices` rule for the
-  `kubernetes` Service in the `default` namespace also works.
+  `kubernetes` Service in the `default` namespace needs `nodes` in
+  `policyCIDRMatchMode`: the Service has no selector, so Cilium matches its
+  endpoints as CIDRs, and API access stays blocked without the setting.
 
 This GlobalTenantResource creates the same baseline as the
 [ClusterNetworkPolicies](#baseline-per-tenant), once per Tenant:
@@ -822,6 +838,10 @@ spec:
                         protocol: ANY
               - toEntities:
                   - kube-apiserver
+                toPorts:
+                  - ports:
+                      - port: "6443"
+                        protocol: TCP
 
         - apiVersion: cilium.io/v2
           kind: CiliumClusterwideNetworkPolicy
@@ -852,7 +872,12 @@ spec:
                         values: ["{{tenant.name}}"]
 ```
 
-Tenant owners have no permissions on `ciliumclusterwidenetworkpolicies`.
+Replace `6443` with the API server endpoint port from
+`kubectl get endpointslices -n default -l kubernetes.io/service-name=kubernetes`.
+The `kube-apiserver` entity matches the API server addresses, not only its
+port. Without `toPorts`, the rule also allows every other port on those
+hosts, such as the kubelet or etcd on a self-hosted control plane. Tenant
+owners have no permissions on `ciliumclusterwidenetworkpolicies`.
 
 ### Calico Tiers
 
@@ -988,6 +1013,14 @@ a ClusterRoleBinding for the Tenant owners. The template iterates over
 through `spec.permissions.matchOwners`. A ServiceAccount owner is stored with
 its canonical user name (`system:serviceaccount:<namespace>:<name>`), so the
 template binds it as a `User` subject.
+
+The replication identity also creates ClusterRoles and ClusterRoleBindings.
+Because of RBAC escalation prevention, a dedicated ServiceAccount needs the
+`escalate` and `bind` verbs on `clusterroles`, or must hold all permissions
+the roles grant. For the `additionalRoleBindings` below, a controller running
+with [strict RBAC](/docs/tenants/permissions/#strict) must be allowed to bind
+each `tenant-<name>-calico-policies` ClusterRole, for example by listing it in
+`manager.rbac.bindableClusterRoles`.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
