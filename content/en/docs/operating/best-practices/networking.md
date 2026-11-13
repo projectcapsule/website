@@ -610,7 +610,7 @@ rules.
 apiVersion: capsule.clastix.io/v1beta2
 kind: GlobalTenantResource
 metadata:
-  name: tenant-network-baseline
+  name: tenant-clusternetworkpolicy-baseline
 spec:
   scope: Tenant
   tenantSelector: {}
@@ -778,7 +778,7 @@ This GlobalTenantResource creates the same baseline as the
 apiVersion: capsule.clastix.io/v1beta2
 kind: GlobalTenantResource
 metadata:
-  name: tenant-network-baseline
+  name: tenant-cilium-clusterwide-baseline
 spec:
   scope: Tenant
   tenantSelector: {}
@@ -892,7 +892,7 @@ platform namespaces and the isolation work like in the
 apiVersion: capsule.clastix.io/v1beta2
 kind: GlobalTenantResource
 metadata:
-  name: tenant-network-baseline
+  name: tenant-calico-platform-baseline
 spec:
   scope: Tenant
   tenantSelector: {}
@@ -983,8 +983,11 @@ A RoleBinding to a role that allows `get` on the Tier does not work: Calico
 denies the request with `user cannot get tier`.
 
 This GlobalTenantResource creates, per Tenant, the Tier, both ClusterRoles, and
-a ClusterRoleBinding for the Tenant owners. The template reads the owners
-from the Tenant.
+a ClusterRoleBinding for the Tenant owners. The template iterates over
+`status.owners`, the resolved owner list, which also contains owners selected
+through `spec.permissions.matchOwners`. A ServiceAccount owner is stored with
+its canonical user name (`system:serviceaccount:<namespace>:<name>`), so the
+template binds it as a `User` subject.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -1038,8 +1041,8 @@ spec:
               kind: ClusterRole
               name: tenant-{{ $.tenant.metadata.name }}-calico-tier
             subjects:
-            {{- range $.tenant.spec.owners }}
-              - kind: {{ .kind }}
+            {{- range $.tenant.status.owners }}
+              - kind: {{ if eq .kind "ServiceAccount" }}User{{ else }}{{ .kind }}{{ end }}
                 name: {{ .name | quote }}
                 apiGroup: rbac.authorization.k8s.io
             {{- end }}
