@@ -68,36 +68,35 @@ config:
 
 
 
-As mentioned, the above configuration will not work if the pods on the cluster are not labeled with tenant. You can use the following [Kyverno policy](./kyverno/) to ensure that all pods are labeled with tenant. If the pod does not belong to any tenant, it will be labeled with management (assuming you have a central management tenant)
+As mentioned, the above configuration will not work if the pods on the cluster are not labeled with tenant. You can use the following [Kyverno policy](./kyverno/) to ensure that all pods are labeled with tenant. If the pod does not belong to any tenant, it will be labeled with management (assuming you have a central management tenant). The label is always derived from the Namespace, so a user can't set it to another Tenant's name
 
 ```yaml
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: MutatingPolicy
 metadata:
   name: capsule-pod-labels
 spec:
-  background: false
-  rules:
-  - name: add-pod-label
-    context:
-      - name: tenant
-        apiCall:
-          method: GET
-          urlPath: "/api/v1/namespaces/{{request.namespace}}"
-          jmesPath: "not_null(metadata.labels.\"capsule.clastix.io/tenant\" || 'management')"
-    match:
-      all:
-      - resources:
-          kinds:
-            - Pod
-          operations:
-            - CREATE
-            - UPDATE
-    mutate:
-      patchStrategicMerge:
-        metadata:
-          labels:
-            +(capsule.clastix.io/tenant): "{{ tenant_name }}"
+  autogen:
+    podControllers:
+      controllers: []
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  mutations:
+    # Always derived from the Namespace, so a user can't set the label of another tenant.
+    - patchType: ApplyConfiguration
+      applyConfiguration:
+        expression: >-
+          Object{
+            metadata: Object.metadata{
+              labels: {
+                "capsule.clastix.io/tenant": namespaceObject.metadata.?labels[?'capsule.clastix.io/tenant'].orValue('management')
+              }
+            }
+          }
 ```
 
 
