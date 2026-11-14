@@ -6,6 +6,8 @@ description: Recommended Admission Policies to enforce best practices in multi-t
 
 As Capsule we try to provide a secure multi-tenant environment out of the box, there are however some additional Admission Policies you should consider to enforce best practices in your cluster. Since Capsule only covers the core multi-tenancy features, such as Namespaces, Resource Quotas, Network Policies, and Container Registries, Classes, you should consider using an additional Admission Controller to enforce best practices on workloads and other resources.
 
+The Kyverno examples use the `policies.kyverno.io/v1` API (`ValidatingPolicy` and `MutatingPolicy`). The legacy `kyverno.io/v1` `ClusterPolicy` is deprecated, and Kyverno 1.20 no longer accepts it.
+
 ## Custom
 
 Create custom Policies and reuse data provided via Tenant Status to enforce your own rules.
@@ -38,43 +40,57 @@ spec:
 
 However since we are allowing Tenant Users to create these [`ObjectBucketClaims`](https://rook.io/docs/rook/v1.12/Storage-Configuration/Object-Storage-RGW/object-storage/#create-a-bucket) we might want to consider validating the `storageClassName` field to ensure that only allowed StorageClasses are used.
 
+The policy only applies to Tenants with a class matching condition (`allowed`, `allowedRegex`, `matchLabels` or `matchExpressions` in `spec.storageClasses`); other Tenants, including those that only set a `default`, are skipped. For the others it reads `status.classes.storage` of the Tenant, so a class that is not listed denies the request. Kyverno needs read access to Tenants:
+
+```yaml
+admissionController:
+  rbac:
+    clusterRole:
+      extraResources:
+        - apiGroups: ["capsule.clastix.io"]
+          resources: ["tenants"]
+          verbs: ["get", "list", "watch"]
+```
 
 {{% tabpane lang="yaml" %}}
   {{% tab header="**Engines**:" disabled=true /%}}
   {{< tab header="Kyverno" >}}
 ---
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: restrict-tenant-class
 spec:
-  validationFailureAction: Enforce
-  rules:
-  - name: restrict-storage-class
-    context:
-      - name: classes
-        apiCall:
-          urlPath: "/apis/capsule.clastix.io/v1beta2/tenants"
-          jmesPath: "items[?contains(status.namespaces, '{{ request.namespace }}')].status.classes | [0]"
-
-      - name: storageClass
-        variable:
-          jmesPath: "request.object.spec.storageClassName || 'NONE'"
-    match:
-      resources:
-        kinds:
-        - ObjectBucketClaim
-        namespaceSelector:
-          matchExpressions:
-          - key: capsule.clastix.io/tenant
-            operator: Exists
-    validate:
-      message: "storageclass {{ storageClass }} is not allowed in tenant ({{classes.storage}})"
-      deny:
-        conditions:
-          - key:   "{{classes.storage}}"
-            operator: AnyNotIn
-            value:  "{{ storageClass }}"{{< /tab >}}
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: capsule.clastix.io/tenant
+          operator: Exists
+    resourceRules:
+      - apiGroups: ["objectbucket.io"]
+        apiVersions: ["v1alpha1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["objectbucketclaims"]
+  variables:
+    - name: tenant
+      expression: >-
+        dyn(resource.Get("capsule.clastix.io/v1beta2", "tenants", "", namespaceObject.metadata.labels['capsule.clastix.io/tenant']))
+    - name: selectors
+      expression: variables.tenant.?spec.storageClasses.orValue({})
+    - name: classes
+      expression: variables.tenant.?status.classes.storage.orValue([])
+  validations:
+    # Tenants without a class matching condition are not restricted.
+    - expression: >-
+        variables.tenant.?metadata.name.hasValue() && (
+          !['allowed', 'allowedRegex', 'matchLabels', 'matchExpressions'].exists(f, size(variables.selectors[?f].orValue([])) > 0) ||
+          object.spec.?storageClassName.orValue('NONE') in variables.classes)
+      messageExpression: >-
+        'storageclass ' + object.spec.?storageClassName.orValue('NONE') + ' is not allowed in tenant (' + variables.classes.join(', ') + ')'{{< /tab >}}
 {{% /tabpane %}}
 
 ## Workloads
@@ -93,41 +109,34 @@ Policies to harden workloads running in a multi-tenant environment.
   {{% tab header="**Engines**:" disabled=true /%}}
   {{< tab header="Kyverno" >}}
 ---
-# Source: https://kyverno.io/policies/other/pdb-maxunavailable/pdb-maxunavailable/
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+# Source: https://kyverno.io/policies/other-vpol/pdb-maxunavailable/pdb-maxunavailable/
+# Scoped to Tenant Namespaces, enforced, and percentages are accepted.
+# Values can be allowed with a PolicyException, for example 'maxUnavailable:0'.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: pdb-maxunavailable
-  annotations:
-    policies.kyverno.io/title: PodDisruptionBudget maxUnavailable Non-Zero
-    policies.kyverno.io/category: Other
-    kyverno.io/kyverno-version: 1.9.0
-    kyverno.io/kubernetes-version: "1.24"
-    policies.kyverno.io/subject: PodDisruptionBudget
-    policies.kyverno.io/description: >-
-      A PodDisruptionBudget which sets its maxUnavailable value to zero prevents
-      all voluntary evictions including Node drains which may impact maintenance tasks.
-      This policy enforces that if a PodDisruptionBudget specifies the maxUnavailable field
-      it must be greater than zero.
 spec:
-  validationFailureAction: Enforce
-  background: false
-  rules:
-    - name: pdb-maxunavailable
-      match:
-        any:
-          - resources:
-              kinds:
-                - PodDisruptionBudget
-              namespaceSelector:
-                matchExpressions:
-                - key: capsule.clastix.io/tenant
-                  operator: Exists
-      validate:
-        message: "The value of maxUnavailable must be greater than zero."
-        pattern:
-          spec:
-            =(maxUnavailable): ">0"{{< /tab >}}
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: capsule.clastix.io/tenant
+          operator: Exists
+    resourceRules:
+      - apiGroups: ["policy"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["poddisruptionbudgets"]
+  validations:
+    - expression: >-
+        !has(object.spec.maxUnavailable) ||
+        int(string(object.spec.maxUnavailable).replace('%', '')) > 0 ||
+        exceptions.allowedValues.exists(value, value == 'maxUnavailable:' + string(object.spec.maxUnavailable))
+      message: "The value of maxUnavailable must be greater than zero."{{< /tab >}}
   {{< tab header="VAP" >}}
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
@@ -164,141 +173,108 @@ spec:
 
 #### MinAvailable
 
-When a Pod controller which can run multiple replicas is subject to an active PodDisruptionBudget, if the replicas field has a value equal to the minAvailable value of the PodDisruptionBudget it may prevent voluntary disruptions including Node drains which may impact routine maintenance tasks and disrupt operations. This policy checks incoming Deployments and StatefulSets which have a matching PodDisruptionBudget to ensure these two values do not match.
+When a Pod controller which can run multiple replicas is subject to an active PodDisruptionBudget, if the replicas field has a value equal to the minAvailable value of the PodDisruptionBudget it may prevent voluntary disruptions including Node drains which may impact routine maintenance tasks and disrupt operations. This policy checks incoming Deployments and StatefulSets which have a matching PodDisruptionBudget to ensure these two values do not match. PodDisruptionBudget selectors are matched on both `matchLabels` and `matchExpressions`, and percentage values are rounded up like Kubernetes does. Percentages are calculated from the replicas of this workload, so use PodDisruptionBudgets that select a single workload.
 
 {{% tabpane lang="yaml" %}}
   {{% tab header="**Engines**:" disabled=true /%}}
   {{< tab header="Kyverno" >}}
 ---
-# Source: https://kyverno.io/policies/other/pdb-minavailable/pdb-minavailable/
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: pdb-minavailable-check
-  annotations:
-    policies.kyverno.io/title: Check PodDisruptionBudget minAvailable
-    policies.kyverno.io/category: Other
-    kyverno.io/kyverno-version: 1.9.0
-    kyverno.io/kubernetes-version: "1.24"
-    policies.kyverno.io/subject: PodDisruptionBudget, Deployment, StatefulSet
-    policies.kyverno.io/description: >-
-      When a Pod controller which can run multiple replicas is subject to an active PodDisruptionBudget,
-      if the replicas field has a value equal to the minAvailable value of the PodDisruptionBudget
-      it may prevent voluntary disruptions including Node drains which may impact routine maintenance
-      tasks and disrupt operations. This policy checks incoming Deployments and StatefulSets which have
-      a matching PodDisruptionBudget to ensure these two values do not match.
 spec:
-  validationFailureAction: Enforce
-  background: false
-  rules:
-    - name: pdb-minavailable
-      match:
-        any:
-          - resources:
-              kinds:
-                - Deployment
-                - StatefulSet
-              namespaceSelector:
-                matchExpressions:
-                - key: capsule.clastix.io/tenant
-                  operator: Exists
-      preconditions:
-        all:
-        - key: "{{`{{ request.operation | 'BACKGROUND' }}`}}"
-          operator: AnyIn
-          value:
-          - CREATE
-          - UPDATE
-        - key: "{{`{{ request.object.spec.replicas | '1' }}`}}"
-          operator: GreaterThan
-          value: 0
-      context:
-        - name: minavailable
-          apiCall:
-            urlPath: "/apis/policy/v1/namespaces/{{`{{ request.namespace }}`}}/poddisruptionbudgets"
-            jmesPath: "items[?label_match(spec.selector.matchLabels, `{{`{{ request.object.spec.template.metadata.labels }}`}}`)] | [0].spec.minAvailable | default(`0`)"
-      validate:
-        message: >-
-          The matching PodDisruptionBudget for this resource has its minAvailable value equal to the replica count
-          which is not permitted.
-        deny:
-          conditions:
-            any:
-              - key: "{{`{{ request.object.spec.replicas }}`}}"
-                operator: Equals
-                value: "{{`{{ minavailable }}`}}"{{< /tab >}}
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: capsule.clastix.io/tenant
+          operator: Exists
+    resourceRules:
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["deployments", "statefulsets"]
+  variables:
+    - name: replicas
+      expression: object.spec.?replicas.orValue(1)
+    - name: labels
+      expression: object.spec.template.metadata.?labels.orValue({})
+    - name: pdbs
+      expression: >-
+        dyn(resource.List("policy/v1", "poddisruptionbudgets", object.metadata.namespace)).items
+          .filter(p, has(p.spec.selector) &&
+            p.spec.selector.?matchLabels.orValue({}).all(k, variables.labels[?k] == optional.of(p.spec.selector.matchLabels[k])) &&
+            p.spec.selector.?matchExpressions.orValue([]).all(e,
+              e.operator == 'In' ? variables.labels[?e.key].hasValue() && variables.labels[e.key] in e.?values.orValue([]) :
+              e.operator == 'NotIn' ? !variables.labels[?e.key].hasValue() || !(variables.labels[e.key] in e.?values.orValue([])) :
+              e.operator == 'Exists' ? variables.labels[?e.key].hasValue() :
+              e.operator == 'DoesNotExist' ? !variables.labels[?e.key].hasValue() : false))
+  validations:
+    - expression: >-
+        variables.replicas == 0 || !variables.pdbs.exists(p,
+          (string(p.spec.?minAvailable.orValue(0)).endsWith('%')
+            ? (int(string(p.spec.minAvailable).replace('%', '')) * variables.replicas + 99) / 100
+            : int(p.spec.?minAvailable.orValue(0))) == variables.replicas)
+      message: >-
+        The matching PodDisruptionBudget for this resource has its minAvailable value equal to the replica count
+        which is not permitted.{{< /tab >}}
 {{% /tabpane %}}
 
 #### Deployment Replicas higher than PDB
 
-PodDisruptionBudget resources are useful to ensuring minimum availability is maintained at all times.Introducing a PDB where there are already matching Pod controllers may pose a problem if the author is unaware of the existing replica count. This policy ensures that the minAvailable value is not greater or equal to the replica count of any matching existing Deployment. If other Pod controllers should also be included in this check, additional rules may be added to the policy which match those controllers.
+PodDisruptionBudget resources are useful to ensuring minimum availability is maintained at all times.Introducing a PDB where there are already matching Pod controllers may pose a problem if the author is unaware of the existing replica count. This policy ensures that the minAvailable value is not greater or equal to the replica count of any matching existing Deployment. If other Pod controllers should also be included in this check, additional rules may be added to the policy which match those controllers. Percentage values of `minAvailable` are rounded up like Kubernetes does and calculated from the replicas of each Deployment, so use PodDisruptionBudgets that select a single workload.
 
 {{% tabpane lang="yaml" %}}
   {{% tab header="**Engines**:" disabled=true /%}}
   {{< tab header="Kyverno" >}}
 ---
-# Source: https://kyverno.io/policies/other/deployment-replicas-higher-than-pdb/deployment-replicas-higher-than-pdb/
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: deployment-replicas-higher-than-pdb
-  annotations:
-    policies.kyverno.io/title: Ensure Deployment Replicas Higher Than PodDisruptionBudget
-    policies.kyverno.io/category: Other
-    policies.kyverno.io/subject: PodDisruptionBudget, Deployment
-    kyverno.io/kyverno-version: 1.11.4
-    kyverno.io/kubernetes-version: "1.27"
-    policies.kyverno.io/description: >-
-      PodDisruptionBudget resources are useful to ensuring minimum availability is maintained at all times.
-      Introducing a PDB where there are already matching Pod controllers may pose a problem if the author
-      is unaware of the existing replica count. This policy ensures that the minAvailable value is not
-      greater or equal to the replica count of any matching existing Deployment. If other Pod controllers
-      should also be included in this check, additional rules may be added to the policy which match those
-      controllers.
 spec:
-  validationFailureAction: Enforce
-  background: true
-  rules:
-  - name: deployment-replicas-greater-minAvailable
-    match:
-      any:
-      - resources:
-          kinds:
-          - PodDisruptionBudget
-          operations:
-          - CREATE
-          - UPDATE
-          namespaceSelector:
-            matchExpressions:
-            - key: capsule.clastix.io/tenant
-              operator: Exists
-    context:
-    - name: deploymentreplicas
-      apiCall:
-        jmesPath: items[?label_match(`{{`{{ request.object.spec.selector.matchLabels }}`}}`, spec.template.metadata.labels)] || `[]`
-        urlPath: /apis/apps/v1/namespaces/{{`{{request.namespace}}`}}/deployments
-    preconditions:
-      all:
-      - key: '{{`{{ length(deploymentreplicas) }}`}}'
-        operator: GreaterThan
-        value: 0
-      - key: '{{`{{ request.object.spec.minAvailable || "" }}`}}'
-        operator: NotEquals
-        value: ''
-    validate:
-      message: >-
-        PodDisruption budget minAvailable ({{`{{ request.object.spec.minAvailable }}`}}) cannot be
-        greater than or equal to the replica count of any matching existing Deployment.
-        There are {{`{{ length(deploymentreplicas) }}`}} Deployments which match this labelSelector
-        having {{`{{ deploymentreplicas[*].spec.replicas }}`}} replicas.
-      foreach:
-        - list: deploymentreplicas
-          deny:
-            conditions:
-              all:
-              - key: "{{`{{ request.object.spec.minAvailable }}`}}"
-                operator: GreaterThanOrEquals
-                value: "{{`{{ element.spec.replicas }}`}}"{{< /tab >}}
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: capsule.clastix.io/tenant
+          operator: Exists
+    resourceRules:
+      - apiGroups: ["policy"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["poddisruptionbudgets"]
+  variables:
+    - name: candidates
+      expression: >-
+        dyn(resource.List("apps/v1", "deployments", object.metadata.namespace)).items
+          .map(d, {'labels': d.spec.template.metadata.?labels.orValue({}), 'replicas': d.spec.?replicas.orValue(1)})
+    - name: deployments
+      expression: >-
+        !has(object.spec.selector) ? [] :
+        variables.candidates.filter(d,
+          object.spec.selector.?matchLabels.orValue({}).all(k, d.labels[?k] == optional.of(object.spec.selector.matchLabels[k])) &&
+          object.spec.selector.?matchExpressions.orValue([]).all(e,
+            e.operator == 'In' ? d.labels[?e.key].hasValue() && d.labels[e.key] in e.?values.orValue([]) :
+            e.operator == 'NotIn' ? !d.labels[?e.key].hasValue() || !(d.labels[e.key] in e.?values.orValue([])) :
+            e.operator == 'Exists' ? d.labels[?e.key].hasValue() :
+            e.operator == 'DoesNotExist' ? !d.labels[?e.key].hasValue() : false))
+  validations:
+    - expression: >-
+        !has(object.spec.minAvailable) || variables.deployments.all(d,
+          (string(object.spec.minAvailable).endsWith('%')
+            ? (int(string(object.spec.minAvailable).replace('%', '')) * d.replicas + 99) / 100
+            : int(object.spec.minAvailable)) < d.replicas)
+      messageExpression: >-
+        'PodDisruption budget minAvailable (' + string(object.spec.minAvailable) + ') cannot be greater than or equal to the replica count of any matching existing Deployment. Matching Deployments have ' +
+        variables.deployments.map(d, string(d.replicas)).join(', ') + ' replicas.'{{< /tab >}}
 {{% /tabpane %}}
 
 #### CNPG Cluster
@@ -309,54 +285,29 @@ When a Pod controller which can run multiple replicas is subject to an active Po
   {{% tab header="**Engines**:" disabled=true /%}}
   {{< tab header="Kyverno" >}}
 ---
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: pdb-cnpg-cluster-validation
-  annotations:
-    policies.kyverno.io/title: Check PodDisruptionBudget minAvailable for cnpgCluster
-    policies.kyverno.io/category: Other
-    kyverno.io/kyverno-version: 1.9.0
-    kyverno.io/kubernetes-version: "1.24"
-    policies.kyverno.io/subject: PodDisruptionBudget, Cluster
-    policies.kyverno.io/description: >-
-      When a Pod controller which can run multiple replicas is subject to an active PodDisruptionBudget,
-      if the replicas field has a value equal to the minAvailable value of the PodDisruptionBudget
-      it may prevent voluntary disruptions including Node drains which may impact routine maintenance
-      tasks and disrupt operations. This policy checks incoming CNPG Clusters and their .spec.enablePDB setting.
 spec:
-  validationFailureAction: Enforce
-  background: false
-  rules:
-    - name: pdb-cnpg-cluster-validation
-      match:
-        any:
-          - resources:
-              kinds:
-                - postgresql.cnpg.io/v1/Cluster
-              namespaceSelector:
-                matchExpressions:
-                - key: capsule.clastix.io/tenant
-                  operator: Exists
-      preconditions:
-        any:
-        - key: "{{request.operation || 'BACKGROUND'}}"
-          operator: AnyIn
-          value:
-          - CREATE
-          - UPDATE
-      validate:
-        message: >-
-          Set `.spec.enablePDB` to `false` for CNPG Clusters when the number of instances is lower than 2.
-        deny:
-          conditions:
-            all:
-              - key: "{{request.object.spec.enablePDB }}"
-                operator: Equals
-                value: true
-              - key: "{{request.object.spec.instances }}"
-                operator: LessThan
-                value: 2{{< /tab >}}
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: capsule.clastix.io/tenant
+          operator: Exists
+    resourceRules:
+      - apiGroups: ["postgresql.cnpg.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["clusters"]
+  validations:
+    - expression: >-
+        object.spec.?enablePDB.orValue(false) == false || object.spec.?instances.orValue(1) >= 2
+      message: "Set `.spec.enablePDB` to `false` for CNPG Clusters when the number of instances is lower than 2."{{< /tab >}}
   {{< tab header="VAP" >}}
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
@@ -402,37 +353,45 @@ By Defaults `emptyDir` Volumes do not have any limits. This could lead to a situ
   {{% tab header="**Engines**:" disabled=true /%}}
   {{< tab header="Kyverno" >}}
 ---
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+# Source: https://kyverno.io/policies/other-mpol/add-emptydir-sizelimit/add-emptydir-sizelimit/
+# Scoped to Tenant Namespaces, sets 250Mi, and only patches emptyDir volumes
+# (other volumes, such as the projected service account token, contain atomic lists and cannot be patched).
+# Controllers are not mutated (autogen is disabled), their Pods are.
+# CREATE only: Pod specs are immutable, so mutating on UPDATE blocks updates of existing Pods, such as finalizer removal.
+apiVersion: policies.kyverno.io/v1
+kind: MutatingPolicy
 metadata:
-  name: tenant-workload-restrictions
+  name: add-emptydir-sizelimit
 spec:
-  rules:
-    - name: default-emptydir-sizelimit
-      match:
-        any:
-        - resources:
-            kinds:
-            - Pod
-            namespaceSelector:
-              matchExpressions:
-              - key: capsule.clastix.io/tenant
-                operator: Exists
-      mutate:
-        foreach:
-        - list: "request.object.spec.volumes[]"
-          preconditions:
-            all:
-            - key: "{{element.keys(@)}}"
-              operator: AnyIn
-              value: emptyDir
-            - key: "{{element.emptyDir.sizeLimit || ''}}"
-              operator: Equals
-              value: ''
-          patchesJson6902: |-
-            - path: "/spec/volumes/{{elementIndex}}/emptyDir/sizeLimit"
-              op: add
-              value: 250Mi{{< /tab >}}
+  autogen:
+    podControllers:
+      controllers: []
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: capsule.clastix.io/tenant
+          operator: Exists
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["pods"]
+  mutations:
+    - patchType: ApplyConfiguration
+      applyConfiguration:
+        expression: >-
+          Object{
+            spec: Object.spec{
+              volumes: object.spec.?volumes.orValue([]).filter(v, has(v.emptyDir)).map(v,
+                Object.spec.volumes{
+                  name: v.name,
+                  emptyDir: Object.spec.volumes.emptyDir{
+                    sizeLimit: has(v.emptyDir.sizeLimit) ? v.emptyDir.sizeLimit : "250Mi"
+                  }
+                }
+              )
+            }
+          }{{< /tab >}}
 {{% /tabpane %}}
 
 ### Block Ephemeral Containers
@@ -486,44 +445,33 @@ spec:
         - key: capsule.clastix.io/tenant
           operator: Exists{{< /tab >}}
   {{< tab header="Kyverno" >}}
-# Source: https://kyverno.io/policies/other/block-ephemeral-containers/block-ephemeral-containers/
 ---
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+# Source: https://kyverno.io/policies/other-vpol/block-ephemeral-containers/block-ephemeral-containers/
+# Scoped to Tenant Namespaces and enforced. Container names can be allowed with a PolicyException.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: block-ephemeral-containers
-  annotations:
-    policies.kyverno.io/title: Block Ephemeral Containers
-    policies.kyverno.io/category: Other
-    policies.kyverno.io/severity: medium
-    kyverno.io/kyverno-version: 1.6.0
-    policies.kyverno.io/minversion: 1.6.0
-    kyverno.io/kubernetes-version: "1.23"
-    policies.kyverno.io/subject: Pod
-    policies.kyverno.io/description: >-
-      Ephemeral containers, enabled by default in Kubernetes 1.23, allow users to use the
-      `kubectl debug` functionality and attach a temporary container to an existing Pod.
-      This may potentially be used to gain access to unauthorized information executing inside
-      one or more containers in that Pod. This policy blocks the use of ephemeral containers.
 spec:
-  validationFailureAction: Enforce
-  background: true
-  rules:
-  - name: block-ephemeral-containers
-    match:
-      any:
-      - resources:
-          kinds:
-            - Pod
-          namespaceSelector:
-            matchExpressions:
-            - key: capsule.clastix.io/tenant
-              operator: Exists
-    validate:
-      message: "Ephemeral (debug) containers are not permitted."
-      pattern:
-        spec:
-          X(ephemeralContainers): "null"{{< /tab >}}
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: capsule.clastix.io/tenant
+          operator: Exists
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods", "pods/ephemeralcontainers"]
+  validations:
+    - expression: >-
+        object.spec.?ephemeralContainers.orValue([]).all(container,
+          has(exceptions.allowedValues) && string(container.name) in exceptions.allowedValues)
+      message: "Ephemeral (debug) containers are not permitted."{{< /tab >}}
 {{% /tabpane %}}
 
 ## Certificates
@@ -536,162 +484,128 @@ Often when working in multi-tenant environments, you want to ensure that tenants
   {{% tab header="**Engines**:" disabled=true /%}}
   {{< tab header="Kyverno" >}}
 ---
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: certificates-only-local-issuer
 spec:
-  validationFailureAction: Enforce
-  background: true
-  rules:
-    - name: deny-clusterissuer-in-certificates
-      match:
-        any:
-          - resources:
-              kinds:
-                - cert-manager.io/v1/Certificate
-              namespaceSelector:
-                matchExpressions:
-                - key: capsule.clastix.io/tenant
-                  operator: Exists
-      validate:
-        message: "Certificates must not reference ClusterIssuers; use a namespaced Issuer in the same namespace."
-        deny:
-          conditions:
-            any:
-              - key: "{{ request.object.spec.issuerRef.kind || 'Issuer' }}"
-                operator: Equals
-                value: "ClusterIssuer"
-
-    - name: deny-cross-namespace-issuerref-in-certificates
-      match:
-        any:
-          - resources:
-              kinds:
-                - cert-manager.io/v1/Certificate
-      validate:
-        message: "Certificates must reference an Issuer in the same namespace (spec.issuerRef.namespace must be empty or equal to the Certificate namespace)."
-        deny:
-          conditions:
-            any:
-              # If issuerRef.namespace is set and differs from the Certificate namespace -> deny
-              - key: "{{request.object.spec.issuerRef.namespace || '' }}"
-                operator: NotEquals
-                value: ""
-                # AND also not equal to request namespace
-              - key: "{{ request.object.spec.issuerRef.namespace || request.namespace  }}"
-                operator: NotEquals
-                value: "{{ request.namespace }}"{{< /tab >}}
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: true
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: capsule.clastix.io/tenant
+          operator: Exists
+    resourceRules:
+      - apiGroups: ["cert-manager.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["certificates"]
+  validations:
+    - expression: object.spec.issuerRef.?kind.orValue('Issuer') != 'ClusterIssuer'
+      message: "Certificates must not reference ClusterIssuers; use a namespaced Issuer in the same namespace."
+    - expression: object.spec.issuerRef.?namespace.orValue(object.metadata.namespace) == object.metadata.namespace
+      message: "Certificates must reference an Issuer in the same namespace (spec.issuerRef.namespace must be empty or equal to the Certificate namespace)."{{< /tab >}}
 {{% /tabpane %}}
 
 ### Deny ClusterIssuer in Gateways
 
 Deny to usage of ClusterIssuers in Gateways by checking for the `cert-manager.io/cluster-issuer` annotation. This ensures that tenants use namespaced issuer mechanisms instead.
 
-This requires extra permissions to allow Kyverno to read Gateway resources:
+The policy is evaluated at admission. To also scan existing Gateways, enable `evaluation.background` and allow the Kyverno reports controller to read Gateways:
 
 ```yaml
-admissionController:
+reportsController:
   rbac:
     clusterRole:
       extraResources:
-       - apiGroups: ["gateway.networking.k8s.io"]
-         resources: ["*"]
-         verbs: ["get", "list", "watch"]
+        - apiGroups: ["gateway.networking.k8s.io"]
+          resources: ["gateways"]
+          verbs: ["get", "list", "watch"]
 ```
 
 {{% tabpane lang="yaml" %}}
   {{% tab header="**Engines**:" disabled=true /%}}
   {{< tab header="Kyverno" >}}
 ---
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: gateways-deny-cluster-issuer-annotation
 spec:
-  validationFailureAction: Enforce
-  background: false
-  rules:
-    - name: deny-cert-manager-cluster-issuer-annotation
-      match:
-        any:
-          - resources:
-              kinds:
-                - gateway.networking.k8s.io/v1/Gateway
-              namespaceSelector:
-                matchExpressions:
-                - key: capsule.clastix.io/tenant
-                  operator: Exists
-      validate:
-        message: "Gateways must not use cert-manager.io/cluster-issuer; use namespaced issuer mechanisms instead."
-        deny:
-          conditions:
-            any:
-              - key: "{{ request.object.metadata.annotations.\"cert-manager.io/cluster-issuer\" || '' }}"
-                operator: NotEquals
-                value: ""{{< /tab >}}
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: capsule.clastix.io/tenant
+          operator: Exists
+    resourceRules:
+      - apiGroups: ["gateway.networking.k8s.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["gateways"]
+  validations:
+    - expression: object.metadata.?annotations[?'cert-manager.io/cluster-issuer'].orValue('') == ''
+      message: "Gateways must not use cert-manager.io/cluster-issuer; use namespaced issuer mechanisms instead."{{< /tab >}}
 {{% /tabpane %}}
 
 ### Selective ClusterIssuers
 
-Allow certain ClusterIssuers within Tenants:
+Allow certain ClusterIssuers within Tenants. The policy reads the ClusterIssuer, so Kyverno needs read access to ClusterIssuers:
+
+```yaml
+admissionController:
+  rbac:
+    clusterRole:
+      extraResources:
+        - apiGroups: ["cert-manager.io"]
+          resources: ["clusterissuers"]
+          verbs: ["get", "list", "watch"]
+```
 
 {{% tabpane lang="yaml" %}}
   {{% tab header="**Engines**:" disabled=true /%}}
   {{< tab header="Kyverno" >}}
 ---
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: certificates-restrict-clusterissuer-by-tenant-label
 spec:
-  validationFailureAction: Enforce
-  background: true
-  rules:
-    - name: allow-clusterissuer-only-when-managed-by-matches
-      match:
-        any:
-          - resources:
-              kinds:
-                - cert-manager.io/v1/Certificate
-              namespaceSelector:
-                matchExpressions:
-                  - key: capsule.clastix.io/tenant
-                    operator: Exists
-      context:
-        - name: certManagedBy
-          variable:
-            jmesPath: request.object.metadata.labels."capsule.clastix.io/managed-by" || ''
-        - name: clusterIssuerManagedBy
-          apiCall:
-            urlPath: /apis/cert-manager.io/v1/clusterissuers/{{ request.object.spec.issuerRef.name }}
-            jmesPath: metadata.labels."company.com/tenant" || ''
-            default: ""
-      preconditions:
-        all:
-          - key: "{{ request.object.spec.issuerRef.kind || 'Issuer' }}"
-            operator: Equals
-            value: ClusterIssuer
-          - key: "{{request.operation || 'BACKGROUND'}}"
-            operator: AnyIn
-            value:
-            - CREATE
-            - UPDATE
-      validate:
-        message: >-
-          ClusterIssuer is only allowed when the Certificate label
-          capsule.clastix.io/managed-by ({{certManagedBy}}) matches the referenced ClusterIssuer label
-          company.com/tenant ({{clusterIssuerManagedBy}}).
-        deny:
-          conditions:
-            any:
-              - key: "{{certManagedBy}}"
-                operator: Equals
-                value: ""
-              - key: "{{clusterIssuerManagedBy}}"
-                operator: Equals
-                value: ""
-              - key: "{{certManagedBy}}"
-                operator: NotEquals
-                value: "{{clusterIssuerManagedBy}}"{{< /tab >}}
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: capsule.clastix.io/tenant
+          operator: Exists
+    resourceRules:
+      - apiGroups: ["cert-manager.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["certificates"]
+  matchConditions:
+    - name: uses-clusterissuer
+      expression: object.spec.issuerRef.?kind.orValue('Issuer') == 'ClusterIssuer'
+  variables:
+    - name: certManagedBy
+      expression: object.metadata.?labels[?'capsule.clastix.io/managed-by'].orValue('')
+    - name: clusterIssuerManagedBy
+      expression: >-
+        dyn(resource.Get("cert-manager.io/v1", "clusterissuers", "", object.spec.issuerRef.name))
+          .?metadata.labels[?'company.com/tenant'].orValue('')
+  validations:
+    - expression: >-
+        variables.certManagedBy != '' && variables.clusterIssuerManagedBy != '' &&
+        variables.certManagedBy == variables.clusterIssuerManagedBy
+      messageExpression: >-
+        'ClusterIssuer is only allowed when the Certificate label capsule.clastix.io/managed-by (' + variables.certManagedBy +
+        ') matches the referenced ClusterIssuer label company.com/tenant (' + variables.clusterIssuerManagedBy + ').'{{< /tab >}}
 {{% /tabpane %}}
