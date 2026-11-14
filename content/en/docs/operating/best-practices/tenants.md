@@ -132,6 +132,52 @@ the selecting labels under platform control. Review [rule order and scope](/docs
 when composing further rules so a later decision does not unintentionally
 relax the baseline.
 
+## Namespace Label Allow-List
+
+Instead of adding a deny rule for every sensitive label, deny all prefixed
+namespace label keys for Tenant users and re-allow approved prefixes.
+Unprefixed keys stay allowed.
+
+```yaml
+spec:
+  rules:
+    # Deny every prefixed namespace label key for Tenant users.
+    - audience:
+        - kind: Custom
+          name: CapsuleUser
+      enforce:
+        action: deny
+        metadata:
+          - apiGroups: [v1]
+            kinds: [Namespace]
+            labels:
+              "*/*": {}
+
+    # Re-allow the approved prefixes with any value.
+    - audience:
+        - kind: Custom
+          name: CapsuleUser
+      enforce:
+        action: allow
+        metadata:
+          - apiGroups: [v1]
+            kinds: [Namespace]
+            labels:
+              "team.company.com/*":
+                values:
+                  - exp: ".*"
+```
+
+* **Order:** the [last matching rule wins](/docs/rules/enforcement/metadata/#actions-and-order).
+* **Audience:** without it, the denial also blocks administrators and
+  controllers that label Tenant namespaces.
+* **GitOps:** a shared controller applying tenant manifests under its own
+  identity bypasses the rule. Have it impersonate a service account in the
+  Tenant, such as with
+  [ArgoCD sync impersonation](https://argo-cd.readthedocs.io/en/stable/operator-manual/app-sync-using-impersonation/).
+
+The same pattern works for namespace annotations.
+
 ## Complete the Platform Setup
 
 Apply the [native NetworkPolicy GlobalTenantResource](/docs/operating/best-practices/networking/#native-networkpolicies-with-globaltenantresource)
