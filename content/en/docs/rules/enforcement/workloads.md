@@ -10,7 +10,9 @@ Use `targets` to select native workload kinds or locations inside their Pod
 specs. A targets-only rule matches the selected kinds themselves. When workload
 policies are present, targets scope those policies: [resource management](#resource-management),
 [OCI registries](#registries), scheduler names, QoS, [placement](#placement),
-[security profiles](#security), and [PodDisruptionBudgets](#pod-disruption-budgets).
+[priority](#priority-classes) and [runtime classes](#runtime-classes),
+[security profiles](#security), and
+[PodDisruptionBudgets](#pod-disruption-budgets).
 
 Rules use the shared [namespace selection](/docs/tenants/rules/),
 [audiences](/docs/operating/concepts/audiences/),
@@ -76,8 +78,8 @@ for their combined behavior.
 ## Workload Targets
 
 Configure targets under `spec.rules[].enforce.workloads.targets`. The same list
-selects workloads for resource, registry, scheduler, QoS, placement, security, and
-[PodDisruptionBudget policies](#pod-disruption-budgets);
+selects workloads for resource, registry, scheduler, QoS, placement, priority
+and runtime class, security, and [PodDisruptionBudget policies](#pod-disruption-budgets);
 individual policies do not have separate target lists.
 
 * With no workload policies, targets apply the rule's `action` to the selected
@@ -137,6 +139,8 @@ Only policies configured in the rule are evaluated.
 | Resource policies | ✅ Pod-level resources and regular/init-container resources | ✅ `containers[].resources` | ✅ `initContainers[].resources` | ❌ |
 | Registry policies | ✅ Regular/init-container images and image volumes | ✅ Regular container images | ✅ Init container images | ✅ Image volumes under `volumes[].image` |
 | Placement policies | ✅ Pod placement fields | ❌ | ❌ | ❌ |
+| [Priority classes](#priority-classes) | ✅ Template `priorityClassName`, which allow and deny rules require | ❌ | ❌ | ❌ |
+| [Runtime classes](#runtime-classes) | ✅ Template `runtimeClassName`, which allow and deny rules require | ❌ | ❌ | ❌ |
 | [Seccomp / AppArmor](#security) | ✅ Effective regular/init-container profiles | ✅ Effective regular-container profiles | ✅ Effective init-container profiles | ❌ |
 | [PDB policies](#pod-disruption-budgets) | ✅ Template labels: overlap and unhealthy eviction policy | ❌ | ❌ | ❌ |
 
@@ -150,6 +154,13 @@ affinity. **Scheduler and QoS policies always evaluate the whole selected Pod
 spec**, even with a container or volume suffix. For example,
 `cronjob/initcontainers` with a scheduler policy checks
 `spec.jobTemplate.spec.template.spec.schedulerName`.
+
+Priority and runtime class policies need the whole-controller target. A
+template's class is resolved only when its Pods are created — by Kubernetes for
+priority, by a Tenant default or mutation for runtime — so allow and deny rules
+require the template to name one
+([priority](#targets-and-controller-templates),
+[runtime](#controller-templates-and-defaults)).
 
 A whole-controller target includes container resources and image references;
 the explicit `pod` target has the narrower scope in the [Pod table](#pod-targets).
@@ -237,6 +248,10 @@ Selecting `pod` alone checks the default and leaves container overrides
 unchecked. See [Target security profiles](#target-security-profiles) for a
 complete Tenant and a comparison of these scopes.
 
+[Priority](#priority-classes) and [runtime class](#runtime-classes) policies
+use the same targets as placement
+policies: `pod` or omitted targets. Container and volume targets skip them.
+
 This table describes enforcement. Profile mutations under `mutate[].workloads`
 set Pod-level defaults on Pod creation, using `pod` or omitted mutation targets.
 Neither `merge` nor `replace` modifies container profile overrides. For
@@ -252,15 +267,15 @@ containers or volumes.
 
 Omitting `targets`, or setting it to `[]`, selects all compatible Pod locations:
 Pod-level resources, regular and init container resources, regular/init/ephemeral
-container images, image volumes, and Pod placement fields. Scheduler and QoS
-checks also apply. Profile policies check effective regular, init, and ephemeral
+container images, image volumes, Pod placement fields, and the Pod's priority
+and runtime classes. Scheduler and QoS checks also apply. Profile policies check effective regular, init, and ephemeral
 container profiles. PDB overlap and unhealthy eviction policies check the Pod;
 eviction-count bounds require an explicit supported controller target.
 Resource-name compatibility is described under
 [Targeting resource locations](#targeting-resource-locations).
 
 An explicit `targets: [pod]` is narrower than omitted targets: it selects
-Pod-level resources, placement, and security-profile defaults, together with scheduler and QoS checks. It
+Pod-level resources, placement, the priority and runtime classes, and security-profile defaults, together with scheduler and QoS checks. It
 does not select container resources or any image references. List the desired
 Pod parts explicitly when narrowing container, image, or profile policies.
 
@@ -1683,6 +1698,464 @@ incompatible combinations are rejected when the policy is saved. Matching
 examines the submitted terms without listing nodes, Pods, or namespaces.
 
 
+## Priority Classes
+
+Configure PriorityClass matchers under `enforce.workloads.classes.priority`.
+Capsule checks `spec.priorityClassName` of Pods and, with
+[controller targets](#controller-targets), of their Pod templates. A
+[PriorityClass](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/)
+sets a Pod's scheduling priority and whether it may preempt other Pods, so an
+unrestricted class lets one tenant evict the workloads of another.
+
+To give Pods a class when they name none, use the
+[priority class mutation](/docs/rules/mutate/workloads/#priority-class). The
+resulting class is checked by these matchers like a submitted one.
+
+Each entry supports the following fields. A class matches an entry when **any**
+supplied field matches, and the entries of the list are alternatives:
+
+| Field | Matches |
+|---|---|
+| `exact` | One of up to 64 class names. |
+| `exp` | The class name, by regular expression. |
+| `matchLabels`, `matchExpressions` | The labels of the PriorityClass object, as a Kubernetes label selector. |
+
+An entry needs at least one of these fields, and each rule supports up to 64
+entries. Empty entries, invalid expressions, and invalid selectors are rejected
+when the policy is saved. Class matchers have no `negate` field; use a `deny`
+rule to exclude classes.
+
+Allow classes by name, by naming convention, or by a label the platform team
+sets on the PriorityClass:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: allow
+        workloads:
+          classes:
+            priority:
+              - exact: [solar-standard]
+                exp: '^solar-batch-[a-z0-9-]+$'
+              - matchLabels:
+                  example.com/tier: customer
+```
+
+| Pod priority class at enforcement | Result |
+|---|---|
+| `solar-standard` or `solar-batch-nightly` | Allowed |
+| A class labeled `example.com/tier: customer` | Allowed |
+| `system-cluster-critical`, or any other class | Denied |
+| No class | Not checked; see [Classes assigned by Kubernetes](#classes-assigned-by-kubernetes) |
+
+The usual [action rules](/docs/rules/enforcement/#actions-and-order) apply: `allow` enables
+an allow-list, `deny` rejects matches, `audit` only records them, and the last
+matching allow or deny wins. Deny the built-in system classes while leaving
+other names to the remaining rules:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: deny
+        workloads:
+          classes:
+            priority:
+              - exp: '^system-'
+```
+
+To record usage without changing the admission decision, use `audit`:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: audit
+        workloads:
+          classes:
+            priority:
+              - matchLabels:
+                  example.com/tier: customer
+```
+
+This records an audit event for every Pod using a customer-tier class. An audit
+match cannot satisfy an allow-list. Denials are recorded as events with the
+reason `ForbiddenPriorityClass`, or `MissingPriorityClass` for a
+[template without a class](#targets-and-controller-templates).
+
+### Classes assigned by Kubernetes
+
+Kubernetes resolves a Pod's priority class before Capsule receives the
+admission request. The class Capsule evaluates is therefore not always the one
+in the submitted manifest:
+
+| Submitted Pod | Class evaluated |
+|---|---|
+| Names a class | That class. |
+| Names no class, and the cluster has a PriorityClass with `globalDefault: true` | The global default, exactly like a class named explicitly. |
+| Names no class, and the cluster has no global default | None. The Pod has no class and is not checked. |
+
+An allow-list rejects Pods that received a global default it does not list.
+Either allow that class, or assign a namespace default with the
+[priority class mutation](/docs/rules/mutate/workloads/#priority-class), which
+replaces the global default before enforcement.
+
+### Match class labels
+
+`exact` and `exp` need no lookup. A label selector reads the PriorityClass from
+the API server, at most once per admission and only for a rule that no name
+has already decided.
+
+| Situation | Result |
+|---|---|
+| The class matches the selector | The entry matches. |
+| The class does not exist | A selector never matches it. On a Pod, Kubernetes has already rejected the request. |
+| The class cannot be read | The request is rejected with a server error; it is never admitted unchecked. |
+
+The selector matches labels on the PriorityClass, not on the Pod or namespace.
+Whoever may label PriorityClasses decides which ones a selector grants, so keep
+that permission with the platform team.
+
+### Targets and controller templates
+
+Priority class policies use the `pod` target, omitted targets, or a
+whole-controller target such as `deployment`. Container and volume targets skip
+them, and a rule whose targets exclude the Pod does not evaluate its
+[conditions](/docs/rules/#enforcement-conditions) for the class alone.
+
+Kubernetes assigns a class to a Pod template only when its Pods are created. A
+rule that targets a controller therefore cannot accept a template that omits
+the class: its Pods would later receive the cluster's global default, which a
+controller-only rule never sees.
+
+| Template `priorityClassName` | `allow` or `deny` rule targeting the controller | `audit` rule targeting the controller |
+|---|---|---|
+| Named | Matched like the class of a Pod. | Recorded when it matches. |
+| Omitted | Rejected: the template must name a class. | Recorded; the request continues. |
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: allow
+        workloads:
+          targets: [pod, deployment, statefulset]
+          classes:
+            priority:
+              - exact: [solar-standard, solar-batch]
+```
+
+With this rule, a Deployment or StatefulSet is rejected when its template names
+another class or none, before any Pod is created. The `pod` target also checks
+Pods created directly or by other controllers.
+
+The [priority class mutation](/docs/rules/mutate/workloads/#priority-class)
+applies to Pods, not to stored templates. To rely on a namespace default
+instead of naming the class in every template, omit `targets`: the rule then
+checks Pods only, including those created by controllers.
+
+### Updates
+
+Kubernetes does not allow the priority class of an existing Pod to change, and
+most controller updates leave the template class as it is. Capsule therefore
+checks an update only when it has a reason to:
+
+| Update | Checked |
+|---|---|
+| Keeps the class | No. Label, annotation, and finalizer updates keep working after a rule change. |
+| Changes the class of a controller template | Yes. |
+| Keeps the class, and an `allow` or `deny` class rule has [conditions](/docs/rules/#enforcement-conditions) | Yes. A condition may have started or stopped matching, so the decision is taken again with the rules that match now. |
+| Keeps the class, and only `audit` class rules have conditions | Matching conditional audits are recorded. The allow and deny decision is not taken again. |
+
+Conditions on unrelated policies, such as a conditional scheduler rule in the
+same namespace profile, do not cause a class to be checked again. Pod
+subresources, including `ephemeralcontainers`, skip priority class checks.
+
+Because a conditional allow or deny class rule rechecks every update, a Pod
+whose class is no longer allowed cannot be updated while such a rule is part of
+its namespace profile. Keep class rules unconditional unless the condition is
+needed.
+
+### Namespace profiles
+
+Rules select namespaces, so one Tenant can offer different classes to
+different namespaces:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          environment: production
+      enforce:
+        action: allow
+        workloads:
+          classes:
+            priority:
+              - matchLabels:
+                  example.com/tier: customer
+    - namespaceSelector:
+        matchLabels:
+          environment: development
+      enforce:
+        action: allow
+        workloads:
+          classes:
+            priority:
+              - exact: [solar-low]
+```
+
+| Namespace | Classes a Pod may use |
+|---|---|
+| Labeled `environment: production` | Classes labeled `example.com/tier: customer`. |
+| Labeled `environment: development` | `solar-low`. |
+| Neither label | Unrestricted by these rules. |
+
+Changing a namespace label or a rule affects subsequent admissions. Existing
+Pods keep their class.
+
+### Migrate from `spec.priorityClasses` {#migration}
+
+Rules replace the Tenant-wide [`spec.priorityClasses`](/docs/tenants/enforcement/#priorityclasses)
+field with per-namespace policy:
+
+| Legacy field | Rule |
+|---|---|
+| `priorityClasses.allowed` | `exact` in an `action: allow` rule. |
+| `priorityClasses.allowedRegex` | `exp` in an `action: allow` rule. |
+| `priorityClasses.matchLabels`, `matchExpressions` | The same selector fields in an `action: allow` rule. |
+| `priorityClasses.default` | [`mutate[].workloads.classes.priority`](/docs/rules/mutate/workloads/#priority-class) with `action: merge`. |
+
+The legacy field always admits its `default` class. With rules, the class set
+by a mutation must itself be allowed by any applicable allow-list.
+
+`spec.priorityClasses` keeps working and remains an additional boundary while
+both are configured: a class must pass the legacy check and the rules. The
+Tenant no longer lists the available PriorityClasses under
+`status.classes.priority`, because the applicable classes now depend on the
+namespace.
+
+## Runtime Classes
+
+Configure RuntimeClass matchers under `enforce.workloads.classes.runtime`.
+Capsule checks `spec.runtimeClassName` of Pods and, with
+[controller targets](#controller-targets), of their Pod templates. A
+[RuntimeClass](https://kubernetes.io/docs/concepts/containers/runtime-class/)
+selects the container runtime configuration a Pod runs with, together with the
+resource overhead and scheduling constraints of that runtime, so an
+unrestricted class lets a tenant run workloads on runtimes and nodes reserved
+for others.
+
+To give Pods a class when they name none, use the
+[runtime class mutation](/docs/rules/mutate/workloads/#runtime-class). The
+resulting class is checked by these matchers like a submitted one.
+
+Entries support the same fields as [priority classes](#priority-classes):
+`exact` names, an `exp` expression, and `matchLabels`/`matchExpressions` on the
+labels of the RuntimeClass object. A class matches an entry when any supplied
+field matches, the entries of the list are alternatives, and each rule supports
+up to 64 entries. Empty entries, invalid expressions, and invalid selectors are
+rejected when the policy is saved. Class matchers have no `negate` field; use a
+`deny` rule to exclude classes.
+
+Allow a sandboxed runtime by name, by naming convention, or by a label the
+platform team sets on the RuntimeClass:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - enforce:
+        action: allow
+        workloads:
+          classes:
+            runtime:
+              - exact: [solar-sandbox]
+                exp: '^solar-runtime-[a-z0-9-]+$'
+              - matchLabels:
+                  example.com/isolation: sandboxed
+```
+
+| Pod runtime class at enforcement | Result |
+|---|---|
+| `solar-sandbox` or `solar-runtime-gvisor` | Allowed |
+| A class labeled `example.com/isolation: sandboxed` | Allowed |
+| Any other class | Denied |
+| No class | Not checked; see [Pods without a class](#pods-without-a-class) |
+
+The usual [action rules](/docs/rules/enforcement/#actions-and-order) apply:
+`allow` enables an allow-list, `deny` rejects matches, `audit` only records
+them, and the last matching allow or deny wins. An audit match cannot satisfy
+an allow-list. Denials are recorded as events with the reason
+`ForbiddenRuntimeClass`, or `MissingRuntimeClass` for a
+[template without a class](#controller-templates-and-defaults).
+
+`exact` and `exp` need no lookup. As for
+[priority class labels](#match-class-labels), a label selector reads the
+RuntimeClass from the API server, at most once per admission and only for a
+rule that no name has already decided. A class that does not exist never
+matches a selector, and a class that cannot be read rejects the request with a
+server error; it is never admitted unchecked. The selector matches labels on
+the RuntimeClass, not on the Pod or namespace.
+
+### Pods without a class
+
+Kubernetes has no default RuntimeClass and no equivalent of the priority
+classes' `globalDefault`: a Pod that names no class keeps the default runtime
+of its node. Such a Pod is not matched by these rules, and an allow-list does
+not reject it — the rules restrict which classes may be used, not whether one
+is used. Mutation has already run when enforcement checks the Pod, so a
+namespace default assigned by the
+[runtime class mutation](/docs/rules/mutate/workloads/#runtime-class) is
+evaluated like a submitted class. To put every Pod of a namespace on a specific
+runtime, assign the class with that mutation instead of relying on enforcement
+alone.
+
+### Controller templates and defaults
+
+Runtime class policies use the `pod` target, omitted targets, or a
+whole-controller target such as `deployment`. Container and volume targets skip
+them, and a rule whose targets exclude the Pod does not evaluate its
+[conditions](/docs/rules/#enforcement-conditions) for the class alone.
+
+A template that omits the class is not necessarily without one when its Pods
+are created: the Tenant-wide
+[`spec.runtimeClasses.default`](/docs/tenants/enforcement/#assign-runtime-class-as-tenant-default)
+or a [runtime class mutation](/docs/rules/mutate/workloads/#runtime-class) can
+assign a class then, which a controller-only rule never sees. An allow or deny
+rule that targets the controller therefore requires the template to name a
+class, while an audit rule records its absence:
+
+| Template `runtimeClassName` | `allow` or `deny` rule targeting the controller | `audit` rule targeting the controller |
+|---|---|---|
+| Named | Matched like the class of a Pod. | Recorded when it matches. |
+| Omitted | Rejected: the template must name a class. | Recorded; the request continues. |
+
+Like the priority class mutation, the
+[runtime class mutation](/docs/rules/mutate/workloads/#runtime-class) applies
+to Pods, not to stored templates. To rely on a namespace default instead of
+naming the class in every template, omit `targets`: the rule then checks Pods
+only, including those created by controllers.
+
+### Update checks
+
+Kubernetes does not allow the runtime class of an existing Pod to change, and
+most controller updates leave the template class as it is. Runtime class
+policies therefore follow the same update rules as
+[priority classes](#updates): an update that keeps the class is not checked, a
+changed template class is, a conditional `allow` or `deny` class rule rechecks
+every update, and matching conditional `audit` rules are recorded without
+taking the allow or deny decision again. Pod subresources, including
+`ephemeralcontainers`, skip runtime class checks.
+
+### Namespace runtime profiles
+
+Rules select namespaces, so one Tenant can offer different runtimes to
+different namespaces:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          workload-isolation: sandboxed
+      enforce:
+        action: allow
+        workloads:
+          classes:
+            runtime:
+              - matchLabels:
+                  example.com/isolation: sandboxed
+    - namespaceSelector:
+        matchLabels:
+          workload-isolation: trusted
+      enforce:
+        action: allow
+        workloads:
+          classes:
+            runtime:
+              - exact: [solar-standard]
+```
+
+| Namespace | Classes a Pod may name |
+|---|---|
+| Labeled `workload-isolation: sandboxed` | Classes labeled `example.com/isolation: sandboxed`. |
+| Labeled `workload-isolation: trusted` | `solar-standard`. |
+| Neither label | Unrestricted by these rules. |
+
+Changing a namespace label or a rule affects subsequent admissions. Existing
+Pods keep their class.
+
+### Migrate from `spec.runtimeClasses`
+
+Rules replace the Tenant-wide [`spec.runtimeClasses`](/docs/tenants/enforcement/#runtimeclasses)
+field with per-namespace policy:
+
+| Legacy field | Rule |
+|---|---|
+| `runtimeClasses.allowed` | `exact` in an `action: allow` rule. |
+| `runtimeClasses.allowedRegex` | `exp` in an `action: allow` rule. |
+| `runtimeClasses.matchLabels`, `matchExpressions` | The same selector fields in an `action: allow` rule. |
+| `runtimeClasses.default` | [`mutate[].workloads.classes.runtime`](/docs/rules/mutate/workloads/#runtime-class) with `action: merge`. |
+
+The legacy field always admits its `default` class. With rules, the class set
+by a mutation must itself be allowed by any applicable allow-list.
+
+`spec.runtimeClasses` keeps working and remains an additional boundary while
+both are configured: a class must pass the legacy check and the rules. The
+Tenant no longer lists the available RuntimeClasses under
+`status.classes.runtime`, because the applicable classes now depend on the
+namespace.
+
 ## Pod Disruption Budgets
 
 Use `enforce.workloads.disruptionBudgets` to constrain PodDisruptionBudgets (PDBs)
@@ -2482,12 +2955,12 @@ This rule allows the exact Debian image and any image under `harbor/shared/*`.
 ## Reference
 
 This complete Tenant combines workload kind restrictions, resource policies,
-image rules, QoS, all five placement policies, and PDB constraints. It applies
+image rules, QoS, all five placement policies, priority classes, and PDB constraints. It applies
 only to its namespaces labeled `example.com/profile: restricted`; other namespaces in the
 Tenant keep their own profiles. Replace `solar-owner` with your owner identity.
 
-The kind rule rejects DaemonSets. Resource, image, QoS, and placement policies
-use Pod targets and run when Pods are admitted, including controller-created
+The kind rule rejects DaemonSets. Resource, image, QoS, placement, and priority
+class policies use Pod targets and run when Pods are admitted, including controller-created
 Pods. The PDB rule also selects Deployment and StatefulSet templates, covering
 PDB writes and replica changes. See [Workload targets](#workload-targets) to
 expand the scope of individual policies.
@@ -2549,6 +3022,9 @@ spec:
             - exp: '^registry\.example\.com/solar/.+$'
               policy: [Always, IfNotPresent]
           qosClasses: [Burstable, Guaranteed]
+          classes:
+            priority:
+              - exact: [solar-standard, solar-batch]
           placement:
             schedulers:
               - exact: [default-scheduler, batch-scheduler]
@@ -2651,6 +3127,10 @@ With this configuration:
 * The resulting Pod must have `Burstable` or `Guaranteed` QoS and use
   `default-scheduler` or `batch-scheduler`. A custom scheduler must already be
   installed to schedule Pods assigned to it.
+* A Pod that has a priority class must use `solar-standard` or `solar-batch`,
+  including a class assigned as the cluster's global default. A Pod without a
+  class is not checked; a [priority class mutation](/docs/rules/mutate/workloads/#priority-class)
+  can supply one.
 * Supplied node selectors, tolerations, spread constraints, and affinity terms
   must match the configured shapes. These allow-lists do not require those
   properties to be present or populate them. Use

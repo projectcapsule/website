@@ -5,7 +5,7 @@ aliases:
   - /docs/rules/enforcement/services/
   - /docs/rules/enforcement/ingress/
 description: >
-  Enforcement for NetworkPolicies, Services, and ingress hostnames
+  Enforcement for NetworkPolicies, Services, ingress hostnames, and classes
 ---
 
 Network enforcement covers three policy groups under `spec.rules[].enforce`:
@@ -17,7 +17,7 @@ Network enforcement covers three policy groups under `spec.rules[].enforce`:
 | [Ingress](#ingress) | `ingress` |
 
 Use these policies to control ingress and egress CIDR grants, Service types and addresses,
-and hostnames on ingress resources. [Reference](#reference) provides a complete
+and hostnames and class references on ingress resources. [Reference](#reference) provides a complete
 Tenant example for each policy group.
 
 Rules use the shared [namespace selection](/docs/tenants/rules/),
@@ -50,7 +50,7 @@ pass; an allow decision in one group does not bypass another.
 |---|---|---|
 | NetworkPolicy ingress and egress CIDRs | Every address granted after subtracting `ipBlock.except`. All granted addresses must pass. | `NamespaceRuleAudit` Kubernetes events; no admission warnings. |
 | Services | Each Service type, IP address, ExternalName hostname, and node port covered by a matcher. Type and value allow-lists are independent. | Kubernetes events and admission warnings. |
-| Ingress | Each hostname on the selected resource types, including both routing and TLS hosts on an Ingress. | Kubernetes events, including reports of missing hostname fields. |
+| Ingress | Each configured hostname or class reference on the selected resource types. Routing and TLS hosts on an Ingress are checked independently. | Kubernetes events, including reports of missing hostname or class fields. |
 
 <span id="actions-and-ordering"></span>
 
@@ -113,8 +113,9 @@ Ingress rules are evaluated during create and update admission. A rule only
 participates when its `types` list contains the incoming resource kind. Other
 resource types are unaffected. For example, `types: [Ingress, HTTPRoute]`
 applies the hostname policy to those two kinds; it does not prohibit Gateways
-or other omitted kinds. The `action` applies to the selected resources'
-hostnames, not to the resource kinds themselves.
+or other omitted kinds. The `action` evaluates the configured hostnames and
+class references. Hostname and class policies are independent; both must pass
+when both are configured.
 
 [Ingress Types](#ingress-types) lists the API versions handled by Capsule. Gateway API and OpenShift
 resources require their respective APIs to be installed in the cluster.
@@ -122,6 +123,8 @@ resources require their respective APIs to be installed in the cluster.
 When an `allow` or `deny` hostname rule targets a resource type, its expected
 hostname fields must be non-empty. Audit-only rules report missing values
 without making hostnames mandatory. See [Missing hostnames](#missing-hostnames).
+Class rules apply to Ingress and Gateway class references. See
+[Classes](#classes) for matching, missing values, and legacy Tenant restrictions.
 
 ## Network Policies {#policies}
 
@@ -1482,15 +1485,16 @@ In namespaces labeled `allow-special-nodeport=true`, a `NodePort` Service using 
 
 Ingress enforcement is configured under `spec.rules[].enforce.ingress`.
 Use [Ingress Types](#ingress-types) to select Kubernetes Ingresses, OpenShift Routes,
-and Gateway API resources, then configure [Hostnames](#hostnames) to allow,
-deny, or audit their hostname values. To supply a default Gateway reference for
-ListenerSets, use [ingress mutations](/docs/rules/mutate/ingress/).
+and Gateway API resources, then configure [Hostnames](#hostnames) and
+[Classes](#classes) to allow, deny, or audit their values. Use
+[ingress mutations](/docs/rules/mutate/ingress/) to default or replace class
+names and ListenerSet Gateway references.
 
 ### Ingress Types {#ingress-types}
 
-The `types` list selects the resource kinds whose hostnames the rule evaluates.
-Configure at least one type and one hostname expression together. A rule with
-only `types` or only `hostnames` is rejected at admission.
+The `types` list selects the resource kinds evaluated by the rule. Configure at
+least one type together with `hostnames`, `classes`, or both. A rule with only
+`types`, or with matchers but no `types`, is rejected at admission.
 
 Capsule supports the following resource types and hostname fields:
 
@@ -1503,6 +1507,140 @@ Capsule supports the following resource types and hostname fields:
 | `HTTPRoute` | `gateway.networking.k8s.io/v1` | `spec.hostnames[]` |
 | `TLSRoute` | `gateway.networking.k8s.io/v1` | `spec.hostnames[]` |
 | `GRPCRoute` | `gateway.networking.k8s.io/v1` | `spec.hostnames[]` |
+
+**Gateway API v1 is the primary supported API.** Use
+`apiVersion: gateway.networking.k8s.io/v1` for Gateways and GatewayClasses.
+When installed CRDs also serve `v1beta1` Gateways, those Gateway requests
+receive the same hostname enforcement, class enforcement, and class mutations.
+This compatibility handling applies to Gateway; the other Gateway API kinds
+in the table use `v1`.
+
+### Classes {#classes}
+
+Configure class restrictions under `spec.rules[].enforce.ingress.classes`.
+The selected resource kind determines which class reference is checked:
+
+| Type | Class object | Evaluated fields |
+|---|---|---|
+| `Ingress` | `networking.k8s.io/v1` IngressClass | `spec.ingressClassName` and the legacy `kubernetes.io/ingress.class` annotation, when present |
+| `Gateway` | `gateway.networking.k8s.io/v1` GatewayClass | `spec.gatewayClassName` |
+
+At least one of `Ingress` or `Gateway` must appear in `types` when `classes`
+is configured. Class checks apply only to those two kinds. Other selected
+kinds can still receive hostname checks from the same rule. A classes-only
+rule imposes no hostname restriction.
+
+#### Class matching
+
+Each entry supports these fields:
+
+| Field | Matching behavior |
+|---|---|
+| `exact` | Match one of the listed class names. |
+| `exp` | Match the class name with a regular expression. Use `^` and `$` to match the complete name. |
+| `matchLabels` | Match labels on the referenced IngressClass or GatewayClass. |
+| `matchExpressions` | Match label expressions on the referenced class object. |
+
+Entries are alternatives: any matching entry satisfies that rule. Within an
+entry, an exact name, regular expression, or matching label selector is also
+sufficient. For example, combining `exact` and `matchLabels` accepts the named
+class even if its labels do not match. The `matchLabels` and `matchExpressions`
+fields together form one Kubernetes label selector, whose requirements must all
+match. Class entries have no `negate` field.
+
+Selectors inspect the **class object's labels**, independently of labels on the
+Ingress, Gateway, or namespace. Keep permission to change class labels with the
+administrators who manage these policies. Name matches do not check class
+existence. When enforcing a selector requires reading a class, an unresolved
+class or a read failure denies the request.
+
+#### Select classes by namespace profile
+
+This Tenant allows selected IngressClass and GatewayClass references only in
+its namespaces labeled `exposure: private`:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          exposure: private
+      enforce:
+        action: allow
+        ingress:
+          types: [Ingress, Gateway]
+          classes:
+            - exact: [internal]
+            - exp: '^internal-[a-z0-9-]+$'
+            - matchLabels:
+                env: customer
+```
+
+A reference is allowed if its name is `internal`, its name matches the
+expression, or its class object has the label `env: customer`. The name
+`internal` identifies an IngressClass for an Ingress and a GatewayClass for a
+Gateway; these are separate class objects. Use separate rules with different
+`types` when the kinds need different class policies.
+
+For example, this Gateway uses an allowed class name in a namespace already
+owned by `solar` and labeled `exposure: private`:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: tenant-api
+  namespace: solar-private
+spec:
+  gatewayClassName: internal
+  listeners:
+    - name: http
+      hostname: api.solar.example.com
+      protocol: HTTP
+      port: 80
+```
+
+Replacing its class with `external`, whose GatewayClass lacks `env: customer`,
+is denied on creation or update. Namespaces without the selected label receive
+no class restriction from this rule. Namespaces in other Tenants are outside
+its scope. Protect the `exposure` label with
+[namespace metadata rules](/docs/rules/enforcement/metadata/) if its value must
+be controlled by administrators; removing the label also removes this rule
+from the namespace profile.
+
+Use `action: deny` with the same matcher fields to deny matching references.
+The [last matching allow or deny rule](#actions-and-order) wins for each class
+reference. With `action: audit`, matches emit `NamespaceRuleAudit` Kubernetes
+events without granting access or overriding other restrictions. Dry-run
+requests do not emit these events.
+
+#### Missing classes and existing restrictions
+
+An applicable `allow` or `deny` class rule requires a non-empty class reference.
+For Ingress, a non-empty legacy annotation also supplies a class reference;
+when both representations are present, each must satisfy the class policy.
+Keep their names consistent. Audit-only class rules report a missing reference
+without making it mandatory, while native Kubernetes API requirements still
+apply. Use [class mutation](/docs/rules/mutate/ingress/#classes) to supply a
+default before enforcement.
+
+Existing `spec.ingressOptions.allowedClasses` and
+`spec.gatewayOptions.allowedClasses` remain additional Tenant-wide
+restrictions. A namespace rule does not override them. Class mutation also
+does not grant permission to use a class that an applicable rule forbids.
+
+Available classes depend on the namespace profile.
+`Tenant.status.classes.gateway` is no longer populated, and IngressClasses are
+not listed in Tenant class status. Inspect the
+[effective RuleStatus](/docs/rules/#order-and-scope) and referenced class objects
+when checking a namespace profile.
 
 ### Hostnames
 
@@ -2044,7 +2182,7 @@ With this configuration:
 This complete Tenant allows a hostname family, denies a reserved hostname,
 audits preview hostnames, and grants a namespace-specific exception. Replace
 `solar-owner` with your owner identity. It covers every resource kind listed
-under [Ingress Targets](#types), including Gateway API and OpenShift resources when those
+under [Ingress Types](#ingress-types), including Gateway API and OpenShift resources when those
 APIs are installed.
 
 ```yaml

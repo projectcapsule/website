@@ -2,13 +2,13 @@
 title: Audiences
 weight: 7
 description: >
-  Select request identities for namespace rules and replication admission triggers.
+  Select request identities for namespace rules.
 ---
 
-An `audience` selects the request identities to which a Capsule rule or trigger
-applies. [Namespace rules](/docs/rules/#audience) and
-[replication admission triggers](/docs/replications/triggers/#audience) use the
-same audience kinds and matching semantics.
+An `audience` selects the request identities to which a
+[namespace rule](/docs/rules/#audience) applies.
+[Replication resource watches](/docs/replications/triggers/) do not carry request
+identities and cannot use audiences.
 
 ## Matching
 
@@ -25,7 +25,7 @@ audience:
 ```
 
 An omitted or empty audience matches every request selected by the containing
-rule or trigger. A nonempty audience matches when **at least one entry** matches:
+rule. A nonempty audience matches when **at least one entry** matches:
 entries use logical **OR**. In this example, Alice, members of
 `oidc:engineering`, and the `delivery/deployer` service account all qualify.
 
@@ -36,7 +36,6 @@ change tenant ownership, or bypass managed-resource protection.
 | Used by | Field | Effect when the audience does not match |
 | --- | --- | --- |
 | Namespace rules | `Tenant.spec.rules[].audience` | Skip that rule's admission mutation and enforcement. Other applicable rules still apply. |
-| Replication admission triggers | `spec.triggers[].audience` on a TenantResource or GlobalTenantResource | Skip the reconciliation notification. The trigger does not reject the original request. |
 
 ## Standard audiences
 
@@ -92,11 +91,6 @@ subject is not an owner of the current tenant.
 | Used by | Tenant checked |
 | --- | --- |
 | Namespace rules | The tenant resolved for the namespace being evaluated. |
-| TenantResource triggers | The tenant owning the event source namespace, which is the namespace containing the TenantResource. |
-| GlobalTenantResource triggers | The tenant owning the event source namespace. Replication destination tenants do not determine this audience. |
-
-A GlobalTenantResource can select sources outside its destination tenants. If a
-source namespace has no tenant, its requests do not match `TenantOwner`.
 
 ## Request identity
 
@@ -106,16 +100,12 @@ request normally comes from that controller's service account. An audience
 matching the user who created the Deployment or Job will not automatically match
 that subsequent Pod request.
 
-Account for this distinction when selecting audiences for workload mutation,
-enforcement, or replication triggers. `Controller` identifies Capsule's own
+Account for this distinction when selecting audiences for workload mutation
+or enforcement. `Controller` identifies Capsule's own
 service account; it does not match every actor creating resources through a
 controller.
 
-Capsule evaluates audiences in its admission handlers. For replication triggers,
-the API server first evaluates native operation/resource filters, selectors, and
-CEL match conditions; Capsule then checks the audience before queuing a
-notification. An audience mismatch can therefore still result in a notification
-webhook call.
+Capsule evaluates audiences in its admission handlers.
 
 Unknown kinds, unsupported `Custom` names, and empty names are rejected when the
-containing rule or trigger is admitted.
+containing rule is admitted.

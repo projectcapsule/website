@@ -5,7 +5,7 @@ description: >
   Replicate resources across a Tenant's Namespaces as Tenant Owner
 ---
 
-Use [admission triggers](/docs/replications/triggers/) to reconcile source changes
+Use [resource watches](/docs/replications/triggers/) to reconcile source changes
 between periodic resyncs.
 
 ## Overview
@@ -1126,9 +1126,6 @@ tenant:
                     tenant: wind
     status:
         classes:
-            priority:
-                - system-cluster-critical
-                - system-node-critical
             storage:
                 - standard
         conditions:

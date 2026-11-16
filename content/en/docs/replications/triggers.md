@@ -1,24 +1,22 @@
 ---
-title: Admission triggers
+title: Resource watches
 weight: 3
 description: >
   Reconcile TenantResources and GlobalTenantResources when source objects change.
 ---
 
-`TenantResource` and `GlobalTenantResource` support optional admission triggers.
-Triggers request reconciliation when a matching namespaced resource is created,
-updated, or deleted. This is useful when templates or replicated items depend on
-objects that can change between periodic reconciliations.
+`TenantResource` and `GlobalTenantResource` support optional resource watch
+triggers. Capsule observes persisted namespaced resources and requests
+reconciliation when a matching object is added, updated, or deleted.
 
-The resource behavior and destination namespace profiles remain defined in
-`spec.resources`. Triggers only control when Capsule requests reconciliation.
-Existing replications without triggers retain their behavior.
+`spec.resources` continues to define resource behavior and destination namespace
+profiles. Triggers control when reconciliation is requested. Replications without
+triggers retain their existing behavior.
 
 ## Example
 
-This GlobalTenantResource generates a count of selected Secrets in production
-namespaces. A matching Secret write requests a refresh without waiting for the
-hourly resync.
+This GlobalTenantResource refreshes a Secret summary when selected inputs change.
+Its source namespaces and destination namespaces are selected independently.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -46,15 +44,10 @@ spec:
           - key: example.com/summary-source
             operator: In
             values: ["true"]
-      audience:
-        - kind: Custom
-          name: CapsuleUser
-        - kind: Custom
-          name: Administrator
       matchConditions:
         - name: content-changed
           expression: >-
-            request.operation != 'UPDATE' ||
+            operation != 'UPDATE' ||
             has(object.data) != has(oldObject.data) ||
             (has(object.data) && object.data != oldObject.data)
   resources:
@@ -80,196 +73,232 @@ spec:
               count: '{{ if $.sources }}{{ len $.sources }}{{ else }}0{{ end }}'
 ```
 
-For a TenantResource, use the same trigger fields except `namespaceSelector`.
-Its triggers observe only the namespace containing the TenantResource. This does
-not change its existing replication destinations within the tenant.
+For a TenantResource, omit `namespaceSelector` from the trigger. Its sources are
+restricted to the namespace containing that TenantResource. This does not change
+its replication destinations within the tenant.
 
-A GlobalTenantResource trigger's `namespaceSelector` selects **event source
-namespaces**. `spec.tenantSelector` and each `spec.resources[].namespaceSelector`
-continue to select replication destinations. A privileged GlobalTenantResource can
-observe a shared source namespace outside its destination tenants.
+A GlobalTenantResource's trigger `namespaceSelector` selects **event source
+namespaces**. `spec.tenantSelector` and each resource's `namespaceSelector` select
+destinations. If source namespace metadata is unavailable or the namespace is
+terminating, only triggers requiring namespace labels are skipped. Other triggers
+without a namespace restriction remain eligible. Administrators can intentionally
+select a shared source namespace
+outside the destination tenants.
 
-## Matching requests
+## Matching changes
 
-Each trigger must have a unique DNS-label `name` and specify `operations`,
-`apiGroups`, `apiVersions`, and `resources`. It supports:
+Every trigger has a unique DNS-label `name` and requires `operations`, `apiGroups`,
+`apiVersions`, and `resources`.
 
 | Field | Behavior |
 | --- | --- |
-| `operations` | `CREATE`, `UPDATE`, `DELETE`, or `"*"` for these three operations. `CONNECT` is unsupported. |
-| `apiGroups`, `apiVersions`, `resources` | Kubernetes admission resource matching, including resource wildcards and subresources. Matching uses equivalent API versions. |
-| `scope` | Optional; only `Namespaced` is accepted. Cluster-scoped events are unsupported. |
-| `namespaceSelector` | Label selector on event source namespaces; available only on GlobalTenantResources. |
-| `objectSelector` | Label selector with `matchLabels` and `matchExpressions`. A match on either the old or new object qualifies. |
-| `matchConditions` | Native admission CEL conditions. Every condition must evaluate to true. |
-| `audience` | The request identities eligible to trigger reconciliation, using the [shared audience model](/docs/operating/concepts/audiences/). |
+| `operations` | `CREATE`, `UPDATE`, `DELETE`, or `"*"` for these three observed changes. |
+| `apiGroups` | Explicit API groups; use `""` for core resources. |
+| `apiVersions` | Explicit versions, such as `v1`. |
+| `resources` | Explicit plural resource names, such as `configmaps`. Wildcards and subresource paths are unsupported. |
+| `scope` | Optional; only `Namespaced` is accepted. Cluster-scoped resources cannot be watched by triggers. |
+| `namespaceSelector` | Source namespace label selector; GlobalTenantResources only. |
+| `objectSelector` | Label selector with `matchLabels` and `matchExpressions`; a match on either observed object qualifies. |
+| `matchConditions` | Named boolean CEL expressions. All conditions in one trigger must match. Any matching trigger can notify the replication. |
 
-Overlapping resource wildcards are rejected before registration, so malformed
-triggers cannot block updates to the shared webhook configuration.
+Groups, versions, and resources form explicit combinations, with at most 16
+combinations per trigger and eight entries per field. There are at most 32
+triggers per replication and 60 conditions per trigger. Expressions are limited to
+4096 bytes and have a runtime cost limit. Capsule validates expressions in its replication controllers and prepares immutable
+programs when subscriptions change. An invalid specification reports `Ready=False`
+with its error and current `observedGeneration`; correcting it lets reconciliation
+resume. Validation results are reused for the unchanged resource generation,
+including valid subscriptions omitted by preparation limits. Invalid specifications
+do not schedule fast application retries. Trigger validation does not depend on
+a policy-conversion webhook.
 
-Resource matching, selectors, conditions, and audience must all qualify. CEL
-conditions have the native admission variables, including `object`, `oldObject`,
-`request`, and `authorizer`. Account for a null `oldObject` on CREATE and a null
-`object` on DELETE. Condition evaluation errors skip the notification because the
-notification webhook uses `failurePolicy: Ignore`.
+Only watchable top-level resources are supported. For example, a write through
+`deployments/scale` can appear as an UPDATE of the watched Deployment, but watches
+do not identify which subresource or API operation caused that change. An explicit
+API version selects that version's watch; there is no admission equivalent-version
+matching contract.
 
-There are at most 32 triggers per replication. Each trigger accepts up to 64
-audience entries and 60 named match conditions. Each condition expression is
-limited to 4096 bytes. Names starting with `capsule-trigger-` are reserved for
-Capsule's built-in conditions.
+### CEL inputs
 
-## Audience
+Conditions can use:
 
-Triggers use the shared [audience model](/docs/operating/concepts/audiences/).
-See that reference for matching semantics, standard and custom kinds, and request
-identity.
+| Variable | Value |
+| --- | --- |
+| `object` | The current observed object; null on DELETE. |
+| `oldObject` | The previous observed object; null on CREATE. |
+| `operation` | `CREATE`, `UPDATE`, or `DELETE`. |
 
-For `TenantOwner`, Capsule checks the tenant owning the **event source
-namespace**. For a GlobalTenantResource this can differ from the replication
-destination tenants. A source namespace without a tenant does not match
-`TenantOwner`. The audience does not expand replication destinations.
+Conditions describe observed state changes. They are not admission conditions.
+Watches do not include the requesting user, groups, impersonation information, or
+an admission `request` or `authorizer` value. The API schema rejects nonempty `audience` fields. CEL expressions using
+admission-only variables produce a validation error in replication status. The shared
+[audience model](/docs/operating/concepts/audiences/) remains available for namespace
+rules.
 
-Capsule evaluates the audience inside the notification webhook after the API
-server's native filters match. A mismatch skips notification and does not reject
-the original write.
+Condition errors skip that trigger. Another matching trigger can still notify
+the same replication. Namespace and resource selectors must also qualify.
 
-Triggers use `audience` instead of the older admission `opts` properties. Existing
-admission configuration continues to support its existing options.
+## Managed resources and bookkeeping
 
-## Managed resources never trigger reconciliation
+Capsule-managed resources, including objects adopted or co-managed by
+TenantResources or GlobalTenantResources, never trigger reconciliation. The filter
+checks both observed states, management metadata, Capsule owner references, and
+replication field managers. Removing a management marker does not make that
+particular update eligible. The legacy `capsule.clastix.io/managed-by` assignment
+label is not a management marker; tenants named `controller`, `resources`, and
+`replications` remain eligible.
 
-Capsule-managed resources and objects managed by TenantResources or
-GlobalTenantResources are ineligible, including adopted or co-managed objects.
-Capsule checks current and legacy management metadata and replication ownership
-markers. The legacy `capsule.clastix.io/managed-by` tenant-assignment label is
-not a management marker; tenants named `controller`, `resources`, or
-`replications` remain eligible. This exclusion also applies to the
-[`Controller` audience](/docs/operating/concepts/audiences/#custom-audiences).
+A watch can observe a new UID under an existing name after a relist. Capsule
+treats this as DELETE for the previous object and CREATE for its replacement.
+Selectors and management checks apply independently to each object.
 
-On UPDATE, management on either the old or new object excludes the request, so
-removing a marker in an update cannot make that update eligible. On DELETE, the
-old object is checked. The exclusion is mandatory and cannot be overridden by an
-object selector or match condition.
+Watches have no writer identity. To avoid feedback when a TenantResource watches
+its own kind, Capsule ignores parent status, finalizer, and internal
+reconciliation-token changes. Spec, label, non-Capsule owner-reference, and other
+annotation changes remain eligible, including transitions that set
+`deletionTimestamp`. Ownership changes remain subject to the managed-resource
+exclusion above. Ordinary spec changes
+already reconcile through the resource controller.
 
-Controller updates to TenantResource and GlobalTenantResource objects are also
-excluded, including notification patches and status writes. User edits to these
-objects remain eligible. This prevents a replication subscribing to its own kind
-from repeatedly triggering itself.
+## Scheduling and recovery
 
-## Authenticated delivery
+`spec.triggerMinInterval` is shared across the triggers on one replication. Its
+default is `10s`, with values from `1s` to `24h`.
 
-Capsule authenticates trigger deliveries before decoding the admission review or
-looking up subscriptions. Each native predicate has a signed, unpredictable
-capability in its webhook URL path. An unsigned request or an invalid capability
-receives HTTP 401 and cannot enqueue reconciliation, even if it supplies a forged
-request identity or namespace. The API server obtains the capability from the
-ValidatingWebhookConfiguration; no API-server client-certificate configuration is
-required. Native selectors and CEL still run in the API server, and Capsule checks
-the audience after authenticated delivery.
+The elected replica shares watch streams by resource/version, namespace scope, and
+replication execution identity. A GlobalTenantResource can require a cluster-wide
+stream; a TenantResource uses its own namespace. Streams belonging to different
+execution identities are independent. A global impersonated stream does not
+replace a local stream that may have different namespace-scoped permissions.
+It queues matching targets through the existing asynchronous notification
+mechanism. A short 250 ms window coalesces bursts; the first event does not wait
+for the full interval. Events during a cooldown remain pending for a later
+reconcile and do not continually postpone it. Shortening the interval shortens an
+existing queued cooldown. Persisted attempt timing preserves the interval across
+leadership changes.
 
-All controller replicas reuse one immutable Secret named
-`capsule-trigger-delivery-<hash>` in the controller namespace, owned by the active
-CapsuleConfiguration. The signing key stays in that Secret. Published capabilities
-are specific to their native predicate. Treat readers of this Secret,
-ValidatingWebhookConfigurations, and API-server or proxy logs containing webhook
-URLs as trusted delivery-credential readers. Tenant owners must not receive those
-permissions. Capsule removes capabilities before its own handler tracing.
-Use cluster network controls to restrict tenant access to the webhook service as
-an additional layer, accounting for your control-plane networking and CNI.
+Dependency, namespace, tenant and configuration changes, spec edits, deletion,
+manual requests, and periodic resyncs retain their existing paths. Failed resource
+reconciliation does not acknowledge the outstanding notification and retries at
+a bounded interval.
 
-If Capsule cannot initialize the credential, it logs the error, rejects trigger
-deliveries, and omits trigger registrations. Existing admission enforcement and
-periodic reconciliation remain enabled. Fix the controller's Secret permissions
-or credential ownership and restart the affected controller replicas to enable
-delivery.
+Triggers are **best effort**. Initial paginated lists establish a baseline without
+replaying every existing object as a CREATE. Changes during initial
+synchronization, disconnection, leader replacement, or saturation can be missed or
+coalesced. A relist restores the observed state, not a complete audit history.
+Keep `resyncPeriod` as the recovery mechanism. A replication's Ready condition
+reports resource application, not watch synchronization.
 
-The key survives controller restarts and certificate renewals. To rotate it,
-coordinate replacement of the immutable Secret with a restart of all controller
-replicas. Deliveries during a key transition can be missed; periodic reconciliation
-provides recovery. Invalid or unavailable delivery still follows the notification
-webhook's fail-open policy and cannot reject the original Kubernetes write.
+The notification queue is bounded to 4096 targets. The watch event queue is bounded
+to 256 events and 8 MiB of accounted object memory, including in-flight work,
+with two workers and a 100 ms processing deadline per event. Excess
+or expired work is skipped and periodic reconciliation provides recovery. Up to
+64 watch streams across all resource/version and namespace combinations,
+4096 prepared replications, 8192 condition references, and validation results for
+up to 4096 additional replication generations are retained per leader. Prepared
+subscriptions supply their own validation result. Results contain no source data
+or condition programs and are retired on preparation, deletion, or a newer generation.
+Beyond the validation-result bound, omitted subscriptions still validate on each
+reconcile; periodic resource application remains active.
+Preparation and stream opportunities are shared round-robin by the owning Tenant.
+GlobalTenantResources and resources outside Tenant namespaces share a separate
+system group. Namespace ownership uses Tenant owner-reference UID checks. When
+all tenants cannot fit, priority rotates on the 30-second planning refresh;
+ordinary events do not continually replace healthy streams. Multiple identities
+or large subscriptions in one tenant cannot reserve every opportunity ahead of
+another tenant. The limits apply to planning candidates, so invalid resources or
+forbidden LIST/WATCH requests cannot force unbounded discovery or stream initialization.
+Within a tenant, sources and stream candidates retain deterministic ordering.
 
-For subresource requests such as `deployments/scale`, selectors and CEL see the
-admission projection (for example, a `Scale` object). Capsule also reads the named
-parent to check its management metadata before notifying any matching replication.
-A managed parent, a changed parent UID, or a failed parent lookup skips the
-notification and does not reject the original write. Subscriptions are removed
-from native webhook registration when deletion starts, even if finalizers keep the
-replication object present.
+Valid subscriptions omitted by discovery or capacity limits are reported in logs
+and metrics and rely on periodic reconciliation. Invalid trigger specifications
+report `Ready=False` and stop replication until corrected.
 
-## Scheduling and delivery
+## Permissions and performance
 
-`spec.triggerMinInterval` is shared across all triggers on one replication. It
-defaults to `10s` and accepts durations between `1s` and `24h`.
+Source LIST/WATCH requests run under the same execution identity as replication:
+`spec.serviceAccount`, the configured default ServiceAccount, or the controller
+identity when impersonation is explicitly unconfigured. That identity needs
+`list` and `watch` access to the selected resource and namespace scope. A global
+stream requires cluster-wide access; a local stream needs access only in its
+namespace. `get` access alone cannot establish a watch.
 
-The first eligible event can request reconciliation without waiting for this
-interval. Notifications have a short asynchronous settling delay and are
-coalesced before Capsule writes a reconciliation request. Events received during
-the interval remain pending for one later reconciliation; later events do not
-continually postpone that pending work. An event received during reconciliation
-is not acknowledged by the older reconciliation.
+Object selectors and CEL only receive objects read by that execution identity.
+A privileged stream or another ServiceAccount's stream cannot supply data to an
+unprivileged subscription, including through observable trigger tokens. Identity
+or impersonation-transport changes retire the old streams and exclude stale
+queued events. Each stream uses the endpoint and TLS settings captured for its
+execution identity throughout its lifetime. Missing permissions and client-construction errors retry without
+falling back to controller credentials. Replication Ready reports application
+and validation status; it does not assert that source watches are authorized.
+Kubernetes authorizes LIST/WATCH requests using its normal watch semantics.
+The controller still reads subscription and namespace metadata for selection.
+These background failures cannot block Kubernetes writes.
 
-The dispatcher checks persisted attempt timing and handled notification identity
-before issuing a notification, so the interval is shared across webhook replicas
-and survives controller leadership changes. It keeps one unacknowledged
-notification per resource; later events remain queued until that notification is
-handled and the interval permits another. Shortening `triggerMinInterval` also
-shortens an existing queued cooldown.
+Capsule checks the selected CA bundle during its 30-second watch-planning refresh.
+Updating the referenced Secret's CA data replaces affected streams; unrelated
+metadata or data keys do not restart them. A missing Secret or CA key stops those
+streams until it is restored. An explicitly configured CA Secret with empty CA
+data also stops affected watches; it cannot fall back to system trust. Explicit
+`skipTLSVerify` retains its configured behavior. Trust rotation does not require
+editing the replication or CapsuleConfiguration. Cached impersonated replication
+clients also check the current transport and CA contents on each load, so template
+reads and resource applies recover with the source watch. A changed trust snapshot
+replaces that ServiceAccount's cached client; it does not reuse the older transport
+or fall back to the controller identity.
 
-Cooldowns apply only to trigger notifications. Dependency recovery, namespace and
-tenant events, configuration changes, spec updates, deletion, manual requests, and
-periodic resyncs retain their existing reconciliation paths. Trigger-enabled
-replications retry failed reconciliation at a bounded interval, including transient failures during initial resource creation.
+Each stream retains at most 1024 object snapshots and 1 MiB of accounted memory.
+Across 64 streams, the snapshot budget is at most 64 MiB. Accounting includes
+strings, maps, slices, metadata, and bookkeeping; it is not the serialized object
+size or an exact measure of process memory. Objects whose accounted size exceeds
+512 KiB are skipped. Streams never share object contents across execution identities.
 
-Triggers are **best effort**. Admission observes a write attempt before storage
-commit, and a later admission step or storage conflict can still reject it. A
-reconciliation can therefore read the previous state. Notifications can also be
-missed during restarts, webhook failures, or queue saturation. Keep a suitable
-`resyncPeriod` as the recovery mechanism; a very long period increases recovery
-time for missed events.
+Capsule consumes LIST responses a page at a time, with at most two pages being
+decoded concurrently. Pages request 32 objects; responses exceeding 4 MiB retry
+with smaller pages. Each page has a 15-second deadline. A baseline stops after
+2048 objects, 4 MiB of accounted objects, or 64 pages and then watches from that
+snapshot's resource version. It does not accumulate the entire resource collection.
 
-For authenticated API-server requests, the notification webhook returns an allow
-response. It uses
-`failurePolicy: Ignore`, a two-second timeout, and `sideEffects: NoneOnDryRun`.
-An unavailable notification webhook can delay a request up to this timeout, but
-its failure does not reject the write. Other admission webhooks retain their own
-validation and failure policies.
+An UPDATE without a retained previous snapshot is skipped and warms that object's
+snapshot for a later change. Capsule does not invent a CREATE or set `oldObject`
+to null for that UPDATE. A partial relist cannot infer deletions outside its
+baseline. Keep `resyncPeriod` short enough to recover changes to cold or oversized
+inputs, including objects that change only once between evictions. Resource
+application and template reads still run periodically for those inputs.
 
-Dry-run requests never enqueue notifications. The admission handler performs
-cached, indexed lookups and does not write to the API server synchronously.
-Identical native matching configurations share webhook registrations, and all
-matching notifications for a target share its interval.
+Share resource types between subscriptions and avoid watching noisy types unless
+their changes are needed. Matching uses indexed subscription lookups and prepared
+selectors/programs rather than scanning all replications or compiling conditions
+for every event.
 
-Capsule retains at most 128 distinct native trigger groups within a 512 KiB
-trigger-registration budget. The combined webhook payload is limited to 1 MiB
-for this calculation, with existing enforcement registrations taking priority.
-A group can serve many replications with identical native matching predicates;
-audience differences do not create additional groups. Groups beyond the budget
-are omitted, and their replications continue to use periodic reconciliation.
-Monitor the omitted-registration metric before increasing the number or size of
-distinct predicates.
+There is no trigger admission webhook, delivery endpoint, or signing Secret.
+Dry-run and rejected writes do not persist changes and therefore produce no watch
+notification. Existing Capsule admission checks, including managed-resource
+protection, retain their behavior.
 
 ## Observe triggers
 
-For a trigger-enabled replication, the internal notification identity is stored
-in the `projectcapsule.dev/replication-trigger` annotation:
+The `projectcapsule.dev/replication-trigger` annotation identifies queued internal
+work. The API status records:
 
-- `status.trigger.lastTriggeredAt` records the start of the latest triggered
-  attempt, including failed attempts.
-- `status.trigger.observedRequest` identifies the last notification handled by a
-  completed attempt. Failed attempts leave their notification pending for retry.
-- `status.nextResyncAt` records the earliest outstanding periodic recovery deadline.
-  An intervening trigger does not postpone it.
-- The existing Ready condition and processed-item status report apply errors.
+- `status.trigger.lastTriggeredAt`: start of the last triggered attempt.
+- `status.trigger.observedRequest`: last notification handled by a completed
+  attempt. A notification arriving during reconciliation is not acknowledged by
+  the older attempt.
+- `status.nextResyncAt`: earliest outstanding periodic recovery deadline; a trigger
+  does not postpone it.
 
-The `capsule_replication_trigger_notifications_total` metric has bounded
-`outcome` values: `queued`, `saturated`, and `retry`. Each webhook replica has a
-bounded working set of 4096 pending/cooling-down targets. Saturation drops new
-target notifications, while notifications for already tracked targets still
-coalesce; periodic reconciliation provides recovery. A one-minute maintenance
-ticker prunes deleted, cordoned, and unsubscribed targets from this working set.
+The existing Ready condition and processed-item status report application errors.
+Metrics use bounded labels:
 
-`capsule_replication_trigger_registrations_omitted` reports the number of native
-trigger groups omitted because of the registration budget. A nonzero value means
-some subscriptions rely on periodic reconciliation until the configuration fits
-the budget.
+- `capsule_replication_trigger_notifications_total`: `queued`, `saturated`, `retry`.
+- `capsule_replication_trigger_watches`: active watch streams on this replica,
+  including streams still initializing or retrying.
+- `capsule_replication_trigger_watches_omitted`: subscriptions or resources omitted
+  by validation, discovery, or capacity limits.
+- `capsule_replication_trigger_events_total`: `queued`, `dropped`, `watch-error`,
+  `condition-error`, `unprepared`, `timed-out`, `baseline-limited`,
+  `object-too-large`, and `old-object-unavailable`.
+- `capsule_replication_trigger_snapshot_bytes`: accounted snapshot memory.
+- `capsule_replication_trigger_queued_bytes`: accounted memory in queued and
+  processing events.

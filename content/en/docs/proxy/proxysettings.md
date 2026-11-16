@@ -24,7 +24,7 @@ These permissions exist only when a request is sent through Capsule Proxy. `Glob
 
 ### Subjects and resources
 
-Every entry in `spec.rules` contains one or more `subjects` and `clusterResources`. Supported subject kinds are `User`, `Group`, and `ServiceAccount`. Subjects must also be admitted by the Capsule Proxy user and group configuration.
+Every entry in `spec.rules` contains one or more `subjects` and `clusterResources`. Supported subject kinds are `User`, `Group`, and `ServiceAccount`. By default, callers must also be recognized Capsule identities. See [User scope](/docs/proxy/setup/installation/#user-scope) for eligibility and the `--require-capsule-user=false` option for global grants to authenticated non-Capsule users.
 
 `apiGroups` and `resources` use plural resource names and follow the same general conventions as Kubernetes [`ClusterRole` rules](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#api-overview):
 

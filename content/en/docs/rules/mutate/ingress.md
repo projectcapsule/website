@@ -2,16 +2,156 @@
 title: Ingress
 weight: 2
 description: >
-  Default or replace Gateway references on ListenerSets in selected namespaces
+  Default or replace Ingress and Gateway classes and ListenerSet Gateway references
 ---
 
-Ingress mutations configure Gateway API resources under
-`spec.rules[].mutate[].ingress`. Use [ListenerSet mutations](#listenersets) to
-configure Gateway references in selected Tenant namespaces.
+Ingress mutations configure Kubernetes Ingress and Gateway API resources under
+`spec.rules[].mutate[].ingress`. Use [class mutations](#classes) to supply class
+names and [ListenerSet mutations](#listenersets) to configure Gateway references
+in selected Tenant namespaces.
 
 | Mutation | Resource | Field | Operations |
 |---|---|---|---|
+| [`types` and `class`](#classes) | `networking.k8s.io/v1` Ingress or `gateway.networking.k8s.io/v1` Gateway | `spec.ingressClassName` or `spec.gatewayClassName` | Main-resource `CREATE` and `UPDATE` |
 | [`listenerSets.parentRef`](#parent-reference) | `gateway.networking.k8s.io/v1` ListenerSet | `spec.parentRef` | Main-resource `CREATE` and `UPDATE` |
+
+**Gateway API v1 is the primary supported API.** All Gateway API examples here
+use `gateway.networking.k8s.io/v1`. When installed CRDs also serve `v1beta1`
+Gateways, those requests receive the same class mutation. ListenerSet parent
+reference mutation uses the `v1` API.
+
+## Classes {#classes}
+
+Configure `ingress.types` together with `ingress.class` to set a class name:
+
+| Field | Behavior |
+|---|---|
+| `types` | Required with `class`. Select `Ingress`, `Gateway`, or both. |
+| `class` | Required with `types`. A non-empty class name, optionally using Tenant/Namespace rule templates. |
+
+For an Ingress, Capsule sets `spec.ingressClassName`. For a Gateway, it sets
+`spec.gatewayClassName`. These mutations apply on main-resource creation and
+updates. Deletes and status or other subresource updates are skipped.
+
+The `types` field selects the resources for the `class` mutation.
+`listenerSets.parentRef` selects ListenerSets independently and does not use
+this list. Use separate entries to give Ingresses and Gateways different class
+names or mutation actions.
+
+### Default classes by namespace profile
+
+This Tenant supplies different defaults to its private and public namespaces,
+then restricts the resulting class references with
+[class enforcement](/docs/rules/enforcement/network/#classes):
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: solar
+spec:
+  owners:
+    - kind: User
+      name: solar-owner
+  rules:
+    - namespaceSelector:
+        matchLabels:
+          exposure: private
+      mutate:
+        - action: merge
+          ingress:
+            types: [Ingress, Gateway]
+            class: internal
+      enforce:
+        action: allow
+        ingress:
+          types: [Ingress, Gateway]
+          classes:
+            - exact: [internal, custom]
+    - namespaceSelector:
+        matchLabels:
+          exposure: public
+      mutate:
+        - ingress:
+            types: [Ingress, Gateway]
+            class: public
+      enforce:
+        action: allow
+        ingress:
+          types: [Ingress, Gateway]
+          classes:
+            - exact: [public]
+```
+
+In a private namespace, a class that is still absent or empty when mutation
+runs becomes `internal`; an explicit `custom` class is preserved and allowed.
+In a public namespace, a missing class becomes `public`. The IngressClass and GatewayClass objects are
+separate resources even when their names are the same. Create the required
+classes and configure their controllers separately; Capsule supplies the
+reference without creating or checking the class object.
+
+Namespaces without either label receive no default from these rules, and other
+Tenants are outside their scope. An `enforce.action` applies only to enforcement;
+the mutation entry has its own independent `action`.
+
+### Merge and replace {#class-merge-and-replace}
+
+| Action | Behavior |
+|---|---|
+| `merge` (default) | Fill an absent or empty class. Preserve a non-empty class supplied in the native field or the legacy Ingress annotation. |
+| `replace` | Set the configured native class field on every matching write, overwriting an existing value. If the legacy Ingress annotation exists, update it to the same name. |
+
+Merge preserves values already supplied by Kubernetes or an earlier defaulting
+webhook. For example, a cluster default IngressClass already present in
+`spec.ingressClassName` is retained. If that preserved name is outside the
+configured class allow-list, admission is denied. With a legacy annotation
+alone, merge preserves the annotation and leaves an absent native class field
+unset.
+
+To set a class regardless of an existing choice, use `replace`:
+
+```yaml
+mutate:
+  - action: replace
+    ingress:
+      types: [Ingress, Gateway]
+      class: internal
+```
+
+Replacement synchronizes an existing `kubernetes.io/ingress.class` annotation;
+it does not add that annotation when it is absent. Every resulting class must
+still pass namespace rules, legacy Tenant class restrictions, and native API
+validation. A default alone does not restrict explicit choices; add class
+enforcement when required.
+
+### Templates, order, and conditions {#class-order-and-conditions}
+
+Class names support Tenant/Namespace rule templates. For example:
+
+```yaml
+mutate:
+  - ingress:
+      types: [Gateway]
+      class: "{{ .tenant.metadata.name }}-edge"
+```
+
+The rendered class name must be a valid DNS subdomain. Configure `types` and
+`class` together; an empty class name is invalid.
+
+Entries run in their effective order. The first matching merge supplies a
+missing class; later merges preserve it. A later replacement can override it.
+Use [audience](/docs/rules/#audience) to select requesting subjects and
+[mutation conditions](/docs/rules/#mutation-conditions) to select individual
+resources. Conditions inspect the object after preceding mutations; a false
+condition skips only its entry. Conditions under `enforce` do not gate class
+mutation.
+
+### Rule and namespace changes {#class-changes}
+
+Rule changes and namespace label changes update the defaults used for subsequent
+admissions. They do not rewrite existing Ingresses or Gateways. Merge preserves
+a class already set on a later update; replace applies the current class on the
+next matching main-resource write.
 
 ## ListenerSets
 

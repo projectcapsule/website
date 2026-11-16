@@ -163,6 +163,14 @@ spec:
 
 ### PriorityClasses
 
+To restrict or default PriorityClasses per namespace, use
+[priority class rules](/docs/rules/enforcement/workloads/#priority-classes) and the
+[priority class mutation](/docs/rules/mutate/workloads/#priority-class). The
+field described here keeps working and remains an additional boundary next to
+those rules; see the [migration table](/docs/rules/enforcement/workloads/#migration).
+The Tenant no longer lists the available PriorityClasses under
+`status.classes.priority`.
+
 Pods can have priority. Priority indicates the importance of a Pod relative to other Pods. If a Pod cannot be scheduled, the scheduler tries to preempt (evict) lower priority Pods to make scheduling of the pending Pod possible. See [Kubernetes documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/).
 
 In a multi-tenant cluster, not all users can be trusted, as a tenant owner could create Pods at the highest possible priorities, causing other Pods to be evicted/not get scheduled.
@@ -232,6 +240,14 @@ EOF
 Note the `globalDefault: false` which is important to avoid the `PriorityClass` to be used as the default for all the `Tenants`. If a Pod has no value for `spec.priorityClassName`, the default value for `PriorityClass` (`tenant-default`) will be used.
 
 ### RuntimeClasses
+
+To restrict or default RuntimeClasses per namespace, use
+[runtime class rules](/docs/rules/enforcement/workloads/#runtime-classes) and the
+[runtime class mutation](/docs/rules/mutate/workloads/#runtime-class). The
+field described here keeps working and remains an additional boundary next to
+those rules; see the [migration table](/docs/rules/enforcement/workloads/#migrate-from-specruntimeclasses).
+The Tenant no longer lists the available RuntimeClasses under
+`status.classes.runtime`.
 
 Pods can be assigned different `RuntimeClasses`. With the assigned runtime you can control Container Runtime Interface (CRI) is used for each pod. See [Kubernetes documentation](https://kubernetes.io/docs/concepts/containers/runtime-class/) for more information.
 
@@ -310,7 +326,7 @@ worker08.acme.com         Ready    worker            8d    v1.25.2   pool=renewa
 
 #### PodNodeSelector
 
-> This approach requires `PodNodeSelector` Admission Controller plugin to be active. If the plugin is not active, the pods will be scheduled to any node. If your distribution does not support this feature, you can use [Expression Node Selectors](/docs/tenants/enforcement#node-selector-expressions).
+> This approach requires `PodNodeSelector` Admission Controller plugin to be active. If the plugin is not active, the pods will be scheduled to any node. If your distribution does not support this feature, you can use [workload placement rules](/docs/rules/mutate/workloads/#node-selectors).
 
 The label `pool=renewable` is defined as `.spec.nodeSelector` in the `Tenant` manifest:
 
@@ -358,6 +374,15 @@ no
 Dynamic Resource Allocation (DRA) is a Kubernetes capability that allows Pods to request and use shared resources, typically external devices such as hardware accelerators.
 See [Kubernetes documentation](https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/) for more information.
 
+For namespace-specific profiles, configure
+[DeviceClass rules](/docs/rules/enforcement/devices/) under
+`spec.rules[].enforce.devices.classes`. These rules support exact names, name
+expressions, and selectors on DeviceClass labels.
+
+The existing `spec.deviceClasses` setting below applies across the Tenant and
+remains supported. When both settings are present, a class reference must pass
+both; namespace rules cannot widen the Tenant-wide restriction.
+
 Bill can assign a set of dedicated `DeviceClasses` to tell the `solar` `Tenant` what devices they can request.
 ```yaml
 apiVersion: resource.k8s.io/v1
@@ -387,11 +412,13 @@ spec:
     matchLabels:
       env: "production"
 ```
-With the said Tenant specification, Alice can create a ResourceClaim or ResourceClaimTemplate resource if spec.devices.requests[].deviceClassName ( ResourceClaim) or spec.spec.devices.requests[].deviceClassName ( ResourceClaimTemplate) equals to:
-
-* Any DeviceClass, which has the label env with the value production
-
-If any of the devices in the ResourceClaim or ResourceClaimTemplate spec is going to use a non-allowed DeviceClass, the entire request will be rejected by the Validation Webhook enforcing it.
+With this Tenant specification, every referenced DeviceClass must exist and
+carry `env: production`. Capsule checks
+`spec.devices.requests[].exactly.deviceClassName` and every
+`spec.devices.requests[].firstAvailable[].deviceClassName` on ResourceClaims,
+and the same fields under `spec.spec.devices.requests[]` on
+ResourceClaimTemplates. A forbidden class in any request or fallback rejects
+the entire resource creation.
 
 Alice now can create a ResourceClaim using only an allowed DeviceClass:
 ```yaml
@@ -517,6 +544,11 @@ spec:
 With the above configuration, any attempt of Alice to create a `Service` of type `LoadBalancer` is denied by the Validation Webhook enforcing it. Default value is `true`.
 
 ### GatewayClasses
+
+For different class policies within one Tenant, use
+[namespace class enforcement](/docs/rules/enforcement/network/#classes) and
+[class mutation](/docs/rules/mutate/ingress/#classes). The Tenant-wide options
+below remain additional restrictions when namespace rules are configured.
 
 > Note: This feature is offered only by API type `GatewayClass` in group `gateway.networking.k8s.io` version `v1`.
 
@@ -752,6 +784,11 @@ spec:
 Doing this, Alice will not be able to use `*.water.acme.com`, being the tenant owner of solar and green only.
 
 ### IngressClasses
+
+For different class policies within one Tenant, use
+[namespace class enforcement](/docs/rules/enforcement/network/#classes) and
+[class mutation](/docs/rules/mutate/ingress/#classes). The Tenant-wide options
+below remain additional restrictions when namespace rules are configured.
 
 An Ingress Controller is used in Kubernetes to publish services and applications outside of the cluster. An Ingress Controller can be provisioned to accept only `Ingresses` with a given `IngressClass`.
 

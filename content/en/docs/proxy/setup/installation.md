@@ -5,7 +5,10 @@ description: >
 date: 2017-01-05
 weight: 1
 ---
-Capsule Proxy is an optional add-on of the main Capsule Operator, so make sure you have a working instance of Capsule before attempting to install it. Use the capsule-proxy only if you want Tenant Owners to list their Cluster-Scope resources.
+Capsule Proxy provides filtered access to Kubernetes resources for Capsule users.
+The default configuration requires a working Capsule installation. To use only
+global grants for authenticated non-Capsule users, Capsule is optional with
+`--require-capsule-user=false`; see [User scope](/docs/proxy/setup/installation/#user-scope).
 
 The capsule-proxy can be deployed in standalone mode, e.g. running as a pod bridging any Kubernetes client to the APIs server. Optionally, it can be deployed as a sidecar container in the backend of a dashboard.
 
@@ -178,6 +181,154 @@ spec:
 ## Considerations
 
 Considerations when deploying capsule-proxy
+
+### User Scope
+
+By default, `--require-capsule-user=true`: subjects referenced by `ProxySetting`,
+`GlobalProxySettings`, or reflected RoleBindings receive proxy grants only when
+the caller is a recognized Capsule identity. Referencing a subject in a rule or
+RoleBinding does not by itself make that subject a Capsule user. Other callers
+are forwarded using their own identity and Kubernetes RBAC.
+
+Configure eligible users and groups in
+[`CapsuleConfiguration.spec.users`](/docs/operating/setup/configuration/). The
+proxy reads the configuration's reconciled user and group status. ServiceAccounts
+that own a tenant, including promoted ServiceAccounts, are also recognized.
+`--capsule-configuration-name` selects the configuration and defaults to `default`.
+
+#### Include all authenticated identities
+
+For callers whose resolved groups include `system:authenticated`, one option is
+to treat that whole group as Capsule users.
+Merge the following fields into the selected CapsuleConfiguration, replacing
+`platform-admins` with your administrator group:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: CapsuleConfiguration
+metadata:
+  name: default
+spec:
+  users:
+    - kind: Group
+      name: system:authenticated
+  ignoreUserWithGroups:
+    - platform-admins
+```
+
+`system:authenticated` includes authenticated users and ServiceAccounts. This
+makes them eligible for Capsule access features; visibility still depends on
+tenant ownership, tenant delegation, reflected RBAC, or matching global grants.
+It does not grant every authenticated identity access to every tenant.
+This configuration also broadens Capsule's admission scope; use a narrower group
+when only selected identities should be managed by Capsule.
+
+The proxy matches the groups supplied by its authentication provider. Kubernetes
+`TokenReview` supplies `system:authenticated` for authenticated bearer tokens.
+Direct client-certificate authentication uses the certificate's Organization
+fields and does not automatically add that group. For those clients, also include
+a matching certificate group or explicit user in `spec.users`.
+
+Configure administrator exclusions on the proxy as well. With Helm:
+
+```yaml
+options:
+  ignoredUserGroups:
+    - platform-admins
+  ignoredUsernames:
+    - platform-admin
+```
+
+The corresponding flags are `--ignored-user-group=platform-admins` and
+`--ignored-username=platform-admin`; use your actual administrator identities.
+Ignored callers bypass proxy filtering and retain their native Kubernetes RBAC
+permissions. These options do not grant administrator permissions themselves.
+Capsule's `ignoreUserWithGroups` controls Capsule admission handling and does not
+replace the proxy's ignored-identity options.
+
+#### RoleBinding reflection
+
+For Capsule identities that receive access through additional RoleBindings,
+enable `--enable-reflector=true` (`options.roleBindingReflector: true` with Helm).
+Reflection requires Capsule integration and caching, so keep
+`--disable-caching=false`, its default.
+
+Put the reflection label on the additional RoleBinding template in the Tenant's
+specification, together with the subjects that should receive access:
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: Tenant
+metadata:
+  name: team-a
+spec:
+  owners:
+    - kind: User
+      name: tenant-owner
+      clusterRoles:
+        - admin
+  additionalRoleBindings:
+    - clusterRoleName: view
+      labels:
+        reflection.proxy.projectcapsule.dev/enabled: "true"
+      subjects:
+        - kind: Group
+          name: team-a-readers
+          apiGroup: rbac.authorization.k8s.io
+```
+
+Capsule copies this label onto the generated RoleBindings; a label on the
+Tenant's own metadata is insufficient. Under the default identity gate,
+`team-a-readers` members must also be recognized Capsule users, for example
+through the `system:authenticated` configuration above.
+
+For cluster-wide lists of namespaced resources, the reflector checks the
+binding's label, subjects, and the referenced role's LIST rules for the requested
+API group and resource. Eligible bindings add visibility for the associated
+tenant, including its sibling namespaces. Requests for resources within a
+specific namespace continue to use Kubernetes RBAC. See
+[Reflection](/docs/proxy/reflection/) for details and the separate Namespace
+visibility behavior.
+
+#### Global grants for non-Capsule users
+
+To allow authenticated subjects to use matching `GlobalProxySettings` without
+making them Capsule users, set
+`--require-capsule-user=false` and `--feature-gates=ProxyClusterScoped=true`.
+With Helm:
+
+```yaml
+options:
+  requireCapsuleUser: false
+  extraArgs:
+    - --feature-gates=ProxyClusterScoped=true
+```
+
+Ignored identities keep their native forwarding behavior. For non-Capsule
+callers, a global rule must match the subject, API group, resource, and operation;
+other requests use caller impersonation and Kubernetes RBAC. A matching rule
+whose selector selects no objects returns an empty list. Global grants do not
+enable watches, mutations, or access to resources inside selected namespaces.
+Global-only requests use the generic cluster-resource handlers and do not inherit
+tenant ownership or reflected namespace access.
+
+All conditions within a selector must match; separate matching rules grant the
+union of their selections. GET accepts any complete matching rule. LIST can
+combine identical rules or rules that differ only in one positive label value
+set, preserving their other conditions. Other rule combinations return a
+Kubernetes `BadRequest` rather than broadening access across label combinations.
+
+Capsule is optional in this mode. If the selected CapsuleConfiguration is absent
+at startup, the proxy skips Capsule configuration reconciliation, tenant indexes,
+tenant delegation, and RBAC reflection. Namespace access then uses the generic
+cluster-resource handlers. Install the proxy's CRDs and RBAC as usual. When the
+CapsuleConfiguration exists, the existing tenant-aware behavior remains enabled.
+Availability is checked at startup; restart the proxy when Capsule or the
+selected configuration is installed or removed. Unexpected discovery or read errors
+still fail startup.
+
+
+
 
 ### Scalability
 
