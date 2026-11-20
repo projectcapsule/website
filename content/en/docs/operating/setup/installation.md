@@ -90,6 +90,39 @@ podDisruptionBudget:
 
 The chart defaults `minAvailable` to `1`. If you want to customize these values, use either `minAvailable` or `maxUnavailable` (a number or a percentage). The PodDisruptionBudget and the default anti-affinity are only applied when `manager.kind` is `Deployment`.
 
+### Controller workloads
+
+The chart always installs separate workloads for the `core` and `replications`
+commands of the same Capsule binary. Upgrades add the replication Deployment
+alongside the existing core workload; there is no replication enable switch.
+The core controller handles admission and namespace profiling. The replication
+controller handles TenantResources, GlobalTenantResources, source watches and
+health checks.
+
+Existing `manager.*` settings configure the core controller, whose kind remains
+controlled by `manager.kind`. The replication controller runs as a Deployment and
+has independent pod settings under `controllers.replications`:
+
+```yaml
+controllers:
+  replications:
+    replicaCount: 2
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
+    options:
+      workers: 8
+      clientConnectionQPS: 100
+      clientConnectionBurst: 200
+```
+
+Replication workers use their own leader-election lease. Increasing their
+resources or API request budget does not change the core controller's settings.
+Installations with `crds.exclusive: true` continue to omit workloads.
+
 ### Scalability
 
 For large clusters you might need to consider adjusting values for the Capsule controller.

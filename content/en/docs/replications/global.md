@@ -5,8 +5,10 @@ description: >
   Replicate resources across tenants or namespaces as Cluster Administrator.
 ---
 
-Use [resource watches](/docs/replications/triggers/) to reconcile source changes
+Use [resource watches](/docs/replications/#resource-watches) to reconcile source changes
 between periodic resyncs.
+Enable [health checks](/docs/replications/#health-checks) to wait for applied
+resources to become healthy before reporting readiness.
 
 ## Overview
 
@@ -611,7 +613,7 @@ missing-key   6       False   error running generator: template: tpl:8:7: execut
 
 #### Period
 
-`GlobalTenantResources` reconcile on the interval defined by `resyncPeriod`. The default is `60s`. Capsule does not watch source resources for changes; it reconciles periodically. A very short interval on large clusters with many Tenants and Namespaces can cause performance issues - tune this value accordingly.
+`GlobalTenantResources` reconcile on the interval defined by `resyncPeriod`. The default is `60s`. Optional [resource watches](/docs/replications/#resource-watches) can request earlier reconciliation when selected source resources change. A very short interval on large clusters with many Tenants and Namespaces can cause performance issues - tune this value accordingly.
 
 ```yaml
 apiVersion: capsule.clastix.io/v1beta2
@@ -629,6 +631,16 @@ spec:
             matchLabels:
               tenant: renewable
 ```
+
+#### Health checks
+
+Set `spec.healthChecks.wait: true` to require healthy applied resources before `Ready=True`.
+`spec.healthChecks.timeout` sets the deadline, and `spec.healthChecks.expressions` can define
+custom CEL checks. Waiting is disabled by default.
+
+See [Health checks](/docs/replications/#health-checks) for examples, readiness and
+dependency behavior, and the target read permissions required by the execution
+ServiceAccount.
 
 #### Manual
 
@@ -763,13 +775,17 @@ roleRef:
 
 The following permissions are required for each resource type managed by the replication feature:
 
-  * `get` (always required)
+  * `get` (always required, including reads of targets for health checks)
   * `create` (always required)
   * `patch` (always required)
   * `delete` (always required)
-  * `list` (required for [Namespaced Items](#namespaceditems) and [Context](#context))
+  * `list` (required for [Namespaced Items](#namespaceditems), [Context](#context), and resource-watch sources)
+  * `watch` (required for [resource-watch sources](/docs/replications/#watch-permissions-and-performance))
 
-Missing any of these will cause replication to fail.
+Grant the verbs needed by the operations you enable. Health checks reuse `get` on
+every target resource; source watches need both `list` and `watch`. See
+[health-check permissions](/docs/replications/#health-check-permissions) for a
+scoped target-read example and guidance on status reads.
 
 #### Default ServiceAccount
 
@@ -1370,13 +1386,17 @@ namespace:
 
 ### Monitoring
 
-Currently mainly the conditions of `GlobalTenantResources` are exposed as metrics:
+The conditions of `GlobalTenantResources` are exposed as gauges. With health checks enabled,
+`Healthy` is exported alongside `Ready` and `Cordoned`. See
+[health-check metrics](/docs/replications/#health-check-metrics) for values and
+lifecycle behavior:
 
 ```
 # HELP capsule_global_resource_condition The current condition status of a global tenant resource.
 # TYPE capsule_global_resource_condition gauge
 capsule_global_resource_condition{condition="Cordoned",name="templated-forbidden-namespace"} 0
 capsule_global_resource_condition{condition="Ready",name="templated-forbidden-namespace"} 1
+capsule_global_resource_condition{condition="Healthy",name="templated-forbidden-namespace"} 1
 ```
 
 ## Examples

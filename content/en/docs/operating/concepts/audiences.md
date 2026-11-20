@@ -7,7 +7,7 @@ description: >
 
 An `audience` selects the request identities to which a
 [namespace rule](/docs/rules/#audience) applies.
-[Replication resource watches](/docs/replications/triggers/) do not carry request
+[Replication resource watches](/docs/replications/#resource-watches) do not carry request
 identities and cannot use audiences.
 
 ## Matching
