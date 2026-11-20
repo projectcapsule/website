@@ -11,7 +11,7 @@ integration: true
 
 ## Permissions
 
-Some policies are attempting to query Capsule specific information, such as the tenant name based on the namespace. Therefore, we need to ensure that Kyverno has the necessary permissions to read Capsule resources. This can be achieved by extending the Kyverno ClusterRole to include Capsule resources:
+Some policies query Capsule specific information, such as the Tenant status. Therefore, we need to ensure that Kyverno has the necessary permissions to read Capsule resources. This can be achieved by extending the Kyverno ClusterRole to include Capsule resources:
 
 ```yaml
 admissionController:
@@ -33,108 +33,104 @@ Not all relevant settings are covered by Capsule. We recommend to use Kyverno to
 
 Here are some policies for reference. We do not provide a complete list of policies, but we provide some examples to get you started. This policies are not meant to be used in production. You may adopt principles shown here to create your own policies.
 
+The examples use the `policies.kyverno.io/v1` API (`ValidatingPolicy` and `MutatingPolicy`). The legacy `kyverno.io/v1` `ClusterPolicy` is deprecated, and Kyverno 1.20 no longer accepts it.
+
 ### Extract tenant based on namespace
 
-To get the tenant name based on the namespace, you can use a [context](https://kyverno.io/docs/policy-types/cluster-policy/external-data-sources/#variables-from-kubernetes-api-server-calls). With this context we resolve the tenant, based on the `{{request.namespace}}` for the requested resource. The context calls `/api/v1/namespaces/` API with the `{{request.namespace}}`. The `jmesPath` is used to check if the tenant label is present. You could assign a default if nothing was found, in this case it's empty string:
-
+To get the tenant name based on the namespace, you can use the `namespaceObject` variable, which holds the Namespace of the requested resource. The `capsule.clastix.io/tenant` label is read optionally. You could assign a default if nothing was found, in this case it's an empty string. To read other objects, use the `resource.Get` and `resource.List` functions of the [Kyverno CEL libraries](https://kyverno.io/docs/policy-types/cel-libraries/):
 
 ```yaml
-    context:
-      - name: tenant_name
-        apiCall:
-          method: GET
-          urlPath: "/api/v1/namespaces/{{request.namespace}}"
-          jmesPath: "not_null(metadata.labels.\"capsule.clastix.io/tenant\" || '')"
+  variables:
+    - name: tenant_name
+      expression: namespaceObject.metadata.?labels[?'capsule.clastix.io/tenant'].orValue('')
 ```
 
 
 ### Select namespaces with label `capsule.clastix.io/tenant`
 
-When you are performing a policy on namespaced objects, you can select the objects, which are within a tenant namespace by using the `namespaceSelector`. In this example we select all `Kustomization` and `HelmRelease` resources which are within a tenant namespace:
+When you are performing a policy on namespaced objects, you can select the objects, which are within a tenant namespace by using the `namespaceSelector`. In this example we select all `Kustomization` and `HelmRelease` resources which are within a tenant namespace and default `targetNamespace` and `serviceAccountName`, if they are not set:
 
 ```yaml
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: MutatingPolicy
 metadata:
   name: flux-policies
 spec:
-  validationFailureAction: Enforce
-  rules:
-    # Enforcement (Mutate to Default)
-    - name: Defaults Kustomizations/HelmReleases
-      match:
-        any:
-        - resources:
-            kinds:
-              - Kustomization
-              - HelmRelease
-            operations:
-              - CREATE
-              - UPDATE
-            namespaceSelector:
-              matchExpressions:
-                - key: "capsule.clastix.io/tenant"
-                  operator: Exists
-      mutate:
-        patchStrategicMerge:
-          spec:
-            +(targetNamespace): "{{ request.object.metadata.namespace }}"
-            +(serviceAccountName): "default"
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: capsule.clastix.io/tenant
+          operator: Exists
+    resourceRules:
+      - apiGroups: ["kustomize.toolkit.fluxcd.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["kustomizations"]
+      - apiGroups: ["helm.toolkit.fluxcd.io"]
+        apiVersions: ["v2"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["helmreleases"]
+  mutations:
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: >-
+          has(object.spec.targetNamespace) ? [] :
+          [JSONPatch{op: "add", path: "/spec/targetNamespace", value: object.metadata.namespace}]
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: >-
+          has(object.spec.serviceAccountName) ? [] :
+          [JSONPatch{op: "add", path: "/spec/serviceAccountName", value: "default"}]
 ```
 
 
 ### Compare Source and Destination Tenant
 
-With this policy we try to enforce, that helmreleases within a tenant can only use targetNamespaces, which are within the same tenant or the same namespace the resource is deployed in:
+With this policy we try to enforce, that HelmReleases and Kustomizations within a tenant can only use targetNamespaces, which are within the same tenant or the same namespace the resource is deployed in. A HelmRelease without `spec.targetNamespace` is deployed in its own namespace. A Kustomization without it can deploy into any namespace named in its manifests, so `spec.targetNamespace` is required for Kustomizations:
 
 ```yaml
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: tenant-compare
 spec:
-  validationFailureAction: Enforce
-  background: true
-  rules:
-    - name: Validate HelmRelease/Kustomization Target Namespace
-      context:
-
-        # Get tenant based on target namespace
-        - name: destination_tenant
-          apiCall:
-            urlPath: "/api/v1/namespaces/{{request.object.spec.targetNamespace}}"
-            jmesPath: "metadata.labels.\"capsule.clastix.io/tenant\""
-
-        # Get tenant based on resource namespace
-        - name: source_tenant
-          apiCall:
-            urlPath: "/api/v1/namespaces/{{request.object.metadata.namespace}}"
-            jmesPath: "metadata.labels.\"capsule.clastix.io/tenant\""
-      match:
-        any:
-        - resources:
-            kinds:
-              - HelmRelease
-              - Kustomization
-            operations:
-              - CREATE
-              - UPDATE
-            namespaceSelector:
-              matchExpressions:
-                - key: "capsule.clastix.io/tenant"
-                  operator: Exists
-      preconditions:
-        all:
-          - key: "{{request.object.spec.targetNamespace}}"
-            operator: NotIn
-            values: [ "{{request.object.metadata.namespace}}" ]
-      validate:
-        message: "spec.targetNamespace must be in the same tenant ({{source_tenant}})"
-        deny:
-          conditions:
-            - key: "{{source_tenant}}"
-              operator: NotEquals
-              value:  "{{destination_tenant}}"
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: capsule.clastix.io/tenant
+          operator: Exists
+    resourceRules:
+      - apiGroups: ["kustomize.toolkit.fluxcd.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["kustomizations"]
+      - apiGroups: ["helm.toolkit.fluxcd.io"]
+        apiVersions: ["v2"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["helmreleases"]
+  variables:
+    - name: source
+      expression: namespaceObject.metadata.labels['capsule.clastix.io/tenant']
+    # Only a HelmRelease is deployed in its own namespace by default.
+    - name: target
+      expression: >-
+        object.spec.?targetNamespace.orValue(object.kind == 'HelmRelease' ? object.metadata.namespace : '')
+    - name: destination
+      expression: >-
+        variables.target == '' ? '' :
+        dyn(resource.Get("v1", "namespaces", "", variables.target)).?metadata.labels[?'capsule.clastix.io/tenant'].orValue('')
+  validations:
+    - expression: >-
+        variables.target != '' &&
+        (variables.target == object.metadata.namespace || variables.destination == variables.source)
+      messageExpression: "'spec.targetNamespace must be set to a namespace in the same tenant (' + variables.source + ')'"
 ```
 
 ### Using Global Configuration
@@ -157,218 +153,177 @@ data:
   tenant_identifier_label: "capsule.clastix.io/tenant"
 ```
 
-This configuration can be referenced via [context](https://kyverno.io/docs/policy-types/cluster-policy/external-data-sources/#variables-from-configmaps) in your policies. Let's extend the above policy with the global configuration. Additionally we would like to allow the usage of public namespaces:
+This configuration can be read in your policies with `resource.Get`. Let's extend the above policy with the global configuration. Additionally we would like to allow the usage of public namespaces:
 
 ```yaml
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
   name: tenant-compare
 spec:
-  validationFailureAction: Enforce
-  background: true
-  rules:
-    - name: Validate HelmRelease/Kustomization Target Namespace
-      context:
-
-        # Load Global Configuration
-        - name: global
-          configMap:
-            name: kyverno-global-config
-            namespace: kyverno-system
-
-        # Get All Public Namespaces based on the label and it's value from the global configuration
-        - name: public_namespaces
-          apiCall:
-            urlPath: "/api/v1/namespaces"
-            jmesPath: "items[?metadata.labels.\"{{global.data.public_identifier_label}}\" == '{{global.data.public_identifier_value}}'].metadata.name | []"
-
-        # Get Tenant information from source namespace
-        # Defaults to a character, which can't be a label value
-        - name: source_tenant
-          apiCall:
-            urlPath: "/api/v1/namespaces/{{request.object.metadata.namespace}}"
-            jmesPath: "metadata.labels.\"{{global.data.tenant_identifier_label}}\" | '?'"
-
-        # Get Tenant information from destination namespace
-        # Returns Array with Tenant Name or Empty
-        - name: destination_tenant
-          apiCall:
-            urlPath: "/api/v1/namespaces"
-            jmesPath: "items[?metadata.name == '{{request.object.spec.targetNamespace}}'].metadata.labels.\"{{global.data.tenant_identifier_label}}\""
-
-      preconditions:
-        all:
-          - key: "{{request.object.spec.targetNamespace}}"
-            operator: NotIn
-            values: [ "{{request.object.metadata.namespace}}" ]
-        any:
-          # Source is not Self-Reference
-          - key: "{{request.object.spec.targetNamespace}}"
-            operator: NotEquals
-            value: "{{request.object.metadata.namespace}}"
-
-          # Source not in Public Namespaces
-          - key: "{{request.object.spec.targetNamespace}}"
-            operator: NotIn
-            value: "{{public_namespaces}}"
-
-          # Source not in Destination
-          - key: "{{request.object.spec.targetNamespace}}"
-            operator: NotIn
-            value: "{{destination_tenant}}"
-      match:
-        any:
-        - resources:
-            kinds:
-              - HelmRelease
-              - Kustomization
-            operations:
-              - CREATE
-              - UPDATE
-            namespaceSelector:
-              matchExpressions:
-                - key: "capsule.clastix.io/tenant"
-                  operator: Exists
-      validate:
-        message: "Can not use namespace {{request.object.spec.chart.spec.sourceRef.namespace}} as source reference!"
-        deny: {}
-
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    namespaceSelector:
+      matchExpressions:
+        - key: capsule.clastix.io/tenant
+          operator: Exists
+    resourceRules:
+      - apiGroups: ["kustomize.toolkit.fluxcd.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["kustomizations"]
+      - apiGroups: ["helm.toolkit.fluxcd.io"]
+        apiVersions: ["v2"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["helmreleases"]
+  variables:
+    # Load Global Configuration
+    - name: global
+      expression: dyn(resource.Get("v1", "configmaps", "kyverno-system", "kyverno-global-config")).data
+    # Only a HelmRelease is deployed in its own namespace by default.
+    - name: target
+      expression: >-
+        object.spec.?targetNamespace.orValue(object.kind == 'HelmRelease' ? object.metadata.namespace : '')
+    # Labels of the target namespace
+    - name: destination
+      expression: >-
+        variables.target == '' ? dyn({}) :
+        dyn(resource.Get("v1", "namespaces", "", variables.target)).?metadata.labels.orValue({})
+    # Defaults to a character, which can't be a label value
+    - name: source_tenant
+      expression: namespaceObject.metadata.?labels[?variables.global.tenant_identifier_label].orValue('?')
+  validations:
+    - expression: >-
+        variables.target != '' && (
+          variables.target == object.metadata.namespace ||
+          variables.destination[?variables.global.public_identifier_label].orValue('') == variables.global.public_identifier_value ||
+          variables.destination[?variables.global.tenant_identifier_label].orValue('') == variables.source_tenant)
+      messageExpression: >-
+        variables.target == '' ? 'spec.targetNamespace must be set' :
+        'Can not use namespace ' + variables.target + ' as target namespace!'
 ```
 
 ### Extended Validation and Defaulting
 
-Here's extended examples for using validation and defaulting. The first policy is used to validate the tenant name. The second policy is used to default the tenant properties, you as cluster-administrator would like to enforce for each tenant.
+Here's extended examples for using validation and defaulting. The first policy is used to validate the tenant name. The second policy is used to default the tenant properties, you as cluster-administrator would like to enforce for each tenant. The class selectors of the Tenant are atomic and can't be applied, therefore they are patched. Existing values are kept:
 
 ```yaml
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
 metadata:
-  name: tenant-core
+  name: tenant-name
 spec:
-  validationFailureAction: Enforce
-  rules:
-  - name: tenant-name
-    match:
-      all:
-      - resources:
-          kinds:
-          - "capsule.clastix.io/v1beta2/Tenant"
-          operations:
-          - CREATE
-          - UPDATE
-    validate:
+  validationActions: [Deny]
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["capsule.clastix.io"]
+        apiVersions: ["v1beta2"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["tenants"]
+  validations:
+    - expression: "!(object.metadata.name in ['default', 'cluster-system'])"
       message: "Using this tenant name is not allowed."
-      deny:
-        conditions:
-          - key: "{{ request.object.metadata.name }}"
-            operator: In
-            value: ["default", "cluster-system" ]
-
-  - name: tenant-properties
-    match:
-      any:
-      - resources:
-          kinds:
-          - "capsule.clastix.io/v1beta2/Tenant"
-          operations:
-          - CREATE
-          - UPDATE
-    mutate:
-      patchesJson6902: |-
-        - op: add
-          path: "/spec/namespaceOptions/forbiddenLabels/deniedRegex"
-          value: ".*company.ch"
-        - op: add
-          path: "/spec/priorityClasses/matchLabels"
-          value:
-            consumer: "customer"
-        - op: add
-          path: "/spec/serviceOptions/allowedServices/nodePort"
-          value: false
-        - op: add
-          path: "/spec/ingressOptions/allowedClasses/matchLabels"
-          value:
-            consumer: "customer"
-        - op: add
-          path: "/spec/storageClasses/matchLabels"
-          value:
-            consumer: "customer"
-        - op: add
-          path: "/spec/nodeSelector"
-          value:
-            nodepool: "workers"
-
-
-
+---
+apiVersion: policies.kyverno.io/v1
+kind: MutatingPolicy
+metadata:
+  name: tenant-properties
+spec:
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["capsule.clastix.io"]
+        apiVersions: ["v1beta2"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["tenants"]
+  mutations:
+    - patchType: ApplyConfiguration
+      applyConfiguration:
+        expression: >-
+          Object{
+            spec: Object.spec{
+              namespaceOptions: Object.spec.namespaceOptions{
+                forbiddenLabels: Object.spec.namespaceOptions.forbiddenLabels{deniedRegex: ".*company.ch"}
+              },
+              serviceOptions: Object.spec.serviceOptions{
+                allowedServices: Object.spec.serviceOptions.allowedServices{nodePort: false}
+              },
+              nodeSelector: {"nodepool": "workers"}
+            }
+          }
+    # The class selectors are atomic, they can't be applied, only patched.
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: >-
+          [
+            has(object.spec.priorityClasses)
+              ? JSONPatch{op: "add", path: "/spec/priorityClasses/matchLabels", value: {"consumer": "customer"}}
+              : JSONPatch{op: "add", path: "/spec/priorityClasses", value: {"matchLabels": {"consumer": "customer"}}},
+            has(object.spec.storageClasses)
+              ? JSONPatch{op: "add", path: "/spec/storageClasses/matchLabels", value: {"consumer": "customer"}}
+              : JSONPatch{op: "add", path: "/spec/storageClasses", value: {"matchLabels": {"consumer": "customer"}}},
+            !has(object.spec.ingressOptions)
+              ? JSONPatch{op: "add", path: "/spec/ingressOptions", value: {"allowedClasses": {"matchLabels": {"consumer": "customer"}}}}
+              : !has(object.spec.ingressOptions.allowedClasses)
+                ? JSONPatch{op: "add", path: "/spec/ingressOptions/allowedClasses", value: {"matchLabels": {"consumer": "customer"}}}
+                : JSONPatch{op: "add", path: "/spec/ingressOptions/allowedClasses/matchLabels", value: {"consumer": "customer"}}
+          ]
 ```
 
 ### Adding Default Owners/Permissions to Tenant
 
-Since the [Owners Spec](/docs/tenants/permissions/#ownership) is a list, it's a bit more trickier to add a default owner without causing recursions. You must make sure, to validate if the value you are setting is already present. Otherwise you will create a loop. Here is an example of a policy, which adds the `cluster:admin` as owner to a tenant:
+Since the [Owners Spec](/docs/tenants/permissions/#ownership) is a list, it's a bit more trickier to add a default owner without causing recursions. You must make sure, to validate if the value you are setting is already present. Otherwise you will create a loop. Here is an example of a policy, which adds the `cluster:admin` as owner to a tenant and sets default ProxySettings for all owners:
 
 ```yaml
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
+apiVersion: policies.kyverno.io/v1
+kind: MutatingPolicy
 metadata:
   name: tenant-policy
 spec:
-  validationFailureAction: Enforce
-  background: true
-  rules:
-
-  # With this policy for each tenant cluster:admin is added as owner.
-  # Only Append these on CREATE, otherwise they will be added per reconciliation and create a loop.
-  - name: tenant-owner
-    preconditions:
-      all:
-      - key: "cluster:admin"
-        operator: NotIn
-        value: "{{ request.object.spec.owners[?kind == 'Group'].name }}"
-    match:
-      all:
-      - resources:
-          kinds:
-          - "capsule.clastix.io/v1beta2/Tenant"
-          operations:
-          - CREATE
-          - UPDATE
-    mutate:
-      patchesJson6902: |-
-        - op: add
-          path: "/spec/owners/-"
-          value:
-            name: "cluster:admin"
-            kind: "Group"
-
-  # With this policy for each tenant a default ProxySettings are added.
-  # Completely overwrites the ProxySettings, if they are already present.
-  - name: tenant-proxy-settings
-    match:
-      any:
-      - resources:
-          kinds:
-          - "capsule.clastix.io/v1beta2/Tenant"
-          operations:
-          - CREATE
-          - UPDATE
-    mutate:
-      foreach:
-      - list: "request.object.spec.owners"
-        patchesJson6902: |-
-          - path: /spec/owners/{{elementIndex}}/proxySettings
-            op: add
-            value:
-              - kind: IngressClasses
-                operations:
-                - List
-              - kind: StorageClasses
-                operations:
-                - List
-              - kind: PriorityClasses
-                operations:
-                - List
-              - kind: Nodes
-                operations:
-                - List
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["capsule.clastix.io"]
+        apiVersions: ["v1beta2"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["tenants"]
+  mutations:
+    # With this policy for each tenant cluster:admin is added as owner.
+    # Only append if it is not present yet, otherwise it would be added on every update.
+    # Both spec and spec.owners are optional, create them if they are missing.
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: >-
+          object.?spec.owners.orValue([]).exists(o, o.kind == 'Group' && o.name == 'cluster:admin') ? [] :
+          !has(object.spec)
+            ? [JSONPatch{op: "add", path: "/spec", value: {"owners": [{"name": "cluster:admin", "kind": "Group"}]}}]
+            : !has(object.spec.owners)
+              ? [JSONPatch{op: "add", path: "/spec/owners", value: [{"name": "cluster:admin", "kind": "Group"}]}]
+              : [JSONPatch{op: "add", path: "/spec/owners/-", value: {"name": "cluster:admin", "kind": "Group"}}]
+    # With this policy each owner gets default ProxySettings.
+    # Completely overwrites the ProxySettings, if they are already present.
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: >-
+          lists.range(size(object.?spec.owners.orValue([]))).map(i,
+            JSONPatch{
+              op: "add",
+              path: "/spec/owners/" + string(i) + "/proxySettings",
+              value: [
+                {"kind": dyn("IngressClasses"), "operations": dyn(["List"])},
+                {"kind": dyn("StorageClasses"), "operations": dyn(["List"])},
+                {"kind": dyn("PriorityClasses"), "operations": dyn(["List"])},
+                {"kind": dyn("Nodes"), "operations": dyn(["List"])}
+              ]
+            })
 ```
