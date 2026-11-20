@@ -196,6 +196,15 @@ spec:
                 values:
                   - exp: ".*"
 
+    # Prevent creation of legacy ServiceAccount token Secrets.
+    - enforce:
+        action: deny
+        metadata:
+          - apiGroups: [v1]
+            kinds: [Secret]
+            annotations:
+              kubernetes.io/service-account.name: {}
+
     # Keep DRA administrative access disabled in application namespaces.
     - enforce:
         action: deny

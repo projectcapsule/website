@@ -232,6 +232,7 @@ cta
 docsy's
 navbar
 viewport
+TokenRequest
 CIDRs
 GatewayClass
 GatewayClasses
@@ -247,3 +248,16 @@ ResourceClaims
 ResourceClaimTemplate
 ResourceClaimTemplates
 FPGA
+ClusterRoleBinding
+GlobalTenantResources
+TenantResources
+UID
+kstatus
+rollout
+rollouts
+KiB
+MiB
+cooldown
+lookups
+oversized
+resyncs

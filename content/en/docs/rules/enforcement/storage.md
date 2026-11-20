@@ -10,7 +10,7 @@ Storage enforcement is configured under `spec.rules[].enforce.storage`.
 [additional volume access](#volumes) for PVs without a Tenant label.
 
 Rules use the shared [namespace selection](/docs/tenants/rules/),
-[audiences](/docs/rules/#audience),
+[audiences](/docs/operating/concepts/audiences/),
 [conditions](/docs/rules/#enforcement-conditions), and
 [actions and order](/docs/rules/enforcement/#action).
 See [Reference](#reference) for a complete Tenant example.
