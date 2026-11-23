@@ -78,6 +78,7 @@ CapsuleConfigurationSpec defines the Capsule configuration.
 | **forceTenantPrefix** | boolean | Enforces the Tenant owner, during Namespace creation, to name it using the selected Tenant name as prefix,<br>separated by a dash. This is useful to avoid Namespace name collision in a public CaaS environment.<br/>*Default*: false<br/> | false |
 | **ignoreUserWithGroups** | []string | Define groups which when found in the request of a user will be ignored by the Capsule<br>this might be useful if you have one group where all the users are in, but you want to separate administrators from normal users with additional groups. | false |
 | **[impersonation](#capsuleconfigurationspecimpersonation)** | object | Service Account Client configuration for impersonation properties | false |
+| **[namespaceCleanup](#capsuleconfigurationspecnamespacecleanup)** | object | Forced cleanup of terminating Tenant namespaces. | false |
 | **[nodeMetadata](#capsuleconfigurationspecnodemetadata)** | object | Allows to set the forbidden metadata for the worker nodes that could be patched by a Tenant.<br>This applies only if the Tenant has an active NodeSelector, and the Owner have right to patch their nodes. | false |
 | **[overrides](#capsuleconfigurationspecoverrides)** | object | Allows to set different name rather than the canonical one for the Capsule configuration objects,<br>such as webhook secret or configurations.<br/>*Default*: map[TLSSecretName:capsule-tls mutatingWebhookConfigurationName:capsule-mutating-webhook-configuration validatingWebhookConfigurationName:capsule-validating-webhook-configuration]<br/> | false |
 | **protectedNamespaceRegex** | string | Disallow creation of namespaces, whose name matches this regexp | false |
@@ -604,6 +605,19 @@ Service Account Client configuration for impersonation properties
 | **globalDefaultServiceAccountNamespace** | string | Namespace of the default ServiceAccount for global resources (GlobalTenantResource)<br>When defined, users are required to use this ServiceAccount anywhere in the cluster<br>unless they explicitly provide their own. | false |
 | **skipTlsVerify** | boolean | If true, TLS certificate verification is skipped (not recommended for production)<br/>*Default*: false<br/> | false |
 | **tenantDefaultServiceAccount** | string | Default ServiceAccount for namespaced resources (TenantResource)<br>When defined, users are required to use this ServiceAccount within the namespace<br>where they deploy the resource, unless they explicitly provide their own. | false |
+
+
+### CapsuleConfiguration.spec.namespaceCleanup
+
+
+
+Forced cleanup of terminating Tenant namespaces.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **gracePeriod** | string | Time a terminating Tenant namespace is left to the controllers owning its<br>remaining objects, measured from the namespace deletionTimestamp. Once it<br>elapses and no Pods are left, Capsule deletes the remaining objects and<br>removes their finalizers, except the retained ones. Finalizers often release<br>resources outside the namespace, such as Cluster API infrastructure providers<br>powering off and releasing bare-metal hosts, and can need longer than the<br>default. When unset, the cleanup starts 10 seconds after the namespace deletion. | false |
+| **retainedFinalizers** | []string | Finalizers the cleanup never removes, on any resource, so the controllers<br>owning them can complete however long they take. Capsule's own finalizers<br>are always retained on Capsule's resources and need not be listed.<br>A tenant can add a listed finalizer to its own objects, holding its<br>namespace, and the Tenant, in deletion until the finalizer is removed: list<br>only finalizers whose controllers can be trusted to remove them. | false |
 
 
 ### CapsuleConfiguration.spec.nodeMetadata
@@ -1415,10 +1429,13 @@ GlobalTenantResourceSpec defines the desired state of GlobalTenantResource.
 | **[settings](#globaltenantresourcespecsettings)** | object | <span style="color:red;font-weight:bold">Deprecated: configure resources[].policy instead. Admission converts Settings<br>into policies for blocks without one. Retained as a compatibility fallback<br>for stored resources that have not passed through admission again.</span><br/>*Default*: map[]<br/> | true |
 | **cordoned** | boolean | When cordoning a replication it will no longer execute any applies or deletions (paused).<br>This is useful for maintenances<br/>*Default*: false<br/> | false |
 | **[dependsOn](#globaltenantresourcespecdependsonindex)** | []object | DependsOn may contain a meta.NamespacedObjectReference slice<br>with references to TenantResource resources that must be ready before this<br>TenantResource can be reconciled. | false |
+| **[healthChecks](#globaltenantresourcespechealthchecks)** | object | HealthChecks optionally requires applied targets to become healthy before Ready.<br>Omitted health checks preserve apply-only readiness and perform no health reads. | false |
 | **pruningOnDelete** | boolean | <span style="color:red;font-weight:bold">When the replicated resource manifest is deleted, all the objects replicated so far will be automatically deleted.<br>Disable this to keep replicated resources although the deletion of the replication manifest.<br><br>Deprecated: use resources[].policy.deletion instead. Retained for blocks without a policy.</span><br/>*Default*: true<br/> | false |
 | **scope** | enum | Resource Scope, Can either be<br>- Tenant: Create Resources for each tenant  in selected Tenants<br>- Namespace: Create Resources for each namespace in selected Tenants<br/>*Enum*: Namespace, Tenant, None<br/>*Default*: Namespace<br/> | false |
 | **[serviceAccount](#globaltenantresourcespecserviceaccount)** | object | Local ServiceAccount which will perform all the actions defined in the TenantResource<br>You must provide permissions accordingly to that ServiceAccount | false |
 | **[tenantSelector](#globaltenantresourcespectenantselector)** | object | Defines the Tenant selector used target the tenants on which resources must be propagated. | false |
+| **triggerMinInterval** | string | TriggerMinInterval bounds triggered reconciliation frequency across all triggers<br>on this resource. Events within the interval coalesce into one pending reconcile.<br>Spec changes, deletion, manual requests, and periodic resyncs retain their behavior.<br/>*Default*: 10s<br/> | false |
+| **[triggers](#globaltenantresourcespectriggersindex)** | []object | Triggers request reconciliation on observed namespaced resource changes.<br>Capsule-managed resources never trigger reconciliation. Delivery is best effort;<br>bounded watch memory may skip large objects or updates without a retained old state.<br>resyncPeriod remains the recovery mechanism for missed events. | false |
 
 
 ### GlobalTenantResource.spec.resources[index]
@@ -1645,6 +1662,37 @@ LocalObjectReference contains enough information to locate the referenced Kubern
 | **name** | string | Name of the referent. | true |
 
 
+### GlobalTenantResource.spec.healthChecks
+
+
+
+HealthChecks optionally requires applied targets to become healthy before Ready.
+Omitted health checks preserve apply-only readiness and perform no health reads.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[expressions](#globaltenantresourcespechealthchecksexpressionsindex)** | []object | Expressions override kstatus for the specified API groups and kinds.<br>Expressions receive object and its top-level fields (metadata, spec, status).<br>Evaluated in order: inProgress, failed, current. Requires wait: true. | false |
+| **timeout** | string | Timeout bounds an incomplete rollout across retries and leader changes.<br>Defaults to five minutes. A completed rollout can start a new assessment. | false |
+| **wait** | boolean | Wait requires successfully applied targets to pass health checks before Ready.<br>Omitted or false preserves apply-only readiness and performs no health reads. | false |
+
+
+### GlobalTenantResource.spec.healthChecks.expressions[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | APIVersion identifies the API group; the served version is ignored when matching. | true |
+| **current** | string | Current returns true when the target is healthy. | true |
+| **kind** | string | Kind identifies the kind whose status is evaluated. | true |
+| **failed** | string | Failed returns true on a failed rollout. | false |
+| **inProgress** | string | InProgress returns true while reconciliation is ongoing. | false |
+
+
 ### GlobalTenantResource.spec.serviceAccount
 
 
@@ -1687,6 +1735,111 @@ relates the key and values.
 | **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
+### GlobalTenantResource.spec.triggers[index]
+
+
+
+TenantResourceTrigger requests best-effort reconciliation on observed resource changes.
+Resource behavior and replication destinations remain defined by resources.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name uniquely identifies this trigger. | true |
+| **apiGroups** | []string | APIGroups selects explicit API groups. Use "" for the core API group.<br>Wildcards are unsupported. | false |
+| **apiVersions** | []string | APIVersions selects explicit API versions, such as "v1". Wildcards are unsupported. | false |
+| **[audience](#globaltenantresourcespectriggersindexaudienceindex)** | []object | <span style="color:red;font-weight:bold">Deprecated: watches do not carry request identities. Audience must be empty.</span> | false |
+| **[matchConditions](#globaltenantresourcespectriggersindexmatchconditionsindex)** | []object | MatchConditions are CEL conditions over object, oldObject and operation. All must match. | false |
+| **[namespaceSelector](#globaltenantresourcespectriggersindexnamespaceselector)** | object | NamespaceSelector selects event source namespaces for GlobalTenantResources.<br>TenantResources always observe only their own namespace and cannot set this field. | false |
+| **[objectSelector](#globaltenantresourcespectriggersindexobjectselector)** | object | ObjectSelector matches the labels of either the old or new observed object. | false |
+| **operations** | []string | Operations selects observed CREATE, UPDATE, and DELETE events.<br>A single "*" selects all three. CONNECT is unsupported by watches. | false |
+| **resources** | []string | Resources selects explicit plural top-level resource names, such as "configmaps".<br>Wildcards are unsupported. Subresources, such as "pods/log", are unsupported. | false |
+| **scope** | string | Scope may be omitted or set to "Namespaced". Watches only observe namespaced resources. | false |
+
+
+### GlobalTenantResource.spec.triggers[index].audience[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | <br/>*Enum*: User, Group, ServiceAccount, Custom<br/> | true |
+| **name** | string |  | true |
+
+
+### GlobalTenantResource.spec.triggers[index].matchConditions[index]
+
+
+
+TenantResourceTriggerCondition filters an observed resource change using CEL.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **expression** | string | Expression must evaluate to bool using only the observed event variables:<br>object is the new persisted object (null for DELETE), oldObject is the previous<br>persisted object (null for CREATE), and operation is "CREATE", "UPDATE", or "DELETE".<br>Admission request and authorizer variables are unavailable. For example:<br>operation != 'UPDATE' || object.data != oldObject.data | true |
+| **name** | string | Name uniquely identifies this condition within a trigger. It must be a Kubernetes<br>qualified name, optionally prefixed with a DNS subdomain and '/'. | true |
+
+
+### GlobalTenantResource.spec.triggers[index].namespaceSelector
+
+
+
+NamespaceSelector selects event source namespaces for GlobalTenantResources.
+TenantResources always observe only their own namespace and cannot set this field.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#globaltenantresourcespectriggersindexnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### GlobalTenantResource.spec.triggers[index].namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### GlobalTenantResource.spec.triggers[index].objectSelector
+
+
+
+ObjectSelector matches the labels of either the old or new observed object.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#globaltenantresourcespectriggersindexobjectselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### GlobalTenantResource.spec.triggers[index].objectSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
 ### GlobalTenantResource.status
 
 
@@ -1698,10 +1851,13 @@ GlobalTenantResourceStatus defines the observed state of GlobalTenantResource.
 | :---- | :---- | :----------- | :-------- |
 | **size** | integer | Number of managed resources. | true |
 | **[conditions](#globaltenantresourcestatusconditionsindex)** | []object | Condition of the GlobalTenantResource. | false |
+| **[health](#globaltenantresourcestatushealth)** | object | Health records the durable rollout deadline and bounded health-check progress. | false |
+| **nextResyncAt** | string | NextResyncAt is the next periodic resync deadline for trigger-enabled replications.<br/>*Format*: date-time<br/> | false |
 | **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 | **[processedItems](#globaltenantresourcestatusprocesseditemsindex)** | []object | List of resources managed by the API object. | false |
 | **selectedTenants** | []string | List of Tenants addressed by the GlobalTenantResource. | false |
 | **[serviceAccount](#globaltenantresourcestatusserviceaccount)** | object | Serviceaccount used for impersonation | false |
+| **[trigger](#globaltenantresourcestatustrigger)** | object | Trigger records the last watch notification handled by this controller. | false |
 
 
 ### GlobalTenantResource.status.conditions[index]
@@ -1719,6 +1875,28 @@ Condition contains details for one aspect of the current state of this API Resou
 | **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
 | **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
 | **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
+
+
+### GlobalTenantResource.status.health
+
+
+
+Health records the durable rollout deadline and bounded health-check progress.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **deadline** | string | <br/>*Format*: date-time<br/> | true |
+| **observedGeneration** | integer | <br/>*Format*: int64<br/> | true |
+| **requestedAt** | string | <br/>*Format*: date-time<br/> | true |
+| **revision** | string |  | true |
+| **startedAt** | string | <br/>*Format*: date-time<br/> | true |
+| **applying** | boolean | Applying prevents observations from completing while a full apply is in flight. | false |
+| **cursor** | integer | <br/>*Format*: int32<br/>*Minimum*: 0<br/> | false |
+| **failed** | boolean |  | false |
+| **message** | string |  | false |
+| **nextCheckAt** | string | <br/>*Format*: date-time<br/> | false |
+| **pending** | boolean |  | false |
 
 
 ### GlobalTenantResource.status.processedItems[index]
@@ -1753,9 +1931,24 @@ Advanced Status Item for pin pointing items in tenants/namespaces.
 | **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
 | **clusterScoped** | boolean | Indicates whether the referenced resource is cluster-scoped. | false |
 | **created** | boolean | Indicates wether the resource was created or adopted | false |
+| **[health](#globaltenantresourcestatusprocesseditemsindexstatushealth)** | object | Health pins an opt-in health check to the successfully applied object. | false |
 | **lastApply** | string | An opaque value that represents the internal version of this object that can<br>be used by clients to determine when objects have changed. May be used for optimistic<br>concurrency, change detection, and the watch operation on a resource or set of resources.<br>Clients must treat these values as opaque and passed unmodified back to the server.<br>They may only be valid for a particular resource or set of resources.<br><br>Populated by the system.<br>Read-only.<br>Value must be treated as opaque by clients and .<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency<br/>*Format*: date-time<br/> | false |
 | **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | false |
 | **[policy](#globaltenantresourcestatusprocesseditemsindexstatuspolicy)** | object | Policy is a lifecycle snapshot for protection and cleanup. Conditions are<br>evaluated from the source block and omitted here. Failed updates retain the<br>previous snapshot; a first successful content write records its policy even<br>if metadata reconciliation fails, so cleanup respects explicit retention.<br>An absent policy on an already applied item preserves legacy behavior. | false |
+
+
+### GlobalTenantResource.status.processedItems[index].status.health
+
+
+
+Health pins an opt-in health check to the successfully applied object.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **digest** | string | Digest identifies an opaque content-write revision, including objects without generations.<br>It is not a checksum of rendered manifests or Secret values. | true |
+| **generation** | integer | <br/>*Format*: int64<br/> | true |
+| **uid** | string | UID is a type that holds unique ID values, including UUIDs.  Because we<br>don't ONLY use UUIDs, this is an alias to string.  Being a type captures<br>intent and helps make sure that UIDs and names do not get conflated. | true |
 
 
 ### GlobalTenantResource.status.processedItems[index].status.policy
@@ -1788,6 +1981,19 @@ Serviceaccount used for impersonation
 | :---- | :---- | :----------- | :-------- |
 | **name** | string | Name of the referent. | true |
 | **namespace** | string | Namespace of the referent. | true |
+
+
+### GlobalTenantResource.status.trigger
+
+
+
+Trigger records the last watch notification handled by this controller.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTriggeredAt** | string | LastTriggeredAt is the start of the last triggered reconcile, including failed attempts.<br/>*Format*: date-time<br/> | true |
+| **observedRequest** | string | ObservedRequest identifies the notification included in the last triggered reconcile. | true |
 
 ## QuantityLedger
 
@@ -2361,11 +2567,12 @@ Enforcement for given rule
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
 | **[conditions](#rulestatusspecindexenforceconditionsindex)** | []object | Conditions gate this entire enforcement rule, including workloads, services,<br>metadata, ingress, network and storage. All conditions must be true; empty means apply.<br>Conditions run during admission; managed metadata in a conditional rule<br>is applied on matching requests only and is not reconciled in the background. | false |
+| **[devices](#rulestatusspecindexenforcedevices)** | object | Devices restricts DeviceClass references in ResourceClaims and ResourceClaimTemplates. | false |
 | **[ingress](#rulestatusspecindexenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
 | **[metadata](#rulestatusspecindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
 | **[network](#rulestatusspecindexenforcenetwork)** | object | Network configures network enforcement for namespace resources. | false |
 | **[services](#rulestatusspecindexenforceservices)** | object | Enforcement for Services. | false |
-| **[storage](#rulestatusspecindexenforcestorage)** | object | Additional access to PersistentVolumes without a tenant ownership label. | false |
+| **[storage](#rulestatusspecindexenforcestorage)** | object | Additional access to PersistentVolumes without a tenant ownership label,<br>and the classes storage objects may reference. | false |
 | **[workloads](#rulestatusspecindexenforceworkloads)** | object | Enforcement for native workload kinds and Pod properties. | false |
 
 
@@ -2385,6 +2592,65 @@ otherwise volume is null. Conditions never modify the PVC or PV.
 | **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
 
 
+### RuleStatus.spec[index].enforce.devices
+
+
+
+Devices restricts DeviceClass references in ResourceClaims and ResourceClaimTemplates.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[classes](#rulestatusspecindexenforcedevicesclassesindex)** | []object | Classes matches DeviceClasses by name or existing class labels. Entries are<br>ORed; each requested class is evaluated independently in rule order.<br>An applicable allow list rejects unmatched classes. Audit never grants access.<br>Legacy Tenant.spec.deviceClasses restrictions remain an additional boundary. | false |
+
+
+### RuleStatus.spec[index].enforce.devices.classes[index]
+
+
+
+DeviceClassMatch ORs exact names, a name expression, and a label selector.
+At least one criterion is required by rule admission validation. As with
+placement expressions, this is checked outside CEL to bound schema cost.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of these class names. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
+| **[selector](#rulestatusspecindexenforcedevicesclassesindexselector)** | object | Selector matches labels on the DeviceClass, not the claim or namespace.<br>Omitted means no label criterion; explicit {} matches every existing class.<br>References must resolve when selectors participate in allow/deny enforcement. | false |
+
+
+### RuleStatus.spec[index].enforce.devices.classes[index].selector
+
+
+
+Selector matches labels on the DeviceClass, not the claim or namespace.
+Omitted means no label criterion; explicit {} matches every existing class.
+References must resolve when selectors participate in allow/deny enforcement.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusspecindexenforcedevicesclassesindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.spec[index].enforce.devices.classes[index].selector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
 ### RuleStatus.spec[index].enforce.ingress
 
 
@@ -2394,8 +2660,42 @@ Enforcement for Ingress and Gateway API resource hostnames.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[classes](#rulestatusspecindexenforceingressclassesindex)** | []object | Classes matches IngressClass or GatewayClass names and labels. Entries,<br>and the criteria within each entry, are ORed. Label selectors read the<br>referenced class, not the ingress or namespace. Exact and exp need no read.<br>Classless objects are rejected by applicable allow/deny class rules.<br>Legacy Tenant class restrictions remain an additional boundary. | false |
 | **[hostnames](#rulestatusspecindexenforceingresshostnamesindex)** | []object | Hostnames defines allowed, denied, or audited hostname expressions.<br>A resource targeted by an allow or deny rule must declare non-empty values<br>in all hostname fields. Audit-only rules record missing hostnames without<br>denying them. | false |
-| **types** | []enum | Types defines the resource kinds to which hostname enforcement applies.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+| **types** | []enum | Types defines the resource kinds to which enforcement applies. Classes<br>apply to Ingress and Gateway; hostnames apply to every supported type.<br>Gateway targets gateway.networking.k8s.io/v1. Served v1beta1 Gateway<br>requests receive the same rules to prevent bypass through another version.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+
+
+### RuleStatus.spec[index].enforce.ingress.classes[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusspecindexenforceingressclassesindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.spec[index].enforce.ingress.classes[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### RuleStatus.spec[index].enforce.ingress.hostnames[index]
@@ -2635,12 +2935,82 @@ NodePorts defines additional constraints for nodePort values.
 
 
 
-Additional access to PersistentVolumes without a tenant ownership label.
+Additional access to PersistentVolumes without a tenant ownership label,
+and the classes storage objects may reference.
 
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[attributeClasses](#rulestatusspecindexenforcestorageattributeclassesindex)** | []object | AttributeClasses matches PersistentVolumeClaim<br>spec.volumeAttributesClassName. Entries are ORed. Targets don't apply. A<br>claim without a class is not matched, since Kubernetes then applies none.<br>Updates are only matched when they change the class to one other than<br>status.currentVolumeAttributesClassName: restoring the applied class<br>cancels a modification. | false |
+| **[classes](#rulestatusspecindexenforcestorageclassesindex)** | []object | Classes matches the class referenced by each targeted object. Entries are<br>ORed. An allow or deny rule requires the targeted object to name a class<br>whenever the class would otherwise be defaulted after admission. Without<br>targets, classes apply to every supported kind. | false |
+| **targets** | []enum | Targets selects the kinds whose class reference is matched against classes.<br>volumesnapshot matches VolumeSnapshot spec.volumeSnapshotClassName.<br>Omitted targets select every supported kind. Requires classes.<br/>*Enum*: volumesnapshot<br/> | false |
 | **[volumes](#rulestatusspecindexenforcestoragevolumesindex)** | []object | Volumes matches additional PersistentVolumes. Entries are ORed. Conditions<br>on the enclosing enforcement rule must also match. The last matching<br>allow/deny decides the exception; audit never grants access. | false |
+
+
+### RuleStatus.spec[index].enforce.storage.attributeClasses[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusspecindexenforcestorageattributeclassesindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.spec[index].enforce.storage.attributeClasses[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.spec[index].enforce.storage.classes[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusspecindexenforcestorageclassesindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.spec[index].enforce.storage.classes[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### RuleStatus.spec[index].enforce.storage.volumes[index]
@@ -2695,6 +3065,7 @@ Enforcement for native workload kinds and Pod properties.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[classes](#rulestatusspecindexenforceworkloadsclasses)** | object | Classes matches the classes referenced by Pods. | false |
 | **[disruptionBudgets](#rulestatusspecindexenforceworkloadsdisruptionbudgets)** | object | DisruptionBudgets constrains PDB coverage of selected Pods and controller templates.<br>Only whole-workload targets apply; omitted targets select Pods. | false |
 | **[placement](#rulestatusspecindexenforceworkloadsplacement)** | object | Placement matches the Pod scheduler and scheduling constraints. | false |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
@@ -2703,6 +3074,85 @@ Enforcement for native workload kinds and Pod properties.
 | **[schedulers](#rulestatusspecindexenforceworkloadsschedulersindex)** | []object | <span style="color:red;font-weight:bold">Schedulers defines additional schedulerName matchers for selected Pods and<br>Pod templates. These are combined with placement.schedulers under the same<br>rule action; a match in either field counts as a match.<br><br>Deprecated: use Placement.Schedulers instead.</span> | false |
 | **[security](#rulestatusspecindexenforceworkloadssecurity)** | object | Security matches effective Pod and container security profiles. | false |
 | **targets** | []string | Targets selects native workloads and, optionally, parts of their Pod specs.<br>With no workload policies, the action matches the selected kinds themselves.<br>With policies, targets scopes those policies; it does not also match the kind.<br>Omitted targets preserve Pod-only defaults. Controller targets are opt-in.<br>Whole-controller targets include every compatible location in the Pod template.<br>Existing pod and pod/* part targets retain their established policy scope. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.classes
+
+
+
+Classes matches the classes referenced by Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[priority](#rulestatusspecindexenforceworkloadsclassespriorityindex)** | []object | Priority matches spec.priorityClassName of selected Pods and Pod templates<br>by name, or by the labels of the PriorityClass. Entries, and the criteria<br>within each entry, are ORed. An applicable allow list rejects every other<br>class; audit never grants access. A Pod without a class is not matched:<br>Kubernetes assigns the cluster's global default class before admission, so<br>that name is matched like an explicit one. A controller template gets its<br>class only when its Pods are created, so an allow or deny rule that targets<br>the controller requires the template to name one; audit rules record its<br>absence. Exact and exp need no read; a label selector reads the class, and<br>a missing class never matches it. Priority rules apply to the pod target<br>and do not run on subresources. An update that keeps the class is only<br>checked again when an allow or deny class rule has conditions; conditional<br>audit rules are recorded without taking that decision again.<br>Legacy Tenant.spec.priorityClasses restrictions remain an additional boundary. | false |
+| **[runtime](#rulestatusspecindexenforceworkloadsclassesruntimeindex)** | []object | Runtime matches spec.runtimeClassName of selected Pods and Pod templates<br>by name, or by the labels of the RuntimeClass. Entries, and the criteria<br>within each entry, are ORed. An applicable allow list rejects every other<br>class; audit never grants access. A Pod without a class is not matched:<br>Kubernetes has no default RuntimeClass, mutation has already run, and the<br>Pod keeps the default runtime of its node. A controller template is not<br>necessarily classless when its Pods run — a Tenant default or a mutation<br>rule can assign a class then — so an allow or deny rule that targets the<br>controller requires the template to name one; audit rules record its<br>absence. Exact and exp need no read; a label selector reads the class,<br>and a missing class never matches it. Runtime rules apply to the pod<br>target and do not run on subresources. An update that keeps the class is<br>only checked again when an allow or deny class rule has conditions;<br>conditional audit rules are recorded without taking that decision again.<br>Legacy Tenant.spec.runtimeClasses restrictions remain an additional boundary. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.classes.priority[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusspecindexenforceworkloadsclassespriorityindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.classes.priority[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.classes.runtime[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusspecindexenforceworkloadsclassesruntimeindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.spec[index].enforce.workloads.classes.runtime[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### RuleStatus.spec[index].enforce.workloads.disruptionBudgets
@@ -3465,9 +3915,11 @@ Mutated values remain subject to all applicable enforcement rules.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br>ListenerSet parent references are atomic: merge fills an absent or null<br>reference, while replace replaces the entire supplied reference.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
+| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName, an omitted priority, runtime or volume attributes class and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, classes.priority, classes.runtime, storage.attributeClass, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br>ListenerSet parent references are atomic: merge fills an absent or null<br>reference, while replace replaces the entire supplied reference.<br>DeviceClass defaults support merge only, preserving every explicit class name.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
 | **[conditions](#rulestatusspecindexmutateindexconditionsindex)** | []object | Conditions gate this entire mutation entry and inspect the object after<br>preceding mutations. All conditions must be true; empty means apply. | false |
+| **[devices](#rulestatusspecindexmutateindexdevices)** | object | Devices configures default DeviceClass references for DRA claims and templates. | false |
 | **[ingress](#rulestatusspecindexmutateindexingress)** | object | Ingress configures Kubernetes ingress and Gateway API resource mutations. | false |
+| **[storage](#rulestatusspecindexmutateindexstorage)** | object | Storage configures defaults for PersistentVolumeClaims. | false |
 | **[workloads](#rulestatusspecindexmutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. Security.ReadOnlyRootFilesystem and<br>Registries.ImagePullPolicy also apply to newly added ephemeral containers on<br>subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
 
 
@@ -3487,6 +3939,18 @@ otherwise volume is null. Conditions never modify the PVC or PV.
 | **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
 
 
+### RuleStatus.spec[index].mutate[index].devices
+
+
+
+Devices configures default DeviceClass references for DRA claims and templates.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **class** | string | Class fills an omitted, null, or empty deviceClassName in each existing<br>exactly request and firstAvailable alternative. Explicit names and request<br>structure are preserved. The first applicable default wins. Supports merge<br>only; replace is rejected to preserve scheduler-selected allocations.<br>Omitted or null supplies no default. Tenant and Namespace templates are<br>supported; rendered names must satisfy native DeviceClass name validation. | false |
+
+
 ### RuleStatus.spec[index].mutate[index].ingress
 
 
@@ -3496,7 +3960,9 @@ Ingress configures Kubernetes ingress and Gateway API resource mutations.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **class** | string | Class sets the targeted Ingress or Gateway class on CREATE and UPDATE.<br>Merge fills an absent or empty class, preserving explicit field/annotation<br>values. Replace sets the class and keeps an existing ingress annotation in<br>sync. Rule changes do not reconcile existing objects. Templates are allowed;<br>rendered values must be valid DNS subdomains. Omitted leaves it unchanged. | false |
 | **[listenerSets](#rulestatusspecindexmutateindexingresslistenersets)** | object | ListenerSets configures gateway.networking.k8s.io/v1 ListenerSets. | false |
+| **types** | []enum | Types selects the kinds whose class is set. Required when class is supplied.<br>Gateway targets gateway.networking.k8s.io/v1. Served v1beta1 Gateway<br>requests receive the same class mutation for version compatibility.<br>ListenerSet parentRef mutation has its own explicit target and is unchanged.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
 
 
 ### RuleStatus.spec[index].mutate[index].ingress.listenerSets
@@ -3530,6 +3996,18 @@ Attachment remains subject to the parent's allowedListeners configuration.
 | **namespace** | string | Namespace identifies the parent's namespace. Omitted means the<br>ListenerSet's namespace; an explicit empty string is invalid. | false |
 
 
+### RuleStatus.spec[index].mutate[index].storage
+
+
+
+Storage configures defaults for PersistentVolumeClaims.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **attributeClass** | string | AttributeClass sets spec.volumeAttributesClassName on PersistentVolumeClaim<br>creation, including the claims the StatefulSet and ephemeral volume<br>controllers create from templates under their own identity. Merge fills an<br>omitted or null class and keeps an empty one, which chooses no class, as<br>an empty storageClassName opts out of the default StorageClass. The first<br>applicable merge wins. Replace always sets the class. Updates never change<br>the class, since a new class modifies the volume. Capsule neither reads nor<br>creates the VolumeAttributesClass; Kubernetes keeps a claim whose class<br>doesn't exist pending until it does. Omitted or null leaves the claim<br>unchanged. Tenant and Namespace templates are supported; rendered names<br>must satisfy native VolumeAttributesClass name validation. | false |
+
+
 ### RuleStatus.spec[index].mutate[index].workloads
 
 
@@ -3546,10 +4024,24 @@ On merge, required affinity restrictions from applicable entries are ANDed.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[classes](#rulestatusspecindexmutateindexworkloadsclasses)** | object | Classes configures the classes referenced by the Pod. | false |
 | **[placement](#rulestatusspecindexmutateindexworkloadsplacement)** | object | Placement configures the Pod scheduler and scheduling constraints. | false |
 | **[registries](#rulestatusspecindexmutateindexworkloadsregistries)** | object | Registries configures Pod image pull secrets and selected containers' pull policies. | false |
 | **[security](#rulestatusspecindexmutateindexworkloadssecurity)** | object | Security configures Pod and container security settings. | false |
 | **targets** | []enum | Targets selects compatible Pod locations. Omitted or empty selects all<br>compatible locations. The pod target includes Pod-level properties and all<br>container groups; pod/containers, pod/initcontainers and pod/ephemeralcontainers<br>narrow selection to one group. Controller templates and volumes are not supported.<br/>*Enum*: pod, pod/containers, pod/initcontainers, pod/ephemeralcontainers<br/> | false |
+
+
+### RuleStatus.spec[index].mutate[index].workloads.classes
+
+
+
+Classes configures the classes referenced by the Pod.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **priority** | string | Priority sets spec.priorityClassName on Pod creation, together with the<br>priority and preemptionPolicy of that PriorityClass. Merge fills an omitted<br>class; the cluster's global default class, which Kubernetes assigns before<br>admission, counts as omitted. The first applicable merge wins. Replace<br>always sets the class. The PriorityClass must exist; Capsule does not create<br>it. Omitted or null leaves the Pod unchanged. Tenant and Namespace templates<br>are supported; rendered names must satisfy native PriorityClass name<br>validation. Requires the pod target or omitted/empty targets. | false |
+| **runtime** | string | Runtime sets spec.runtimeClassName on Pod creation. Merge fills an omitted<br>class and preserves every class a Pod names: Kubernetes has no default<br>RuntimeClass, so an omitted class is unset. The first applicable merge<br>wins. Replace always sets the class. When the entries change the class of<br>a Pod, Capsule applies the overhead and the scheduling constraints of the<br>assigned RuntimeClass, as the API server does for the class a Pod names:<br>the class must exist, and a scheduling nodeSelector that conflicts with<br>the Pod rejects it. The constraints of the final class are restored when<br>a replace of nodeSelector or tolerations removes them, also when the<br>class itself did not change. Constraints the Pod already carries for a<br>class an entry replaces are residual: they are retained but not restored,<br>while a class replaced within the entries leaves nothing behind. The<br>conditions of a later entry see the overhead and the constraints of the<br>class assigned before them. Capsule does not create the RuntimeClass.<br>Omitted or null leaves the Pod unchanged. Tenant and Namespace templates<br>are supported; rendered names must satisfy native RuntimeClass name<br>validation. Requires the pod target or omitted/empty targets. | false |
 
 
 ### RuleStatus.spec[index].mutate[index].workloads.placement
@@ -4348,11 +4840,12 @@ Enforcement for given rule
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
 | **[conditions](#rulestatusstatusruleenforceconditionsindex)** | []object | Conditions gate this entire enforcement rule, including workloads, services,<br>metadata, ingress, network and storage. All conditions must be true; empty means apply.<br>Conditions run during admission; managed metadata in a conditional rule<br>is applied on matching requests only and is not reconciled in the background. | false |
+| **[devices](#rulestatusstatusruleenforcedevices)** | object | Devices restricts DeviceClass references in ResourceClaims and ResourceClaimTemplates. | false |
 | **[ingress](#rulestatusstatusruleenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
 | **[metadata](#rulestatusstatusruleenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
 | **[network](#rulestatusstatusruleenforcenetwork)** | object | Network configures network enforcement for namespace resources. | false |
 | **[services](#rulestatusstatusruleenforceservices)** | object | Enforcement for Services. | false |
-| **[storage](#rulestatusstatusruleenforcestorage)** | object | Additional access to PersistentVolumes without a tenant ownership label. | false |
+| **[storage](#rulestatusstatusruleenforcestorage)** | object | Additional access to PersistentVolumes without a tenant ownership label,<br>and the classes storage objects may reference. | false |
 | **[workloads](#rulestatusstatusruleenforceworkloads)** | object | Enforcement for native workload kinds and Pod properties. | false |
 
 
@@ -4372,6 +4865,65 @@ otherwise volume is null. Conditions never modify the PVC or PV.
 | **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
 
 
+### RuleStatus.status.rule.enforce.devices
+
+
+
+Devices restricts DeviceClass references in ResourceClaims and ResourceClaimTemplates.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[classes](#rulestatusstatusruleenforcedevicesclassesindex)** | []object | Classes matches DeviceClasses by name or existing class labels. Entries are<br>ORed; each requested class is evaluated independently in rule order.<br>An applicable allow list rejects unmatched classes. Audit never grants access.<br>Legacy Tenant.spec.deviceClasses restrictions remain an additional boundary. | false |
+
+
+### RuleStatus.status.rule.enforce.devices.classes[index]
+
+
+
+DeviceClassMatch ORs exact names, a name expression, and a label selector.
+At least one criterion is required by rule admission validation. As with
+placement expressions, this is checked outside CEL to bound schema cost.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of these class names. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
+| **[selector](#rulestatusstatusruleenforcedevicesclassesindexselector)** | object | Selector matches labels on the DeviceClass, not the claim or namespace.<br>Omitted means no label criterion; explicit {} matches every existing class.<br>References must resolve when selectors participate in allow/deny enforcement. | false |
+
+
+### RuleStatus.status.rule.enforce.devices.classes[index].selector
+
+
+
+Selector matches labels on the DeviceClass, not the claim or namespace.
+Omitted means no label criterion; explicit {} matches every existing class.
+References must resolve when selectors participate in allow/deny enforcement.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusruleenforcedevicesclassesindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rule.enforce.devices.classes[index].selector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
 ### RuleStatus.status.rule.enforce.ingress
 
 
@@ -4381,8 +4933,42 @@ Enforcement for Ingress and Gateway API resource hostnames.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[classes](#rulestatusstatusruleenforceingressclassesindex)** | []object | Classes matches IngressClass or GatewayClass names and labels. Entries,<br>and the criteria within each entry, are ORed. Label selectors read the<br>referenced class, not the ingress or namespace. Exact and exp need no read.<br>Classless objects are rejected by applicable allow/deny class rules.<br>Legacy Tenant class restrictions remain an additional boundary. | false |
 | **[hostnames](#rulestatusstatusruleenforceingresshostnamesindex)** | []object | Hostnames defines allowed, denied, or audited hostname expressions.<br>A resource targeted by an allow or deny rule must declare non-empty values<br>in all hostname fields. Audit-only rules record missing hostnames without<br>denying them. | false |
-| **types** | []enum | Types defines the resource kinds to which hostname enforcement applies.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+| **types** | []enum | Types defines the resource kinds to which enforcement applies. Classes<br>apply to Ingress and Gateway; hostnames apply to every supported type.<br>Gateway targets gateway.networking.k8s.io/v1. Served v1beta1 Gateway<br>requests receive the same rules to prevent bypass through another version.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+
+
+### RuleStatus.status.rule.enforce.ingress.classes[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusstatusruleenforceingressclassesindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rule.enforce.ingress.classes[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### RuleStatus.status.rule.enforce.ingress.hostnames[index]
@@ -4622,12 +5208,82 @@ NodePorts defines additional constraints for nodePort values.
 
 
 
-Additional access to PersistentVolumes without a tenant ownership label.
+Additional access to PersistentVolumes without a tenant ownership label,
+and the classes storage objects may reference.
 
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[attributeClasses](#rulestatusstatusruleenforcestorageattributeclassesindex)** | []object | AttributeClasses matches PersistentVolumeClaim<br>spec.volumeAttributesClassName. Entries are ORed. Targets don't apply. A<br>claim without a class is not matched, since Kubernetes then applies none.<br>Updates are only matched when they change the class to one other than<br>status.currentVolumeAttributesClassName: restoring the applied class<br>cancels a modification. | false |
+| **[classes](#rulestatusstatusruleenforcestorageclassesindex)** | []object | Classes matches the class referenced by each targeted object. Entries are<br>ORed. An allow or deny rule requires the targeted object to name a class<br>whenever the class would otherwise be defaulted after admission. Without<br>targets, classes apply to every supported kind. | false |
+| **targets** | []enum | Targets selects the kinds whose class reference is matched against classes.<br>volumesnapshot matches VolumeSnapshot spec.volumeSnapshotClassName.<br>Omitted targets select every supported kind. Requires classes.<br/>*Enum*: volumesnapshot<br/> | false |
 | **[volumes](#rulestatusstatusruleenforcestoragevolumesindex)** | []object | Volumes matches additional PersistentVolumes. Entries are ORed. Conditions<br>on the enclosing enforcement rule must also match. The last matching<br>allow/deny decides the exception; audit never grants access. | false |
+
+
+### RuleStatus.status.rule.enforce.storage.attributeClasses[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusstatusruleenforcestorageattributeclassesindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rule.enforce.storage.attributeClasses[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rule.enforce.storage.classes[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusstatusruleenforcestorageclassesindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rule.enforce.storage.classes[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### RuleStatus.status.rule.enforce.storage.volumes[index]
@@ -4682,6 +5338,7 @@ Enforcement for native workload kinds and Pod properties.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[classes](#rulestatusstatusruleenforceworkloadsclasses)** | object | Classes matches the classes referenced by Pods. | false |
 | **[disruptionBudgets](#rulestatusstatusruleenforceworkloadsdisruptionbudgets)** | object | DisruptionBudgets constrains PDB coverage of selected Pods and controller templates.<br>Only whole-workload targets apply; omitted targets select Pods. | false |
 | **[placement](#rulestatusstatusruleenforceworkloadsplacement)** | object | Placement matches the Pod scheduler and scheduling constraints. | false |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
@@ -4690,6 +5347,85 @@ Enforcement for native workload kinds and Pod properties.
 | **[schedulers](#rulestatusstatusruleenforceworkloadsschedulersindex)** | []object | <span style="color:red;font-weight:bold">Schedulers defines additional schedulerName matchers for selected Pods and<br>Pod templates. These are combined with placement.schedulers under the same<br>rule action; a match in either field counts as a match.<br><br>Deprecated: use Placement.Schedulers instead.</span> | false |
 | **[security](#rulestatusstatusruleenforceworkloadssecurity)** | object | Security matches effective Pod and container security profiles. | false |
 | **targets** | []string | Targets selects native workloads and, optionally, parts of their Pod specs.<br>With no workload policies, the action matches the selected kinds themselves.<br>With policies, targets scopes those policies; it does not also match the kind.<br>Omitted targets preserve Pod-only defaults. Controller targets are opt-in.<br>Whole-controller targets include every compatible location in the Pod template.<br>Existing pod and pod/* part targets retain their established policy scope. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.classes
+
+
+
+Classes matches the classes referenced by Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[priority](#rulestatusstatusruleenforceworkloadsclassespriorityindex)** | []object | Priority matches spec.priorityClassName of selected Pods and Pod templates<br>by name, or by the labels of the PriorityClass. Entries, and the criteria<br>within each entry, are ORed. An applicable allow list rejects every other<br>class; audit never grants access. A Pod without a class is not matched:<br>Kubernetes assigns the cluster's global default class before admission, so<br>that name is matched like an explicit one. A controller template gets its<br>class only when its Pods are created, so an allow or deny rule that targets<br>the controller requires the template to name one; audit rules record its<br>absence. Exact and exp need no read; a label selector reads the class, and<br>a missing class never matches it. Priority rules apply to the pod target<br>and do not run on subresources. An update that keeps the class is only<br>checked again when an allow or deny class rule has conditions; conditional<br>audit rules are recorded without taking that decision again.<br>Legacy Tenant.spec.priorityClasses restrictions remain an additional boundary. | false |
+| **[runtime](#rulestatusstatusruleenforceworkloadsclassesruntimeindex)** | []object | Runtime matches spec.runtimeClassName of selected Pods and Pod templates<br>by name, or by the labels of the RuntimeClass. Entries, and the criteria<br>within each entry, are ORed. An applicable allow list rejects every other<br>class; audit never grants access. A Pod without a class is not matched:<br>Kubernetes has no default RuntimeClass, mutation has already run, and the<br>Pod keeps the default runtime of its node. A controller template is not<br>necessarily classless when its Pods run — a Tenant default or a mutation<br>rule can assign a class then — so an allow or deny rule that targets the<br>controller requires the template to name one; audit rules record its<br>absence. Exact and exp need no read; a label selector reads the class,<br>and a missing class never matches it. Runtime rules apply to the pod<br>target and do not run on subresources. An update that keeps the class is<br>only checked again when an allow or deny class rule has conditions;<br>conditional audit rules are recorded without taking that decision again.<br>Legacy Tenant.spec.runtimeClasses restrictions remain an additional boundary. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.classes.priority[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusstatusruleenforceworkloadsclassespriorityindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.classes.priority[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.classes.runtime[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusstatusruleenforceworkloadsclassesruntimeindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rule.enforce.workloads.classes.runtime[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### RuleStatus.status.rule.enforce.workloads.disruptionBudgets
@@ -5452,9 +6188,11 @@ Mutated values remain subject to all applicable enforcement rules.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br>ListenerSet parent references are atomic: merge fills an absent or null<br>reference, while replace replaces the entire supplied reference.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
+| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName, an omitted priority, runtime or volume attributes class and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, classes.priority, classes.runtime, storage.attributeClass, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br>ListenerSet parent references are atomic: merge fills an absent or null<br>reference, while replace replaces the entire supplied reference.<br>DeviceClass defaults support merge only, preserving every explicit class name.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
 | **[conditions](#rulestatusstatusrulemutateindexconditionsindex)** | []object | Conditions gate this entire mutation entry and inspect the object after<br>preceding mutations. All conditions must be true; empty means apply. | false |
+| **[devices](#rulestatusstatusrulemutateindexdevices)** | object | Devices configures default DeviceClass references for DRA claims and templates. | false |
 | **[ingress](#rulestatusstatusrulemutateindexingress)** | object | Ingress configures Kubernetes ingress and Gateway API resource mutations. | false |
+| **[storage](#rulestatusstatusrulemutateindexstorage)** | object | Storage configures defaults for PersistentVolumeClaims. | false |
 | **[workloads](#rulestatusstatusrulemutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. Security.ReadOnlyRootFilesystem and<br>Registries.ImagePullPolicy also apply to newly added ephemeral containers on<br>subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
 
 
@@ -5474,6 +6212,18 @@ otherwise volume is null. Conditions never modify the PVC or PV.
 | **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
 
 
+### RuleStatus.status.rule.mutate[index].devices
+
+
+
+Devices configures default DeviceClass references for DRA claims and templates.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **class** | string | Class fills an omitted, null, or empty deviceClassName in each existing<br>exactly request and firstAvailable alternative. Explicit names and request<br>structure are preserved. The first applicable default wins. Supports merge<br>only; replace is rejected to preserve scheduler-selected allocations.<br>Omitted or null supplies no default. Tenant and Namespace templates are<br>supported; rendered names must satisfy native DeviceClass name validation. | false |
+
+
 ### RuleStatus.status.rule.mutate[index].ingress
 
 
@@ -5483,7 +6233,9 @@ Ingress configures Kubernetes ingress and Gateway API resource mutations.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **class** | string | Class sets the targeted Ingress or Gateway class on CREATE and UPDATE.<br>Merge fills an absent or empty class, preserving explicit field/annotation<br>values. Replace sets the class and keeps an existing ingress annotation in<br>sync. Rule changes do not reconcile existing objects. Templates are allowed;<br>rendered values must be valid DNS subdomains. Omitted leaves it unchanged. | false |
 | **[listenerSets](#rulestatusstatusrulemutateindexingresslistenersets)** | object | ListenerSets configures gateway.networking.k8s.io/v1 ListenerSets. | false |
+| **types** | []enum | Types selects the kinds whose class is set. Required when class is supplied.<br>Gateway targets gateway.networking.k8s.io/v1. Served v1beta1 Gateway<br>requests receive the same class mutation for version compatibility.<br>ListenerSet parentRef mutation has its own explicit target and is unchanged.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
 
 
 ### RuleStatus.status.rule.mutate[index].ingress.listenerSets
@@ -5517,6 +6269,18 @@ Attachment remains subject to the parent's allowedListeners configuration.
 | **namespace** | string | Namespace identifies the parent's namespace. Omitted means the<br>ListenerSet's namespace; an explicit empty string is invalid. | false |
 
 
+### RuleStatus.status.rule.mutate[index].storage
+
+
+
+Storage configures defaults for PersistentVolumeClaims.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **attributeClass** | string | AttributeClass sets spec.volumeAttributesClassName on PersistentVolumeClaim<br>creation, including the claims the StatefulSet and ephemeral volume<br>controllers create from templates under their own identity. Merge fills an<br>omitted or null class and keeps an empty one, which chooses no class, as<br>an empty storageClassName opts out of the default StorageClass. The first<br>applicable merge wins. Replace always sets the class. Updates never change<br>the class, since a new class modifies the volume. Capsule neither reads nor<br>creates the VolumeAttributesClass; Kubernetes keeps a claim whose class<br>doesn't exist pending until it does. Omitted or null leaves the claim<br>unchanged. Tenant and Namespace templates are supported; rendered names<br>must satisfy native VolumeAttributesClass name validation. | false |
+
+
 ### RuleStatus.status.rule.mutate[index].workloads
 
 
@@ -5533,10 +6297,24 @@ On merge, required affinity restrictions from applicable entries are ANDed.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[classes](#rulestatusstatusrulemutateindexworkloadsclasses)** | object | Classes configures the classes referenced by the Pod. | false |
 | **[placement](#rulestatusstatusrulemutateindexworkloadsplacement)** | object | Placement configures the Pod scheduler and scheduling constraints. | false |
 | **[registries](#rulestatusstatusrulemutateindexworkloadsregistries)** | object | Registries configures Pod image pull secrets and selected containers' pull policies. | false |
 | **[security](#rulestatusstatusrulemutateindexworkloadssecurity)** | object | Security configures Pod and container security settings. | false |
 | **targets** | []enum | Targets selects compatible Pod locations. Omitted or empty selects all<br>compatible locations. The pod target includes Pod-level properties and all<br>container groups; pod/containers, pod/initcontainers and pod/ephemeralcontainers<br>narrow selection to one group. Controller templates and volumes are not supported.<br/>*Enum*: pod, pod/containers, pod/initcontainers, pod/ephemeralcontainers<br/> | false |
+
+
+### RuleStatus.status.rule.mutate[index].workloads.classes
+
+
+
+Classes configures the classes referenced by the Pod.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **priority** | string | Priority sets spec.priorityClassName on Pod creation, together with the<br>priority and preemptionPolicy of that PriorityClass. Merge fills an omitted<br>class; the cluster's global default class, which Kubernetes assigns before<br>admission, counts as omitted. The first applicable merge wins. Replace<br>always sets the class. The PriorityClass must exist; Capsule does not create<br>it. Omitted or null leaves the Pod unchanged. Tenant and Namespace templates<br>are supported; rendered names must satisfy native PriorityClass name<br>validation. Requires the pod target or omitted/empty targets. | false |
+| **runtime** | string | Runtime sets spec.runtimeClassName on Pod creation. Merge fills an omitted<br>class and preserves every class a Pod names: Kubernetes has no default<br>RuntimeClass, so an omitted class is unset. The first applicable merge<br>wins. Replace always sets the class. When the entries change the class of<br>a Pod, Capsule applies the overhead and the scheduling constraints of the<br>assigned RuntimeClass, as the API server does for the class a Pod names:<br>the class must exist, and a scheduling nodeSelector that conflicts with<br>the Pod rejects it. The constraints of the final class are restored when<br>a replace of nodeSelector or tolerations removes them, also when the<br>class itself did not change. Constraints the Pod already carries for a<br>class an entry replaces are residual: they are retained but not restored,<br>while a class replaced within the entries leaves nothing behind. The<br>conditions of a later entry see the overhead and the constraints of the<br>class assigned before them. Capsule does not create the RuntimeClass.<br>Omitted or null leaves the Pod unchanged. Tenant and Namespace templates<br>are supported; rendered names must satisfy native RuntimeClass name<br>validation. Requires the pod target or omitted/empty targets. | false |
 
 
 ### RuleStatus.status.rule.mutate[index].workloads.placement
@@ -6302,11 +7080,12 @@ Enforcement for given rule
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
 | **[conditions](#rulestatusstatusrulesindexenforceconditionsindex)** | []object | Conditions gate this entire enforcement rule, including workloads, services,<br>metadata, ingress, network and storage. All conditions must be true; empty means apply.<br>Conditions run during admission; managed metadata in a conditional rule<br>is applied on matching requests only and is not reconciled in the background. | false |
+| **[devices](#rulestatusstatusrulesindexenforcedevices)** | object | Devices restricts DeviceClass references in ResourceClaims and ResourceClaimTemplates. | false |
 | **[ingress](#rulestatusstatusrulesindexenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
 | **[metadata](#rulestatusstatusrulesindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
 | **[network](#rulestatusstatusrulesindexenforcenetwork)** | object | Network configures network enforcement for namespace resources. | false |
 | **[services](#rulestatusstatusrulesindexenforceservices)** | object | Enforcement for Services. | false |
-| **[storage](#rulestatusstatusrulesindexenforcestorage)** | object | Additional access to PersistentVolumes without a tenant ownership label. | false |
+| **[storage](#rulestatusstatusrulesindexenforcestorage)** | object | Additional access to PersistentVolumes without a tenant ownership label,<br>and the classes storage objects may reference. | false |
 | **[workloads](#rulestatusstatusrulesindexenforceworkloads)** | object | Enforcement for native workload kinds and Pod properties. | false |
 
 
@@ -6326,6 +7105,65 @@ otherwise volume is null. Conditions never modify the PVC or PV.
 | **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
 
 
+### RuleStatus.status.rules[index].enforce.devices
+
+
+
+Devices restricts DeviceClass references in ResourceClaims and ResourceClaimTemplates.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[classes](#rulestatusstatusrulesindexenforcedevicesclassesindex)** | []object | Classes matches DeviceClasses by name or existing class labels. Entries are<br>ORed; each requested class is evaluated independently in rule order.<br>An applicable allow list rejects unmatched classes. Audit never grants access.<br>Legacy Tenant.spec.deviceClasses restrictions remain an additional boundary. | false |
+
+
+### RuleStatus.status.rules[index].enforce.devices.classes[index]
+
+
+
+DeviceClassMatch ORs exact names, a name expression, and a label selector.
+At least one criterion is required by rule admission validation. As with
+placement expressions, this is checked outside CEL to bound schema cost.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of these class names. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
+| **[selector](#rulestatusstatusrulesindexenforcedevicesclassesindexselector)** | object | Selector matches labels on the DeviceClass, not the claim or namespace.<br>Omitted means no label criterion; explicit {} matches every existing class.<br>References must resolve when selectors participate in allow/deny enforcement. | false |
+
+
+### RuleStatus.status.rules[index].enforce.devices.classes[index].selector
+
+
+
+Selector matches labels on the DeviceClass, not the claim or namespace.
+Omitted means no label criterion; explicit {} matches every existing class.
+References must resolve when selectors participate in allow/deny enforcement.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#rulestatusstatusrulesindexenforcedevicesclassesindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].enforce.devices.classes[index].selector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
 ### RuleStatus.status.rules[index].enforce.ingress
 
 
@@ -6335,8 +7173,42 @@ Enforcement for Ingress and Gateway API resource hostnames.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[classes](#rulestatusstatusrulesindexenforceingressclassesindex)** | []object | Classes matches IngressClass or GatewayClass names and labels. Entries,<br>and the criteria within each entry, are ORed. Label selectors read the<br>referenced class, not the ingress or namespace. Exact and exp need no read.<br>Classless objects are rejected by applicable allow/deny class rules.<br>Legacy Tenant class restrictions remain an additional boundary. | false |
 | **[hostnames](#rulestatusstatusrulesindexenforceingresshostnamesindex)** | []object | Hostnames defines allowed, denied, or audited hostname expressions.<br>A resource targeted by an allow or deny rule must declare non-empty values<br>in all hostname fields. Audit-only rules record missing hostnames without<br>denying them. | false |
-| **types** | []enum | Types defines the resource kinds to which hostname enforcement applies.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+| **types** | []enum | Types defines the resource kinds to which enforcement applies. Classes<br>apply to Ingress and Gateway; hostnames apply to every supported type.<br>Gateway targets gateway.networking.k8s.io/v1. Served v1beta1 Gateway<br>requests receive the same rules to prevent bypass through another version.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+
+
+### RuleStatus.status.rules[index].enforce.ingress.classes[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusstatusrulesindexenforceingressclassesindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].enforce.ingress.classes[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.ingress.hostnames[index]
@@ -6576,12 +7448,82 @@ NodePorts defines additional constraints for nodePort values.
 
 
 
-Additional access to PersistentVolumes without a tenant ownership label.
+Additional access to PersistentVolumes without a tenant ownership label,
+and the classes storage objects may reference.
 
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[attributeClasses](#rulestatusstatusrulesindexenforcestorageattributeclassesindex)** | []object | AttributeClasses matches PersistentVolumeClaim<br>spec.volumeAttributesClassName. Entries are ORed. Targets don't apply. A<br>claim without a class is not matched, since Kubernetes then applies none.<br>Updates are only matched when they change the class to one other than<br>status.currentVolumeAttributesClassName: restoring the applied class<br>cancels a modification. | false |
+| **[classes](#rulestatusstatusrulesindexenforcestorageclassesindex)** | []object | Classes matches the class referenced by each targeted object. Entries are<br>ORed. An allow or deny rule requires the targeted object to name a class<br>whenever the class would otherwise be defaulted after admission. Without<br>targets, classes apply to every supported kind. | false |
+| **targets** | []enum | Targets selects the kinds whose class reference is matched against classes.<br>volumesnapshot matches VolumeSnapshot spec.volumeSnapshotClassName.<br>Omitted targets select every supported kind. Requires classes.<br/>*Enum*: volumesnapshot<br/> | false |
 | **[volumes](#rulestatusstatusrulesindexenforcestoragevolumesindex)** | []object | Volumes matches additional PersistentVolumes. Entries are ORed. Conditions<br>on the enclosing enforcement rule must also match. The last matching<br>allow/deny decides the exception; audit never grants access. | false |
+
+
+### RuleStatus.status.rules[index].enforce.storage.attributeClasses[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusstatusrulesindexenforcestorageattributeclassesindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].enforce.storage.attributeClasses[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rules[index].enforce.storage.classes[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusstatusrulesindexenforcestorageclassesindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].enforce.storage.classes[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.storage.volumes[index]
@@ -6636,6 +7578,7 @@ Enforcement for native workload kinds and Pod properties.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[classes](#rulestatusstatusrulesindexenforceworkloadsclasses)** | object | Classes matches the classes referenced by Pods. | false |
 | **[disruptionBudgets](#rulestatusstatusrulesindexenforceworkloadsdisruptionbudgets)** | object | DisruptionBudgets constrains PDB coverage of selected Pods and controller templates.<br>Only whole-workload targets apply; omitted targets select Pods. | false |
 | **[placement](#rulestatusstatusrulesindexenforceworkloadsplacement)** | object | Placement matches the Pod scheduler and scheduling constraints. | false |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
@@ -6644,6 +7587,85 @@ Enforcement for native workload kinds and Pod properties.
 | **[schedulers](#rulestatusstatusrulesindexenforceworkloadsschedulersindex)** | []object | <span style="color:red;font-weight:bold">Schedulers defines additional schedulerName matchers for selected Pods and<br>Pod templates. These are combined with placement.schedulers under the same<br>rule action; a match in either field counts as a match.<br><br>Deprecated: use Placement.Schedulers instead.</span> | false |
 | **[security](#rulestatusstatusrulesindexenforceworkloadssecurity)** | object | Security matches effective Pod and container security profiles. | false |
 | **targets** | []string | Targets selects native workloads and, optionally, parts of their Pod specs.<br>With no workload policies, the action matches the selected kinds themselves.<br>With policies, targets scopes those policies; it does not also match the kind.<br>Omitted targets preserve Pod-only defaults. Controller targets are opt-in.<br>Whole-controller targets include every compatible location in the Pod template.<br>Existing pod and pod/* part targets retain their established policy scope. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.classes
+
+
+
+Classes matches the classes referenced by Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[priority](#rulestatusstatusrulesindexenforceworkloadsclassespriorityindex)** | []object | Priority matches spec.priorityClassName of selected Pods and Pod templates<br>by name, or by the labels of the PriorityClass. Entries, and the criteria<br>within each entry, are ORed. An applicable allow list rejects every other<br>class; audit never grants access. A Pod without a class is not matched:<br>Kubernetes assigns the cluster's global default class before admission, so<br>that name is matched like an explicit one. A controller template gets its<br>class only when its Pods are created, so an allow or deny rule that targets<br>the controller requires the template to name one; audit rules record its<br>absence. Exact and exp need no read; a label selector reads the class, and<br>a missing class never matches it. Priority rules apply to the pod target<br>and do not run on subresources. An update that keeps the class is only<br>checked again when an allow or deny class rule has conditions; conditional<br>audit rules are recorded without taking that decision again.<br>Legacy Tenant.spec.priorityClasses restrictions remain an additional boundary. | false |
+| **[runtime](#rulestatusstatusrulesindexenforceworkloadsclassesruntimeindex)** | []object | Runtime matches spec.runtimeClassName of selected Pods and Pod templates<br>by name, or by the labels of the RuntimeClass. Entries, and the criteria<br>within each entry, are ORed. An applicable allow list rejects every other<br>class; audit never grants access. A Pod without a class is not matched:<br>Kubernetes has no default RuntimeClass, mutation has already run, and the<br>Pod keeps the default runtime of its node. A controller template is not<br>necessarily classless when its Pods run — a Tenant default or a mutation<br>rule can assign a class then — so an allow or deny rule that targets the<br>controller requires the template to name one; audit rules record its<br>absence. Exact and exp need no read; a label selector reads the class,<br>and a missing class never matches it. Runtime rules apply to the pod<br>target and do not run on subresources. An update that keeps the class is<br>only checked again when an allow or deny class rule has conditions;<br>conditional audit rules are recorded without taking that decision again.<br>Legacy Tenant.spec.runtimeClasses restrictions remain an additional boundary. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.classes.priority[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusstatusrulesindexenforceworkloadsclassespriorityindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.classes.priority[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.classes.runtime[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#rulestatusstatusrulesindexenforceworkloadsclassesruntimeindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### RuleStatus.status.rules[index].enforce.workloads.classes.runtime[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### RuleStatus.status.rules[index].enforce.workloads.disruptionBudgets
@@ -7406,9 +8428,11 @@ Mutated values remain subject to all applicable enforcement rules.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br>ListenerSet parent references are atomic: merge fills an absent or null<br>reference, while replace replaces the entire supplied reference.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
+| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName, an omitted priority, runtime or volume attributes class and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, classes.priority, classes.runtime, storage.attributeClass, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br>ListenerSet parent references are atomic: merge fills an absent or null<br>reference, while replace replaces the entire supplied reference.<br>DeviceClass defaults support merge only, preserving every explicit class name.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
 | **[conditions](#rulestatusstatusrulesindexmutateindexconditionsindex)** | []object | Conditions gate this entire mutation entry and inspect the object after<br>preceding mutations. All conditions must be true; empty means apply. | false |
+| **[devices](#rulestatusstatusrulesindexmutateindexdevices)** | object | Devices configures default DeviceClass references for DRA claims and templates. | false |
 | **[ingress](#rulestatusstatusrulesindexmutateindexingress)** | object | Ingress configures Kubernetes ingress and Gateway API resource mutations. | false |
+| **[storage](#rulestatusstatusrulesindexmutateindexstorage)** | object | Storage configures defaults for PersistentVolumeClaims. | false |
 | **[workloads](#rulestatusstatusrulesindexmutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. Security.ReadOnlyRootFilesystem and<br>Registries.ImagePullPolicy also apply to newly added ephemeral containers on<br>subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
 
 
@@ -7428,6 +8452,18 @@ otherwise volume is null. Conditions never modify the PVC or PV.
 | **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
 
 
+### RuleStatus.status.rules[index].mutate[index].devices
+
+
+
+Devices configures default DeviceClass references for DRA claims and templates.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **class** | string | Class fills an omitted, null, or empty deviceClassName in each existing<br>exactly request and firstAvailable alternative. Explicit names and request<br>structure are preserved. The first applicable default wins. Supports merge<br>only; replace is rejected to preserve scheduler-selected allocations.<br>Omitted or null supplies no default. Tenant and Namespace templates are<br>supported; rendered names must satisfy native DeviceClass name validation. | false |
+
+
 ### RuleStatus.status.rules[index].mutate[index].ingress
 
 
@@ -7437,7 +8473,9 @@ Ingress configures Kubernetes ingress and Gateway API resource mutations.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **class** | string | Class sets the targeted Ingress or Gateway class on CREATE and UPDATE.<br>Merge fills an absent or empty class, preserving explicit field/annotation<br>values. Replace sets the class and keeps an existing ingress annotation in<br>sync. Rule changes do not reconcile existing objects. Templates are allowed;<br>rendered values must be valid DNS subdomains. Omitted leaves it unchanged. | false |
 | **[listenerSets](#rulestatusstatusrulesindexmutateindexingresslistenersets)** | object | ListenerSets configures gateway.networking.k8s.io/v1 ListenerSets. | false |
+| **types** | []enum | Types selects the kinds whose class is set. Required when class is supplied.<br>Gateway targets gateway.networking.k8s.io/v1. Served v1beta1 Gateway<br>requests receive the same class mutation for version compatibility.<br>ListenerSet parentRef mutation has its own explicit target and is unchanged.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
 
 
 ### RuleStatus.status.rules[index].mutate[index].ingress.listenerSets
@@ -7471,6 +8509,18 @@ Attachment remains subject to the parent's allowedListeners configuration.
 | **namespace** | string | Namespace identifies the parent's namespace. Omitted means the<br>ListenerSet's namespace; an explicit empty string is invalid. | false |
 
 
+### RuleStatus.status.rules[index].mutate[index].storage
+
+
+
+Storage configures defaults for PersistentVolumeClaims.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **attributeClass** | string | AttributeClass sets spec.volumeAttributesClassName on PersistentVolumeClaim<br>creation, including the claims the StatefulSet and ephemeral volume<br>controllers create from templates under their own identity. Merge fills an<br>omitted or null class and keeps an empty one, which chooses no class, as<br>an empty storageClassName opts out of the default StorageClass. The first<br>applicable merge wins. Replace always sets the class. Updates never change<br>the class, since a new class modifies the volume. Capsule neither reads nor<br>creates the VolumeAttributesClass; Kubernetes keeps a claim whose class<br>doesn't exist pending until it does. Omitted or null leaves the claim<br>unchanged. Tenant and Namespace templates are supported; rendered names<br>must satisfy native VolumeAttributesClass name validation. | false |
+
+
 ### RuleStatus.status.rules[index].mutate[index].workloads
 
 
@@ -7487,10 +8537,24 @@ On merge, required affinity restrictions from applicable entries are ANDed.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[classes](#rulestatusstatusrulesindexmutateindexworkloadsclasses)** | object | Classes configures the classes referenced by the Pod. | false |
 | **[placement](#rulestatusstatusrulesindexmutateindexworkloadsplacement)** | object | Placement configures the Pod scheduler and scheduling constraints. | false |
 | **[registries](#rulestatusstatusrulesindexmutateindexworkloadsregistries)** | object | Registries configures Pod image pull secrets and selected containers' pull policies. | false |
 | **[security](#rulestatusstatusrulesindexmutateindexworkloadssecurity)** | object | Security configures Pod and container security settings. | false |
 | **targets** | []enum | Targets selects compatible Pod locations. Omitted or empty selects all<br>compatible locations. The pod target includes Pod-level properties and all<br>container groups; pod/containers, pod/initcontainers and pod/ephemeralcontainers<br>narrow selection to one group. Controller templates and volumes are not supported.<br/>*Enum*: pod, pod/containers, pod/initcontainers, pod/ephemeralcontainers<br/> | false |
+
+
+### RuleStatus.status.rules[index].mutate[index].workloads.classes
+
+
+
+Classes configures the classes referenced by the Pod.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **priority** | string | Priority sets spec.priorityClassName on Pod creation, together with the<br>priority and preemptionPolicy of that PriorityClass. Merge fills an omitted<br>class; the cluster's global default class, which Kubernetes assigns before<br>admission, counts as omitted. The first applicable merge wins. Replace<br>always sets the class. The PriorityClass must exist; Capsule does not create<br>it. Omitted or null leaves the Pod unchanged. Tenant and Namespace templates<br>are supported; rendered names must satisfy native PriorityClass name<br>validation. Requires the pod target or omitted/empty targets. | false |
+| **runtime** | string | Runtime sets spec.runtimeClassName on Pod creation. Merge fills an omitted<br>class and preserves every class a Pod names: Kubernetes has no default<br>RuntimeClass, so an omitted class is unset. The first applicable merge<br>wins. Replace always sets the class. When the entries change the class of<br>a Pod, Capsule applies the overhead and the scheduling constraints of the<br>assigned RuntimeClass, as the API server does for the class a Pod names:<br>the class must exist, and a scheduling nodeSelector that conflicts with<br>the Pod rejects it. The constraints of the final class are restored when<br>a replace of nodeSelector or tolerations removes them, also when the<br>class itself did not change. Constraints the Pod already carries for a<br>class an entry replaces are residual: they are retained but not restored,<br>while a class replaced within the entries leaves nothing behind. The<br>conditions of a later entry see the overhead and the constraints of the<br>class assigned before them. Capsule does not create the RuntimeClass.<br>Omitted or null leaves the Pod unchanged. Tenant and Namespace templates<br>are supported; rendered names must satisfy native RuntimeClass name<br>validation. Requires the pod target or omitted/empty targets. | false |
 
 
 ### RuleStatus.status.rules[index].mutate[index].workloads.placement
@@ -8315,8 +9379,11 @@ TenantResourceSpec defines the desired state of TenantResource.
 | **[settings](#tenantresourcespecsettings)** | object | <span style="color:red;font-weight:bold">Deprecated: configure resources[].policy instead. Admission converts Settings<br>into policies for blocks without one. Retained as a compatibility fallback<br>for stored resources that have not passed through admission again.</span><br/>*Default*: map[]<br/> | true |
 | **cordoned** | boolean | When cordoning a replication it will no longer execute any applies or deletions (paused).<br>This is useful for maintenances<br/>*Default*: false<br/> | false |
 | **[dependsOn](#tenantresourcespecdependsonindex)** | []object | DependsOn may contain a meta.NamespacedObjectReference slice<br>with references to TenantResource resources that must be ready before this<br>TenantResource can be reconciled. | false |
+| **[healthChecks](#tenantresourcespechealthchecks)** | object | HealthChecks optionally requires applied targets to become healthy before Ready.<br>Omitted health checks preserve apply-only readiness and perform no health reads. | false |
 | **pruningOnDelete** | boolean | <span style="color:red;font-weight:bold">When the replicated resource manifest is deleted, all the objects replicated so far will be automatically deleted.<br>Disable this to keep replicated resources although the deletion of the replication manifest.<br><br>Deprecated: use resources[].policy.deletion instead. Retained for blocks without a policy.</span><br/>*Default*: true<br/> | false |
 | **[serviceAccount](#tenantresourcespecserviceaccount)** | object | Local ServiceAccount which will perform all the actions defined in the TenantResource<br>You must provide permissions accordingly to that ServiceAccount | false |
+| **triggerMinInterval** | string | TriggerMinInterval bounds triggered reconciliation frequency across all triggers<br>on this resource. Events within the interval coalesce into one pending reconcile.<br>Spec changes, deletion, manual requests, and periodic resyncs retain their behavior.<br/>*Default*: 10s<br/> | false |
+| **[triggers](#tenantresourcespectriggersindex)** | []object | Triggers request reconciliation on observed namespaced resource changes.<br>Capsule-managed resources never trigger reconciliation. Delivery is best effort;<br>bounded watch memory may skip large objects or updates without a retained old state.<br>resyncPeriod remains the recovery mechanism for missed events. | false |
 
 
 ### TenantResource.spec.resources[index]
@@ -8543,6 +9610,37 @@ LocalObjectReference contains enough information to locate the referenced Kubern
 | **name** | string | Name of the referent. | true |
 
 
+### TenantResource.spec.healthChecks
+
+
+
+HealthChecks optionally requires applied targets to become healthy before Ready.
+Omitted health checks preserve apply-only readiness and perform no health reads.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[expressions](#tenantresourcespechealthchecksexpressionsindex)** | []object | Expressions override kstatus for the specified API groups and kinds.<br>Expressions receive object and its top-level fields (metadata, spec, status).<br>Evaluated in order: inProgress, failed, current. Requires wait: true. | false |
+| **timeout** | string | Timeout bounds an incomplete rollout across retries and leader changes.<br>Defaults to five minutes. A completed rollout can start a new assessment. | false |
+| **wait** | boolean | Wait requires successfully applied targets to pass health checks before Ready.<br>Omitted or false preserves apply-only readiness and performs no health reads. | false |
+
+
+### TenantResource.spec.healthChecks.expressions[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **apiVersion** | string | APIVersion identifies the API group; the served version is ignored when matching. | true |
+| **current** | string | Current returns true when the target is healthy. | true |
+| **kind** | string | Kind identifies the kind whose status is evaluated. | true |
+| **failed** | string | Failed returns true on a failed rollout. | false |
+| **inProgress** | string | InProgress returns true while reconciliation is ongoing. | false |
+
+
 ### TenantResource.spec.serviceAccount
 
 
@@ -8556,6 +9654,111 @@ You must provide permissions accordingly to that ServiceAccount
 | **name** | string | Name of the referent. | true |
 
 
+### TenantResource.spec.triggers[index]
+
+
+
+TenantResourceTrigger requests best-effort reconciliation on observed resource changes.
+Resource behavior and replication destinations remain defined by resources.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **name** | string | Name uniquely identifies this trigger. | true |
+| **apiGroups** | []string | APIGroups selects explicit API groups. Use "" for the core API group.<br>Wildcards are unsupported. | false |
+| **apiVersions** | []string | APIVersions selects explicit API versions, such as "v1". Wildcards are unsupported. | false |
+| **[audience](#tenantresourcespectriggersindexaudienceindex)** | []object | <span style="color:red;font-weight:bold">Deprecated: watches do not carry request identities. Audience must be empty.</span> | false |
+| **[matchConditions](#tenantresourcespectriggersindexmatchconditionsindex)** | []object | MatchConditions are CEL conditions over object, oldObject and operation. All must match. | false |
+| **[namespaceSelector](#tenantresourcespectriggersindexnamespaceselector)** | object | NamespaceSelector selects event source namespaces for GlobalTenantResources.<br>TenantResources always observe only their own namespace and cannot set this field. | false |
+| **[objectSelector](#tenantresourcespectriggersindexobjectselector)** | object | ObjectSelector matches the labels of either the old or new observed object. | false |
+| **operations** | []string | Operations selects observed CREATE, UPDATE, and DELETE events.<br>A single "*" selects all three. CONNECT is unsupported by watches. | false |
+| **resources** | []string | Resources selects explicit plural top-level resource names, such as "configmaps".<br>Wildcards are unsupported. Subresources, such as "pods/log", are unsupported. | false |
+| **scope** | string | Scope may be omitted or set to "Namespaced". Watches only observe namespaced resources. | false |
+
+
+### TenantResource.spec.triggers[index].audience[index]
+
+
+
+
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **kind** | enum | <br/>*Enum*: User, Group, ServiceAccount, Custom<br/> | true |
+| **name** | string |  | true |
+
+
+### TenantResource.spec.triggers[index].matchConditions[index]
+
+
+
+TenantResourceTriggerCondition filters an observed resource change using CEL.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **expression** | string | Expression must evaluate to bool using only the observed event variables:<br>object is the new persisted object (null for DELETE), oldObject is the previous<br>persisted object (null for CREATE), and operation is "CREATE", "UPDATE", or "DELETE".<br>Admission request and authorizer variables are unavailable. For example:<br>operation != 'UPDATE' || object.data != oldObject.data | true |
+| **name** | string | Name uniquely identifies this condition within a trigger. It must be a Kubernetes<br>qualified name, optionally prefixed with a DNS subdomain and '/'. | true |
+
+
+### TenantResource.spec.triggers[index].namespaceSelector
+
+
+
+NamespaceSelector selects event source namespaces for GlobalTenantResources.
+TenantResources always observe only their own namespace and cannot set this field.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantresourcespectriggersindexnamespaceselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### TenantResource.spec.triggers[index].namespaceSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### TenantResource.spec.triggers[index].objectSelector
+
+
+
+ObjectSelector matches the labels of either the old or new observed object.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantresourcespectriggersindexobjectselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### TenantResource.spec.triggers[index].objectSelector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
 ### TenantResource.status
 
 
@@ -8567,9 +9770,12 @@ TenantResourceStatus defines the observed state of TenantResource.
 | :---- | :---- | :----------- | :-------- |
 | **size** | integer | Number of managed resources. | true |
 | **[conditions](#tenantresourcestatusconditionsindex)** | []object | Condition of the GlobalTenantResource. | false |
+| **[health](#tenantresourcestatushealth)** | object | Health records the durable rollout deadline and bounded health-check progress. | false |
+| **nextResyncAt** | string | NextResyncAt is the next periodic resync deadline for trigger-enabled replications.<br/>*Format*: date-time<br/> | false |
 | **observedGeneration** | integer | ObservedGeneration is the most recent generation the controller has observed.<br/>*Format*: int64<br/> | false |
 | **[processedItems](#tenantresourcestatusprocesseditemsindex)** | []object | List of resources managed by the API object. | false |
 | **[serviceAccount](#tenantresourcestatusserviceaccount)** | object | Serviceaccount used for impersonation | false |
+| **[trigger](#tenantresourcestatustrigger)** | object | Trigger records the last watch notification handled by this controller. | false |
 
 
 ### TenantResource.status.conditions[index]
@@ -8587,6 +9793,28 @@ Condition contains details for one aspect of the current state of this API Resou
 | **status** | enum | status of the condition, one of True, False, Unknown.<br/>*Enum*: True, False, Unknown<br/> | true |
 | **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
 | **observedGeneration** | integer | observedGeneration represents the .metadata.generation that the condition was set based upon.<br>For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date<br>with respect to the current state of the instance.<br/>*Format*: int64<br/>*Minimum*: 0<br/> | false |
+
+
+### TenantResource.status.health
+
+
+
+Health records the durable rollout deadline and bounded health-check progress.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **deadline** | string | <br/>*Format*: date-time<br/> | true |
+| **observedGeneration** | integer | <br/>*Format*: int64<br/> | true |
+| **requestedAt** | string | <br/>*Format*: date-time<br/> | true |
+| **revision** | string |  | true |
+| **startedAt** | string | <br/>*Format*: date-time<br/> | true |
+| **applying** | boolean | Applying prevents observations from completing while a full apply is in flight. | false |
+| **cursor** | integer | <br/>*Format*: int32<br/>*Minimum*: 0<br/> | false |
+| **failed** | boolean |  | false |
+| **message** | string |  | false |
+| **nextCheckAt** | string | <br/>*Format*: date-time<br/> | false |
+| **pending** | boolean |  | false |
 
 
 ### TenantResource.status.processedItems[index]
@@ -8621,9 +9849,24 @@ Advanced Status Item for pin pointing items in tenants/namespaces.
 | **type** | string | type of condition in CamelCase or in foo.example.com/CamelCase. | true |
 | **clusterScoped** | boolean | Indicates whether the referenced resource is cluster-scoped. | false |
 | **created** | boolean | Indicates wether the resource was created or adopted | false |
+| **[health](#tenantresourcestatusprocesseditemsindexstatushealth)** | object | Health pins an opt-in health check to the successfully applied object. | false |
 | **lastApply** | string | An opaque value that represents the internal version of this object that can<br>be used by clients to determine when objects have changed. May be used for optimistic<br>concurrency, change detection, and the watch operation on a resource or set of resources.<br>Clients must treat these values as opaque and passed unmodified back to the server.<br>They may only be valid for a particular resource or set of resources.<br><br>Populated by the system.<br>Read-only.<br>Value must be treated as opaque by clients and .<br>More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency<br/>*Format*: date-time<br/> | false |
 | **message** | string | message is a human readable message indicating details about the transition.<br>This may be an empty string. | false |
 | **[policy](#tenantresourcestatusprocesseditemsindexstatuspolicy)** | object | Policy is a lifecycle snapshot for protection and cleanup. Conditions are<br>evaluated from the source block and omitted here. Failed updates retain the<br>previous snapshot; a first successful content write records its policy even<br>if metadata reconciliation fails, so cleanup respects explicit retention.<br>An absent policy on an already applied item preserves legacy behavior. | false |
+
+
+### TenantResource.status.processedItems[index].status.health
+
+
+
+Health pins an opt-in health check to the successfully applied object.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **digest** | string | Digest identifies an opaque content-write revision, including objects without generations.<br>It is not a checksum of rendered manifests or Secret values. | true |
+| **generation** | integer | <br/>*Format*: int64<br/> | true |
+| **uid** | string | UID is a type that holds unique ID values, including UUIDs.  Because we<br>don't ONLY use UUIDs, this is an alias to string.  Being a type captures<br>intent and helps make sure that UIDs and names do not get conflated. | true |
 
 
 ### TenantResource.status.processedItems[index].status.policy
@@ -8656,6 +9899,19 @@ Serviceaccount used for impersonation
 | :---- | :---- | :----------- | :-------- |
 | **name** | string | Name of the referent. | true |
 | **namespace** | string | Namespace of the referent. | true |
+
+
+### TenantResource.status.trigger
+
+
+
+Trigger records the last watch notification handled by this controller.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **lastTriggeredAt** | string | LastTriggeredAt is the start of the last triggered reconcile, including failed attempts.<br/>*Format*: date-time<br/> | true |
+| **observedRequest** | string | ObservedRequest identifies the notification included in the last triggered reconcile. | true |
 
 ## Tenant
 
@@ -9598,11 +10854,12 @@ Enforcement for given rule
 | :---- | :---- | :----------- | :-------- |
 | **action** | enum | Declare the action being performed on the enforcement rule:<br>deny: On match, deny admission request<br>allow: On match, allowed admission request<br>audit: On match, audit (post event) of admission request<br/>*Enum*: allow, deny, audit<br/>*Default*: deny<br/> | false |
 | **[conditions](#tenantspecrulesindexenforceconditionsindex)** | []object | Conditions gate this entire enforcement rule, including workloads, services,<br>metadata, ingress, network and storage. All conditions must be true; empty means apply.<br>Conditions run during admission; managed metadata in a conditional rule<br>is applied on matching requests only and is not reconciled in the background. | false |
+| **[devices](#tenantspecrulesindexenforcedevices)** | object | Devices restricts DeviceClass references in ResourceClaims and ResourceClaimTemplates. | false |
 | **[ingress](#tenantspecrulesindexenforceingress)** | object | Enforcement for Ingress and Gateway API resource hostnames. | false |
 | **[metadata](#tenantspecrulesindexenforcemetadataindex)** | []object | Enforcement for object metadata on namespaced resources. | false |
 | **[network](#tenantspecrulesindexenforcenetwork)** | object | Network configures network enforcement for namespace resources. | false |
 | **[services](#tenantspecrulesindexenforceservices)** | object | Enforcement for Services. | false |
-| **[storage](#tenantspecrulesindexenforcestorage)** | object | Additional access to PersistentVolumes without a tenant ownership label. | false |
+| **[storage](#tenantspecrulesindexenforcestorage)** | object | Additional access to PersistentVolumes without a tenant ownership label,<br>and the classes storage objects may reference. | false |
 | **[workloads](#tenantspecrulesindexenforceworkloads)** | object | Enforcement for native workload kinds and Pod properties. | false |
 
 
@@ -9622,6 +10879,65 @@ otherwise volume is null. Conditions never modify the PVC or PV.
 | **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
 
 
+### Tenant.spec.rules[index].enforce.devices
+
+
+
+Devices restricts DeviceClass references in ResourceClaims and ResourceClaimTemplates.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[classes](#tenantspecrulesindexenforcedevicesclassesindex)** | []object | Classes matches DeviceClasses by name or existing class labels. Entries are<br>ORed; each requested class is evaluated independently in rule order.<br>An applicable allow list rejects unmatched classes. Audit never grants access.<br>Legacy Tenant.spec.deviceClasses restrictions remain an additional boundary. | false |
+
+
+### Tenant.spec.rules[index].enforce.devices.classes[index]
+
+
+
+DeviceClassMatch ORs exact names, a name expression, and a label selector.
+At least one criterion is required by rule admission validation. As with
+placement expressions, this is checked outside CEL to bound schema cost.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of these class names. | false |
+| **exp** | string | Exp matches regular expression. | false |
+| **negate** | boolean | Negate inverts the match result. Omitted means false. | false |
+| **[selector](#tenantspecrulesindexenforcedevicesclassesindexselector)** | object | Selector matches labels on the DeviceClass, not the claim or namespace.<br>Omitted means no label criterion; explicit {} matches every existing class.<br>References must resolve when selectors participate in allow/deny enforcement. | false |
+
+
+### Tenant.spec.rules[index].enforce.devices.classes[index].selector
+
+
+
+Selector matches labels on the DeviceClass, not the claim or namespace.
+Omitted means no label criterion; explicit {} matches every existing class.
+References must resolve when selectors participate in allow/deny enforcement.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[matchExpressions](#tenantspecrulesindexenforcedevicesclassesindexselectormatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].enforce.devices.classes[index].selector.matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
 ### Tenant.spec.rules[index].enforce.ingress
 
 
@@ -9631,8 +10947,42 @@ Enforcement for Ingress and Gateway API resource hostnames.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[classes](#tenantspecrulesindexenforceingressclassesindex)** | []object | Classes matches IngressClass or GatewayClass names and labels. Entries,<br>and the criteria within each entry, are ORed. Label selectors read the<br>referenced class, not the ingress or namespace. Exact and exp need no read.<br>Classless objects are rejected by applicable allow/deny class rules.<br>Legacy Tenant class restrictions remain an additional boundary. | false |
 | **[hostnames](#tenantspecrulesindexenforceingresshostnamesindex)** | []object | Hostnames defines allowed, denied, or audited hostname expressions.<br>A resource targeted by an allow or deny rule must declare non-empty values<br>in all hostname fields. Audit-only rules record missing hostnames without<br>denying them. | false |
-| **types** | []enum | Types defines the resource kinds to which hostname enforcement applies.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+| **types** | []enum | Types defines the resource kinds to which enforcement applies. Classes<br>apply to Ingress and Gateway; hostnames apply to every supported type.<br>Gateway targets gateway.networking.k8s.io/v1. Served v1beta1 Gateway<br>requests receive the same rules to prevent bypass through another version.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
+
+
+### Tenant.spec.rules[index].enforce.ingress.classes[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#tenantspecrulesindexenforceingressclassesindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].enforce.ingress.classes[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### Tenant.spec.rules[index].enforce.ingress.hostnames[index]
@@ -9872,12 +11222,82 @@ NodePorts defines additional constraints for nodePort values.
 
 
 
-Additional access to PersistentVolumes without a tenant ownership label.
+Additional access to PersistentVolumes without a tenant ownership label,
+and the classes storage objects may reference.
 
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[attributeClasses](#tenantspecrulesindexenforcestorageattributeclassesindex)** | []object | AttributeClasses matches PersistentVolumeClaim<br>spec.volumeAttributesClassName. Entries are ORed. Targets don't apply. A<br>claim without a class is not matched, since Kubernetes then applies none.<br>Updates are only matched when they change the class to one other than<br>status.currentVolumeAttributesClassName: restoring the applied class<br>cancels a modification. | false |
+| **[classes](#tenantspecrulesindexenforcestorageclassesindex)** | []object | Classes matches the class referenced by each targeted object. Entries are<br>ORed. An allow or deny rule requires the targeted object to name a class<br>whenever the class would otherwise be defaulted after admission. Without<br>targets, classes apply to every supported kind. | false |
+| **targets** | []enum | Targets selects the kinds whose class reference is matched against classes.<br>volumesnapshot matches VolumeSnapshot spec.volumeSnapshotClassName.<br>Omitted targets select every supported kind. Requires classes.<br/>*Enum*: volumesnapshot<br/> | false |
 | **[volumes](#tenantspecrulesindexenforcestoragevolumesindex)** | []object | Volumes matches additional PersistentVolumes. Entries are ORed. Conditions<br>on the enclosing enforcement rule must also match. The last matching<br>allow/deny decides the exception; audit never grants access. | false |
+
+
+### Tenant.spec.rules[index].enforce.storage.attributeClasses[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#tenantspecrulesindexenforcestorageattributeclassesindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].enforce.storage.attributeClasses[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### Tenant.spec.rules[index].enforce.storage.classes[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#tenantspecrulesindexenforcestorageclassesindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].enforce.storage.classes[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### Tenant.spec.rules[index].enforce.storage.volumes[index]
@@ -9932,6 +11352,7 @@ Enforcement for native workload kinds and Pod properties.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[classes](#tenantspecrulesindexenforceworkloadsclasses)** | object | Classes matches the classes referenced by Pods. | false |
 | **[disruptionBudgets](#tenantspecrulesindexenforceworkloadsdisruptionbudgets)** | object | DisruptionBudgets constrains PDB coverage of selected Pods and controller templates.<br>Only whole-workload targets apply; omitted targets select Pods. | false |
 | **[placement](#tenantspecrulesindexenforceworkloadsplacement)** | object | Placement matches the Pod scheduler and scheduling constraints. | false |
 | **qosClasses** | []string | Define Pod QoS classes matched by this enforcement rule.<br>Supported values are Guaranteed, Burstable and BestEffort. | false |
@@ -9940,6 +11361,85 @@ Enforcement for native workload kinds and Pod properties.
 | **[schedulers](#tenantspecrulesindexenforceworkloadsschedulersindex)** | []object | <span style="color:red;font-weight:bold">Schedulers defines additional schedulerName matchers for selected Pods and<br>Pod templates. These are combined with placement.schedulers under the same<br>rule action; a match in either field counts as a match.<br><br>Deprecated: use Placement.Schedulers instead.</span> | false |
 | **[security](#tenantspecrulesindexenforceworkloadssecurity)** | object | Security matches effective Pod and container security profiles. | false |
 | **targets** | []string | Targets selects native workloads and, optionally, parts of their Pod specs.<br>With no workload policies, the action matches the selected kinds themselves.<br>With policies, targets scopes those policies; it does not also match the kind.<br>Omitted targets preserve Pod-only defaults. Controller targets are opt-in.<br>Whole-controller targets include every compatible location in the Pod template.<br>Existing pod and pod/* part targets retain their established policy scope. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.classes
+
+
+
+Classes matches the classes referenced by Pods.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **[priority](#tenantspecrulesindexenforceworkloadsclassespriorityindex)** | []object | Priority matches spec.priorityClassName of selected Pods and Pod templates<br>by name, or by the labels of the PriorityClass. Entries, and the criteria<br>within each entry, are ORed. An applicable allow list rejects every other<br>class; audit never grants access. A Pod without a class is not matched:<br>Kubernetes assigns the cluster's global default class before admission, so<br>that name is matched like an explicit one. A controller template gets its<br>class only when its Pods are created, so an allow or deny rule that targets<br>the controller requires the template to name one; audit rules record its<br>absence. Exact and exp need no read; a label selector reads the class, and<br>a missing class never matches it. Priority rules apply to the pod target<br>and do not run on subresources. An update that keeps the class is only<br>checked again when an allow or deny class rule has conditions; conditional<br>audit rules are recorded without taking that decision again.<br>Legacy Tenant.spec.priorityClasses restrictions remain an additional boundary. | false |
+| **[runtime](#tenantspecrulesindexenforceworkloadsclassesruntimeindex)** | []object | Runtime matches spec.runtimeClassName of selected Pods and Pod templates<br>by name, or by the labels of the RuntimeClass. Entries, and the criteria<br>within each entry, are ORed. An applicable allow list rejects every other<br>class; audit never grants access. A Pod without a class is not matched:<br>Kubernetes has no default RuntimeClass, mutation has already run, and the<br>Pod keeps the default runtime of its node. A controller template is not<br>necessarily classless when its Pods run — a Tenant default or a mutation<br>rule can assign a class then — so an allow or deny rule that targets the<br>controller requires the template to name one; audit rules record its<br>absence. Exact and exp need no read; a label selector reads the class,<br>and a missing class never matches it. Runtime rules apply to the pod<br>target and do not run on subresources. An update that keeps the class is<br>only checked again when an allow or deny class rule has conditions;<br>conditional audit rules are recorded without taking that decision again.<br>Legacy Tenant.spec.runtimeClasses restrictions remain an additional boundary. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.classes.priority[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#tenantspecrulesindexenforceworkloadsclassespriorityindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.classes.priority[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.classes.runtime[index]
+
+
+
+StorageClassMatch matches a class by name, or by the labels of the class
+object. Exact, exp and the label selector are ORed. The rule admission
+validator requires at least one of them. A class object that does not exist
+never matches the label selector.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **exact** | []string | Exact matches one of the provided class names exactly. | false |
+| **exp** | string | Exp matches the class name by regular expression. | false |
+| **[matchExpressions](#tenantspecrulesindexenforceworkloadsclassesruntimeindexmatchexpressionsindex)** | []object | matchExpressions is a list of label selector requirements. The requirements are ANDed. | false |
+| **matchLabels** | map[string]string | matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels<br>map is equivalent to an element of matchExpressions, whose key field is "key", the<br>operator is "In", and the values array contains only "value". The requirements are ANDed. | false |
+
+
+### Tenant.spec.rules[index].enforce.workloads.classes.runtime[index].matchExpressions[index]
+
+
+
+A label selector requirement is a selector that contains values, a key, and an operator that
+relates the key and values.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **key** | string | key is the label key that the selector applies to. | true |
+| **operator** | string | operator represents a key's relationship to a set of values.<br>Valid operators are In, NotIn, Exists and DoesNotExist. | true |
+| **values** | []string | values is an array of string values. If the operator is In or NotIn,<br>the values array must be non-empty. If the operator is Exists or DoesNotExist,<br>the values array must be empty. This array is replaced during a strategic<br>merge patch. | false |
 
 
 ### Tenant.spec.rules[index].enforce.workloads.disruptionBudgets
@@ -10702,9 +12202,11 @@ Mutated values remain subject to all applicable enforcement rules.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br>ListenerSet parent references are atomic: merge fills an absent or null<br>reference, while replace replaces the entire supplied reference.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
+| **action** | enum | Action chooses how explicitly supplied properties are applied.<br>Merge fills an empty schedulerName, an omitted priority, runtime or volume attributes class and absent security profiles, sets hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy,<br>and map keys, adds missing imagePullSecrets by name, upserts lists, and conjoins required affinity.<br>Replace replaces each supplied property in full: scheduler, classes.priority, classes.runtime, storage.attributeClass, hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, nodeSelector,<br>registries.imagePullSecrets, tolerations, topologySpreadConstraints, affinity, or security profiles. Omitted properties are<br>retained. Supplying affinity replaces all its branches, including omitted ones.<br>ListenerSet parent references are atomic: merge fills an absent or null<br>reference, while replace replaces the entire supplied reference.<br>DeviceClass defaults support merge only, preserving every explicit class name.<br/>*Enum*: merge, replace<br/>*Default*: merge<br/> | false |
 | **[conditions](#tenantspecrulesindexmutateindexconditionsindex)** | []object | Conditions gate this entire mutation entry and inspect the object after<br>preceding mutations. All conditions must be true; empty means apply. | false |
+| **[devices](#tenantspecrulesindexmutateindexdevices)** | object | Devices configures default DeviceClass references for DRA claims and templates. | false |
 | **[ingress](#tenantspecrulesindexmutateindexingress)** | object | Ingress configures Kubernetes ingress and Gateway API resource mutations. | false |
+| **[storage](#tenantspecrulesindexmutateindexstorage)** | object | Storage configures defaults for PersistentVolumeClaims. | false |
 | **[workloads](#tenantspecrulesindexmutateindexworkloads)** | object | WorkloadMutation contains typed native Pod values. Empty maps/lists are<br>preserved so replace can clear a property; nil means the property is omitted.<br>It applies on Pod creation. Security.ReadOnlyRootFilesystem and<br>Registries.ImagePullPolicy also apply to newly added ephemeral containers on<br>subresource updates. Existing containers are never reconciled.<br>On merge, later entries override hostUsers, readOnlyRootFilesystem, registries.imagePullPolicy, matching map keys,<br>tolerations and spread constraints.<br>On merge, required affinity restrictions from applicable entries are ANDed. | false |
 
 
@@ -10724,6 +12226,18 @@ otherwise volume is null. Conditions never modify the PVC or PV.
 | **name** | string | Name identifies a condition in admission errors. Names must be unique within a block. | false |
 
 
+### Tenant.spec.rules[index].mutate[index].devices
+
+
+
+Devices configures default DeviceClass references for DRA claims and templates.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **class** | string | Class fills an omitted, null, or empty deviceClassName in each existing<br>exactly request and firstAvailable alternative. Explicit names and request<br>structure are preserved. The first applicable default wins. Supports merge<br>only; replace is rejected to preserve scheduler-selected allocations.<br>Omitted or null supplies no default. Tenant and Namespace templates are<br>supported; rendered names must satisfy native DeviceClass name validation. | false |
+
+
 ### Tenant.spec.rules[index].mutate[index].ingress
 
 
@@ -10733,7 +12247,9 @@ Ingress configures Kubernetes ingress and Gateway API resource mutations.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **class** | string | Class sets the targeted Ingress or Gateway class on CREATE and UPDATE.<br>Merge fills an absent or empty class, preserving explicit field/annotation<br>values. Replace sets the class and keeps an existing ingress annotation in<br>sync. Rule changes do not reconcile existing objects. Templates are allowed;<br>rendered values must be valid DNS subdomains. Omitted leaves it unchanged. | false |
 | **[listenerSets](#tenantspecrulesindexmutateindexingresslistenersets)** | object | ListenerSets configures gateway.networking.k8s.io/v1 ListenerSets. | false |
+| **types** | []enum | Types selects the kinds whose class is set. Required when class is supplied.<br>Gateway targets gateway.networking.k8s.io/v1. Served v1beta1 Gateway<br>requests receive the same class mutation for version compatibility.<br>ListenerSet parentRef mutation has its own explicit target and is unchanged.<br/>*Enum*: Ingress, Route, ListenerSet, HTTPRoute, Gateway, TLSRoute, GRPCRoute<br/> | false |
 
 
 ### Tenant.spec.rules[index].mutate[index].ingress.listenerSets
@@ -10767,6 +12283,18 @@ Attachment remains subject to the parent's allowedListeners configuration.
 | **namespace** | string | Namespace identifies the parent's namespace. Omitted means the<br>ListenerSet's namespace; an explicit empty string is invalid. | false |
 
 
+### Tenant.spec.rules[index].mutate[index].storage
+
+
+
+Storage configures defaults for PersistentVolumeClaims.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **attributeClass** | string | AttributeClass sets spec.volumeAttributesClassName on PersistentVolumeClaim<br>creation, including the claims the StatefulSet and ephemeral volume<br>controllers create from templates under their own identity. Merge fills an<br>omitted or null class and keeps an empty one, which chooses no class, as<br>an empty storageClassName opts out of the default StorageClass. The first<br>applicable merge wins. Replace always sets the class. Updates never change<br>the class, since a new class modifies the volume. Capsule neither reads nor<br>creates the VolumeAttributesClass; Kubernetes keeps a claim whose class<br>doesn't exist pending until it does. Omitted or null leaves the claim<br>unchanged. Tenant and Namespace templates are supported; rendered names<br>must satisfy native VolumeAttributesClass name validation. | false |
+
+
 ### Tenant.spec.rules[index].mutate[index].workloads
 
 
@@ -10783,10 +12311,24 @@ On merge, required affinity restrictions from applicable entries are ANDed.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
+| **[classes](#tenantspecrulesindexmutateindexworkloadsclasses)** | object | Classes configures the classes referenced by the Pod. | false |
 | **[placement](#tenantspecrulesindexmutateindexworkloadsplacement)** | object | Placement configures the Pod scheduler and scheduling constraints. | false |
 | **[registries](#tenantspecrulesindexmutateindexworkloadsregistries)** | object | Registries configures Pod image pull secrets and selected containers' pull policies. | false |
 | **[security](#tenantspecrulesindexmutateindexworkloadssecurity)** | object | Security configures Pod and container security settings. | false |
 | **targets** | []enum | Targets selects compatible Pod locations. Omitted or empty selects all<br>compatible locations. The pod target includes Pod-level properties and all<br>container groups; pod/containers, pod/initcontainers and pod/ephemeralcontainers<br>narrow selection to one group. Controller templates and volumes are not supported.<br/>*Enum*: pod, pod/containers, pod/initcontainers, pod/ephemeralcontainers<br/> | false |
+
+
+### Tenant.spec.rules[index].mutate[index].workloads.classes
+
+
+
+Classes configures the classes referenced by the Pod.
+
+
+| **Name** | **Type** | **Description** | **Required** |
+| :---- | :---- | :----------- | :-------- |
+| **priority** | string | Priority sets spec.priorityClassName on Pod creation, together with the<br>priority and preemptionPolicy of that PriorityClass. Merge fills an omitted<br>class; the cluster's global default class, which Kubernetes assigns before<br>admission, counts as omitted. The first applicable merge wins. Replace<br>always sets the class. The PriorityClass must exist; Capsule does not create<br>it. Omitted or null leaves the Pod unchanged. Tenant and Namespace templates<br>are supported; rendered names must satisfy native PriorityClass name<br>validation. Requires the pod target or omitted/empty targets. | false |
+| **runtime** | string | Runtime sets spec.runtimeClassName on Pod creation. Merge fills an omitted<br>class and preserves every class a Pod names: Kubernetes has no default<br>RuntimeClass, so an omitted class is unset. The first applicable merge<br>wins. Replace always sets the class. When the entries change the class of<br>a Pod, Capsule applies the overhead and the scheduling constraints of the<br>assigned RuntimeClass, as the API server does for the class a Pod names:<br>the class must exist, and a scheduling nodeSelector that conflicts with<br>the Pod rejects it. The constraints of the final class are restored when<br>a replace of nodeSelector or tolerations removes them, also when the<br>class itself did not change. Constraints the Pod already carries for a<br>class an entry replaces are residual: they are retained but not restored,<br>while a class replaced within the entries leaves nothing behind. The<br>conditions of a later entry see the overhead and the constraints of the<br>class assigned before them. Capsule does not create the RuntimeClass.<br>Omitted or null leaves the Pod unchanged. Tenant and Namespace templates<br>are supported; rendered names must satisfy native RuntimeClass name<br>validation. Requires the pod target or omitted/empty targets. | false |
 
 
 ### Tenant.spec.rules[index].mutate[index].workloads.placement
@@ -11824,9 +13366,9 @@ Available Class Types within Tenant
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
 | **device** | []string | Available DeviceClasses | false |
-| **gateway** | []string | Available GatewayClasses | false |
-| **priority** | []string | Available PriorityClasses | false |
-| **runtime** | []string | Available StorageClasses | false |
+| **gateway** | []string | <span style="color:red;font-weight:bold">Deprecated: retained for API compatibility, but no longer populated.<br>Ingress/Gateway classes are enforced through namespace rules.</span> | false |
+| **priority** | []string | <span style="color:red;font-weight:bold">Deprecated: retained for API compatibility, but no longer populated.<br>Priority classes are enforced through namespace rules.</span> | false |
+| **runtime** | []string | <span style="color:red;font-weight:bold">Deprecated: retained for API compatibility, but no longer populated.<br>Runtime classes are enforced through namespace rules.</span> | false |
 | **storage** | []string | Available Storageclasses (Only collected if any matching condition is specified) | false |
 
 

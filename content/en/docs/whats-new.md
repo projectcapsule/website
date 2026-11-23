@@ -26,6 +26,8 @@ outputs:
 
 ## Features ✨
 
+* **Capsule**: The forced cleanup of terminating Tenant namespaces is now [configurable](/docs/operating/setup/configuration/#namespacecleanup) with `namespaceCleanup` in the `CapsuleConfiguration`. `gracePeriod` gives the controllers owning the remaining objects more time than the default 10 seconds, and `retainedFinalizers` lists finalizers Capsule never removes, such as those of Cluster API, so their controllers can release external resources before the namespace goes.
+
 * **Capsule**: [Resource policies](/docs/operating/concepts/managed-resources/#resource-policy) for `TenantResource` and `GlobalTenantResource` add conditional application and control over resource adoption, protection, and cleanup.
 
 * **Capsule**: The Helm chart has new OpenShift toggles. See the [OpenShift guide](/docs/operating/setup/openshift/#helm-chart-values) for a complete values example:

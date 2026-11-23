@@ -128,6 +128,69 @@ manager:
     cacheInvalidation: 0h30m0s
 ```
 
+### `namespaceCleanup`
+
+Configures the forced cleanup Capsule runs on a terminating `Namespace` of a `Tenant` so it does not stay stuck in `Terminating`. Once the `Namespace` has been terminating for the grace period and no Pods are left, Capsule deletes the remaining objects and removes their finalizers. With `namespaceCleanup` you decide how long the controllers owning those objects get to finish, and which finalizers Capsule never removes.
+
+[Read More](/docs/tenants/namespaces/#termination)
+
+Many finalizers release state outside the `Namespace`: cloud load balancers, storage volumes, network allocations, KubeVirt virtual machines, Kamaji control planes, or bare-metal hosts managed by a Cluster API infrastructure provider. When Capsule removes such a finalizer before its controller is done, that state leaks. For example, a Cluster API provider still powering off and wiping a bare-metal host loses track of it: the server stays powered on and claimed by a machine that no longer exists, until someone releases it by hand.
+
+```yaml
+apiVersion: capsule.clastix.io/v1beta2
+kind: CapsuleConfiguration
+metadata:
+  name: default
+spec:
+  namespaceCleanup:
+    # Time left to the controllers owning the remaining objects,
+    # measured from the Namespace deletionTimestamp.
+    gracePeriod: 15m
+    # Finalizers the cleanup never removes, on any resource.
+    retainedFinalizers:
+      - cluster.cluster.x-k8s.io
+      - machine.cluster.x-k8s.io
+```
+
+| Field | Default | Description |
+| :---- | :------ | :---------- |
+| `gracePeriod` | `10s` | How long a terminating `Namespace` is left to the controllers owning its objects, measured from its `deletionTimestamp`. Once it elapses and no Pods are left, the cleanup starts. `0s` starts it as soon as no Pods are left. Negative values are rejected. |
+| `retainedFinalizers` | none | Finalizers the cleanup never removes, on any resource, so their controllers can complete however long they take. At most 64 entries, without duplicates. |
+
+Both fields are optional. Without `namespaceCleanup`, the cleanup starts 10 seconds after the `Namespace` deletion and removes every finalizer except Capsule's own on Capsule's resources.
+
+Use them together:
+
+* `gracePeriod` covers controllers that finish within a known time.
+* `retainedFinalizers` covers controllers that must never be bypassed, whatever it takes. A `Namespace` holding a retained finalizer stays `Terminating` until its controller removes it.
+
+Capsule's own finalizers (`controller.projectcapsule.dev/finalize` and `capsule.clastix.io/resources`) are always retained on Capsule's resources: you don't need to list them.
+
+To find the finalizers held by the objects of a `Namespace`, inspect them while they are terminating, for example:
+
+```shell
+kubectl get clusters.cluster.x-k8s.io -n solar-production -o custom-columns=NAME:.metadata.name,FINALIZERS:.metadata.finalizers
+```
+
+Changes apply without restarting the controller, also to `Namespaces` already terminating:
+
+* A `Namespace` within its grace period is rechecked at least once a minute, so a shortened `gracePeriod` applies within a minute.
+* The cleanup runs every 5 seconds while objects are left, so a finalizer removed from `retainedFinalizers` is removed on the next pass.
+
+{{% alert title="Warning" color="warning" %}}
+Both settings trade safety for deletion speed:
+
+* A `Tenant` is deleted only once its `Namespaces` are gone, so a longer `gracePeriod` also delays the `Tenant` deletion.
+* Tenant owners can add a listed finalizer to their own objects and hold their `Namespace`, and the `Tenant`, in deletion until the finalizer is removed. List only finalizers whose controllers you trust to remove them.
+{{% /alert %}}
+
+The Helm chart does not expose `namespaceCleanup` yet. Set it on the `CapsuleConfiguration` directly; the chart does not render these fields, so a Helm upgrade keeps them:
+
+```shell
+kubectl patch capsuleconfiguration default --type merge \
+  -p '{"spec":{"namespaceCleanup":{"gracePeriod":"15m","retainedFinalizers":["cluster.cluster.x-k8s.io","machine.cluster.x-k8s.io"]}}}'
+```
+
 ### `rbac`
 
 Define configurations for the RBAC which is being managed and applied by Capsule.

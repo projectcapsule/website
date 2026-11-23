@@ -322,13 +322,16 @@ The enforcement on the maximum number of `Namespaces` per `Tenant` is the respon
 
 ## Termination
 
-Capsule keeps it's managed resources as long as possible. Meaning even if a `Namespace` is terminated we verify the following things, before any capsule managed resources are finally removed:
+Capsule keeps its managed resources as long as possible. When a `Namespace` of a `Tenant` is deleted, Capsule verifies the following, in order, before its managed resources are finally removed:
 
-1. There are no pods in the namespace left (including pods with finalizers). Users must take own action to resolve finalizing pods.
-2. All other namespaced resources have removed finalizers and are deleted (capsule will initiate that step)
-3. Finally capsule managed resources are removed.
+1. The grace period has elapsed since the `Namespace` deletion, 10 seconds by default. Until then, the controllers owning the remaining objects can finish on their own.
+2. There are no Pods left in the `Namespace` (including Pods with finalizers). Users must take their own action to resolve finalizing Pods.
+3. Capsule deletes all other namespaced resources and removes their finalizers, except the retained ones: Capsule's own finalizers on Capsule's resources, and those configured by the administrators. A `Namespace` holding a retained finalizer stays `Terminating` until its controller removes it.
+4. Finally, Capsule managed resources are removed.
 
 This ensures proper cleanup of namespaces without having namespaces being stuck in `Terminating` phase and requiring administrator attention.
+
+Administrators configure the grace period and the retained finalizers with [`namespaceCleanup`](/docs/operating/setup/configuration/#namespacecleanup) in the `CapsuleConfiguration`, for example to give a Cluster API infrastructure provider time to release its machines, or to never bypass its finalizers.
 
 If you are running a Kubernetes Version below `1.33` you should make sure, that the `FeatureGate` `OrderedNamespaceDeletion` is enabled. This already enforces this order by default:
 
