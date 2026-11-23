@@ -47,7 +47,7 @@ GlobalProxySettingsSpec defines the desired state of GlobalProxySettings.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[rules](#globalproxysettingsspecrulesindex)** | []object | Subjects that should receive additional permissions.<br>The subjects are selected based on the oncoming requests. They don't have to relate to an existing tenant.<br>However they must be part of the capsule-user groups. | true |
+| **[rules](#globalproxysettingsspecrulesindex)** | []object | Subjects that should receive additional permissions.<br>The subjects are selected based on the oncoming requests. They don't have to relate to an existing tenant.<br>By default, callers must be recognized as Capsule identities.<br>Set --require-capsule-user=false to also allow authenticated non-Capsule subjects. | true |
 
 
 ### GlobalProxySettings.spec.rules[index]
@@ -59,7 +59,7 @@ GlobalProxySettingsSpec defines the desired state of GlobalProxySettings.
 
 | **Name** | **Type** | **Description** | **Required** |
 | :---- | :---- | :----------- | :-------- |
-| **[subjects](#globalproxysettingsspecrulesindexsubjectsindex)** | []object | Subjects that should receive additional permissions.<br>The subjects are selected based on the oncoming requests. They don't have to relate to an existing tenant.<br>However they must be part of the capsule-user groups. | true |
+| **[subjects](#globalproxysettingsspecrulesindexsubjectsindex)** | []object | Subjects that should receive additional permissions.<br>The subjects are selected based on the oncoming requests. They don't have to relate to an existing tenant.<br>By default, callers must be recognized as Capsule identities.<br>Set --require-capsule-user=false to also allow authenticated non-Capsule subjects. | true |
 | **[clusterResources](#globalproxysettingsspecrulesindexclusterresourcesindex)** | []object | Cluster Resources for tenant Owner. | false |
 
 
